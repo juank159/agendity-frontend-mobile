@@ -71,8 +71,8 @@ class CustomDrawer extends StatelessWidget {
               icon: Icons.sell,
               title: 'Servicios',
               onTap: () {
-                Get.back(); // Cierra el drawer
-                Get.to(() => const ServicesScreen());
+                Get.back();
+                Get.toNamed('/services');
               },
             ),
             _DrawerTile(

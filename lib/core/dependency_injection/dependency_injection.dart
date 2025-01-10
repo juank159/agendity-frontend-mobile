@@ -40,8 +40,8 @@ class DependencyInjection {
       // Feature Dependencies
       _initLoginDependencies();
       _initRegisterDependencies();
-      _initServicesDependencies();
       _initNavigationDependencies();
+      //_initServicesDependencies();
     } catch (e) {
       print('Error initializing dependencies: $e');
       rethrow;

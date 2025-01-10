@@ -1,128 +1,139 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/services/domain/entities/service_entity.dart';
-import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 
-class ServicesScreen extends StatelessWidget {
+import 'package:login_signup/core/constants/app_colors.dart';
+import 'package:login_signup/core/constants/app_styles.dart';
+import 'package:login_signup/core/routes/routes.dart';
+
+import '../../domain/entities/service_entity.dart';
+import '../controller/services_controller.dart';
+import '../widgets/action_button.dart';
+import '../widgets/service_card.dart';
+
+class ServicesScreen extends StatefulWidget {
   const ServicesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final ServicesController controller = Get.find<ServicesController>();
+  State<ServicesScreen> createState() => _ServicesScreenState();
+}
 
+class _ServicesScreenState extends State<ServicesScreen> {
+  final ServicesController controller = Get.find<ServicesController>();
+  bool isExpanded = false;
+
+  void _toggleMenu() {
+    setState(() => isExpanded = !isExpanded);
+  }
+
+  void _navigateTo(String route) {
+    _toggleMenu();
+    Get.toNamed(route);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: _buildAppBar(),
+      body: Stack(
+        children: [
+          _buildBody(),
+          if (isExpanded) _buildOverlay(),
+        ],
+      ),
+      floatingActionButton: _buildFloatingActionButtons(),
+    );
+  }
+
+  AppBar _buildAppBar() => AppBar(
         title: const Text('Servicios'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Get.back(),
+          onPressed: Get.back,
         ),
-      ),
-      body: RefreshIndicator(
+      );
+
+  Widget _buildBody() => RefreshIndicator(
         onRefresh: controller.loadServices,
         child: Obx(() {
           if (controller.isLoading.value) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (controller.services.isEmpty) {
-            return const Center(
-              child: Text('No hay servicios disponibles'),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: controller.services.length,
-            itemBuilder: (context, index) {
-              final service = controller.services[index];
-              return ServiceCard(service: service);
-            },
-          );
+          return controller.services.isEmpty
+              ? const _EmptyState()
+              : _ServicesList(services: controller.services);
         }),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Implementar la lógica para agregar nuevo servicio
-          Get.snackbar(
-            'Próximamente',
-            'Función de agregar servicio estará disponible pronto',
-            backgroundColor: Colors.black87,
-            colorText: Colors.white,
-          );
-        },
-        backgroundColor: Colors.deepPurple,
-        child: const Icon(Icons.add),
+      );
+
+  Widget _buildOverlay() => Positioned.fill(
+        child: GestureDetector(
+          onTap: _toggleMenu,
+          child: Container(
+            color: AppColors.overlay.withOpacity(AppStyles.overlayOpacity),
+          ),
+        ),
+      );
+
+  Widget _buildFloatingActionButtons() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        if (!isExpanded)
+          FloatingActionButton(
+            onPressed: _toggleMenu,
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add),
+          ),
+        if (isExpanded) ...[
+          Positioned(
+            right: 0,
+            bottom: AppStyles.floatingButtonSpacing * 2,
+            child: ActionButton(
+              label: 'Categoría',
+              icon: Icons.folder_outlined,
+              onTap: () => _navigateTo(GetRoutes.categories),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: AppStyles.floatingButtonSpacing,
+            child: ActionButton(
+              label: 'Servicio',
+              icon: Icons.local_offer_outlined,
+              onTap: () => _navigateTo(GetRoutes.addService),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        'No hay servicios disponibles',
+        style: TextStyle(fontSize: 16, color: Colors.grey),
       ),
     );
   }
 }
 
-class ServiceCard extends StatelessWidget {
-  final ServiceEntity service;
+class _ServicesList extends StatelessWidget {
+  final RxList<ServiceEntity> services;
 
-  const ServiceCard({super.key, required this.service});
+  const _ServicesList({required this.services});
 
   @override
   Widget build(BuildContext context) {
-    final durationText = service.duration >= 60
-        ? '${(service.duration / 60).floor()}h ${service.duration % 60}min'
-        : '${service.duration}min';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      elevation: 2,
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 12,
-          height: 12,
-          decoration: const BoxDecoration(
-            color: Colors.blue,
-            shape: BoxShape.circle,
-          ),
-        ),
-        title: Text(
-          service.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        subtitle: Text(
-          durationText,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 14,
-          ),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'US\$${double.parse(service.price).toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.deepPurple,
-              ),
-            ),
-          ],
-        ),
-        onTap: () {
-          // Implementar la navegación al detalle del servicio
-          Get.snackbar(
-            'Detalles',
-            'Detalles del servicio ${service.name}',
-            backgroundColor: Colors.black87,
-            colorText: Colors.white,
-          );
-        },
-      ),
+    return ListView.builder(
+      padding: AppStyles.cardPadding,
+      itemCount: services.length,
+      itemBuilder: (_, index) => ServiceCard(service: services[index]),
     );
   }
 }

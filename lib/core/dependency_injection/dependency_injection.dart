@@ -11,9 +11,13 @@ import 'package:login_signup/features/auth/domain/usecases/register_usecase.dart
 import 'package:login_signup/features/auth/presentation/controllers/login_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/register_controller.dart';
+import 'package:login_signup/features/services/data/datasources/categories_remote_datasource.dart';
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/features/services/data/repositories/categories_repository_impl.dart';
 import 'package:login_signup/features/services/data/repositories/services_repository_impl.dart';
+import 'package:login_signup/features/services/domain/repositories/categories_repository.dart';
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
+import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:login_signup/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -41,6 +45,7 @@ class DependencyInjection {
       _initLoginDependencies();
       _initRegisterDependencies();
       _initNavigationDependencies();
+      _initCategoriesDependencies();
       //_initServicesDependencies();
     } catch (e) {
       print('Error initializing dependencies: $e');
@@ -171,6 +176,31 @@ class DependencyInjection {
       print('Error initializing services dependencies: $e');
       rethrow;
     }
+  }
+
+  static void _initCategoriesDependencies() {
+    // Data Sources
+    Get.put(
+      CategoriesRemoteDataSource(
+        dio: Get.find<Dio>(),
+        localStorage: Get.find<LocalStorage>(),
+      ),
+      permanent: true,
+    );
+
+    // Repositories
+    Get.put<CategoriesRepository>(
+      CategoriesRepositoryImpl(
+        remoteDataSource: Get.find<CategoriesRemoteDataSource>(),
+      ),
+      permanent: true,
+    );
+
+    // Use Cases
+    Get.put(
+      GetCategoriesUseCase(Get.find<CategoriesRepository>()),
+      permanent: true,
+    );
   }
 
   static void _initAuthDependencies() {

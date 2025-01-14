@@ -5,6 +5,10 @@ import 'package:login_signup/core/dependency_injection/dependency_injection.dart
 import 'package:login_signup/core/routes/routes.dart';
 
 Future<void> main() async {
+  print('Rutas registradas:');
+  GetRoutes.routes.forEach((route) {
+    print('Ruta: ${route.name}, Page: ${route.page}');
+  });
   WidgetsFlutterBinding.ensureInitialized();
 
   await DependencyInjection.init();

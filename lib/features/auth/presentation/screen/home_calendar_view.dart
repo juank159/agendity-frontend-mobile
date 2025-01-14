@@ -34,7 +34,7 @@ class HomeCalendarView extends GetView<CustomBottomNavigationController> {
         fullDayEventBuilder: (events, date) {
           return Container();
         },
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color.fromARGB(255, 245, 245, 248),
         showVerticalLine: false,
         showLiveTimeLineInAllDays: true,
         minDay: DateTime(1990),

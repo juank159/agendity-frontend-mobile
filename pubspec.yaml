@@ -38,11 +38,12 @@ dependencies:
   hexcolor: ^3.0.1
   flutter_svg: ^2.0.16
   calendar_view: ^1.3.0
-  dio: ^5.7.0
-  flutter_dotenv: ^5.2.1
-  dartz: ^0.10.1
-  flutter_secure_storage: ^9.2.2
-  intl: ^0.20.1
+  dio: ^5.7.0 # para hacer peticiones htt
+  flutter_dotenv: ^5.2.1 # para manejar variables de entorno
+  dartz: ^0.10.1 # para manejar Either y Option
+  flutter_secure_storage: ^9.2.2 # para guardar datos de forma segura
+  intl: ^0.20.1 # para manejar fechas y separadores de miles
+  dotted_border: ^2.1.0 # para hacer bordes punteados
 
 dev_dependencies:
   flutter_test:

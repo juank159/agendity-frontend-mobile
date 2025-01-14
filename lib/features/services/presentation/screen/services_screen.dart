@@ -100,7 +100,31 @@ class _ServicesScreenState extends State<ServicesScreen> {
             child: ActionButton(
               label: 'Servicio',
               icon: Icons.local_offer_outlined,
-              onTap: () => _navigateTo(GetRoutes.addService),
+              onTap: () {
+                _toggleMenu();
+                try {
+                  print('Navegando a: ${GetRoutes.addService}'); // Debug
+                  Get.toNamed(GetRoutes.addService)?.then((_) {
+                    print('Navegación completada'); // Debug
+                  }).catchError((error) {
+                    print('Error en navegación: $error'); // Debug
+                    Get.snackbar(
+                      'Error',
+                      'No se pudo abrir la pantalla de nuevo servicio',
+                      backgroundColor: Colors.red,
+                      colorText: Colors.white,
+                    );
+                  });
+                } catch (e) {
+                  print('Error: $e'); // Debug
+                  Get.snackbar(
+                    'Error',
+                    'Ocurrió un error inesperado',
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white,
+                  );
+                }
+              },
             ),
           ),
         ],

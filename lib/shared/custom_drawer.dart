@@ -1,54 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
-import 'package:login_signup/features/services/presentation/screen/services_screen.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
+import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 
-class CustomDrawer extends StatelessWidget {
+class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
   void _showLogoutDialog() {
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        title: const Text(
-          'Cerrar Sesión',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
+    try {
+      final logoutController = Get.find<LogoutController>();
+      Get.dialog(
+        AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        content: const Text(
-          '¿Está seguro que desea cerrar la sesión?',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.grey),
-            ),
+          title: const Text(
+            'Cerrar Sesión',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              Get.find<LogoutController>().logout();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          content: const Text(
+            '¿Está seguro que desea cerrar la sesión?',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey),
               ),
             ),
-            child: const Text('Cerrar Sesión'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
+            ElevatedButton(
+              onPressed: () {
+                Get.back();
+                logoutController.logout();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Cerrar Sesión'),
+            ),
+          ],
+        ),
+        barrierDismissible: false,
+      );
+    } catch (e) {
+      print('Error al mostrar diálogo de logout: $e');
+      Get.snackbar(
+        'Error',
+        'No se pudo iniciar el proceso de cierre de sesión',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+      );
+    }
   }
 
   @override
@@ -67,12 +78,64 @@ class CustomDrawer extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
               ),
             ),
+            // Perfil de usuario
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Obx(() => CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.orange,
+                        child: Text(
+                          controller.userInitial.value,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )),
+                  const SizedBox(height: 12),
+                  Obx(() => Text(
+                        controller.userName.value,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )),
+                  const SizedBox(height: 4),
+                  Obx(() => Text(
+                        controller.userEmail.value,
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                        ),
+                      )),
+                ],
+              ),
+            ),
             _DrawerTile(
               icon: Icons.sell,
               title: 'Servicios',
-              onTap: () {
+              onTap: () async {
                 Get.back();
-                Get.toNamed('/services');
+                try {
+                  final servicesController = Get.find<ServicesController>();
+                  await servicesController.initializeServices();
+                  Get.toNamed('/services');
+                } catch (e) {
+                  print('Error inicializando servicios: $e');
+                  Get.toNamed('/services');
+                }
               },
             ),
             _DrawerTile(
@@ -80,7 +143,7 @@ class CustomDrawer extends StatelessWidget {
               title: 'Clientela',
               onTap: () {
                 Get.back();
-                // Get.to(() => const ClientelaScreen()); // Implementar cuando exista
+                Get.to(() => ClientsScreen());
               },
             ),
             _DrawerTile(
@@ -132,18 +195,6 @@ class CustomDrawer extends StatelessWidget {
               },
             ),
             Divider(color: Colors.grey.withOpacity(0.3)),
-            const ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.orange,
-                child: Text('J', style: TextStyle(color: Colors.white)),
-              ),
-              title:
-                  Text('Paola Jiménez', style: TextStyle(color: Colors.white)),
-              subtitle: Text(
-                'juankpaez21@gmail.com',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
             _DrawerTile(
               icon: Icons.settings,
               title: 'Ajustes',

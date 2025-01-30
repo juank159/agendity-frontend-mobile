@@ -1,3 +1,4 @@
+// lib/shared/local_storage/local_storage.dart
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LocalStorage {
@@ -5,49 +6,45 @@ class LocalStorage {
 
   LocalStorage(this._storage);
 
-  // Token management
   Future<void> saveToken(String token) async {
-    await _storage.write(key: 'auth_token', value: token);
+    await _storage.write(key: 'token', value: token);
+    print('Token guardado: $token'); // Debug
   }
 
   Future<String?> getToken() async {
-    return await _storage.read(key: 'auth_token');
+    final token = await _storage.read(key: 'token');
+    print('Token actual: $token'); // Debug
+    return token;
   }
 
   Future<void> deleteToken() async {
-    await _storage.delete(key: 'auth_token');
+    print('Intentando eliminar token...'); // Debug
+    final tokenAntes = await getToken();
+    print('Token antes de eliminar: $tokenAntes'); // Debug
+
+    await _storage.delete(key: 'token');
+
+    final tokenDespues = await getToken();
+    print('Token después de eliminar: $tokenDespues'); // Debug
   }
 
-  // User data management
-  Future<void> saveUserData(String email, String name) async {
-    await _storage.write(key: 'user_email', value: email);
-    await _storage.write(key: 'user_name', value: name);
+  Future<void> clearAllData() async {
+    print('Limpiando todos los datos almacenados...'); // Debug
+    await _storage.deleteAll();
+    final allData = await _storage.readAll();
+    print('Datos restantes después de limpiar: $allData'); // Debug
   }
 
-  Future<Map<String, String?>> getUserData() async {
-    return {
-      'email': await _storage.read(key: 'user_email'),
-      'name': await _storage.read(key: 'user_name'),
-    };
+  // Métodos adicionales para otros datos si los necesitas
+  Future<void> saveUserData(String key, String value) async {
+    await _storage.write(key: key, value: value);
   }
 
-  // Session management
-  Future<bool> isLoggedIn() async {
-    final token = await getToken();
-    return token != null;
+  Future<String?> getUserData(String key) async {
+    return await _storage.read(key: key);
   }
 
-  Future<void> clearSession() async {
-    try {
-      await _storage.deleteAll();
-    } catch (e) {
-      throw Exception('Error al cerrar sesión: $e');
-    }
-  }
-
-  // Para limpiar datos específicos si es necesario
-  Future<void> clearUserData() async {
-    await _storage.delete(key: 'user_email');
-    await _storage.delete(key: 'user_name');
+  Future<void> deleteUserData(String key) async {
+    await _storage.delete(key: key);
   }
 }

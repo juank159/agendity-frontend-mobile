@@ -44,6 +44,8 @@ dependencies:
   flutter_secure_storage: ^9.2.2 # para guardar datos de forma segura
   intl: ^0.20.1 # para manejar fechas y separadores de miles
   dotted_border: ^2.1.0 # para hacer bordes punteados
+  contacts_service: ^0.6.3 # para acceder a los contactos del dispositivo
+  permission_handler: ^11.3.1 # para manejar permisos
 
 dev_dependencies:
   flutter_test:

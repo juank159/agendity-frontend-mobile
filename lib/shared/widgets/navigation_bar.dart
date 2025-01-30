@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/shared/controller/custom_bottom_navigation_controller.dart';
+import '../controller/custom_bottom_navigation_controller.dart';
 
-class CustomBottomNavigation extends StatelessWidget {
+class CustomBottomNavigation extends GetView<CustomBottomNavigationController> {
   const CustomBottomNavigation({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<CustomBottomNavigationController>();
+    // Asegurarnos que el controlador esté disponible
+    Get.lazyPut<CustomBottomNavigationController>(
+      () => CustomBottomNavigationController(),
+      fenix: true,
+    );
 
     return Obx(() => NavigationBar(
+          elevation: 0,
           selectedIndex: controller.selectedIndex.value,
           onDestinationSelected: controller.changeIndex,
           destinations: const [

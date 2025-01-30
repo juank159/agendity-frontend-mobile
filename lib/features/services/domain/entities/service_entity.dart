@@ -1,23 +1,48 @@
+import 'package:login_signup/features/services/domain/entities/category.dart';
+
 class ServiceEntity {
-  final String id;
+  final String? id;
   final String name;
   final String description;
-  final double
-      price; // El backend lo envía como String, pero nosotros lo manejamos como double
+  final double price;
+  final String priceType;
   final int duration;
   final String categoryId;
+  final CategoryEntity? category;
   final String color;
+  final String? image;
+  final bool onlineBooking;
+  final int deposit;
+  final bool isActive;
 
   ServiceEntity({
-    required this.id,
+    this.id,
     required this.name,
     required this.description,
     required this.price,
+    this.priceType = 'Precio fijo',
     required this.duration,
     required this.categoryId,
+    this.category,
     required this.color,
+    this.image,
+    this.onlineBooking = false,
+    this.deposit = 0,
+    this.isActive = true,
   });
 
-  // Opcional: método para convertir el precio a String cuando sea necesario
-  String get priceAsString => price.toString();
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'description': description,
+      'price': price,
+      'priceType': priceType,
+      'duration': duration,
+      'categoryId': categoryId,
+      'color': color,
+      'image': image,
+      'onlineBooking': onlineBooking,
+      'deposit': deposit,
+    };
+  }
 }

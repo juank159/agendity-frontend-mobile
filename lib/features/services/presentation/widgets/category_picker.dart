@@ -3,9 +3,9 @@ import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 
 class CategoryPicker extends StatelessWidget {
-  final List<Category> categories;
-  final Rxn<Category> selectedCategory;
-  final Function(Category) onChanged;
+  final List<CategoryEntity> categories;
+  final Rxn<CategoryEntity> selectedCategory;
+  final Function(CategoryEntity) onChanged;
 
   const CategoryPicker({
     required this.categories,

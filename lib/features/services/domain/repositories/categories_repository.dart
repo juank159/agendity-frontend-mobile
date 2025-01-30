@@ -1,5 +1,7 @@
 import '../entities/category.dart';
 
 abstract class CategoriesRepository {
-  Future<List<Category>> getCategories();
+  Future<List<CategoryEntity>> getCategories();
+  Future<void> createCategory(CategoryEntity category);
+  Future<void> updateCategoryStatus(String id, bool isActive);
 }

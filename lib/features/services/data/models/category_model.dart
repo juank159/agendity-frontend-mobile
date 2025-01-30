@@ -1,15 +1,24 @@
-import '../../domain/entities/category.dart';
+import 'package:login_signup/features/services/domain/entities/category.dart';
 
-class CategoryModel extends Category {
+class CategoryModel extends CategoryEntity {
   CategoryModel({
     required String id,
     required String name,
-  }) : super(id: id, name: name);
+    required String description,
+    bool isActive = true,
+  }) : super(
+          id: id,
+          name: name,
+          description: description,
+          isActive: isActive,
+        );
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json['id'].toString(),
-      name: json['name'],
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      isActive: json['isActive'] ?? true,
     );
   }
 
@@ -17,6 +26,8 @@ class CategoryModel extends Category {
     return {
       'id': id,
       'name': name,
+      'description': description,
+      'isActive': isActive,
     };
   }
 }

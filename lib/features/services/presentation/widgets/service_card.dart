@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import '../../../../core/constants/app_styles.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/service_entity.dart';
@@ -23,7 +24,6 @@ import '../../domain/entities/service_entity.dart';
 //   }
 
 //   String _formatPrice(double price) {
-//     // Cambiado aquí
 //     return NumberFormat.currency(
 //       locale: 'es_CO',
 //       symbol: '\$ ',
@@ -32,19 +32,24 @@ import '../../domain/entities/service_entity.dart';
 //     ).format(price);
 //   }
 
+//   Color _parseColor(String colorString) {
+//     // Convertir un color hexadecimal (#RRGGBB) en un objeto Color
+//     return Color(int.parse(colorString.substring(1), radix: 16) + 0xFF000000);
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     return Card(
-//       margin: const EdgeInsets.only(bottom: 12),
+//       margin: const EdgeInsets.only(bottom: 6),
 //       shape: AppStyles.cardShape,
-//       elevation: 2,
+//       elevation: 3,
 //       child: ListTile(
 //         contentPadding: AppStyles.cardPadding,
 //         leading: Container(
 //           width: 12,
 //           height: 12,
-//           decoration: const BoxDecoration(
-//             color: service.color,
+//           decoration: BoxDecoration(
+//             color: _parseColor(service.color), // Convertir color aquí
 //             shape: BoxShape.circle,
 //           ),
 //         ),
@@ -63,8 +68,7 @@ import '../../domain/entities/service_entity.dart';
 //           ),
 //         ),
 //         trailing: Text(
-//           _formatPrice(
-//               service.price), // Aquí ya no hay error porque price es double
+//           _formatPrice(service.price),
 //           style: const TextStyle(
 //             fontWeight: FontWeight.bold,
 //             fontSize: 16,
@@ -104,23 +108,24 @@ class ServiceCard extends StatelessWidget {
   }
 
   Color _parseColor(String colorString) {
-    // Convertir un color hexadecimal (#RRGGBB) en un objeto Color
     return Color(int.parse(colorString.substring(1), radix: 16) + 0xFF000000);
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 15),
       shape: AppStyles.cardShape,
-      elevation: 2,
+      elevation: 5,
       child: ListTile(
-        contentPadding: AppStyles.cardPadding,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        minVerticalPadding: 0,
+        dense: true,
         leading: Container(
           width: 12,
           height: 12,
           decoration: BoxDecoration(
-            color: _parseColor(service.color), // Convertir color aquí
+            color: _parseColor(service.color),
             shape: BoxShape.circle,
           ),
         ),
@@ -146,7 +151,10 @@ class ServiceCard extends StatelessWidget {
             color: AppColors.primary,
           ),
         ),
-        onTap: () => Get.toNamed('/service-details', arguments: service),
+        onTap: () => Get.toNamed(
+          GetRoutes.editService,
+          arguments: service,
+        ),
       ),
     );
   }

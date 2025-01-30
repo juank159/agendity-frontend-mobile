@@ -1,9 +1,13 @@
-class Category {
+class CategoryEntity {
   final String id;
   final String name;
+  final String description;
+  final bool isActive;
 
-  Category({
+  CategoryEntity({
     required this.id,
     required this.name,
+    required this.description,
+    this.isActive = true,
   });
 }

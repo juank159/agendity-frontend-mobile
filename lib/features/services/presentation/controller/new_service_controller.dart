@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
+import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/domain/usecases/create_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
+import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 import 'package:login_signup/features/services/presentation/widgets/category_picker.dart';
 
 import '../widgets/duration_picker.dart';
@@ -13,6 +16,7 @@ class NewServiceController extends GetxController {
   final nameController = TextEditingController();
   final priceController = TextEditingController();
   final descriptionController = TextEditingController();
+  final CreateServiceUseCase createServiceUseCase;
 
   // Observables básicos
   final price = 0.0.obs;
@@ -24,8 +28,8 @@ class NewServiceController extends GetxController {
   // Observables de configuración adicional
   final isOnlineBooking = true.obs;
   final showServiceTime = false.obs;
-  final categories = <Category>[].obs;
-  final selectedCategory = Rxn<Category>();
+  final categories = <CategoryEntity>[].obs;
+  final selectedCategory = Rxn<CategoryEntity>();
   final selectedColor = MaterialColor(
     Colors.blue.value,
     const <int, Color>{
@@ -61,7 +65,10 @@ class NewServiceController extends GetxController {
     _createMaterialColor(Colors.yellow),
   ];
 
-  NewServiceController({required this.getCategoriesUseCase});
+  NewServiceController({
+    required this.getCategoriesUseCase,
+    required this.createServiceUseCase,
+  });
 
   static MaterialColor _createMaterialColor(Color color) {
     return MaterialColor(
@@ -86,6 +93,13 @@ class NewServiceController extends GetxController {
     super.onInit();
     loadCategories();
     priceController.addListener(_updatePrice);
+
+    // Valores por defecto
+    duration.value = const Duration(minutes: 30);
+    isOnlineBooking.value = true;
+    selectedPriceType.value = 'Precio fijo';
+    minimumDeposit.value = 0;
+    depositType.value = 'percentage';
   }
 
   @override
@@ -121,7 +135,14 @@ class NewServiceController extends GetxController {
 
   void selectColor(MaterialColor color) {
     selectedColor.value = color;
+    // Podemos agregar una validación aquí si es necesario
+    print(
+        'Color seleccionado: #${color.shade500.value.toRadixString(16).substring(2)}');
   }
+
+  // void selectColor(MaterialColor color) {
+  //   selectedColor.value = color;
+  // }
 
   void showDurationPicker() {
     Get.dialog(
@@ -213,34 +234,38 @@ class NewServiceController extends GetxController {
 
     try {
       isLoading.value = true;
-      await _saveServiceToApi();
+
+      final service = ServiceEntity(
+        name: nameController.text.trim(),
+        description: descriptionController.text.trim(),
+        price: price.value,
+        priceType: selectedPriceType.value,
+        duration: duration.value.inMinutes,
+        categoryId: selectedCategory.value!.id,
+        color:
+            '#${selectedColor.value.shade500.value.toRadixString(16).substring(2)}',
+        onlineBooking: isOnlineBooking.value,
+        deposit: minimumDeposit.value.round(),
+      );
+
+      await createServiceUseCase.execute(service);
+
+      // Obtener el controlador de servicios
+      final servicesController = Get.find<ServicesController>();
+
+      // Refrescar la lista antes de mostrar el mensaje de éxito
+      await servicesController.refreshServices();
+
       _showSuccess('Servicio creado correctamente');
-      Get.back(result: _createServiceData());
+
+      // Navegar a la pantalla de servicios
+      Get.offNamed(
+          '/services'); // Esto cerrará la pantalla actual y navegará a servicios
     } catch (e) {
-      _showError('No se pudo crear el servicio');
+      _showError('No se pudo crear el servicio: ${e.toString()}');
     } finally {
       isLoading.value = false;
     }
-  }
-
-  Future<void> _saveServiceToApi() async {
-    await Future.delayed(const Duration(seconds: 1));
-  }
-
-  Map<String, dynamic> _createServiceData() {
-    return {
-      'name': nameController.text.trim(),
-      'price': price.value,
-      'priceType': selectedPriceType.value,
-      'duration': duration.value.inMinutes,
-      'description': descriptionController.text.trim(),
-      'isOnlineBooking': isOnlineBooking.value,
-      'showServiceTime': showServiceTime.value,
-      'categoryId': selectedCategory.value?.id,
-      'color': selectedColor.value.shade500.value,
-      'depositType': depositType.value,
-      'minimumDeposit': minimumDeposit.value,
-    };
   }
 
   bool _validateForm() {
@@ -256,6 +281,16 @@ class NewServiceController extends GetxController {
 
     if (selectedCategory.value == null) {
       _showError('Debe seleccionar una categoría');
+      return false;
+    }
+
+    if (duration.value.inMinutes <= 0) {
+      _showError('La duración debe ser mayor a 0 minutos');
+      return false;
+    }
+
+    if (minimumDeposit.value < 0 || minimumDeposit.value > 100) {
+      _showError('El depósito debe estar entre 0 y 100');
       return false;
     }
 
@@ -279,7 +314,7 @@ class NewServiceController extends GetxController {
       message,
       backgroundColor: backgroundColor,
       colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
+      snackPosition: SnackPosition.TOP,
       margin: const EdgeInsets.all(16),
       borderRadius: 8,
       duration: const Duration(seconds: 3),

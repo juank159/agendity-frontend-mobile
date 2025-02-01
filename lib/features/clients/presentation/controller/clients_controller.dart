@@ -1,10 +1,10 @@
-import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class ClientsController extends GetxController {
   final GetClientsUseCase getClientsUseCase;
@@ -32,49 +32,86 @@ class ClientsController extends GetxController {
   Future<void> loadClients() async {
     try {
       isLoading.value = true;
-      clients.value = await getClientsUseCase.execute();
+      print('Cargando clientes...');
+      final result = await getClientsUseCase.execute();
+      clients.assignAll(result);
+      print('Clientes cargados: ${clients.length}');
     } catch (e) {
-      _showError('Error al cargar clientes');
+      print('Error cargando clientes: $e');
+      _showError('Error al cargar los clientes');
     } finally {
       isLoading.value = false;
     }
   }
 
   Future<void> importContacts() async {
+    if (!await FlutterContacts.requestPermission(readonly: true)) {
+      throw Exception('Se necesita permiso para acceder a los contactos');
+    }
+
     try {
-      isLoading.value = true;
-      if (await Permission.contacts.request().isGranted) {
-        final deviceContacts = await ContactsService.getContacts();
-        final ownerId = await localStorage.getToken();
+      final contacts = await FlutterContacts.getContacts(
+        withProperties: true,
+        withPhoto: false,
+      );
 
-        final newClients = deviceContacts.map((contact) {
-          String phoneValue = '';
-          if (contact.phones != null && contact.phones!.isNotEmpty) {
-            phoneValue = contact.phones!.first.value ?? 'Sin teléfono';
-          }
-
-          return ClientEntity(
-            name: contact.givenName ?? 'Sin nombre',
-            lastname: contact.familyName ?? 'Sin apellido',
-            email: contact.emails?.firstOrNull?.value ?? '',
-            phone: phoneValue,
-            ownerId: ownerId ?? '',
-            isFromDevice: true,
-            deviceContactId: contact.identifier ?? '',
-          );
-        }).toList();
-
-        await importContactsUseCase.execute(newClients);
-        await loadClients();
+      final userId = await localStorage.getUserId();
+      if (userId == null) {
+        throw Exception('Error de autenticación');
       }
+
+      final validContacts = contacts
+          .where((contact) =>
+              contact.name.first.trim().isNotEmpty &&
+              contact.phones.isNotEmpty &&
+              contact.phones.first.number
+                      .replaceAll(RegExp(r'[^\d+]'), '')
+                      .length >=
+                  10)
+          .map((contact) => ClientModel(
+                name: contact.name.first.trim(),
+                lastname: contact.name.last.trim(),
+                email: contact.emails.isNotEmpty
+                    ? contact.emails.first.address
+                    : 'no-email@example.com',
+                phone: contact.phones.first.number
+                    .replaceAll(RegExp(r'[^\d+]'), ''),
+                ownerId: userId,
+              ))
+          .toList();
+
+      if (validContacts.isEmpty) {
+        throw Exception('No hay contactos válidos para importar');
+      }
+
+      await importContactsUseCase.execute(validContacts);
+      Get.back();
+      await loadClients();
+      _showSuccess('${validContacts.length} contactos importados');
     } catch (e) {
-      _showError('Error al importar contactos');
-    } finally {
-      isLoading.value = false;
+      throw Exception('Error al importar contactos: $e');
     }
   }
 
+  void _showSuccess(String message) {
+    Get.snackbar(
+      'Éxito',
+      message,
+      backgroundColor: Colors.green,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 3),
+    );
+  }
+
   void _showError(String message) {
-    Get.snackbar('Error', message, backgroundColor: Colors.red);
+    Get.snackbar(
+      'Error',
+      message,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 3),
+    );
   }
 }

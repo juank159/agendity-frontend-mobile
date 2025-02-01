@@ -6,6 +6,16 @@ class LocalStorage {
 
   LocalStorage(this._storage);
 
+  Future<void> saveUserInfo(Map<String, dynamic> userData) async {
+    await _storage.write(key: 'userId', value: userData['id']);
+    await _storage.write(key: 'userName', value: userData['name']);
+    await _storage.write(key: 'userEmail', value: userData['email']);
+  }
+
+  Future<String?> getUserId() async {
+    return await _storage.read(key: 'userId');
+  }
+
   Future<void> saveToken(String token) async {
     await _storage.write(key: 'token', value: token);
     print('Token guardado: $token'); // Debug

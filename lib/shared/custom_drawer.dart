@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
 import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 
@@ -141,9 +142,17 @@ class CustomDrawer extends GetView<UserInfoController> {
             _DrawerTile(
               icon: Icons.people,
               title: 'Clientela',
-              onTap: () {
+              onTap: () async {
                 Get.back();
-                Get.to(() => ClientsScreen());
+                try {
+                  final clientsController = Get.find<ClientsController>();
+                  await clientsController
+                      .loadClients(); // Método similar a initializeServices
+                  Get.toNamed('/clients'); // Usar la ruta definida en GetRoutes
+                } catch (e) {
+                  print('Error inicializando clientes: $e');
+                  Get.toNamed('/clients');
+                }
               },
             ),
             _DrawerTile(

@@ -36,13 +36,13 @@ class ClientModel extends ClientEntity {
   factory ClientModel.fromJson(Map<String, dynamic> json) {
     return ClientModel(
       id: json['id'],
-      name: json['name'],
-      lastname: json['lastname'],
-      email: json['email'],
-      phone: json['phone'],
+      name: json['name'] ?? '',
+      lastname: json['lastname'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
       image: json['image'],
       address: json['address'],
-      ownerId: json['ownerId'],
+      ownerId: json['ownerId'] ?? '',
       isFromDevice: json['isFromDevice'] ?? false,
       deviceContactId: json['deviceContactId'],
       lastVisit:
@@ -58,21 +58,58 @@ class ClientModel extends ClientEntity {
   }
 
   Map<String, dynamic> toJson() {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+
     return {
-      'id': id,
-      'name': name,
-      'lastname': lastname,
-      'email': email,
-      'phone': phone,
-      'image': image,
-      'address': address,
+      'name': name.trim(),
+      'lastname': lastname.trim(),
+      'email': email.trim(),
+      'phone': cleanPhone,
       'ownerId': ownerId,
       'isFromDevice': isFromDevice,
       'deviceContactId': deviceContactId,
-      'lastVisit': lastVisit?.toIso8601String(),
-      'isActive': isActive,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'isActive': true,
     };
+  }
+
+  // Método para validar el modelo
+  bool isValid() {
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+
+    final isValidName = name.trim().isNotEmpty;
+    final isValidPhone = cleanPhone.length >= 10;
+    final isValidOwnerId = ownerId.trim().isNotEmpty;
+
+    print('Validando cliente:');
+    print('- Nombre: ${isValidName ? 'válido' : 'inválido'} ($name)');
+    print('- Teléfono: ${isValidPhone ? 'válido' : 'inválido'} ($cleanPhone)');
+    print('- OwnerId: ${isValidOwnerId ? 'válido' : 'inválido'} ($ownerId)');
+
+    return isValidName && isValidPhone && isValidOwnerId;
+  }
+
+  // Método para crear una copia con datos limpios
+  ClientModel copyWithCleanData() {
+    return ClientModel(
+      id: id,
+      name: name.trim(),
+      lastname: lastname.trim(),
+      email: email.trim(),
+      phone: phone.replaceAll(RegExp(r'[^\d+]'), ''),
+      image: image,
+      address: address?.trim(),
+      ownerId: ownerId.trim(),
+      isFromDevice: isFromDevice,
+      deviceContactId: deviceContactId,
+      lastVisit: lastVisit,
+      isActive: isActive,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'ClientModel(id: $id, name: $name, lastname: $lastname, phone: $phone, email: $email)';
   }
 }

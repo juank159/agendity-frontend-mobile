@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
+import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 import '../widgets/custom_dialog.dart';
 import '../../../../core/errors/failures.dart';
@@ -100,9 +101,37 @@ class LoginController extends GetxController {
     _showErrorDialog(errorMessage);
   }
 
-  void _handleSuccess() {
-    clearInputs();
-    Get.offAllNamed('/home');
+  // void _handleSuccess() {
+  //   clearInputs();
+  //   Get.offAllNamed('/home');
+  // }
+
+  void _handleSuccess() async {
+    try {
+      final result = await _loginUseCase(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      result.fold(
+        (failure) => _handleFailure(failure),
+        (userEntity) async {
+          try {
+            await Get.find<LocalStorage>()
+                .saveUserData('userId', userEntity.id);
+            print('UserID guardado: ${userEntity.id}');
+            clearInputs();
+            Get.offAllNamed('/home');
+          } catch (e) {
+            print('Error al guardar datos del usuario: $e');
+            _showErrorDialog('Error al procesar la información del usuario');
+          }
+        },
+      );
+    } catch (e) {
+      print('Error en login: $e');
+      _showErrorDialog('Error inesperado durante el inicio de sesión');
+    }
   }
 
   String _mapFailureToMessage(Failure failure) {

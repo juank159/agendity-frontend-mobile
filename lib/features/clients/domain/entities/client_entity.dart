@@ -2,7 +2,7 @@ class ClientEntity {
   final String? id;
   final String name;
   final String lastname;
-  final String email;
+  final String email; // Mantenemos email como requerido
   final String phone;
   final String? image;
   final String? address;
@@ -13,6 +13,9 @@ class ClientEntity {
   final bool isActive;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? notes;
+  final DateTime? birthday;
+  final bool showNotes;
 
   ClientEntity({
     this.id,
@@ -29,5 +32,8 @@ class ClientEntity {
     this.isActive = true,
     this.createdAt,
     this.updatedAt,
+    this.notes,
+    this.birthday,
+    this.showNotes = false,
   });
 }

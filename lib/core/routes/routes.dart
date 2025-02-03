@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/features/appointments/presentation/bindings/calendar_binding.dart';
+import 'package:login_signup/features/appointments/presentation/screen/home_calendar_view.dart';
 
-import 'package:login_signup/features/auth/presentation/bindings/home_binding.dart';
 import 'package:login_signup/features/auth/presentation/bindings/login_binding.dart';
 import 'package:login_signup/features/auth/presentation/screen/screen.dart';
 import 'package:login_signup/features/clients/presentation/bindings/clients_binding.dart';
 import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
+import 'package:login_signup/features/clients/presentation/screen/edit_client_screen.dart';
 import 'package:login_signup/features/services/presentation/bindings/categories_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/edit_service_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/new_category_binding.dart';
@@ -37,6 +39,7 @@ class GetRoutes {
   //Clients Routes
   static const String clients = '/clients';
   static const String addClient = '/clients/new';
+  static const String editClient = '/clients/edit/:id';
 
   static List<GetPage> routes = [
     // Auth Pages
@@ -61,7 +64,7 @@ class GetRoutes {
     GetPage(
       name: home,
       page: () => const HomeCalendarView(),
-      binding: HomeBinding(),
+      binding: CalendarBinding(),
       transition: Transition.fadeIn,
       middlewares: [AuthMiddleware()],
     ),
@@ -126,15 +129,15 @@ class GetRoutes {
       preventDuplicates: true,
       middlewares: [AuthMiddleware()],
     ),
-    // GetPage(
-    //   name: addClient,
-    //   page: () => const NewClientScreen(),
-    //   binding: NewClientBinding(),
-    //   transition: Transition.rightToLeft,
-    //   transitionDuration: const Duration(milliseconds: 250),
-    //   preventDuplicates: true,
-    //   middlewares: [AuthMiddleware()],
-    // ),
+    GetPage(
+      name: editClient,
+      page: () => const EditClientScreen(),
+      binding: ClientsBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
   ];
 }
 

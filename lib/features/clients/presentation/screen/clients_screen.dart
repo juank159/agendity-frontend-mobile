@@ -7,7 +7,7 @@ import 'package:login_signup/features/clients/presentation/widgets/client_list.d
 import 'package:login_signup/features/clients/presentation/widgets/add_client_dialog.dart';
 
 class ClientsScreen extends GetView<ClientsController> {
-  const ClientsScreen({Key? key}) : super(key: key);
+  const ClientsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,9 +16,9 @@ class ClientsScreen extends GetView<ClientsController> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: Column(
-          children: const [
+          children: [
             ClientHeader(),
             ClientSearchBar(),
             ClientList(),

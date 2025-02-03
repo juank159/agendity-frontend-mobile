@@ -4,7 +4,7 @@ import 'package:login_signup/features/clients/presentation/controller/clients_co
 import 'package:login_signup/features/clients/presentation/widgets/client_list_item.dart';
 
 class ClientList extends GetView<ClientsController> {
-  const ClientList({Key? key}) : super(key: key);
+  const ClientList({super.key});
 
   @override
   Widget build(BuildContext context) {

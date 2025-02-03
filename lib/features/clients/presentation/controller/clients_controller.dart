@@ -32,12 +32,10 @@ class ClientsController extends GetxController {
   Future<void> loadClients() async {
     try {
       isLoading.value = true;
-      print('Cargando clientes...');
+
       final result = await getClientsUseCase.execute();
       clients.assignAll(result);
-      print('Clientes cargados: ${clients.length}');
     } catch (e) {
-      print('Error cargando clientes: $e');
       _showError('Error al cargar los clientes');
     } finally {
       isLoading.value = false;

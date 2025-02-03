@@ -44,7 +44,6 @@ class UpdateClientUseCase {
 
       await repository.updateClient(id, client);
     } catch (e) {
-      print('Error en UpdateClientUseCase: $e');
       throw Exception('Error al actualizar el cliente: $e');
     }
   }
@@ -71,7 +70,6 @@ class DeleteClientUseCase {
       }
       await repository.deleteClient(id);
     } catch (e) {
-      print('Error en DeleteClientUseCase: $e');
       throw Exception('Error al eliminar el cliente: $e');
     }
   }

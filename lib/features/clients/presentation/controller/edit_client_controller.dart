@@ -1,10 +1,10 @@
-// presentation/controllers/edit_client_controller.dart
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
+import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
 
@@ -18,10 +18,13 @@ class EditClientController extends GetxController {
   final Rxn<File> selectedImage = Rxn<File>();
   final RxBool isUploadingImage = false.obs;
 
+  Rxn<ClientEntity> currentClient = Rxn<ClientEntity>();
+
   final isLoading = true.obs;
   final showNotes = false.obs;
 
   late TextEditingController nameController;
+  late TextEditingController lastnameController;
   late TextEditingController phoneController;
   late TextEditingController emailController;
   late TextEditingController notesController;
@@ -40,6 +43,7 @@ class EditClientController extends GetxController {
   void onInit() {
     super.onInit();
     nameController = TextEditingController();
+    lastnameController = TextEditingController();
     phoneController = TextEditingController();
     emailController = TextEditingController();
     notesController = TextEditingController();
@@ -54,17 +58,29 @@ class EditClientController extends GetxController {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 80, // Comprimir imagen
+        imageQuality: 80,
       );
 
       if (image != null) {
-        selectedImage.value = File(image.path);
+        print('Imagen seleccionada:');
+        print('Path: ${image.path}');
+
+        // Convertir XFile a File
+        final File imageFile = File(image.path);
+
+        // Verificar que el archivo existe
+        if (!imageFile.existsSync()) {
+          throw Exception('No se pudo acceder al archivo seleccionado');
+        }
+
+        selectedImage.value = imageFile;
         await uploadImage();
       }
     } catch (e) {
+      print('Error al seleccionar imagen: $e');
       Get.snackbar(
         'Error',
-        'No se pudo seleccionar la imagen',
+        'No se pudo seleccionar la imagen: $e',
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -77,12 +93,15 @@ class EditClientController extends GetxController {
     try {
       isUploadingImage(true);
 
-      final String url = clientId.isEmpty
-          ? await remoteDataSource.uploadImage(selectedImage.value!)
-          : await remoteDataSource.updateClientImage(
-              clientId, selectedImage.value!);
+      print('Iniciando carga de imagen');
+      print('Path del archivo: ${selectedImage.value!.path}');
 
+      final String url =
+          await remoteDataSource.uploadImage(selectedImage.value!);
       imageUrl.value = url;
+
+      print('Imagen cargada exitosamente');
+      print('URL recibida: $url');
 
       Get.snackbar(
         'Éxito',
@@ -91,9 +110,10 @@ class EditClientController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e) {
+      print('Error en uploadImage: $e');
       Get.snackbar(
         'Error',
-        'No se pudo cargar la imagen',
+        'No se pudo cargar la imagen: $e',
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -102,12 +122,67 @@ class EditClientController extends GetxController {
     }
   }
 
+  Future<void> updateClient() async {
+    try {
+      if (currentClient.value == null) {
+        throw Exception('No se encontró información del cliente');
+      }
+
+      // Convertir fecha de string a DateTime si es necesario
+      DateTime? birthday;
+      if (birthdayController.text.isNotEmpty) {
+        final parts = birthdayController.text.split('/');
+        if (parts.length == 3) {
+          birthday = DateTime(
+            int.parse(parts[2]), // año
+            int.parse(parts[1]), // mes
+            int.parse(parts[0]), // día
+          );
+        }
+      }
+
+      final updatedClient = ClientEntity(
+        id: clientId,
+        name: nameController.text,
+        lastname: lastnameController.text,
+        phone: phoneController.text,
+        email: emailController.text,
+        ownerId: currentClient.value!.ownerId,
+        notes: notesController.text,
+        birthday: birthday,
+        showNotes: showNotes.value,
+        image: imageUrl.value,
+        isFromDevice: currentClient.value!.isFromDevice,
+        deviceContactId: currentClient.value!.deviceContactId,
+        isActive: currentClient.value!.isActive,
+      );
+
+      await updateClientUseCase.execute(clientId, updatedClient);
+      Get.back(result: true);
+      Get.snackbar(
+        'Éxito',
+        'Cliente actualizado correctamente',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'No se pudo actualizar el cliente: ${e.toString()}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   Future<void> loadClient() async {
     try {
       isLoading(true);
       final client = await getClientByIdUseCase.execute(clientId);
+      currentClient.value = client; // Añade esta línea
 
       nameController.text = client.name;
+      lastnameController.text = client.lastname; // Añade esta línea
       phoneController.text = client.phone;
       emailController.text = client.email;
       notesController.text = client.notes ?? '';
@@ -128,57 +203,6 @@ class EditClientController extends GetxController {
       );
     } finally {
       isLoading(false);
-    }
-  }
-
-  Future<void> updateClient() async {
-    try {
-      final currentClient = await getClientByIdUseCase.execute(clientId);
-
-      // Convertir string de fecha a DateTime
-      DateTime? birthday;
-      if (birthdayController.text.isNotEmpty) {
-        final parts = birthdayController.text.split('/');
-        if (parts.length == 3) {
-          birthday = DateTime(
-            int.parse(parts[2]), // año
-            int.parse(parts[1]), // mes
-            int.parse(parts[0]), // día
-          );
-        }
-      }
-
-      final updatedClient = ClientEntity(
-        id: clientId,
-        name: nameController.text,
-        lastname: currentClient.lastname,
-        phone: phoneController.text,
-        email: emailController.text,
-        ownerId: currentClient.ownerId,
-        notes: notesController.text,
-        birthday: birthday,
-        showNotes: showNotes.value,
-        image: imageUrl.value,
-        isFromDevice: currentClient.isFromDevice,
-        deviceContactId: currentClient.deviceContactId,
-        isActive: currentClient.isActive,
-      );
-
-      await updateClientUseCase.execute(clientId, updatedClient);
-      Get.back(result: true);
-      Get.snackbar(
-        'Éxito',
-        'Cliente actualizado correctamente',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'No se pudo actualizar el cliente',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     }
   }
 
@@ -218,6 +242,7 @@ class EditClientController extends GetxController {
   @override
   void onClose() {
     nameController.dispose();
+    lastnameController.dispose();
     phoneController.dispose();
     emailController.dispose();
     notesController.dispose();

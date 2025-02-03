@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
 
 class ClientSearchBar extends GetView<ClientsController> {
-  const ClientSearchBar({Key? key}) : super(key: key);
+  const ClientSearchBar({super.key});
 
   @override
   Widget build(BuildContext context) {

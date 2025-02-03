@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
 
 class ClientHeader extends GetView<ClientsController> {
-  const ClientHeader({Key? key}) : super(key: key);
+  const ClientHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class ClientHeader extends GetView<ClientsController> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Clientes',
                   style: TextStyle(
                     fontSize: 24,

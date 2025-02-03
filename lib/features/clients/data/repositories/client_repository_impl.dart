@@ -47,9 +47,8 @@ class ClientsRepositoryImpl implements ClientsRepository {
   Future<void> updateClient(String id, ClientEntity client) async {
     try {
       await remoteDataSource.updateClient(id, client);
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('Error en updateClient: $e');
-      print('StackTrace: $stackTrace');
       throw Exception('Error al actualizar cliente: $e');
     }
   }

@@ -37,10 +37,10 @@ class AddClientDialog {
     Get.dialog(
       WillPopScope(
         onWillPop: () async => false,
-        child: AlertDialog(
+        child: const AlertDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
+            children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
               Text('Importando contactos...')

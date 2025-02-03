@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:flutter/material.dart'; // Añadir esta importación para characters
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 
@@ -33,7 +32,6 @@ class UserInfoController extends GetxController {
         }
       }
     } catch (e) {
-      print('Error decodificando token: $e');
       // Valores por defecto en caso de error
       userName.value = 'Usuario';
       userEmail.value = 'correo@ejemplo.com';

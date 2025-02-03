@@ -6,7 +6,7 @@ import 'package:login_signup/features/clients/domain/entities/client_entity.dart
 class ClientCard extends StatelessWidget {
   final ClientEntity client;
 
-  const ClientCard({Key? key, required this.client}) : super(key: key);
+  const ClientCard({super.key, required this.client});
 
   @override
   Widget build(BuildContext context) {

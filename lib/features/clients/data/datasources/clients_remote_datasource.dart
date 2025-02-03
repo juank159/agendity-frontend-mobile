@@ -1,10 +1,10 @@
 import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:image/image.dart' as img;
 
 class ClientsRemoteDataSource {
   final Dio dio;
@@ -13,9 +13,13 @@ class ClientsRemoteDataSource {
   ClientsRemoteDataSource({
     required this.dio,
     required this.localStorage,
-  });
+  }) {
+    // Configurar timeouts más largos para subida de archivos
+    dio.options.connectTimeout = const Duration(seconds: 60);
+    dio.options.receiveTimeout = const Duration(seconds: 60);
+    dio.options.sendTimeout = const Duration(seconds: 60);
+  }
 
-  // Método privado para obtener el token y validarlo
   Future<String> _getValidToken() async {
     final token = await localStorage.getToken();
     if (token == null || token.isEmpty) {
@@ -25,7 +29,6 @@ class ClientsRemoteDataSource {
     return token;
   }
 
-  // Método privado para manejar errores de DioError
   String _handleDioError(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
@@ -50,15 +53,10 @@ class ClientsRemoteDataSource {
       final token = await localStorage.getToken();
       final response = await dio.get(
         '/clients/$id',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return response.data;
     } catch (e) {
-      print('Error en getClientById: $e');
       throw Exception('Error al obtener cliente por ID: $e');
     }
   }
@@ -66,8 +64,6 @@ class ClientsRemoteDataSource {
   Future<List<Map<String, dynamic>>> getClients() async {
     try {
       final token = await _getValidToken();
-      print('Obteniendo lista de clientes...');
-
       final response = await dio.get(
         '/clients',
         options: Options(
@@ -77,16 +73,13 @@ class ClientsRemoteDataSource {
       );
 
       if (response.statusCode == 200) {
-        print('Clientes obtenidos exitosamente');
         return List<Map<String, dynamic>>.from(response.data);
       } else {
         throw Exception('Error al obtener clientes: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      print('DioError en getClients: ${e.message}');
       throw Exception(_handleDioError(e));
     } catch (e) {
-      print('Error inesperado en getClients: $e');
       throw Exception('Error al cargar clientes: $e');
     }
   }
@@ -94,8 +87,6 @@ class ClientsRemoteDataSource {
   Future<void> createClient(ClientEntity client) async {
     try {
       final token = await _getValidToken();
-      print('Creando nuevo cliente...');
-
       final response = await dio.post(
         '/clients',
         data: (client as ClientModel).toJson(),
@@ -108,26 +99,94 @@ class ClientsRemoteDataSource {
       if (response.statusCode != 201 && response.statusCode != 200) {
         throw Exception('Error al crear cliente: ${response.statusCode}');
       }
-      print('Cliente creado exitosamente');
     } on DioException catch (e) {
-      print('DioError en createClient: ${e.message}');
       throw Exception(_handleDioError(e));
     } catch (e) {
-      print('Error inesperado en createClient: $e');
       throw Exception('Error al crear cliente: $e');
     }
   }
 
+  // Future<void> updateClient(String id, ClientEntity client) async {
+  //   try {
+  //     final token = await localStorage.getToken();
+
+  //     print('Iniciando actualización de cliente ID: $id');
+
+  //     // Solo incluimos los campos que el backend espera para actualización
+  //     final clientData = {
+  //       'name': client.name.trim(),
+  //       'lastname': client.lastname.trim(),
+  //       'email': client.email.trim(),
+  //       'phone': client.phone.replaceAll(RegExp(r'[^\d+]'), ''),
+  //       'notes': client.notes?.trim(),
+  //       'birthday': client.birthday?.toIso8601String(),
+  //       'showNotes': client.showNotes,
+  //       'address': client.address?.trim(),
+  //     };
+
+  //     print('Datos a enviar al servidor:');
+  //     print(clientData);
+
+  //     final response = await dio.patch(
+  //       '/clients/$id',
+  //       data: clientData,
+  //       options: Options(
+  //         headers: {'Authorization': 'Bearer $token'},
+  //         validateStatus: (status) => status! < 500,
+  //       ),
+  //     );
+
+  //     print('Respuesta del servidor:');
+  //     print('Status Code: ${response.statusCode}');
+  //     print('Response Data: ${response.data}');
+
+  //     if (response.statusCode != 200) {
+  //       throw Exception(
+  //           'Error al actualizar cliente: ${response.data['message'] ?? 'Error desconocido'}');
+  //     }
+  //   } on DioException catch (e) {
+  //     print('Error de Dio durante la actualización:');
+  //     print('Tipo de error: ${e.type}');
+  //     print('Mensaje: ${e.message}');
+  //     print('Response data: ${e.response?.data}');
+  //     throw Exception(_handleDioError(e));
+  //   } catch (e) {
+  //     print('Error general durante la actualización: $e');
+  //     throw Exception('Error al actualizar cliente: $e');
+  //   }
+  // }
+
   Future<void> updateClient(String id, ClientEntity client) async {
     try {
       final token = await localStorage.getToken();
-      await dio.put(
+
+      final clientData = {
+        'name': client.name,
+        'lastname': client.lastname,
+        'email': client.email,
+        'phone': client.phone,
+        'notes': client.notes,
+        'birthday': client.birthday?.toIso8601String(),
+        'showNotes': client.showNotes,
+        'image': client.image, // Asegúrate de incluir la imagen
+        'address': client.address,
+      };
+
+      print('Datos a enviar al servidor:');
+      print(clientData);
+
+      final response = await dio.patch(
         '/clients/$id',
-        data: (client as ClientModel).toJson(),
+        data: clientData,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+
+      print('Respuesta del servidor:');
+      print('Status Code: ${response.statusCode}');
+      print('Response Data: ${response.data}');
     } catch (e) {
-      throw Exception('Error updating client: $e');
+      print('Error al actualizar cliente: $e');
+      throw Exception('Error al actualizar cliente: $e');
     }
   }
 
@@ -139,7 +198,7 @@ class ClientsRemoteDataSource {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     } catch (e) {
-      throw Exception('Error deleting client: $e');
+      throw Exception('Error al eliminar cliente: $e');
     }
   }
 
@@ -169,14 +228,7 @@ class ClientsRemoteDataSource {
       if (response.statusCode != 201 && response.statusCode != 200) {
         throw Exception('Error: ${response.data['message']}');
       }
-
-      final result = response.data;
-      print('Importados: ${result['success']} de ${result['total']} contactos');
-      if (result['errors'].length > 0) {
-        print('Errores: ${result['errors'].length}');
-      }
     } catch (e) {
-      print('Error en importación: $e');
       throw Exception('Error al importar contactos: $e');
     }
   }
@@ -185,18 +237,32 @@ class ClientsRemoteDataSource {
     try {
       final token = await localStorage.getToken();
 
-      // Crear form-data
+      if (!file.existsSync()) {
+        throw Exception('El archivo no existe');
+      }
+
+      // Comprimir la imagen antes de enviarla
+      final compressedFile = await compressImage(file);
+      final fileName = compressedFile.path.split('/').last;
+
+      print('Preparando archivo comprimido para subir:');
+      print('Nombre del archivo: $fileName');
+      print('Tamaño original: ${await file.length()} bytes');
+      print('Tamaño comprimido: ${await compressedFile.length()} bytes');
+
+      // Crear FormData con el archivo comprimido
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
-          file.path,
-          filename: file.path.split('/').last,
-          contentType: MediaType('image', 'jpeg'), // o detectar el tipo real
+          compressedFile.path,
+          filename: fileName,
+          contentType: MediaType('image', 'jpeg'),
         ),
       });
 
       final response = await dio.post(
-        '/clients/image',
+        '/upload/image',
         data: formData,
+        queryParameters: {'folder': 'clients'},
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -205,14 +271,48 @@ class ClientsRemoteDataSource {
         ),
       );
 
-      if (response.data['url'] == null) {
-        throw Exception('No se recibió URL de imagen');
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return response.data['url'];
       }
 
-      return response.data['url'];
+      throw Exception('Error al subir imagen: ${response.data['message']}');
+    } on DioException catch (e) {
+      print('Error DioException detallado:');
+      print('Type: ${e.type}');
+      print('Message: ${e.message}');
+      print('Response: ${e.response?.data}');
+      throw Exception(
+          'Error al subir imagen: ${e.message ?? "Error de conexión"}');
     } catch (e) {
-      print('Error subiendo imagen: $e');
+      print('Error general al subir imagen:');
+      print(e);
       throw Exception('Error al subir imagen: $e');
+    }
+  }
+
+// Método para comprimir la imagen
+  Future<File> compressImage(File file) async {
+    try {
+      final img.Image? image = img.decodeImage(await file.readAsBytes());
+      if (image == null) throw Exception('No se pudo decodificar la imagen');
+
+      // Reducir el tamaño si es necesario
+      img.Image resized = image;
+      if (image.width > 1024) {
+        resized = img.copyResize(image, width: 1024);
+      }
+
+      // Comprimir y guardar
+      final compressed = img.encodeJpg(resized, quality: 85);
+      final tempDir = Directory.systemTemp;
+      final tempFile = File(
+          '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await tempFile.writeAsBytes(compressed);
+
+      return tempFile;
+    } catch (e) {
+      print('Error al comprimir imagen: $e');
+      return file; // Retornar archivo original si hay error
     }
   }
 
@@ -220,6 +320,16 @@ class ClientsRemoteDataSource {
     try {
       final token = await localStorage.getToken();
 
+      // Verificar que el archivo existe y es accesible
+      if (!file.existsSync()) {
+        throw Exception('El archivo no existe');
+      }
+
+      print('Preparando archivo para subir:');
+      print('Path: ${file.path}');
+      print('Tamaño: ${await file.length()} bytes');
+
+      // Crear el FormData con el archivo
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           file.path,
@@ -228,8 +338,9 @@ class ClientsRemoteDataSource {
         ),
       });
 
+      print('Enviando petición al servidor...');
       final response = await dio.patch(
-        '/clients/$clientId/image',
+        '/upload/image', // Usamos el nuevo endpoint centralizado
         data: formData,
         options: Options(
           headers: {
@@ -239,13 +350,21 @@ class ClientsRemoteDataSource {
         ),
       );
 
+      print('Respuesta del servidor:');
+      print(response.data);
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al subir imagen: ${response.data['message']}');
+      }
+
       if (response.data['url'] == null) {
         throw Exception('No se recibió URL de imagen');
       }
 
       return response.data['url'];
     } catch (e) {
-      print('Error actualizando imagen: $e');
+      print('Error detallado al actualizar imagen:');
+      print(e);
       throw Exception('Error al actualizar imagen: $e');
     }
   }

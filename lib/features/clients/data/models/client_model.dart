@@ -16,6 +16,9 @@ class ClientModel extends ClientEntity {
     bool isActive = true,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? notes,
+    DateTime? birthday,
+    bool showNotes = false,
   }) : super(
           id: id,
           name: name,
@@ -31,6 +34,9 @@ class ClientModel extends ClientEntity {
           isActive: isActive,
           createdAt: createdAt,
           updatedAt: updatedAt,
+          notes: notes,
+          birthday: birthday,
+          showNotes: showNotes,
         );
 
   factory ClientModel.fromJson(Map<String, dynamic> json) {
@@ -54,25 +60,32 @@ class ClientModel extends ClientEntity {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
+      notes: json['notes'],
+      birthday:
+          json['birthday'] != null ? DateTime.parse(json['birthday']) : null,
+      showNotes: json['showNotes'] ?? false,
     );
   }
 
   Map<String, dynamic> toJson() {
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-
     return {
+      'id': id,
       'name': name.trim(),
       'lastname': lastname.trim(),
       'email': email.trim(),
-      'phone': cleanPhone,
+      'phone': phone.replaceAll(RegExp(r'[^\d+]'), ''),
+      'image': image,
+      'address': address?.trim(),
       'ownerId': ownerId,
       'isFromDevice': isFromDevice,
       'deviceContactId': deviceContactId,
-      'isActive': true,
+      'isActive': isActive,
+      'notes': notes?.trim(),
+      'birthday': birthday?.toIso8601String(),
+      'showNotes': showNotes,
     };
   }
 
-  // Método para validar el modelo
   bool isValid() {
     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
 
@@ -88,7 +101,6 @@ class ClientModel extends ClientEntity {
     return isValidName && isValidPhone && isValidOwnerId;
   }
 
-  // Método para crear una copia con datos limpios
   ClientModel copyWithCleanData() {
     return ClientModel(
       id: id,
@@ -105,6 +117,9 @@ class ClientModel extends ClientEntity {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      notes: notes?.trim(),
+      birthday: birthday,
+      showNotes: showNotes,
     );
   }
 

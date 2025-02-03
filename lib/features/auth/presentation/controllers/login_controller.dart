@@ -101,11 +101,6 @@ class LoginController extends GetxController {
     _showErrorDialog(errorMessage);
   }
 
-  // void _handleSuccess() {
-  //   clearInputs();
-  //   Get.offAllNamed('/home');
-  // }
-
   void _handleSuccess() async {
     try {
       final result = await _loginUseCase(
@@ -119,17 +114,15 @@ class LoginController extends GetxController {
           try {
             await Get.find<LocalStorage>()
                 .saveUserData('userId', userEntity.id);
-            print('UserID guardado: ${userEntity.id}');
+
             clearInputs();
             Get.offAllNamed('/home');
           } catch (e) {
-            print('Error al guardar datos del usuario: $e');
             _showErrorDialog('Error al procesar la información del usuario');
           }
         },
       );
     } catch (e) {
-      print('Error en login: $e');
       _showErrorDialog('Error inesperado durante el inicio de sesión');
     }
   }

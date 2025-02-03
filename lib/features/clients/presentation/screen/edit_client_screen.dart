@@ -5,7 +5,7 @@ import 'package:login_signup/features/clients/presentation/widgets/client_image_
 
 // edit_client_screen.dart
 class EditClientScreen extends GetView<EditClientController> {
-  const EditClientScreen({Key? key}) : super(key: key);
+  const EditClientScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -7,9 +7,9 @@ class ClientListItem extends StatelessWidget {
   final ClientEntity client;
 
   const ClientListItem({
-    Key? key,
+    super.key,
     required this.client,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,14 +19,23 @@ class ClientListItem extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: Colors.blue[600],
         radius: 25,
-        child: Text(
-          StringUtils.getInitials(client.name),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: client.image != null && client.image!.isNotEmpty
+            ? ClipOval(
+                child: Image.network(
+                  client.image!,
+                  width: 50,
+                  height: 50,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Text(
+                StringUtils.getInitials(client.name),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
       title: Text(
         '${client.name} ${client.lastname}'.toUpperCase(),
@@ -46,7 +55,10 @@ class ClientListItem extends StatelessWidget {
         ),
       ),
       trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
-      onTap: () => Get.toNamed('/clients/${client.id}'),
+      onTap: () => Get.toNamed(
+        '/clients/edit/${client.id}',
+        arguments: {'clientId': client.id},
+      ),
     );
   }
 }

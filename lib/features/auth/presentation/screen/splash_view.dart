@@ -1,28 +1,3 @@
-// import 'dart:async';
-
-// import 'package:flutter/material.dart';
-// import 'package:flutter_svg/svg.dart';
-// import 'package:get/route_manager.dart';
-// import 'package:login_signup/features/auth/presentation/screen/login_view.dart';
-// import 'package:login_signup/utils/global_colors.dart';
-
-// class Splash extends StatelessWidget {
-//   const Splash({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     Timer(const Duration(seconds: 2), () {
-//       Get.to(() => LoginView());
-//     });
-//     return Scaffold(
-//       backgroundColor: GlobalColors.mainColor,
-//       body: Center(
-//         child: SvgPicture.asset('assets/images/logo.svg', height: 100),
-//       ),
-//     );
-//   }
-// }
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';

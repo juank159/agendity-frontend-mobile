@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
-import 'package:login_signup/features/clients/data/models/client_model.dart';
+
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
 

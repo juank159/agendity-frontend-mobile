@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/di/modules/appointments_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
 import 'package:login_signup/core/providers/calendar_provider.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
@@ -74,6 +75,7 @@ class DependencyInjection {
       await ServicesModule.init();
       await CategoriesModule.init();
       await ClientsModule.init();
+      await AppointmentsModule.init();
 
       print('Features initialized successfully');
     } catch (e) {

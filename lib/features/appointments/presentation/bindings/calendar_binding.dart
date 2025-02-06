@@ -4,6 +4,6 @@ import '../controllers/calendar_controller.dart';
 class CalendarBinding extends Bindings {
   @override
   void dependencies() {
-    Get.put(CalendarController());
+    Get.find<CalendarController>();
   }
 }

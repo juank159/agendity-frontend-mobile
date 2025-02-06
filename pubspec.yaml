@@ -38,6 +38,7 @@ dependencies:
   hexcolor: ^3.0.1
   flutter_svg: ^2.0.16
   calendar_view: ^1.3.0
+  syncfusion_flutter_calendar: ^23.2.7
   dio: ^5.7.0 # para hacer peticiones htt
   flutter_dotenv: ^5.2.1 # para manejar variables de entorno
   dartz: ^0.10.1 # para manejar Either y Option

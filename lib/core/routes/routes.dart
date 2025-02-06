@@ -41,6 +41,10 @@ class GetRoutes {
   static const String addClient = '/clients/new';
   static const String editClient = '/clients/edit/:id';
 
+  //Calendar Routes
+  static const String calendar = '/calendar';
+  static const String calendarEvent = '/calendar/event';
+
   static List<GetPage> routes = [
     // Auth Pages
     GetPage(
@@ -67,6 +71,9 @@ class GetRoutes {
       binding: CalendarBinding(),
       transition: Transition.fadeIn,
       middlewares: [AuthMiddleware()],
+      preventDuplicates: true, // Añadido para evitar duplicados
+      transitionDuration: const Duration(
+          milliseconds: 250), // Consistente con otras transiciones
     ),
 
     // Service Pages
@@ -134,6 +141,17 @@ class GetRoutes {
       page: () => const EditClientScreen(),
       binding: ClientsBinding(),
       transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // Calendar Pages
+    GetPage(
+      name: calendar,
+      page: () => const HomeCalendarView(),
+      binding: CalendarBinding(),
+      transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
       middlewares: [AuthMiddleware()],

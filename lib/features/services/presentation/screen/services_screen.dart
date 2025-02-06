@@ -131,8 +131,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
           _toggleMenu();
           return false;
         }
-        Get.until((route) => route.isFirst);
-        Get.offAllNamed('/');
+        //Get.until((route) => route.isFirst);
+        //Get.offAllNamed('/');
+        Get.back();
         return true;
       },
       child: Scaffold(
@@ -153,8 +154,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Get.until((route) => route.isFirst);
-            Get.offAllNamed('/');
+            //Get.until((route) => route.isFirst);
+            // Get.offAllNamed('/');
+            Get.back();
           },
         ),
       );

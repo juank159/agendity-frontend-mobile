@@ -1,86 +1,7 @@
-// // lib/main.dart
-// import 'package:calendar_view/calendar_view.dart';
-// import 'package:flutter/material.dart';
-// import 'package:get/route_manager.dart';
-// import 'package:login_signup/core/config/env_config.dart';
-// import 'package:login_signup/core/config/theme_config.dart';
-// import 'package:login_signup/core/di/init_dependencies.dart';
-// import 'package:login_signup/core/routes/routes.dart';
-// import 'package:login_signup/core/bindings/initial_binding.dart'; // Nuevo import
-
-// Future<void> main() async {
-//   try {
-//     // Aseguramos que Flutter esté inicializado
-//     WidgetsFlutterBinding.ensureInitialized();
-
-//     // Debug: Imprimir rutas registradas
-//     debugPrint('Rutas registradas:');
-//     GetRoutes.routes.forEach((route) {
-//       debugPrint('Ruta: ${route.name}, Page: ${route.page}');
-//     });
-
-//     // Inicializamos configuración y dependencias
-//     await _initializeApp();
-
-//     // Ejecutamos la app
-//   runApp(CalendarControllerProvider( // Envolvemos la app con CalendarControllerProvider
-//       controller: EventController(),
-//       child: const MyApp(),
-//     ));
-//   } catch (e) {
-//     debugPrint('Error inicializando la aplicación: $e');
-//     rethrow;
-//   }
-
-// Future<void> _initializeApp() async {
-//   try {
-//     // Inicializamos y validamos variables de entorno
-//     await EnvConfig.init();
-//     EnvConfig.validateEnv();
-
-//     // Inicializamos todas las dependencias
-//     await DependencyInjection.init();
-//   } catch (e) {
-//     debugPrint('Error en la inicialización: $e');
-//     rethrow;
-//   }
-// }
-
-// class MyApp extends StatelessWidget {
-//   const MyApp({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return GetMaterialApp(
-//       title: 'Tu App',
-//       debugShowCheckedModeBanner: false,
-//       initialRoute: GetRoutes.splas,
-//       getPages: GetRoutes.routes,
-//       theme: ThemeConfig.lightTheme,
-//       initialBinding: InitialBinding(),
-
-//       // Manejo global de errores
-//       onUnknownRoute: (settings) {
-//         return GetPageRoute(
-//           page: () => const Scaffold(
-//             body: Center(
-//               child: Text('Ruta no encontrada'),
-//             ),
-//           ),
-//         );
-//       },
-
-//       navigatorKey: Get.key,
-//       onInit: () {
-//         debugPrint('App inicializada correctamente');
-//       },
-//     );
-//   }
-// }
-
-import 'package:calendar_view/calendar_view.dart';
 import 'package:flutter/material.dart';
+
 import 'package:get/route_manager.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:login_signup/core/config/env_config.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/di/init_dependencies.dart';
@@ -109,10 +30,7 @@ Future<void> main() async {
 
     await _initializeApp();
 
-    runApp(CalendarControllerProvider(
-      controller: EventController(),
-      child: const MyApp(),
-    ));
+    runApp(const MyApp());
   } catch (e) {
     debugPrint('Error inicializando la aplicación: $e');
     rethrow;
@@ -131,6 +49,19 @@ class MyApp extends StatelessWidget {
       getPages: GetRoutes.routes,
       theme: ThemeConfig.lightTheme,
       initialBinding: InitialBinding(),
+
+      // Configuración de localización
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es'),
+      ],
+      locale: const Locale('es'),
+
+      // Manejo de rutas desconocidas
       onUnknownRoute: (settings) {
         return GetPageRoute(
           page: () => const Scaffold(
@@ -140,10 +71,24 @@ class MyApp extends StatelessWidget {
           ),
         );
       },
+
+      // Otras configuraciones
       navigatorKey: Get.key,
       onInit: () {
         debugPrint('App inicializada correctamente');
       },
+
+      // Evitar el banner de debug
+      debugShowMaterialGrid: false,
+      showPerformanceOverlay: false,
+      showSemanticsDebugger: false,
+
+      // Configuración de navegación
+      defaultTransition: Transition.fade,
+      opaqueRoute: Get.isOpaqueRouteDefault,
+      popGesture: Get.isPopGestureEnable,
+      transitionDuration: Get.defaultTransitionDuration,
+      defaultGlobalState: true,
     );
   }
 }

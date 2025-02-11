@@ -1,81 +1,38 @@
 class AppointmentEntity {
   final String id;
-  final String ownerId;
-  final DateTime date;
-  final String status;
-  final String paymentStatus;
-  final double totalPrice;
+  final String title;
+  final DateTime startTime;
+  final DateTime endTime;
+  final String clientName;
+  final String serviceType;
   final String? notes;
-  final String? cancellationReason;
-  final ClientEntity client;
-  final ProfessionalEntity professional;
-  final ServiceEntity service;
+  final String? status;
+  final String? color;
 
-  AppointmentEntity({
+  // Campos nuevos
+  final String? ownerId;
+  final String? professionalId;
+  final String? paymentStatus;
+  final String? totalPrice;
+
+  const AppointmentEntity({
     required this.id,
-    required this.ownerId,
-    required this.date,
-    required this.status,
-    required this.paymentStatus,
-    required this.totalPrice,
+    required this.title,
+    required this.startTime,
+    required this.endTime,
+    required this.clientName,
+    required this.serviceType,
     this.notes,
-    this.cancellationReason,
-    required this.client,
-    required this.professional,
-    required this.service,
+    this.status,
+    this.color,
+    this.ownerId,
+    this.professionalId,
+    this.paymentStatus,
+    this.totalPrice,
   });
-}
 
-class ClientEntity {
-  final String id;
-  final String name;
-  final String lastname;
-  final String email;
-  final String phone;
-  final String? image;
-
-  ClientEntity({
-    required this.id,
-    required this.name,
-    required this.lastname,
-    required this.email,
-    required this.phone,
-    this.image,
-  });
-}
-
-class ProfessionalEntity {
-  final String id;
-  final String name;
-  final String lastname;
-  final String email;
-  final String phone;
-  final String? image;
-
-  ProfessionalEntity({
-    required this.id,
-    required this.name,
-    required this.lastname,
-    required this.email,
-    required this.phone,
-    this.image,
-  });
-}
-
-class ServiceEntity {
-  final String id;
-  final String name;
-  final String? description;
-  final double price;
-  final int duration;
-  final String color;
-
-  ServiceEntity({
-    required this.id,
-    required this.name,
-    this.description,
-    required this.price,
-    required this.duration,
-    required this.color,
-  });
+  @override
+  String toString() {
+    return 'AppointmentEntity(id: $id, title: $title, startTime: $startTime, endTime: $endTime, clientName: $clientName, serviceType: $serviceType, notes: $notes, status: $status, color: $color, ownerId: $ownerId, professionalId: $professionalId, paymentStatus: $paymentStatus, totalPrice: $totalPrice)';
+  }
 }

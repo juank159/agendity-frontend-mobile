@@ -9,10 +9,12 @@ class GetAppointmentsUseCase {
   Future<List<AppointmentEntity>> call({
     DateTime? startDate,
     DateTime? endDate,
+    String? status,
   }) async {
     return await repository.getAppointments(
       startDate: startDate,
       endDate: endDate,
+      status: status,
     );
   }
 }

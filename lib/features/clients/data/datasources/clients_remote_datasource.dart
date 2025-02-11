@@ -106,56 +106,6 @@ class ClientsRemoteDataSource {
     }
   }
 
-  // Future<void> updateClient(String id, ClientEntity client) async {
-  //   try {
-  //     final token = await localStorage.getToken();
-
-  //     print('Iniciando actualización de cliente ID: $id');
-
-  //     // Solo incluimos los campos que el backend espera para actualización
-  //     final clientData = {
-  //       'name': client.name.trim(),
-  //       'lastname': client.lastname.trim(),
-  //       'email': client.email.trim(),
-  //       'phone': client.phone.replaceAll(RegExp(r'[^\d+]'), ''),
-  //       'notes': client.notes?.trim(),
-  //       'birthday': client.birthday?.toIso8601String(),
-  //       'showNotes': client.showNotes,
-  //       'address': client.address?.trim(),
-  //     };
-
-  //     print('Datos a enviar al servidor:');
-  //     print(clientData);
-
-  //     final response = await dio.patch(
-  //       '/clients/$id',
-  //       data: clientData,
-  //       options: Options(
-  //         headers: {'Authorization': 'Bearer $token'},
-  //         validateStatus: (status) => status! < 500,
-  //       ),
-  //     );
-
-  //     print('Respuesta del servidor:');
-  //     print('Status Code: ${response.statusCode}');
-  //     print('Response Data: ${response.data}');
-
-  //     if (response.statusCode != 200) {
-  //       throw Exception(
-  //           'Error al actualizar cliente: ${response.data['message'] ?? 'Error desconocido'}');
-  //     }
-  //   } on DioException catch (e) {
-  //     print('Error de Dio durante la actualización:');
-  //     print('Tipo de error: ${e.type}');
-  //     print('Mensaje: ${e.message}');
-  //     print('Response data: ${e.response?.data}');
-  //     throw Exception(_handleDioError(e));
-  //   } catch (e) {
-  //     print('Error general durante la actualización: $e');
-  //     throw Exception('Error al actualizar cliente: $e');
-  //   }
-  // }
-
   Future<void> updateClient(String id, ClientEntity client) async {
     try {
       final token = await localStorage.getToken();

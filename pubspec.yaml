@@ -30,26 +30,24 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.8
   get: ^4.6.6
   hexcolor: ^3.0.1
   flutter_svg: ^2.0.16
-  calendar_view: ^1.3.0
-  syncfusion_flutter_calendar: ^23.2.7
-  dio: ^5.7.0 # para hacer peticiones htt
-  flutter_dotenv: ^5.2.1 # para manejar variables de entorno
-  dartz: ^0.10.1 # para manejar Either y Option
-  flutter_secure_storage: ^9.2.2 # para guardar datos de forma segura
-  intl: ^0.20.1 # para manejar fechas y separadores de miles
-  dotted_border: ^2.1.0 # para hacer bordes punteados
-  permission_handler: ^11.3.1 # para manejar permisos
+  intl: ^0.19.0
+  syncfusion_flutter_calendar: ^24.1.46 # Actualizar a esta versión
+  dio: ^5.7.0
+  flutter_dotenv: ^5.2.1
+  dartz: ^0.10.1
+  flutter_secure_storage: ^9.2.2
+  dotted_border: ^2.1.0
+  permission_handler: ^11.3.1
   flutter_contacts: ^1.1.9+2
-  image_picker: ^1.1.2 # para seleccionar imagenes
-  image: ^4.0.17 # para manejar imagenes
-  http_parser: ^4.0.2 # para parsear http
+  image_picker: ^1.1.2
+  image: ^4.0.17
+  http_parser: ^4.0.2
 
 dev_dependencies:
   flutter_test:

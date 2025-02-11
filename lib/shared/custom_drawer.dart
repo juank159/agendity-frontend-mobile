@@ -4,8 +4,6 @@ import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
-import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
-import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});

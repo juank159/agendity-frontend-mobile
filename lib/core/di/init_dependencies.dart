@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/di/modules/appointments_module.dart';
+import 'package:login_signup/core/di/modules/employees_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
-import 'package:login_signup/core/providers/calendar_provider.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
 import '../config/api_config.dart';
@@ -20,15 +20,10 @@ class DependencyInjection {
       await _initCore();
       await _initFeatures();
       _initNavigation();
-      _initProviders();
     } catch (e) {
       print('Error initializing dependencies: $e');
       rethrow;
     }
-  }
-
-  static void _initProviders() {
-    Get.put(CalendarProvider(), permanent: true);
   }
 
   static Future<void> initAuthDependencies() async {
@@ -76,6 +71,7 @@ class DependencyInjection {
       await CategoriesModule.init();
       await ClientsModule.init();
       await AppointmentsModule.init();
+      await EmployeesModule.init();
 
       print('Features initialized successfully');
     } catch (e) {

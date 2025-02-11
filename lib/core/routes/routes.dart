@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/appointments/presentation/bindings/calendar_binding.dart';
-import 'package:login_signup/features/appointments/presentation/screen/home_calendar_view.dart';
+import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
+import 'package:login_signup/features/appointments/presentation/view/appointments_view.dart';
 
 import 'package:login_signup/features/auth/presentation/bindings/login_binding.dart';
 import 'package:login_signup/features/auth/presentation/screen/screen.dart';
@@ -67,13 +67,10 @@ class GetRoutes {
     // Main Pages
     GetPage(
       name: home,
-      page: () => const HomeCalendarView(),
-      binding: CalendarBinding(),
+      page: () => AppointmentsView(),
+      binding: AppointmentsBinding(),
       transition: Transition.fadeIn,
       middlewares: [AuthMiddleware()],
-      preventDuplicates: true, // Añadido para evitar duplicados
-      transitionDuration: const Duration(
-          milliseconds: 250), // Consistente con otras transiciones
     ),
 
     // Service Pages
@@ -141,17 +138,6 @@ class GetRoutes {
       page: () => const EditClientScreen(),
       binding: ClientsBinding(),
       transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
-      preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
-    ),
-
-    // Calendar Pages
-    GetPage(
-      name: calendar,
-      page: () => const HomeCalendarView(),
-      binding: CalendarBinding(),
-      transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
       middlewares: [AuthMiddleware()],

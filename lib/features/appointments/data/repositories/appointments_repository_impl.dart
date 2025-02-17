@@ -16,17 +16,33 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
     String? status,
   }) async {
     try {
-      return await remoteDataSource.getAppointments(
+      print('\n=== Repository: getAppointments ===');
+      print('Start Date: $startDate');
+      print('End Date: $endDate');
+      print('Status: $status');
+
+      final result = await remoteDataSource.getAppointments(
         startDate: startDate,
         endDate: endDate,
         status: status,
       );
+
+      print('Repository: Got ${result.length} appointments');
+      return result;
     } on DioException catch (e) {
+      print('Repository: DioException caught');
+      print('Error Type: ${e.type}');
+      print('Error Message: ${e.message}');
+      print('Error Response: ${e.response?.data}');
+
       throw AppointmentException(
-        message: e.message ?? 'Error getting appointments',
+        message: e.response?.data?['message'] ??
+            e.message ??
+            'Error getting appointments',
         code: e.response?.statusCode,
       );
     } catch (e) {
+      print('Repository: Generic error caught: $e');
       throw AppointmentException(message: e.toString());
     }
   }

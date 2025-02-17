@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'package:get/route_manager.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:login_signup/core/config/env_config.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/di/init_dependencies.dart';
@@ -23,6 +23,12 @@ Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
 
+    // Configurar zona horaria por defecto
+    await initializeDateFormatting('es', null);
+
+    // Configurar la zona horaria local
+    // timeago.setLocaleMessages('es', timeago.EsMessages());
+
     debugPrint('Rutas registradas:');
     GetRoutes.routes.forEach((route) {
       debugPrint('Ruta: ${route.name}, Page: ${route.page}');
@@ -42,33 +48,58 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Obtener el tema base
+    final baseTheme = ThemeConfig.lightTheme;
+
     return GetMaterialApp(
       title: 'Tu App',
       debugShowCheckedModeBanner: false,
       initialRoute: GetRoutes.splas,
       getPages: GetRoutes.routes,
-      theme: ThemeConfig.lightTheme,
+      theme: baseTheme.copyWith(
+        useMaterial3: true,
+        timePickerTheme: TimePickerThemeData(
+          backgroundColor: Colors.grey[900],
+          hourMinuteShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          dayPeriodShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+          ),
+          dayPeriodBorderSide: const BorderSide(color: Colors.white24),
+          dayPeriodTextStyle: const TextStyle(
+            fontSize: 16,
+          ),
+          hourMinuteTextStyle: const TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+          ),
+          helpTextStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
       initialBinding: InitialBinding(),
 
       // Configuración de localización
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
       ],
       supportedLocales: const [
         Locale('es'),
       ],
       locale: const Locale('es'),
 
-      // Manejo de rutas desconocidas
-      onUnknownRoute: (settings) {
-        return GetPageRoute(
-          page: () => const Scaffold(
-            body: Center(
-              child: Text('Ruta no encontrada'),
-            ),
+      // Builder para forzar formato 12 horas
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            alwaysUse24HourFormat: false,
           ),
+          child: child!,
         );
       },
 
@@ -78,16 +109,8 @@ class MyApp extends StatelessWidget {
         debugPrint('App inicializada correctamente');
       },
 
-      // Evitar el banner de debug
-      debugShowMaterialGrid: false,
-      showPerformanceOverlay: false,
-      showSemanticsDebugger: false,
-
       // Configuración de navegación
       defaultTransition: Transition.fade,
-      opaqueRoute: Get.isOpaqueRouteDefault,
-      popGesture: Get.isPopGestureEnable,
-      transitionDuration: Get.defaultTransitionDuration,
       defaultGlobalState: true,
     );
   }

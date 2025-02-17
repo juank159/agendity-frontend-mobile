@@ -53,7 +53,7 @@ class NewServiceController extends GetxController {
   final List<MaterialColor> availableColors = [
     _createMaterialColor(Colors.blue),
     _createMaterialColor(Colors.green),
-    _createMaterialColor(Colors.orange),
+    _createMaterialColor(Colors.red),
     _createMaterialColor(Colors.teal),
     _createMaterialColor(Colors.amber),
     _createMaterialColor(Colors.indigo),

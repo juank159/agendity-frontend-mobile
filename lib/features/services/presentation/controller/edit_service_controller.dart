@@ -48,7 +48,7 @@ class EditServiceController extends GetxController {
   final List<MaterialColor> availableColors = [
     Colors.blue,
     Colors.green,
-    Colors.orange,
+    Colors.pink,
     Colors.teal,
     Colors.amber,
     Colors.indigo,

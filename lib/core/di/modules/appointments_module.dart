@@ -8,9 +8,15 @@ import 'package:login_signup/features/appointments/domain/usescases/get_appointm
 import 'package:login_signup/features/appointments/domain/usescases/get_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usescases/update_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
+import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class AppointmentsModule {
   static Future<void> init() async {
+    // Asegurarse de que localStorage esté disponible
+    if (!Get.isRegistered<LocalStorage>()) {
+      throw Exception('LocalStorage not initialized');
+    }
+
     // Registrar dependencias base
     final remoteDataSource = AppointmentsRemoteDataSource(
       dio: Get.find(),

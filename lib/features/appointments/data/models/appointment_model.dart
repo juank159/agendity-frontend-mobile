@@ -1,153 +1,9 @@
-// // appointment_model.dart
-// import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
-
-// class AppointmentModel extends AppointmentEntity {
-//   final String serviceId;
-//   final String clientId;
-//   final String professionalId;
-//   final String ownerId;
-//   final String paymentStatus;
-//   final String totalPrice;
-
-//   AppointmentModel({
-//     required super.id,
-//     required super.title,
-//     required super.startTime,
-//     required super.endTime,
-//     required super.clientName,
-//     required super.serviceType,
-//     required this.serviceId,
-//     required this.clientId,
-//     required this.professionalId,
-//     required this.ownerId,
-//     required this.paymentStatus,
-//     required this.totalPrice,
-//     super.notes,
-//     super.status,
-//     super.color,
-//   });
-
-//   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
-//     final client = json['client'];
-//     final service = json['service'];
-//     final professional = json['professional'];
-
-//     return AppointmentModel(
-//       id: json['id'],
-//       title: service['name'] ?? '',
-//       startTime: DateTime.parse(json['date']),
-//       endTime: DateTime.parse(json['date'])
-//           .add(Duration(minutes: service['duration'] ?? 30)),
-//       clientName: '${client['name']} ${client['lastname']}',
-//       serviceType: service['name'] ?? '',
-//       notes: json['notes'],
-//       status: json['status'],
-//       color: service['color'],
-//       serviceId: service['id'],
-//       clientId: client['id'],
-//       professionalId: professional['id'],
-//       ownerId: json['ownerId'],
-//       paymentStatus: json['payment_status'],
-//       totalPrice: json['total_price'],
-//     );
-//   }
-
-//   factory AppointmentModel.create({
-//     required String serviceId,
-//     required String clientId,
-//     required String professionalId,
-//     required String ownerId,
-//     required DateTime startTime,
-//     required String totalPrice,
-//     String? notes,
-//   }) {
-//     return AppointmentModel(
-//       id: '',
-//       title: '',
-//       startTime: startTime,
-//       endTime: startTime,
-//       clientName: '',
-//       serviceType: '',
-//       serviceId: serviceId,
-//       clientId: clientId,
-//       professionalId: professionalId,
-//       ownerId: ownerId,
-//       paymentStatus: 'PENDING',
-//       totalPrice: totalPrice,
-//       notes: notes,
-//       status: 'PENDING',
-//     );
-//   }
-
-//   static AppointmentModel fromEntity(AppointmentEntity entity) {
-//     if (entity is AppointmentModel) {
-//       return entity;
-//     }
-
-//     throw UnimplementedError(
-//       'No se puede convertir una entidad base a modelo sin los campos adicionales requeridos',
-//     );
-//   }
-
-//   Map<String, dynamic> toJson() {
-//     return {
-//       'client_id': clientId,
-//       'professional_id': professionalId,
-//       'service_id': serviceId,
-//       'owner_id': ownerId,
-//       'date': startTime.toIso8601String(),
-//       'total_price': double.tryParse(totalPrice) ?? 0.0,
-//       'notes': notes ?? '',
-//     };
-//   }
-
-//   AppointmentModel copyWith({
-//     String? id,
-//     String? title,
-//     DateTime? startTime,
-//     DateTime? endTime,
-//     String? clientName,
-//     String? serviceType,
-//     String? notes,
-//     String? status,
-//     String? color,
-//     String? serviceId,
-//     String? clientId,
-//     String? professionalId,
-//     String? ownerId,
-//     String? paymentStatus,
-//     String? totalPrice,
-//   }) {
-//     return AppointmentModel(
-//       id: id ?? this.id,
-//       title: title ?? this.title,
-//       startTime: startTime ?? this.startTime,
-//       endTime: endTime ?? this.endTime,
-//       clientName: clientName ?? this.clientName,
-//       serviceType: serviceType ?? this.serviceType,
-//       notes: notes ?? this.notes,
-//       status: status ?? this.status,
-//       color: color ?? this.color,
-//       serviceId: serviceId ?? this.serviceId,
-//       clientId: clientId ?? this.clientId,
-//       professionalId: professionalId ?? this.professionalId,
-//       ownerId: ownerId ?? this.ownerId,
-//       paymentStatus: paymentStatus ?? this.paymentStatus,
-//       totalPrice: totalPrice ?? this.totalPrice,
-//     );
-//   }
-// }
-
-// appointment_model.dart
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:intl/intl.dart';
 
 class AppointmentModel extends AppointmentEntity {
-  final String serviceId;
+  final List<String> serviceIds;
   final String clientId;
-  final String professionalId;
-  final String ownerId;
-  final String paymentStatus;
-  final String totalPrice;
 
   AppointmentModel({
     required super.id,
@@ -155,46 +11,59 @@ class AppointmentModel extends AppointmentEntity {
     required super.startTime,
     required super.endTime,
     required super.clientName,
-    required super.serviceType,
-    required this.serviceId,
+    required super.serviceTypes,
+    required super.status,
+    required super.totalPrice,
+    required this.serviceIds,
     required this.clientId,
-    required this.professionalId,
-    required this.ownerId,
-    required this.paymentStatus,
-    required this.totalPrice,
     super.notes,
-    super.status,
-    super.color,
+    super.colors,
+    super.ownerId,
+    super.professionalId,
+    super.paymentStatus,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
     final client = json['client'];
-    final service = json['service'];
+    final services = json['services'] as List<dynamic>;
     final professional = json['professional'];
-    final dateTime = DateTime.parse(json['date']).toLocal();
+
+    // Parseamos la fecha manteniendo la zona horaria original
+    final dateTimeUtc = DateTime.parse(json['date']);
+    print('DEBUG - Fecha parseada del servidor: $dateTimeUtc');
+
+    final totalDuration = services.fold<int>(
+      0,
+      (sum, service) =>
+          sum + (int.parse(service['duration']?.toString() ?? '30')),
+    );
 
     return AppointmentModel(
       id: json['id']?.toString() ?? '',
-      title: service['name']?.toString() ?? '',
-      startTime: dateTime,
-      endTime: dateTime.add(Duration(
-          minutes: int.parse(service['duration']?.toString() ?? '30'))),
-      clientName: '${client['name']} ${client['lastname']}',
-      serviceType: service['name']?.toString() ?? '',
+      title: services.map((s) => s['name']?.toString() ?? '').join(', '),
+      startTime: dateTimeUtc,
+      endTime: dateTimeUtc.add(Duration(minutes: totalDuration)),
+      clientName: '${client['name']} ${client['lastname']}'.trim(),
+      serviceTypes: services.map((s) => s['name']?.toString() ?? '').toList(),
       notes: json['notes']?.toString(),
-      status: json['status']?.toString(),
-      color: service['color']?.toString(),
-      serviceId: service['id']?.toString() ?? '',
+      status: json['status']?.toString() ?? AppointmentEntity.STATUS_PENDING,
+      colors: services
+          .map((s) => s['color']?.toString())
+          .where((color) => color != null && color.isNotEmpty)
+          .cast<String>()
+          .toList(),
+      serviceIds: services.map((s) => s['id']?.toString() ?? '').toList(),
       clientId: client['id']?.toString() ?? '',
-      professionalId: professional['id']?.toString() ?? '',
-      ownerId: json['ownerId']?.toString() ?? '',
-      paymentStatus: json['payment_status']?.toString() ?? 'PENDING',
+      professionalId: professional['id']?.toString(),
+      ownerId: json['ownerId']?.toString(),
+      paymentStatus: json['payment_status']?.toString() ??
+          AppointmentEntity.PAYMENT_PENDING,
       totalPrice: json['total_price']?.toString() ?? '0',
     );
   }
 
   factory AppointmentModel.create({
-    required String serviceId,
+    required List<String> serviceIds,
     required String clientId,
     required String professionalId,
     required String ownerId,
@@ -202,42 +71,43 @@ class AppointmentModel extends AppointmentEntity {
     required String totalPrice,
     String? notes,
   }) {
+    // Asegurarnos de que la fecha está en UTC
+    final utcStartTime = startTime.toUtc();
+    print('DEBUG - Fecha original al crear: $startTime');
+    print('DEBUG - Fecha UTC al crear: $utcStartTime');
+
     return AppointmentModel(
       id: '',
       title: '',
-      startTime: startTime,
-      endTime: startTime,
+      startTime: utcStartTime,
+      endTime: utcStartTime,
       clientName: '',
-      serviceType: '',
-      serviceId: serviceId,
+      serviceTypes: [],
+      status: AppointmentEntity.STATUS_PENDING,
+      serviceIds: serviceIds,
       clientId: clientId,
       professionalId: professionalId,
       ownerId: ownerId,
-      paymentStatus: 'PENDING',
+      paymentStatus: AppointmentEntity.PAYMENT_PENDING,
       totalPrice: totalPrice,
       notes: notes ?? '',
-      status: 'PENDING',
-    );
-  }
-
-  static AppointmentModel fromEntity(AppointmentEntity entity) {
-    if (entity is AppointmentModel) {
-      return entity;
-    }
-
-    throw UnimplementedError(
-      'No se puede convertir una entidad base a modelo sin los campos adicionales requeridos',
     );
   }
 
   Map<String, dynamic> toJson() {
+    final utcDate = startTime.toUtc();
+    final dateString = utcDate.toIso8601String();
+
+    print('DEBUG - Fecha Original: ${startTime.toString()}');
+    print('DEBUG - Fecha UTC: ${utcDate.toString()}');
+    print('DEBUG - String ISO8601: $dateString');
+
     return {
       'client_id': clientId,
       'professional_id': professionalId,
-      'service_id': serviceId,
+      'service_ids': serviceIds,
       'owner_id': ownerId,
-      'date': startTime.toUtc().toIso8601String(), // Asegurar UTC
-      'total_price': double.parse(totalPrice.replaceAll(RegExp(r'[^\d.]'), '')),
+      'date': dateString,
       'notes': notes ?? '',
     };
   }
@@ -248,11 +118,11 @@ class AppointmentModel extends AppointmentEntity {
     DateTime? startTime,
     DateTime? endTime,
     String? clientName,
-    String? serviceType,
+    List<String>? serviceTypes,
     String? notes,
     String? status,
-    String? color,
-    String? serviceId,
+    List<String>? colors,
+    List<String>? serviceIds,
     String? clientId,
     String? professionalId,
     String? ownerId,
@@ -265,11 +135,11 @@ class AppointmentModel extends AppointmentEntity {
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       clientName: clientName ?? this.clientName,
-      serviceType: serviceType ?? this.serviceType,
+      serviceTypes: serviceTypes ?? this.serviceTypes,
       notes: notes ?? this.notes,
       status: status ?? this.status,
-      color: color ?? this.color,
-      serviceId: serviceId ?? this.serviceId,
+      colors: colors ?? this.colors,
+      serviceIds: serviceIds ?? this.serviceIds,
       clientId: clientId ?? this.clientId,
       professionalId: professionalId ?? this.professionalId,
       ownerId: ownerId ?? this.ownerId,

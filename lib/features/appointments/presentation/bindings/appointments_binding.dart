@@ -11,6 +11,7 @@ import 'package:login_signup/features/appointments/domain/usescases/update_appoi
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 // appointments_binding.dart
 class AppointmentsBinding implements Bindings {
@@ -69,6 +70,7 @@ class AppointmentsBinding implements Bindings {
         Get.find<DeleteAppointmentUseCase>(),
         Get.find<ServicesRemoteDataSource>(),
         Get.find<ClientsRemoteDataSource>(),
+        Get.find<LocalStorage>(),
       ),
     );
   }

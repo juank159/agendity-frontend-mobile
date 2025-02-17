@@ -52,7 +52,12 @@ class DependencyInjection {
       Get.put<Dio>(dio, permanent: true);
       Get.put<FlutterSecureStorage>(const FlutterSecureStorage(),
           permanent: true);
-      Get.put<LocalStorage>(LocalStorage(Get.find()), permanent: true);
+
+      final localStorage = LocalStorage(Get.find<FlutterSecureStorage>());
+      await localStorage.init();
+      Get.put<LocalStorage>(localStorage, permanent: true);
+
+      print('Core dependencies initialized successfully');
     } catch (e) {
       print('Error initializing core dependencies: $e');
       rethrow;

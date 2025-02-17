@@ -499,14 +499,13 @@ class AppointmentFormDialog extends StatelessWidget {
         selectedTime.value.minute,
       );
 
-      // Convertir a UTC antes de enviar
-      final utcDateTime = localDateTime.toUtc();
-      print("Fecha local seleccionada: ${localDateTime.toString()}");
-      print("Fecha UTC a enviar: ${utcDateTime.toIso8601String()}");
+      print(
+          "Hora seleccionada por el usuario: ${selectedTime.value.format(context)}");
+      print("Fecha y hora local: ${localDateTime.toString()}");
 
       controller.createAppointment(
         clientId: selectedClientId.value,
-        startTime: utcDateTime,
+        startTime: localDateTime,
         notes: notesController.text,
       );
 

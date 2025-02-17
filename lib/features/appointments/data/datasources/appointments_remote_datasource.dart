@@ -13,6 +13,72 @@ class AppointmentsRemoteDataSource {
     required this.localStorage,
   });
 
+  // Future<List<AppointmentModel>> getAppointments({
+  //   DateTime? startDate,
+  //   DateTime? endDate,
+  //   String? status,
+  // }) async {
+  //   try {
+  //     final token = await localStorage.getToken();
+
+  //     // Primero intentar sin parámetros
+  //     print('Intentando obtener citas sin parámetros...');
+
+  //     final baseResponse = await dio.get(
+  //       '/appointments',
+  //       options: Options(
+  //         headers: {
+  //           'Authorization': 'Bearer $token',
+  //           'tenant-id': _extractTenantId(token!),
+  //         },
+  //       ),
+  //     );
+
+  //     print('Respuesta base: ${baseResponse.statusCode}');
+  //     print('Datos base: ${baseResponse.data}');
+
+  //     // Si funciona sin parámetros, intentar con parámetros
+  //     if (baseResponse.statusCode == 200 &&
+  //         startDate != null &&
+  //         endDate != null) {
+  //       print('Intentando con parámetros de fecha...');
+
+  //       final filteredResponse = await dio.get(
+  //         '/appointments',
+  //         queryParameters: {
+  //           'startDate': startDate.toUtc().toIso8601String(),
+  //           'endDate': endDate.toUtc().toIso8601String(),
+  //           if (status != null) 'status': status,
+  //         },
+  //         options: Options(
+  //           headers: {
+  //             'Authorization': 'Bearer $token',
+  //             'tenant-id': _extractTenantId(token),
+  //           },
+  //         ),
+  //       );
+
+  //       if (filteredResponse.statusCode == 200) {
+  //         return _parseAppointments(filteredResponse.data);
+  //       }
+  //     }
+
+  //     // Si llegamos aquí, usar la respuesta base
+  //     if (baseResponse.statusCode == 200) {
+  //       return _parseAppointments(baseResponse.data);
+  //     }
+
+  //     throw DioException(
+  //       requestOptions: baseResponse.requestOptions,
+  //       response: baseResponse,
+  //       error: 'Failed to load appointments',
+  //     );
+  //   } catch (e) {
+  //     print('Error loading appointments: $e');
+  //     rethrow;
+  //   }
+  // }
+
   Future<List<AppointmentModel>> getAppointments({
     DateTime? startDate,
     DateTime? endDate,
@@ -21,11 +87,23 @@ class AppointmentsRemoteDataSource {
     try {
       final token = await localStorage.getToken();
 
-      // Primero intentar sin parámetros
-      print('Intentando obtener citas sin parámetros...');
+      final queryParams = <String, dynamic>{};
+      if (startDate != null) {
+        queryParams['startDate'] = startDate.toLocal().toIso8601String();
+      }
+      if (endDate != null) {
+        queryParams['endDate'] = endDate.toLocal().toIso8601String();
+      }
+      if (status != null) {
+        queryParams['status'] = status;
+      }
 
-      final baseResponse = await dio.get(
+      print('=== GET APPOINTMENTS REQUEST ===');
+      print('Query params: $queryParams');
+
+      final response = await dio.get(
         '/appointments',
+        queryParameters: queryParams,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -34,45 +112,11 @@ class AppointmentsRemoteDataSource {
         ),
       );
 
-      print('Respuesta base: ${baseResponse.statusCode}');
-      print('Datos base: ${baseResponse.data}');
+      print('=== GET APPOINTMENTS RESPONSE ===');
+      print('Status code: ${response.statusCode}');
+      print('Data count: ${(response.data as List).length}');
 
-      // Si funciona sin parámetros, intentar con parámetros
-      if (baseResponse.statusCode == 200 &&
-          startDate != null &&
-          endDate != null) {
-        print('Intentando con parámetros de fecha...');
-
-        final filteredResponse = await dio.get(
-          '/appointments',
-          queryParameters: {
-            'startDate': startDate.toUtc().toIso8601String(),
-            'endDate': endDate.toUtc().toIso8601String(),
-            if (status != null) 'status': status,
-          },
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer $token',
-              'tenant-id': _extractTenantId(token),
-            },
-          ),
-        );
-
-        if (filteredResponse.statusCode == 200) {
-          return _parseAppointments(filteredResponse.data);
-        }
-      }
-
-      // Si llegamos aquí, usar la respuesta base
-      if (baseResponse.statusCode == 200) {
-        return _parseAppointments(baseResponse.data);
-      }
-
-      throw DioException(
-        requestOptions: baseResponse.requestOptions,
-        response: baseResponse,
-        error: 'Failed to load appointments',
-      );
+      return _parseAppointments(response.data);
     } catch (e) {
       print('Error loading appointments: $e');
       rethrow;
@@ -119,7 +163,7 @@ class AppointmentsRemoteDataSource {
         'professional_id': appointment.professionalId,
         'service_ids': appointment.serviceIds,
         'owner_id': appointment.ownerId,
-        'date': appointment.startTime.toUtc().toIso8601String(),
+        'date': appointment.startTime.toIso8601String(),
         'notes': appointment.notes ?? ''
       };
 

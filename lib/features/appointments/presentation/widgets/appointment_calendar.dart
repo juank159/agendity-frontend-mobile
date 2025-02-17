@@ -23,7 +23,6 @@ class AppointmentCalendar extends StatelessWidget {
               key: ValueKey('calendar-${controller.currentView.value}'),
               view: controller.currentView.value,
               dataSource: controller.getCalendarDataSource(),
-              timeZone: 'UTC',
               onViewChanged: (ViewChangedDetails details) {
                 Future.microtask(() => controller.onViewChanged(details));
               },
@@ -39,20 +38,21 @@ class AppointmentCalendar extends StatelessWidget {
               firstDayOfWeek: 1,
               showCurrentTimeIndicator: true,
               onTap: (CalendarTapDetails details) {
-                if (controller.currentView.value == CalendarView.month &&
-                    details.targetElement == CalendarElement.calendarCell) {
-                  // Si el tap fue en el día actual, usar la hora actual
-                  final now = DateTime.now();
-                  if (details.date?.year == now.year &&
-                      details.date?.month == now.month &&
-                      details.date?.day == now.day) {
-                    controller.selectedDate.value = now;
-                  } else {
-                    // Si es otro día, usar la fecha seleccionada a mediodía
-                    controller.selectedDate.value =
-                        details.date ?? DateTime.now();
+                if (details.targetElement == CalendarElement.calendarCell) {
+                  final selectedDate = details.date;
+                  if (selectedDate != null) {
+                    if (controller.currentView.value == CalendarView.month) {
+                      // Al tocar un día en la vista mensual, ir a la vista diaria de ese día
+                      controller.changeView(CalendarView.day,
+                          targetDate: selectedDate);
+                    } else if (controller.currentView.value ==
+                            CalendarView.week ||
+                        controller.currentView.value == CalendarView.workWeek) {
+                      // Al tocar un día en la vista semanal, ir a la vista diaria de ese día
+                      controller.changeView(CalendarView.day,
+                          targetDate: selectedDate);
+                    }
                   }
-                  controller.changeView(CalendarView.day);
                 }
               },
               headerStyle: CalendarHeaderStyle(

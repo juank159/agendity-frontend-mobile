@@ -28,9 +28,11 @@ class AppointmentModel extends AppointmentEntity {
     final services = json['services'] as List<dynamic>;
     final professional = json['professional'];
 
-    // Parseamos la fecha manteniendo la zona horaria original
-    final dateTimeUtc = DateTime.parse(json['date']);
-    print('DEBUG - Fecha parseada del servidor: $dateTimeUtc');
+    // Parsear la fecha manteniendo la hora local
+    final dateTime = DateTime.parse(json['date']).toLocal();
+
+    print('DEBUG - Fecha del servidor: ${json['date']}');
+    print('DEBUG - Fecha parseada local: ${dateTime.toString()}');
 
     final totalDuration = services.fold<int>(
       0,
@@ -41,8 +43,8 @@ class AppointmentModel extends AppointmentEntity {
     return AppointmentModel(
       id: json['id']?.toString() ?? '',
       title: services.map((s) => s['name']?.toString() ?? '').join(', '),
-      startTime: dateTimeUtc,
-      endTime: dateTimeUtc.add(Duration(minutes: totalDuration)),
+      startTime: dateTime,
+      endTime: dateTime.add(Duration(minutes: totalDuration)),
       clientName: '${client['name']} ${client['lastname']}'.trim(),
       serviceTypes: services.map((s) => s['name']?.toString() ?? '').toList(),
       notes: json['notes']?.toString(),
@@ -71,16 +73,14 @@ class AppointmentModel extends AppointmentEntity {
     required String totalPrice,
     String? notes,
   }) {
-    // Asegurarnos de que la fecha está en UTC
-    final utcStartTime = startTime.toUtc();
-    print('DEBUG - Fecha original al crear: $startTime');
-    print('DEBUG - Fecha UTC al crear: $utcStartTime');
+    final localDateTime = startTime.toLocal();
+    print('DEBUG - Hora local al crear: ${localDateTime.toString()}');
 
     return AppointmentModel(
       id: '',
       title: '',
-      startTime: utcStartTime,
-      endTime: utcStartTime,
+      startTime: localDateTime,
+      endTime: localDateTime,
       clientName: '',
       serviceTypes: [],
       status: AppointmentEntity.STATUS_PENDING,
@@ -95,12 +95,11 @@ class AppointmentModel extends AppointmentEntity {
   }
 
   Map<String, dynamic> toJson() {
-    final utcDate = startTime.toUtc();
-    final dateString = utcDate.toIso8601String();
+    // La fecha ya está en local, solo necesitamos agregarle el offset
+    final dateString = startTime.toLocal().toIso8601String();
 
-    print('DEBUG - Fecha Original: ${startTime.toString()}');
-    print('DEBUG - Fecha UTC: ${utcDate.toString()}');
-    print('DEBUG - String ISO8601: $dateString');
+    print('DEBUG - Fecha original (local): ${startTime.toString()}');
+    print('DEBUG - Fecha a enviar: $dateString');
 
     return {
       'client_id': clientId,

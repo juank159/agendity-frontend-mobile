@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
@@ -52,13 +52,14 @@ class AppointmentsController extends GetxController {
   }
 
   void _initializeCalendar() {
-    currentView.value = CalendarView.month;
+    currentView.value = CalendarView.day; // Comenzar en vista diaria
     final now = DateTime.now();
     selectedDate.value = now;
 
+    // Cargar citas del día actual
     fetchAppointments(
-      startDate: DateTime(now.year, now.month, 1),
-      endDate: DateTime(now.year, now.month + 1, 0, 23, 59, 59),
+      startDate: DateTime(now.year, now.month, now.day),
+      endDate: DateTime(now.year, now.month, now.day, 23, 59, 59),
     );
   }
 
@@ -119,47 +120,63 @@ class AppointmentsController extends GetxController {
     totalPrice.value = total;
   }
 
-  void changeView(CalendarView view) {
+  void changeView(CalendarView view, {DateTime? targetDate}) {
     print('Cambiando vista de ${currentView.value} a $view');
-    currentView.value = view;
 
-    // Siempre usar la fecha y hora actual
     final now = DateTime.now();
+    DateTime selectedDateTime;
+
+    // Determinar la fecha y hora a usar
+    if (targetDate != null) {
+      // Si se proporciona una fecha específica, usar la hora actual
+      selectedDateTime = DateTime(targetDate.year, targetDate.month,
+          targetDate.day, now.hour, now.minute);
+    } else {
+      // Si no hay fecha específica, usar fecha y hora actual
+      selectedDateTime = now;
+    }
+
+    // Actualizar la vista actual
+    currentView.value = view;
+    selectedDate.value = selectedDateTime;
+
     DateTime startDate;
     DateTime endDate;
 
     switch (view) {
       case CalendarView.day:
-        // Para vista diaria, siempre usar el día actual
-        startDate = DateTime(now.year, now.month, now.day);
-        endDate = startDate.add(const Duration(days: 1));
-        // Actualizar la fecha seleccionada a la actual
-        selectedDate.value = now;
-        print(
-            'Vista día: Mostrando ${startDate.toString()} a ${endDate.toString()}');
+        startDate = DateTime(selectedDateTime.year, selectedDateTime.month,
+            selectedDateTime.day);
+        endDate = DateTime(selectedDateTime.year, selectedDateTime.month,
+            selectedDateTime.day, 23, 59, 59);
+        print('Vista día: ${startDate.toString()} - ${endDate.toString()}');
         break;
 
       case CalendarView.week:
-        // Para vista semanal, calcular desde el inicio de la semana actual
-        startDate = now.subtract(Duration(days: now.weekday - 1));
-        endDate = startDate.add(const Duration(days: 7));
-        selectedDate.value = now;
-        print(
-            'Vista semana: Mostrando ${startDate.toString()} a ${endDate.toString()}');
+      case CalendarView.workWeek:
+        // Obtener el inicio de la semana (lunes)
+        startDate = selectedDateTime
+            .subtract(Duration(days: selectedDateTime.weekday - 1));
+        startDate = DateTime(startDate.year, startDate.month, startDate.day);
+        // Fin de semana (domingo)
+        endDate = startDate
+            .add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+        print('Vista semana: ${startDate.toString()} - ${endDate.toString()}');
         break;
 
       case CalendarView.month:
       default:
-        // Para vista mensual, mostrar el mes actual completo
-        startDate = DateTime(now.year, now.month, 1);
-        endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-        selectedDate.value = now;
-        print(
-            'Vista mes: Mostrando ${startDate.toString()} a ${endDate.toString()}');
+        startDate = DateTime(selectedDateTime.year, selectedDateTime.month, 1);
+        endDate = DateTime(
+            selectedDateTime.year, selectedDateTime.month + 1, 0, 23, 59, 59);
+        print('Vista mes: ${startDate.toString()} - ${endDate.toString()}');
         break;
     }
 
-    // Cargar las citas inmediatamente
+    print('Consultando citas para el rango:');
+    print('Inicio: $startDate');
+    print('Fin: $endDate');
+
     fetchAppointments(
       startDate: startDate,
       endDate: endDate,
@@ -198,14 +215,81 @@ class AppointmentsController extends GetxController {
     if (details.visibleDates.isEmpty) return;
 
     final middleDate = details.visibleDates[details.visibleDates.length ~/ 2];
+    final now = DateTime.now();
 
-    if (selectedDate.value.day != middleDate.day ||
-        selectedDate.value.month != middleDate.month ||
-        selectedDate.value.year != middleDate.year) {
+    // Inicializar con valores por defecto
+    DateTime startDate =
+        DateTime(middleDate.year, middleDate.month, middleDate.day);
+    DateTime endDate =
+        DateTime(middleDate.year, middleDate.month, middleDate.day, 23, 59, 59);
+    bool needsUpdate = false;
+
+    print('Evaluando cambio de vista: ${currentView.value}');
+    print('Fecha actual seleccionada: ${selectedDate.value}');
+    print('Nueva fecha media: $middleDate');
+
+    switch (currentView.value) {
+      case CalendarView.day:
+        // Para vista diaria, siempre actualizar al deslizar
+        if (selectedDate.value.day != middleDate.day ||
+            selectedDate.value.month != middleDate.month ||
+            selectedDate.value.year != middleDate.year) {
+          startDate =
+              DateTime(middleDate.year, middleDate.month, middleDate.day);
+          endDate = DateTime(
+              middleDate.year, middleDate.month, middleDate.day, 23, 59, 59);
+          needsUpdate = true;
+          print('Deslizamiento en vista día: ${startDate.toString()}');
+        }
+        break;
+
+      case CalendarView.week:
+      case CalendarView.workWeek:
+        final currentWeekStart = selectedDate.value
+            .subtract(Duration(days: selectedDate.value.weekday - 1));
+        final newWeekStart =
+            middleDate.subtract(Duration(days: middleDate.weekday - 1));
+
+        if (currentWeekStart.day != newWeekStart.day ||
+            currentWeekStart.month != newWeekStart.month) {
+          startDate =
+              DateTime(newWeekStart.year, newWeekStart.month, newWeekStart.day);
+          endDate = startDate.add(
+              const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+          needsUpdate = true;
+          print(
+              'Deslizamiento en vista semana: ${startDate.toString()} - ${endDate.toString()}');
+        }
+        break;
+
+      case CalendarView.month:
+      case CalendarView.timelineDay:
+      case CalendarView.timelineWeek:
+      case CalendarView.timelineWorkWeek:
+      case CalendarView.timelineMonth:
+      case CalendarView.schedule:
+        if (selectedDate.value.month != middleDate.month ||
+            selectedDate.value.year != middleDate.year) {
+          startDate = DateTime(middleDate.year, middleDate.month, 1);
+          endDate =
+              DateTime(middleDate.year, middleDate.month + 1, 0, 23, 59, 59);
+          needsUpdate = true;
+          print(
+              'Deslizamiento en vista mes: ${startDate.toString()} - ${endDate.toString()}');
+        }
+        break;
+    }
+
+    if (needsUpdate) {
+      print('Actualizando vista con nuevo rango:');
+      print('Inicio: $startDate');
+      print('Fin: $endDate');
+
       selectedDate.value = middleDate;
-
-      // Cargar citas inmediatamente al cambiar la fecha visible
-      _loadDataForCurrentView();
+      fetchAppointments(
+        startDate: startDate,
+        endDate: endDate,
+      );
     }
   }
 
@@ -219,27 +303,26 @@ class AppointmentsController extends GetxController {
       isLoading.value = true;
       error.value = null;
 
-      print('Consultando citas para rango:');
-      print('Fecha inicio original: ${startDate?.toString()}');
-      print('Fecha fin original: ${endDate?.toString()}');
+      final localStartDate = startDate?.toLocal();
+      final localEndDate = endDate?.toLocal();
+
+      print('Consultando citas:');
+      print('Inicio: ${localStartDate?.toString()}');
+      print('Fin: ${localEndDate?.toString()}');
 
       final result = await getAppointmentsUseCase(
-        startDate: startDate,
-        endDate: endDate,
+        startDate: localStartDate,
+        endDate: localEndDate,
       );
 
-      print('Citas obtenidas del servidor: ${result.length}');
+      print('Citas obtenidas: ${result.length}');
       result.forEach((appointment) {
         print('Cita: ${appointment.startTime} - ${appointment.endTime}');
       });
 
       appointments.assignAll(result);
     } catch (e) {
-      print('Error detallado: $e');
-      if (e is DioException) {
-        print('DioError data: ${e.response?.data}');
-        print('DioError status code: ${e.response?.statusCode}');
-      }
+      print('Error al cargar citas: $e');
       error.value = _formatErrorMessage(e);
     } finally {
       isLoading.value = false;
@@ -314,14 +397,57 @@ class AppointmentsController extends GetxController {
       );
 
       await createAppointmentUseCase(appointment);
-      _loadDataForCurrentView();
 
-      Get.snackbar('Éxito', 'Cita creada correctamente');
+      // Recargar los datos de la vista actual
+      final currentDate = selectedDate.value;
+      DateTime startDate;
+      DateTime endDate;
+
+      switch (currentView.value) {
+        case CalendarView.day:
+          startDate =
+              DateTime(currentDate.year, currentDate.month, currentDate.day);
+          endDate = startDate.add(const Duration(days: 1, milliseconds: -1));
+          break;
+        case CalendarView.week:
+          startDate =
+              currentDate.subtract(Duration(days: currentDate.weekday - 1));
+          endDate = startDate.add(const Duration(days: 7, milliseconds: -1));
+          break;
+        case CalendarView.month:
+        default:
+          startDate = DateTime(currentDate.year, currentDate.month, 1);
+          endDate =
+              DateTime(currentDate.year, currentDate.month + 1, 0, 23, 59, 59);
+          break;
+      }
+
+      await fetchAppointments(
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      selectedServiceIds.clear();
+      totalPrice.value = 0;
+
+      Get.snackbar(
+        'Éxito',
+        'Cita creada correctamente',
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[800],
+        duration: const Duration(seconds: 3),
+      );
     } catch (e) {
       print('=== ERROR EN CONTROLLER ===');
       print('Error: $e');
       error.value = e.toString();
-      Get.snackbar('Error', 'No se pudo crear la cita: ${e.toString()}');
+      Get.snackbar(
+        'Error',
+        'No se pudo crear la cita: ${e.toString()}',
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       isLoading.value = false;
     }
@@ -331,8 +457,15 @@ class AppointmentsController extends GetxController {
     selectedEmployee.value = employee;
   }
 
-  CalendarDataSource getCalendarDataSource() =>
-      AppointmentDataSource(appointments);
+  CalendarDataSource getCalendarDataSource() {
+    print('Creando calendar data source con ${appointments.length} citas');
+    return AppointmentDataSource(appointments);
+  }
+
+  void onDaySelected(DateTime date) {
+    selectedDate.value = date;
+    changeView(CalendarView.day, targetDate: date);
+  }
 
   @override
   void onClose() {

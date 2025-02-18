@@ -16,131 +16,139 @@ class AppointmentCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetBuilder<AppointmentsController>(
-      builder: (controller) => Column(
-        children: [
-          Expanded(
-            child: SfCalendar(
-              key: ValueKey('calendar-${controller.currentView.value}'),
-              view: controller.currentView.value,
-              dataSource: controller.getCalendarDataSource(),
-              onViewChanged: (ViewChangedDetails details) {
-                Future.microtask(() => controller.onViewChanged(details));
-              },
-              initialDisplayDate: controller.selectedDate.value,
-              headerHeight: 50,
-              viewHeaderHeight: 60,
-              allowViewNavigation: true,
-              showNavigationArrow: true,
-              showDatePickerButton: true,
-              backgroundColor: Colors.white,
-              todayHighlightColor: Theme.of(context).primaryColor,
-              cellBorderColor: Colors.grey[300],
-              firstDayOfWeek: 1,
-              showCurrentTimeIndicator: true,
-              onTap: (CalendarTapDetails details) {
-                if (details.targetElement == CalendarElement.calendarCell) {
-                  final selectedDate = details.date;
-                  if (selectedDate != null) {
-                    if (controller.currentView.value == CalendarView.month) {
-                      // Al tocar un día en la vista mensual, ir a la vista diaria de ese día
-                      controller.changeView(CalendarView.day,
-                          targetDate: selectedDate);
-                    } else if (controller.currentView.value ==
-                            CalendarView.week ||
-                        controller.currentView.value == CalendarView.workWeek) {
-                      // Al tocar un día en la vista semanal, ir a la vista diaria de ese día
-                      controller.changeView(CalendarView.day,
-                          targetDate: selectedDate);
+      id: 'calendar-view',
+      builder: (controller) {
+        print(
+            'Reconstruyendo calendario con ${controller.appointments.length} citas');
+
+        return Column(
+          children: [
+            Expanded(
+              child: SfCalendar(
+                key: ValueKey(
+                    'calendar-${controller.currentView.value}-${controller.appointments.length}-${DateTime.now().millisecondsSinceEpoch}'),
+                view: controller.currentView.value,
+                dataSource: controller.getCalendarDataSource(),
+                onViewChanged: (ViewChangedDetails details) {
+                  Future.microtask(() => controller.onViewChanged(details));
+                },
+                initialDisplayDate: controller.selectedDate.value,
+                headerHeight: 50,
+                viewHeaderHeight: 60,
+                allowViewNavigation: true,
+                showNavigationArrow: true,
+                showDatePickerButton: true,
+                backgroundColor: Colors.white,
+                todayHighlightColor: Theme.of(context).primaryColor,
+                cellBorderColor: Colors.grey[300],
+                firstDayOfWeek: 1,
+                showCurrentTimeIndicator: true,
+                onTap: (CalendarTapDetails details) {
+                  if (details.targetElement == CalendarElement.calendarCell) {
+                    final selectedDate = details.date;
+                    if (selectedDate != null) {
+                      if (controller.currentView.value == CalendarView.month) {
+                        // Al tocar un día en la vista mensual, ir a la vista diaria de ese día
+                        controller.changeView(CalendarView.day,
+                            targetDate: selectedDate);
+                      } else if (controller.currentView.value ==
+                              CalendarView.week ||
+                          controller.currentView.value ==
+                              CalendarView.workWeek) {
+                        // Al tocar un día en la vista semanal, ir a la vista diaria de ese día
+                        controller.changeView(CalendarView.day,
+                            targetDate: selectedDate);
+                      }
                     }
                   }
-                }
-              },
-              headerStyle: CalendarHeaderStyle(
-                textAlign: TextAlign.center,
-                textStyle: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-              timeSlotViewSettings: TimeSlotViewSettings(
-                startHour: 6,
-                endHour: 24,
-                timeFormat: 'h:mm a',
-                timeInterval: const Duration(minutes: 30),
-                timeIntervalHeight: 70,
-                timeTextStyle: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                  letterSpacing: -0.2,
-                ),
-                timeRulerSize: 70,
-                dateFormat: 'd',
-                dayFormat: 'EEE',
-              ),
-              monthViewSettings: MonthViewSettings(
-                dayFormat: 'EEE',
-                showAgenda: false,
-                navigationDirection: MonthNavigationDirection.horizontal,
-                appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
-                monthCellStyle: MonthCellStyle(
+                },
+                headerStyle: CalendarHeaderStyle(
+                  textAlign: TextAlign.center,
                   textStyle: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.normal,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                     color: Colors.grey[800],
                   ),
-                  trailingDatesTextStyle: TextStyle(
+                ),
+                timeSlotViewSettings: TimeSlotViewSettings(
+                  startHour: 6,
+                  endHour: 24,
+                  timeFormat: 'h:mm a',
+                  timeInterval: const Duration(minutes: 30),
+                  timeIntervalHeight: 70,
+                  timeTextStyle: TextStyle(
+                    fontWeight: FontWeight.w400,
                     fontSize: 12,
-                    color: Colors.grey[400],
+                    color: Colors.grey[700],
+                    letterSpacing: -0.2,
                   ),
-                  leadingDatesTextStyle: TextStyle(
+                  timeRulerSize: 70,
+                  dateFormat: 'd',
+                  dayFormat: 'EEE',
+                ),
+                monthViewSettings: MonthViewSettings(
+                  dayFormat: 'EEE',
+                  showAgenda: false,
+                  navigationDirection: MonthNavigationDirection.horizontal,
+                  appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
+                  monthCellStyle: MonthCellStyle(
+                    textStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                      color: Colors.grey[800],
+                    ),
+                    trailingDatesTextStyle: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[400],
+                    ),
+                    leadingDatesTextStyle: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ),
+                viewHeaderStyle: ViewHeaderStyle(
+                  backgroundColor: Colors.grey[100],
+                  dateTextStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                  dayTextStyle: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[400],
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
                   ),
                 ),
-              ),
-              viewHeaderStyle: ViewHeaderStyle(
-                backgroundColor: Colors.grey[100],
-                dateTextStyle: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
+                selectionDecoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).primaryColor.withOpacity(0.5),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                dayTextStyle: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],
+                dragAndDropSettings: DragAndDropSettings(
+                  indicatorTimeFormat: 'h:mm a',
+                  showTimeIndicator: true,
+                  timeIndicatorStyle: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              selectionDecoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).primaryColor.withOpacity(0.5),
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              dragAndDropSettings: DragAndDropSettings(
-                indicatorTimeFormat: 'h:mm a',
-                showTimeIndicator: true,
-                timeIndicatorStyle: TextStyle(
-                  color: Theme.of(context).primaryColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              appointmentBuilder: _buildAppointment,
-            ),
-          ),
-          if (controller.isLoading.value)
-            Container(
-              color: Colors.black12,
-              child: const Center(
-                child: CircularProgressIndicator(),
+                appointmentBuilder: _buildAppointment,
               ),
             ),
-        ],
-      ),
+            if (controller.isLoading.value)
+              Container(
+                color: Colors.black12,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -179,12 +187,11 @@ class AppointmentCalendar extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      // Aquí es donde agregamos el formato de hora local
                       DateFormat('h:mm a')
                           .format(appointmentEntity.startTime.toLocal()),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 9, // Tamaño más pequeño para la hora
+                        fontSize: 9,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

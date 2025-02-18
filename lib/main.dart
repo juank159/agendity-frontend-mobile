@@ -35,7 +35,6 @@ Future<void> main() async {
     });
 
     await _initializeApp();
-
     runApp(const MyApp());
   } catch (e) {
     debugPrint('Error inicializando la aplicación: $e');

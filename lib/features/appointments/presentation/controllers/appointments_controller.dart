@@ -104,11 +104,10 @@ class AppointmentsController extends GetxController {
     } else {
       selectedServiceIds.add(serviceId);
     }
-    _updateTotalPrice();
+    updateTotalPrice();
   }
 
-  // Método para actualizar el precio total
-  void _updateTotalPrice() {
+  void updateTotalPrice() {
     double total = 0.0;
     for (String serviceId in selectedServiceIds) {
       final service = services.firstWhere(
@@ -118,6 +117,9 @@ class AppointmentsController extends GetxController {
       total += double.parse(service['price']?.toString() ?? '0');
     }
     totalPrice.value = total;
+    update([
+      'services-summary'
+    ]); // Esto actualiza cualquier widget que dependa de los servicios
   }
 
   void changeView(CalendarView view, {DateTime? targetDate}) {
@@ -297,8 +299,6 @@ class AppointmentsController extends GetxController {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    if (isLoading.value) return;
-
     try {
       isLoading.value = true;
       error.value = null;
@@ -320,13 +320,28 @@ class AppointmentsController extends GetxController {
         print('Cita: ${appointment.startTime} - ${appointment.endTime}');
       });
 
+      // Aseguramos que la lista se actualice correctamente
       appointments.assignAll(result);
+
+      // Forzamos actualización del calendario después de cargar las citas
+      update(['calendar-view']);
     } catch (e) {
       print('Error al cargar citas: $e');
       error.value = _formatErrorMessage(e);
     } finally {
       isLoading.value = false;
     }
+  }
+
+  List<String> getSelectedServiceNames() {
+    return selectedServiceIds
+        .map((id) =>
+            services
+                .firstWhereOrNull((s) => s['id'].toString() == id)?['name']
+                ?.toString() ??
+            '')
+        .where((name) => name.isNotEmpty)
+        .toList();
   }
 
   String _formatErrorMessage(dynamic error) {
@@ -396,40 +411,47 @@ class AppointmentsController extends GetxController {
         notes: notes ?? '',
       );
 
-      await createAppointmentUseCase(appointment);
+      final createdAppointment = await createAppointmentUseCase(appointment);
 
-      // Recargar los datos de la vista actual
-      final currentDate = selectedDate.value;
-      DateTime startDate;
-      DateTime endDate;
+      // Limpiar la selección
+      selectedServiceIds.clear();
+      totalPrice.value = 0;
 
-      switch (currentView.value) {
-        case CalendarView.day:
-          startDate =
-              DateTime(currentDate.year, currentDate.month, currentDate.day);
-          endDate = startDate.add(const Duration(days: 1, milliseconds: -1));
-          break;
-        case CalendarView.week:
-          startDate =
-              currentDate.subtract(Duration(days: currentDate.weekday - 1));
-          endDate = startDate.add(const Duration(days: 7, milliseconds: -1));
-          break;
-        case CalendarView.month:
-        default:
-          startDate = DateTime(currentDate.year, currentDate.month, 1);
-          endDate =
-              DateTime(currentDate.year, currentDate.month + 1, 0, 23, 59, 59);
-          break;
-      }
+      // Construir las fechas de inicio y fin del día
+      final startDate = DateTime(
+        startTime.year,
+        startTime.month,
+        startTime.day,
+      );
+      final endDate = DateTime(
+        startTime.year,
+        startTime.month,
+        startTime.day,
+        23,
+        59,
+        59,
+      );
 
+      print('Recargando citas después de crear:');
+      print('Inicio: $startDate');
+      print('Fin: $endDate');
+
+      // Primero actualizamos la fecha seleccionada
+      selectedDate.value = startTime;
+
+      // Forzamos limpieza de la lista actual de citas
+      appointments.clear();
+
+      // Esperamos a que se complete la recarga de citas
       await fetchAppointments(
         startDate: startDate,
         endDate: endDate,
       );
 
-      selectedServiceIds.clear();
-      totalPrice.value = 0;
+      // Verificamos que la nueva cita esté en la lista
+      print('Total de citas después de recargar: ${appointments.length}');
 
+      // Notificamos el éxito después de la recarga
       Get.snackbar(
         'Éxito',
         'Cita creada correctamente',
@@ -437,6 +459,9 @@ class AppointmentsController extends GetxController {
         colorText: Colors.green[800],
         duration: const Duration(seconds: 3),
       );
+
+      // Forzamos una actualización del calendario
+      update(['calendar-view']);
     } catch (e) {
       print('=== ERROR EN CONTROLLER ===');
       print('Error: $e');

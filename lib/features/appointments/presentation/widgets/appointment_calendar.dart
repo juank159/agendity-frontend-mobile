@@ -36,6 +36,7 @@ class AppointmentCalendar extends StatelessWidget {
                 headerHeight: 50,
                 viewHeaderHeight: 60,
                 allowViewNavigation: true,
+                allowDragAndDrop: false,
                 showNavigationArrow: true,
                 showDatePickerButton: true,
                 backgroundColor: Colors.white,
@@ -155,9 +156,35 @@ class AppointmentCalendar extends StatelessWidget {
   Widget _buildAppointment(
       BuildContext context, CalendarAppointmentDetails details) {
     final appointment = details.appointments.first;
-    final appointmentEntity = controller.appointments.firstWhereOrNull(
-      (app) => app.id == appointment.id,
-    );
+    final String appointmentId = appointment.id?.toString() ?? '';
+
+    // Verificar si es una subcita (contiene "_")
+    final bool isSubAppointment = appointmentId.contains('_');
+
+    // Obtener el ID de la cita principal y el índice de la subcita
+    String mainAppointmentId = appointmentId;
+    int subAppointmentIndex = -1;
+    int totalSubAppointments = 1;
+
+    if (isSubAppointment) {
+      final parts = appointmentId.split('_');
+      if (parts.length > 1) {
+        mainAppointmentId = parts[0];
+        subAppointmentIndex = int.tryParse(parts[1]) ?? -1;
+      }
+
+      // Contar cuántas subcitas hay para esta cita principal
+      totalSubAppointments = controller.appointments
+              .where((app) => app.id == mainAppointmentId)
+              .firstOrNull
+              ?.serviceTypes
+              .length ??
+          1;
+    }
+
+    // Buscar la cita principal
+    final appointmentEntity = controller.appointments
+        .firstWhereOrNull((app) => app.id == mainAppointmentId);
 
     if (appointmentEntity == null) return const SizedBox.shrink();
 
@@ -168,7 +195,7 @@ class AppointmentCalendar extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 1),
           decoration: BoxDecoration(
-            color: appointmentEntity.getPrimaryColor(),
+            color: appointment.color,
             borderRadius: BorderRadius.circular(2),
           ),
           child: Stack(
@@ -178,7 +205,11 @@ class AppointmentCalendar extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      appointmentEntity.serviceTypes.join(', '),
+                      isSubAppointment
+                          ? appointmentEntity.serviceTypes.join(', ')
+                          : appointment.subject.split('\n').isNotEmpty
+                              ? appointment.subject.split('\n')[0]
+                              : '',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
@@ -188,7 +219,7 @@ class AppointmentCalendar extends StatelessWidget {
                     ),
                     Text(
                       DateFormat('h:mm a')
-                          .format(appointmentEntity.startTime.toLocal()),
+                          .format(appointment.startTime.toLocal()),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
@@ -217,17 +248,34 @@ class AppointmentCalendar extends StatelessWidget {
       );
     }
 
-    // Vista diaria/semanal
+    // Vista diaria/semanal con estilo unificado para citas múltiples
+    String serviceText = '';
+    String clientName = '';
+
+    if (isSubAppointment) {
+      // Para subcitas, extraer el servicio específico
+      if (subAppointmentIndex >= 0 &&
+          subAppointmentIndex < appointmentEntity.serviceTypes.length) {
+        serviceText = appointmentEntity.serviceTypes[subAppointmentIndex];
+      }
+      clientName = appointmentEntity.clientName;
+    } else {
+      // Para citas normales, usar el subject
+      final parts = appointment.subject.split('\n');
+      clientName = parts.isNotEmpty ? parts[0] : '';
+      serviceText = parts.length > 1 ? parts[1] : '';
+    }
+
     return GestureDetector(
       onTap: () => _showAppointmentDetails(context, appointmentEntity),
       child: Container(
-        constraints: const BoxConstraints(
+        constraints: BoxConstraints(
           minHeight: 30,
-          maxHeight: 50,
         ),
         decoration: BoxDecoration(
-          color: appointmentEntity.getPrimaryColor(),
-          borderRadius: BorderRadius.circular(8),
+          color: appointment.color,
+          borderRadius: _getBorderRadiusForSubAppointment(
+              subAppointmentIndex, totalSubAppointments),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.15),
@@ -235,10 +283,31 @@ class AppointmentCalendar extends StatelessWidget {
               offset: const Offset(0, 2),
             ),
           ],
+          // Borde superior e inferior para mostrar continuidad entre subcitas
+          border: _getBorderForSubAppointment(
+              subAppointmentIndex, totalSubAppointments, appointment.color),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Row(
           children: [
+            // Indicador numérico para subcitas (1/3, 2/3, etc.)
+            if (isSubAppointment && totalSubAppointments > 1)
+              Container(
+                padding: EdgeInsets.all(4),
+                margin: EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  "${subAppointmentIndex + 1}/$totalSubAppointments",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -246,7 +315,7 @@ class AppointmentCalendar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    appointmentEntity.serviceTypes.join(', '),
+                    serviceText,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -257,7 +326,7 @@ class AppointmentCalendar extends StatelessWidget {
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    appointmentEntity.clientName,
+                    clientName,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 11,
@@ -268,30 +337,115 @@ class AppointmentCalendar extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              width: 10,
-              height: 10,
-              margin: const EdgeInsets.only(left: 8),
-              decoration: BoxDecoration(
-                color: appointmentEntity.getStatusColor(),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: appointmentEntity.getStatusColor().withOpacity(0.4),
-                    blurRadius: 6,
-                    spreadRadius: 2,
+            // Solo mostrar indicador de estado en la primera subcita
+            if (!isSubAppointment || subAppointmentIndex == 0)
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(left: 8),
+                decoration: BoxDecoration(
+                  color: appointmentEntity.getStatusColor(),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 1.5,
                   ),
-                ],
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          appointmentEntity.getStatusColor().withOpacity(0.4),
+                      blurRadius: 6,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+// Función para obtener bordes redondeados solo en los extremos de las subcitas
+  BorderRadius _getBorderRadiusForSubAppointment(int index, int total) {
+    if (total <= 1 || index < 0) {
+      // Cita simple o desconocida: bordes redondeados en todos lados
+      return BorderRadius.circular(8);
+    }
+
+    if (index == 0) {
+      // Primera subcita: bordes redondeados arriba
+      return BorderRadius.vertical(
+        top: Radius.circular(8),
+        bottom: Radius.circular(2),
+      );
+    } else if (index == total - 1) {
+      // Última subcita: bordes redondeados abajo
+      return BorderRadius.vertical(
+        top: Radius.circular(2),
+        bottom: Radius.circular(8),
+      );
+    } else {
+      // Subcitas intermedias: bordes mínimos
+      return BorderRadius.circular(2);
+    }
+  }
+
+// Función para obtener bordes que muestren continuidad
+  Border? _getBorderForSubAppointment(int index, int total, Color color) {
+    if (total <= 1 || index < 0) {
+      // Cita simple o desconocida: sin bordes especiales
+      return null;
+    }
+
+    Color borderColor = color.withOpacity(0.7);
+
+    if (index == 0) {
+      // Primera subcita: borde inferior
+      return Border(
+        bottom: BorderSide(
+          color: borderColor,
+          width: 1.0,
+          style: BorderStyle.solid,
+        ),
+      );
+    } else if (index == total - 1) {
+      // Última subcita: borde superior
+      return Border(
+        top: BorderSide(
+          color: borderColor,
+          width: 1.0,
+          style: BorderStyle.solid,
+        ),
+      );
+    } else {
+      // Subcitas intermedias: bordes arriba y abajo
+      return Border(
+        top: BorderSide(
+          color: borderColor,
+          width: 1.0,
+          style: BorderStyle.solid,
+        ),
+        bottom: BorderSide(
+          color: borderColor,
+          width: 1.0,
+          style: BorderStyle.solid,
+        ),
+      );
+    }
+  }
+
+// Función auxiliar para obtener el color del servicio
+  Color _getServiceColor(AppointmentEntity entity, int index) {
+    if (entity.colors != null && index < entity.colors!.length) {
+      try {
+        final colorStr = entity.colors![index].replaceAll('#', '');
+        return Color(int.parse('FF$colorStr', radix: 16));
+      } catch (e) {
+        print('Error al convertir color: $e');
+      }
+    }
+    return entity.getPrimaryColor();
   }
 
   void _showAppointmentDetails(

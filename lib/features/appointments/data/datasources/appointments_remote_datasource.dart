@@ -182,6 +182,37 @@ class AppointmentsRemoteDataSource {
     }
   }
 
+  // Añadir este método a tu AppointmentsRemoteDataSource
+  Future<Map<String, dynamic>> getProfessionalById(String id) async {
+    try {
+      final token = await localStorage.getToken();
+
+      final response = await dio.get(
+        '/professionals/$id',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'tenant-id': _extractTenantId(token!),
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        print('Professional data loaded: ${response.data}');
+        return response.data;
+      }
+
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        error: 'Failed to get professional',
+      );
+    } catch (e) {
+      print('Error getting professional: $e');
+      rethrow;
+    }
+  }
+
   Future<void> deleteAppointment(String id) async {
     try {
       final token = await localStorage.getToken();

@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
 import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
+import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointment_data_source.dart';
@@ -37,6 +39,8 @@ class AppointmentsController extends GetxController {
   // Nuevo estado para manejar múltiples servicios seleccionados
   final RxList<String> selectedServiceIds = <String>[].obs;
   final RxDouble totalPrice = 0.0.obs;
+
+  final employeesController = Get.find<EmployeesController>();
 
   AppointmentsController(
     this.getAppointmentsUseCase,

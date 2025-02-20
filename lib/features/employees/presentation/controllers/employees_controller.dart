@@ -1,7 +1,4 @@
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
-import 'package:get/get_rx/src/rx_types/rx_types.dart';
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
 
 class AppointmentDetailsDialog extends StatelessWidget {
   final AppointmentEntity appointment;
@@ -121,13 +122,44 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 4),
+                              // Row(
+                              //   children: [
+                              //     Text(
+                              //       '${DateFormat('h:mm a').format(appointment.startTime.toLocal())} - '
+                              //       '${DateFormat('h:mm a').format(appointment.endTime.toLocal())}',
+                              //       style: TextStyle(
+                              //         color: Colors.grey[600],
+                              //       ),
+                              //     ),
+                              //     const SizedBox(width: 8),
+                              //     Container(
+                              //       padding: const EdgeInsets.symmetric(
+                              //           horizontal: 8, vertical: 2),
+                              //       decoration: BoxDecoration(
+                              //         color: Colors.grey[200],
+                              //         borderRadius: BorderRadius.circular(12),
+                              //       ),
+                              //       child: Text(
+                              //         durationText,
+                              //         style: TextStyle(
+                              //           fontSize: 12,
+                              //           color: Colors.grey[700],
+                              //         ),
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
+
                               Row(
                                 children: [
-                                  Text(
-                                    '${DateFormat('h:mm a').format(appointment.startTime.toLocal())} - '
-                                    '${DateFormat('h:mm a').format(appointment.endTime.toLocal())}',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
+                                  Flexible(
+                                    child: Text(
+                                      '${DateFormat('h:mm a').format(appointment.startTime.toLocal())} - '
+                                      '${DateFormat('h:mm a').format(appointment.endTime.toLocal())}',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -446,6 +478,32 @@ class AppointmentDetailsDialog extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Botones de acción
+                    // Row(
+                    //   mainAxisAlignment: MainAxisAlignment.end,
+                    //   children: [
+                    //     TextButton(
+                    //       onPressed: () => Navigator.pop(context),
+                    //       child: const Text('Cerrar'),
+                    //     ),
+                    //     const SizedBox(width: 8),
+                    //     ElevatedButton.icon(
+                    //       onPressed: () {
+                    //         // Acción para editar cita
+                    //         Navigator.pop(context);
+                    //       },
+                    //       icon: const Icon(Icons.edit, size: 18),
+                    //       label: const Text('Editar cita'),
+                    //       style: ElevatedButton.styleFrom(
+                    //         backgroundColor: isPaid
+                    //             ? Colors.green
+                    //             : Theme.of(context).primaryColor,
+                    //         foregroundColor: Colors.white,
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
+
+                    // Botones de acción
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -454,6 +512,37 @@ class AppointmentDetailsDialog extends StatelessWidget {
                           child: const Text('Cerrar'),
                         ),
                         const SizedBox(width: 8),
+
+                        // Mostrar botón de pago solo si no está pagado
+                        if (!isPaid) ...[
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              // Cerrar el diálogo actual
+                              Navigator.pop(context);
+
+                              // Mostrar el diálogo de pago
+                              final result = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => PaymentDialog(
+                                  appointment: appointment,
+                                ),
+                              );
+
+                              // Si el pago se realizó correctamente, actualizar la vista
+                              if (result == true) {
+                                // Puedes notificar aquí para actualizar la vista si es necesario
+                              }
+                            },
+                            icon: const Icon(Icons.payment, size: 18),
+                            label: const Text('Registrar pago'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+
                         ElevatedButton.icon(
                           onPressed: () {
                             // Acción para editar cita

@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/professional_selector_dialog.dart';
+import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
+import 'package:login_signup/features/employees/data/repositories/employees_repository_impl.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import '../controllers/appointments_controller.dart';
 import 'client_selector_dialog.dart';
@@ -46,9 +51,17 @@ class AppointmentFormDialog extends StatelessWidget {
     final notesController = TextEditingController();
     final selectedDate = DateTime.now().obs;
     final selectedTime = TimeOfDay.now().obs;
-    final employeesController = Get.find<EmployeesController>();
 
-    employeesController.loadEmployees();
+    // Crear una variable para el controlador
+    final employeesControllerRx = Rxn<EmployeesController>();
+
+    // Intentar inicializar el módulo de empleados y obtener el controlador
+    _initializeEmployeesController().then((controller) {
+      employeesControllerRx.value = controller;
+      if (controller != null) {
+        controller.loadEmployees();
+      }
+    });
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -73,8 +86,11 @@ class AppointmentFormDialog extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Selector de profesional
-                    _buildProfessionalSelector(
-                        context, controller, employeesController),
+                    Obx(() => employeesControllerRx.value != null
+                        ? _buildProfessionalSelector(
+                            context, controller, employeesControllerRx.value!)
+                        : _buildErrorMessage(
+                            context, "Cargando profesionales...")),
 
                     const SizedBox(height: 16),
 
@@ -380,6 +396,90 @@ class AppointmentFormDialog extends StatelessWidget {
     return initials;
   }
 
+  // Método para mostrar mensaje de error o carga
+  Widget _buildErrorMessage(BuildContext context, String message) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Método para inicializar de manera segura el EmployeesController
+  Future<EmployeesController?> _initializeEmployeesController() async {
+    try {
+      // Primero intentar encontrar el controlador existente
+      return Get.find<EmployeesController>();
+    } catch (e) {
+      print('Intentando inicializar EmployeesController desde cero');
+      try {
+        // Inicializar EmployeesModule manualmente
+        await _initEmployeesModule();
+        return Get.find<EmployeesController>();
+      } catch (innerE) {
+        print('Error inicializando EmployeesController: $innerE');
+        return null;
+      }
+    }
+  }
+
+// Método para inicializar el módulo de empleados
+  Future<void> _initEmployeesModule() async {
+    try {
+      // Inicializar remotedatasource
+      final dataSource = EmployeesRemoteDataSource(
+        dio: Get.find(),
+        localStorage: Get.find(),
+      );
+      Get.put(dataSource);
+
+      // Inicializar repository
+      final repository = EmployeesRepositoryImpl(dataSource);
+      Get.put(repository);
+
+      // Inicializar casos de uso
+      final getEmployeesUseCase = GetEmployeesUseCase(repository);
+      final getEmployeeByIdUseCase = GetEmployeeByIdUseCase(repository);
+      final createEmployeeUseCase = CreateEmployeeUseCase(repository);
+
+      Get.put(getEmployeesUseCase);
+      Get.put(getEmployeeByIdUseCase);
+      Get.put(createEmployeeUseCase);
+
+      // Inicializar controller
+      final controller = EmployeesController(
+        getEmployeesUseCase: getEmployeesUseCase,
+        getEmployeeByIdUseCase: getEmployeeByIdUseCase,
+        createEmployeeUseCase: createEmployeeUseCase,
+      );
+
+      Get.put(controller);
+      print('EmployeesController inicializado correctamente');
+    } catch (e) {
+      print('Error inicializando EmployeesModule: $e');
+      throw e;
+    }
+  }
+
   Widget _buildServicesSummary(
     AppointmentsController controller,
     BuildContext context,
@@ -603,6 +703,47 @@ class AppointmentFormDialog extends StatelessWidget {
     );
   }
 
+  // Widget _buildDateTimePickers(
+  //   BuildContext context,
+  //   Rx<DateTime> selectedDate,
+  //   Rx<TimeOfDay> selectedTime,
+  // ) {
+  //   return Row(
+  //     children: [
+  //       Expanded(
+  //         child: Obx(() => OutlinedButton.icon(
+  //               icon: const Icon(Icons.calendar_today),
+  //               label: Text(
+  //                 DateFormat('dd/MM/yyyy').format(selectedDate.value),
+  //                 style: const TextStyle(fontSize: 13),
+  //               ),
+  //               onPressed: () async {
+  //                 final date = await showDatePicker(
+  //                   context: context,
+  //                   initialDate: selectedDate.value,
+  //                   firstDate: DateTime.now(),
+  //                   lastDate: DateTime.now().add(const Duration(days: 365)),
+  //                 );
+  //                 if (date != null) selectedDate.value = date;
+  //               },
+  //             )),
+  //       ),
+  //       const SizedBox(width: 8),
+  //       Expanded(
+  //         child: Obx(() => OutlinedButton.icon(
+  //               icon: const Icon(Icons.access_time),
+  //               label: Text(
+  //                 DateFormat('h:mm a').format(DateTime(2024, 1, 1,
+  //                     selectedTime.value.hour, selectedTime.value.minute)),
+  //                 style: TextStyle(fontSize: 10),
+  //               ),
+  //               onPressed: () => _showTimePicker(context, selectedTime),
+  //             )),
+  //       ),
+  //     ],
+  //   );
+  // }
+
   Widget _buildDateTimePickers(
     BuildContext context,
     Rx<DateTime> selectedDate,
@@ -610,33 +751,96 @@ class AppointmentFormDialog extends StatelessWidget {
   ) {
     return Row(
       children: [
+        // Selector de fecha
         Expanded(
-          child: Obx(() => OutlinedButton.icon(
-                icon: const Icon(Icons.calendar_today),
-                label: Text(
-                  DateFormat('dd/MM/yyyy').format(selectedDate.value),
-                  style: const TextStyle(fontSize: 13),
+          child: Obx(() => Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey[200]!,
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
-                onPressed: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate.value,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  if (date != null) selectedDate.value = date;
-                },
+                child: OutlinedButton.icon(
+                  icon: Icon(
+                    Icons.calendar_today,
+                    size: 18,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  label: Text(
+                    DateFormat('dd/MM/yy').format(selectedDate.value),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate.value,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) selectedDate.value = date;
+                  },
+                ),
               )),
         ),
         const SizedBox(width: 8),
+        // Selector de hora
         Expanded(
-          child: Obx(() => OutlinedButton.icon(
-                icon: const Icon(Icons.access_time),
-                label: Text(
-                  DateFormat('h:mm a').format(DateTime(2024, 1, 1,
-                      selectedTime.value.hour, selectedTime.value.minute)),
+          child: Obx(() => Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey[200]!,
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
-                onPressed: () => _showTimePicker(context, selectedTime),
+                child: OutlinedButton.icon(
+                  icon: Icon(
+                    Icons.access_time,
+                    size: 18,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  label: Text(
+                    DateFormat('h:mm a').format(DateTime(2024, 1, 1,
+                        selectedTime.value.hour, selectedTime.value.minute)),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => _showTimePicker(context, selectedTime),
+                ),
               )),
         ),
       ],

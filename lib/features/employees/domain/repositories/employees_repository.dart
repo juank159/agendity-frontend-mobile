@@ -3,4 +3,6 @@ import 'package:login_signup/features/employees/domain/entities/employee_entity.
 abstract class EmployeesRepository {
   Future<List<EmployeeEntity>> getEmployees();
   Future<EmployeeEntity> getEmployeeById(String id);
+  Future<EmployeeEntity> createEmployee(
+      EmployeeEntity employee, String password);
 }

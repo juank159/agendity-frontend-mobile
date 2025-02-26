@@ -48,8 +48,12 @@ class CategoriesScreen extends GetView<CategoriesController> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () => Get.toNamed('/categories/new')?.then((_) {
-                      controller.loadCategories();
+                    // Modificado para manejar el resultado
+                    onPressed: () =>
+                        Get.toNamed('/categories/new')?.then((result) {
+                      if (result == true) {
+                        controller.loadCategories();
+                      }
                     }),
                     icon: const Icon(Icons.add),
                     label: const Text('Crear categoría'),
@@ -107,11 +111,26 @@ class CategoriesScreen extends GetView<CategoriesController> {
                             overflow: TextOverflow.ellipsis,
                           )
                         : null,
-                    trailing: Switch(
-                      value: category.isActive,
-                      onChanged: (value) =>
-                          controller.toggleCategoryStatus(category.id, value),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => controller.editCategory(category),
+                        ),
+                        Switch(
+                          value: category.isActive,
+                          onChanged: (value) => controller.toggleCategoryStatus(
+                              category.id,
+                              value // Pasar el nuevo valor al método
+                              ),
+                          activeColor: Colors.green,
+                          inactiveThumbColor: Colors.red.shade300,
+                          inactiveTrackColor: Colors.red.shade100,
+                        ),
+                      ],
                     ),
+                    onTap: () => controller.editCategory(category),
                   ),
                 );
               },
@@ -120,8 +139,11 @@ class CategoriesScreen extends GetView<CategoriesController> {
         }),
         floatingActionButton: Obx(() => controller.categories.isNotEmpty
             ? FloatingActionButton(
-                onPressed: () => Get.toNamed('/categories/new')?.then((_) {
-                  controller.loadCategories();
+                // Modificado para manejar el resultado
+                onPressed: () => Get.toNamed('/categories/new')?.then((result) {
+                  if (result == true) {
+                    controller.loadCategories();
+                  }
                 }),
                 child: const Icon(Icons.add),
               )

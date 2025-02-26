@@ -1,97 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import '../controllers/appointments_controller.dart';
-
-// class ClientSelectorDialog extends StatelessWidget {
-//   final AppointmentsController controller;
-//   final Function(Map<String, dynamic>) onClientSelected;
-
-//   const ClientSelectorDialog({
-//     Key? key,
-//     required this.controller,
-//     required this.onClientSelected,
-//   }) : super(key: key);
-
-//   static Future<Map<String, dynamic>?> show(
-//     BuildContext context,
-//     AppointmentsController controller,
-//   ) async {
-//     Map<String, dynamic>? selectedClient;
-
-//     await showDialog(
-//       context: context,
-//       builder: (context) => ClientSelectorDialog(
-//         controller: controller,
-//         onClientSelected: (client) {
-//           selectedClient = client;
-//           Navigator.pop(context);
-//         },
-//       ),
-//     );
-
-//     return selectedClient;
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final searchController = TextEditingController();
-//     final searchQuery = ''.obs;
-
-//     return Dialog(
-//       child: Container(
-//         width: MediaQuery.of(context).size.width * 0.9,
-//         height: MediaQuery.of(context).size.height * 0.7,
-//         padding: const EdgeInsets.all(16),
-//         child: Column(
-//           children: [
-//             TextField(
-//               controller: searchController,
-//               decoration: InputDecoration(
-//                 labelText: 'Buscar Cliente',
-//                 prefixIcon: const Icon(Icons.search),
-//                 border: const OutlineInputBorder(),
-//                 suffixIcon: IconButton(
-//                   icon: const Icon(Icons.clear),
-//                   onPressed: () {
-//                     searchController.clear();
-//                     searchQuery.value = '';
-//                   },
-//                 ),
-//               ),
-//               onChanged: (value) => searchQuery.value = value,
-//             ),
-//             const SizedBox(height: 16),
-//             Expanded(
-//               child: Obx(() {
-//                 final filteredClients = controller.clients.where((client) {
-//                   final name =
-//                       '${client['name']} ${client['lastname']}'.toLowerCase();
-//                   return name.contains(searchQuery.value.toLowerCase());
-//                 }).toList();
-
-//                 return ListView.builder(
-//                   itemCount: filteredClients.length,
-//                   itemBuilder: (context, index) {
-//                     final client = filteredClients[index];
-//                     return ListTile(
-//                       leading: CircleAvatar(
-//                         child: Text(client['name'][0]),
-//                       ),
-//                       title: Text('${client['name']} ${client['lastname']}'),
-//                       subtitle: Text(client['phone'] ?? ''),
-//                       onTap: () => onClientSelected(client),
-//                     );
-//                   },
-//                 );
-//               }),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/appointments_controller.dart';
@@ -112,6 +18,11 @@ class ClientSelectorDialog extends StatelessWidget {
   ) async {
     Map<String, dynamic>? selectedClient;
 
+    // Adaptar el tamaño según la plataforma y orientación
+    final size = MediaQuery.of(context).size;
+    final maxWidth = size.width * 0.9;
+    final maxHeight = size.height * 0.7;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
@@ -119,8 +30,8 @@ class ClientSelectorDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.7,
+          width: maxWidth,
+          height: maxHeight,
           padding: const EdgeInsets.all(16),
           child: ClientSelectorDialog(
             controller: controller,
@@ -133,7 +44,6 @@ class ClientSelectorDialog extends StatelessWidget {
       ),
     );
 
-    // Solo retornar el cliente si se confirmó la selección
     return result == true ? selectedClient : null;
   }
 
@@ -218,7 +128,7 @@ class ClientSelectorDialog extends StatelessWidget {
 
             return ListView.separated(
               itemCount: filteredClients.length,
-              separatorBuilder: (context, index) => Divider(height: 1),
+              separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final client = filteredClients[index];
                 final clientName = '${client['name']} ${client['lastname']}';
@@ -238,6 +148,7 @@ class ClientSelectorDialog extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           // Avatar con iniciales
                           Container(
@@ -278,7 +189,7 @@ class ClientSelectorDialog extends StatelessWidget {
                           ),
                           const SizedBox(width: 16),
 
-                          // Información del cliente
+                          // Información del cliente (con Flexible para evitar overflow)
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,8 +200,10 @@ class ClientSelectorDialog extends StatelessWidget {
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
+                                // Fila del teléfono con Flexible
                                 Row(
                                   children: [
                                     Icon(
@@ -299,11 +212,14 @@ class ClientSelectorDialog extends StatelessWidget {
                                       color: Colors.grey[600],
                                     ),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      phone,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
+                                    Flexible(
+                                      child: Text(
+                                        phone,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -319,14 +235,16 @@ class ClientSelectorDialog extends StatelessWidget {
                                           color: Colors.grey[600],
                                         ),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          client['email'],
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
+                                        Flexible(
+                                          child: Text(
+                                            client['email'],
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[600],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
                                     ),
@@ -351,7 +269,7 @@ class ClientSelectorDialog extends StatelessWidget {
           }),
         ),
 
-        // Botones de acción
+        // Botones de acción - usando Expanded para distribuir el espacio
         Container(
           padding: const EdgeInsets.only(top: 16),
           decoration: BoxDecoration(
@@ -359,34 +277,82 @@ class ClientSelectorDialog extends StatelessWidget {
               top: BorderSide(color: Colors.grey[300]!),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  foregroundColor: Colors.grey[700],
-                ),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  foregroundColor: Theme.of(context).primaryColor,
-                ),
-                child: const Text(
-                  'Nuevo Cliente',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Usar layouts diferentes según el ancho disponible
+              if (constraints.maxWidth < 300) {
+                // Para pantallas muy pequeñas, usar Column
+                return Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: Colors.grey[700],
+                        ),
+                        child: const Text(
+                          'Cancelar',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: Theme.of(context).primaryColor,
+                        ),
+                        child: const Text(
+                          'Nuevo Cliente',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              } else {
+                // Para pantallas normales, usar Row
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: Colors.grey[700],
+                        ),
+                        child: const Text(
+                          'Cancelar',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: Theme.of(context).primaryColor,
+                        ),
+                        child: const Text(
+                          'Nuevo Cliente',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+            },
           ),
         ),
       ],

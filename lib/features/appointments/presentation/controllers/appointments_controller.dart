@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
-import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
+
+import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointment_data_source.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
@@ -13,8 +15,12 @@ import 'package:login_signup/features/appointments/domain/usescases/create_appoi
 import 'package:login_signup/features/appointments/domain/usescases/delete_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usescases/get_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usescases/update_appointment_usecase.dart';
+
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
+
+import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
 
 class AppointmentsController extends GetxController {
@@ -26,6 +32,9 @@ class AppointmentsController extends GetxController {
   final ClientsRemoteDataSource clientsDataSource;
   final LocalStorage localStorage;
 
+  // Cambiar la referencia directa a una propiedad que se puede reinicializar
+  Rx<EmployeeEntity?> selectedEmployee = Rx<EmployeeEntity?>(null);
+
   // Estado observable
   final RxList<AppointmentEntity> appointments = <AppointmentEntity>[].obs;
   final RxList<Map<String, dynamic>> services = <Map<String, dynamic>>[].obs;
@@ -34,13 +43,30 @@ class AppointmentsController extends GetxController {
   final RxBool isLoading = false.obs;
   final Rx<String?> error = Rx<String?>(null);
   final Rx<CalendarView> currentView = CalendarView.month.obs;
-  final Rx<EmployeeEntity?> selectedEmployee = Rx<EmployeeEntity?>(null);
 
   // Nuevo estado para manejar múltiples servicios seleccionados
   final RxList<String> selectedServiceIds = <String>[].obs;
   final RxDouble totalPrice = 0.0.obs;
 
-  final employeesController = Get.find<EmployeesController>();
+  EmployeesController? _employeesController;
+
+  EmployeesController? get employeesController {
+    if (_employeesController == null) {
+      try {
+        _employeesController = Get.find<EmployeesController>();
+      } catch (e) {
+        print('Error al obtener EmployeesController: $e');
+        try {
+          // Intentar crear un nuevo controlador
+          _employeesController = EmployeesController();
+          Get.put(_employeesController!);
+        } catch (innerError) {
+          print('No se pudo crear EmployeesController: $innerError');
+        }
+      }
+    }
+    return _employeesController;
+  }
 
   AppointmentsController(
     this.getAppointmentsUseCase,
@@ -51,8 +77,47 @@ class AppointmentsController extends GetxController {
     this.clientsDataSource,
     this.localStorage,
   ) {
+    _initializeControllers();
     _initializeCalendar();
     _loadInitialData();
+  }
+
+  void _initializeControllers() {
+    try {
+      // Intentar conseguir el EmployeesController, pero manejar si no está disponible
+      _employeesController = Get.find<EmployeesController>();
+    } catch (e) {
+      print('EmployeesController no disponible: $e');
+      // Intentar inicializar EmployeesController
+      _initializeEmployeesController();
+    }
+  }
+
+  void _initializeEmployeesController() {
+    try {
+      // Intentar registrar un nuevo controlador directamente
+      _employeesController = EmployeesController();
+      Get.put(_employeesController!);
+      print('EmployeesController inicializado manualmente');
+    } catch (e) {
+      print('No se pudo inicializar EmployeesController: $e');
+      // Si falla, intenta crear uno con dependencias explícitas
+      try {
+        final getEmployeesUseCase = Get.find<GetEmployeesUseCase>();
+        final getEmployeeByIdUseCase = Get.find<GetEmployeeByIdUseCase>();
+        final createEmployeeUseCase = Get.find<CreateEmployeeUseCase>();
+
+        _employeesController = EmployeesController(
+            getEmployeesUseCase: getEmployeesUseCase,
+            getEmployeeByIdUseCase: getEmployeeByIdUseCase,
+            createEmployeeUseCase: createEmployeeUseCase);
+
+        Get.put(_employeesController!);
+      } catch (innerError) {
+        print(
+            'Error al crear EmployeesController con dependencias explícitas: $innerError');
+      }
+    }
   }
 
   void _initializeCalendar() {
@@ -381,6 +446,15 @@ class AppointmentsController extends GetxController {
     String? notes,
   }) async {
     try {
+      // Añadir esta verificación
+      if (employeesController == null) {
+        throw Exception('El controlador de empleados no está disponible');
+      }
+
+      if (selectedServiceIds.isEmpty) {
+        throw Exception('Debe seleccionar al menos un servicio');
+      }
+
       if (selectedServiceIds.isEmpty) {
         throw Exception('Debe seleccionar al menos un servicio');
       }
@@ -483,7 +557,16 @@ class AppointmentsController extends GetxController {
   }
 
   Future<void> selectEmployee(EmployeeEntity employee) async {
-    selectedEmployee.value = employee;
+    if (employeesController != null) {
+      selectedEmployee.value = employee;
+    } else {
+      Get.snackbar(
+        'Error',
+        'No se pudo seleccionar el empleado',
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+      );
+    }
   }
 
   CalendarDataSource getCalendarDataSource() {
@@ -498,6 +581,7 @@ class AppointmentsController extends GetxController {
 
   @override
   void onClose() {
+    _employeesController = null;
     selectedServiceIds.clear();
     totalPrice.value = 0;
     super.onClose();

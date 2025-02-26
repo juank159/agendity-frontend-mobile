@@ -1,56 +1,8 @@
-// import 'package:dio/dio.dart';
-// import 'package:login_signup/features/employees/data/models/employee_model.dart';
-// import 'package:login_signup/shared/local_storage/local_storage.dart';
-
-// class EmployeesRemoteDataSource {
-//   final Dio dio;
-//   final LocalStorage localStorage;
-//   static const String endpoint = '/auth/employees';
-
-//   EmployeesRemoteDataSource({
-//     required this.dio,
-//     required this.localStorage,
-//   });
-
-//   Future<List<EmployeeModel>> getEmployees() async {
-//     try {
-//       final token = await localStorage.getToken();
-//       final response = await dio.get(
-//         endpoint,
-//         options: Options(headers: {'Authorization': 'Bearer $token'}),
-//       );
-
-//       if (response.statusCode == 200) {
-//         return (response.data as List)
-//             .map((json) => EmployeeModel.fromJson(json))
-//             .toList();
-//       }
-//       throw Exception('Failed to load employees');
-//     } catch (e) {
-//       throw Exception('Error loading employees: $e');
-//     }
-//   }
-
-//   Future<EmployeeModel> getEmployeeById(String id) async {
-//     try {
-//       final token = await localStorage.getToken();
-//       final response = await dio.get(
-//         '$endpoint/$id',
-//         options: Options(headers: {'Authorization': 'Bearer $token'}),
-//       );
-
-//       if (response.statusCode == 200) {
-//         return EmployeeModel.fromJson(response.data);
-//       }
-//       throw Exception('Employee not found');
-//     } catch (e) {
-//       throw Exception('Error getting employee: $e');
-//     }
-//   }
-// }
+// lib/features/employees/data/datasources/employees_remote_datasource.dart
 
 import 'package:dio/dio.dart';
 import 'package:login_signup/features/employees/data/models/employee_model.dart';
+import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class EmployeesRemoteDataSource {
@@ -60,6 +12,7 @@ class EmployeesRemoteDataSource {
   // Endpoints separados para plural y singular
   static const String endpointPlural = '/auth/employees';
   static const String endpointSingular = '/auth/employee';
+  static const String endpointRegister = '/auth/register/employee';
 
   EmployeesRemoteDataSource({
     required this.dio,
@@ -109,6 +62,34 @@ class EmployeesRemoteDataSource {
     } catch (e) {
       print('Error al obtener empleado con ID $id: $e');
       throw Exception('Error getting employee: $e');
+    }
+  }
+
+  Future<EmployeeModel> createEmployee(
+      EmployeeEntity employee, String password) async {
+    try {
+      final token = await localStorage.getToken();
+
+      // Convertir el empleado a un mapa y añadir la contraseña
+      final Map<String, dynamic> data =
+          (employee as EmployeeModel).toCreateJson(password: password);
+
+      print('Enviando datos al servidor: $data');
+
+      final response = await dio.post(
+        endpointRegister,
+        data: data,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      return EmployeeModel.fromJson(response.data);
+    } catch (e) {
+      print('Error creando empleado en DataSource: $e');
+      throw Exception('Failed to create employee');
     }
   }
 }

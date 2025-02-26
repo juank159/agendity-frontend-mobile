@@ -32,6 +32,7 @@ class UserInfoController extends GetxController {
         }
       }
     } catch (e) {
+      print('Error al cargar información del usuario: $e');
       // Valores por defecto en caso de error
       userName.value = 'Usuario';
       userEmail.value = 'correo@ejemplo.com';

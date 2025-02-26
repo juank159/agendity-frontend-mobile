@@ -5,6 +5,7 @@ import 'package:login_signup/features/services/domain/repositories/categories_re
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_status_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/update_category_usecase.dart'; // Nuevo import
 
 class CategoriesModule {
   static Future<void> init() async {
@@ -44,6 +45,12 @@ class CategoriesModule {
         UpdateCategoryStatusUseCase(Get.find()),
         permanent: true,
       );
+
+      // Nuevo caso de uso
+      Get.put<UpdateCategoryUseCase>(
+        UpdateCategoryUseCase(Get.find()),
+        permanent: true,
+      );
     } catch (e) {
       print('Error initializing CategoriesModule: $e');
       rethrow;
@@ -65,6 +72,10 @@ class CategoriesModule {
     }
     if (Get.isRegistered<UpdateCategoryStatusUseCase>()) {
       Get.delete<UpdateCategoryStatusUseCase>(force: true);
+    }
+    // Eliminar el nuevo caso de uso si está registrado
+    if (Get.isRegistered<UpdateCategoryUseCase>()) {
+      Get.delete<UpdateCategoryUseCase>(force: true);
     }
   }
 }

@@ -1,24 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
 import 'package:login_signup/features/appointments/presentation/view/appointments_view.dart';
 
 import 'package:login_signup/features/auth/presentation/bindings/login_binding.dart';
 import 'package:login_signup/features/auth/presentation/screen/screen.dart';
+
 import 'package:login_signup/features/clients/presentation/bindings/clients_binding.dart';
 import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
 import 'package:login_signup/features/clients/presentation/screen/edit_client_screen.dart';
+
+import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
+import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/employees/presentation/screens/create_employee_screen.dart';
+import 'package:login_signup/features/employees/presentation/screens/employees_list_screen.dart';
+
 import 'package:login_signup/features/services/presentation/bindings/categories_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/edit_service_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/new_category_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/services_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/new_service_binding.dart';
+import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 import 'package:login_signup/features/services/presentation/screen/categories_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/edit_service_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/new_category_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/services_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/new_service_screen.dart';
+import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
+import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
 
 class GetRoutes {
   // Auth Routes
@@ -32,9 +43,12 @@ class GetRoutes {
   // Service Routes
   static const String services = '/services';
   static const String addService = '/services/new';
+  static const String editService = '/services/edit';
+
+  // Categories Routes
   static const String categories = '/categories';
   static const String addCategory = '/categories/new';
-  static const String editService = '/services/edit';
+  static const String editCategory = '/categories/edit/:id';
 
   //Clients Routes
   static const String clients = '/clients';
@@ -44,6 +58,14 @@ class GetRoutes {
   //Calendar Routes
   static const String calendar = '/calendar';
   static const String calendarEvent = '/calendar/event';
+
+  // employees Routes
+  static const String employees = '/employees';
+  static const String addEmployee = '/employees/new';
+  static const String editEmployee = '/employees/edit/:id';
+
+  // statistics Routes
+  static const String statistics = '/statistics';
 
   static List<GetPage> routes = [
     // Auth Pages
@@ -137,6 +159,45 @@ class GetRoutes {
       name: editClient,
       page: () => const EditClientScreen(),
       binding: ClientsBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // employees Pages
+    GetPage(
+      name: employees,
+      page: () => const EmployeesListScreen(),
+      binding: EmployeesBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: addEmployee,
+      page: () => const CreateEmployeeScreen(),
+      binding: BindingsBuilder(() {
+        if (!Get.isRegistered<ServicesController>()) {
+          Get.put(
+            ServicesController(getServicesUseCase: Get.find()),
+            permanent: true,
+          );
+        }
+        Get.lazyPut(() => EmployeesController(
+              getEmployeesUseCase: Get.find(),
+              getEmployeeByIdUseCase: Get.find(),
+              createEmployeeUseCase: Get.find(),
+            ));
+      }),
+    ),
+
+    // statistics Pages
+    GetPage(
+      name: statistics,
+      page: () => const StatisticsDashboardScreen(),
+      binding: StatisticsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,

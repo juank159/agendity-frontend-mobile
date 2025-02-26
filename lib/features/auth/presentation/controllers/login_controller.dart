@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
+import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 import '../widgets/custom_dialog.dart';
@@ -112,8 +113,17 @@ class LoginController extends GetxController {
         (failure) => _handleFailure(failure),
         (userEntity) async {
           try {
+            // Guardar los datos del usuario
             await Get.find<LocalStorage>()
                 .saveUserData('userId', userEntity.id);
+
+            // Inicializar o actualizar UserInfoController
+            if (!Get.isRegistered<UserInfoController>()) {
+              Get.put(UserInfoController());
+            } else {
+              // Recargar la información si ya existe el controlador
+              await Get.find<UserInfoController>().loadUserInfo();
+            }
 
             clearInputs();
             Get.offAllNamed('/home');

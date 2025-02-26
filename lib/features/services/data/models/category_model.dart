@@ -22,12 +22,21 @@ class CategoryModel extends CategoryEntity {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'isActive': isActive,
-    };
+  Map<String, dynamic> toJson({bool isCreating = false}) {
+    if (isCreating) {
+      // Para crear una categoría nueva, solo enviamos name y description
+      return {
+        'name': name,
+        'description': description,
+      };
+    } else {
+      // Para actualizar, enviamos todos los campos
+      return {
+        'id': id,
+        'name': name,
+        'description': description,
+        'isActive': isActive,
+      };
+    }
   }
 }

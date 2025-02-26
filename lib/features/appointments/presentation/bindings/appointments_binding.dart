@@ -11,12 +11,16 @@ import 'package:login_signup/features/appointments/domain/usescases/update_appoi
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 // appointments_binding.dart
 class AppointmentsBinding implements Bindings {
   @override
   void dependencies() {
+    // Primero intentar registrar el EmployeesController si no existe
+    _ensureEmployeesController();
+
     // Data Sources
     Get.lazyPut<AppointmentsRemoteDataSource>(
       () => AppointmentsRemoteDataSource(
@@ -72,6 +76,18 @@ class AppointmentsBinding implements Bindings {
         Get.find<ClientsRemoteDataSource>(),
         Get.find<LocalStorage>(),
       ),
+      fenix: true, // Para que se recree si se elimina
     );
+  }
+
+  void _ensureEmployeesController() {
+    if (!Get.isRegistered<EmployeesController>()) {
+      try {
+        Get.put(EmployeesController(), permanent: false);
+        print('EmployeesController registrado desde AppointmentsBinding');
+      } catch (e) {
+        print('Error al registrar EmployeesController: $e');
+      }
+    }
   }
 }

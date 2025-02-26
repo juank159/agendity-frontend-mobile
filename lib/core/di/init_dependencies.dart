@@ -3,6 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/di/modules/appointments_module.dart';
 import 'package:login_signup/core/di/modules/employees_module.dart';
+import 'package:login_signup/core/di/modules/payment_module.dart';
+import 'package:login_signup/core/di/modules/statistics_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
@@ -77,6 +79,8 @@ class DependencyInjection {
       await ClientsModule.init();
       await AppointmentsModule.init();
       await EmployeesModule.init();
+      await PaymentModule.init();
+      await StatisticsModule.init();
 
       print('Features initialized successfully');
     } catch (e) {

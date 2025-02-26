@@ -58,6 +58,21 @@ class ServicesController extends GetxController {
     }
   }
 
+  // Future<void> loadServices() async {
+  //   try {
+  //     isLoading.value = true;
+  //     final result = await _getServicesUseCase.execute();
+  //     services.clear();
+  //     services.assignAll(result);
+  //     print('Servicios cargados: ${services.length}');
+  //   } catch (e) {
+  //     print('Error cargando servicios: $e');
+  //     services.clear();
+  //   } finally {
+  //     isLoading.value = false;
+  //   }
+  // }
+
   Future<void> loadServices() async {
     try {
       isLoading.value = true;
@@ -65,11 +80,27 @@ class ServicesController extends GetxController {
       services.clear();
       services.assignAll(result);
       print('Servicios cargados: ${services.length}');
+
+      // Notificar a los widgets que usan GetBuilder
+      update();
+
+      // Procesar los servicios para depuración
+      for (var service in services) {
+        print('Service: ${service.name}');
+        print('Category ID: ${service.categoryId}');
+        print('Category: ${service.category?.name}');
+        print('-------------------');
+      }
+
+      // Imprimir categorías agrupadas
+      final groups = getServicesGroupedByCategory();
+      print('Grouped Services: ${groups.keys.toList()}');
     } catch (e) {
       print('Error cargando servicios: $e');
       services.clear();
     } finally {
       isLoading.value = false;
+      update(); // Segunda actualización para asegurar que se refleje el cambio de isLoading
     }
   }
 
@@ -100,47 +131,6 @@ class ServicesController extends GetxController {
     print('Grouped Services: ${groupedServices.keys.toList()}');
     return groupedServices;
   }
-
-  // Map<String, List<ServiceEntity>> getServicesGroupedByCategory() {
-  //   final groupedServices = <String, List<ServiceEntity>>{};
-
-  //   // Obtener categorías únicas primero
-  //   final categories = services
-  //       .where((s) => s.category != null)
-  //       .map((s) => s.category!)
-  //       .toSet()
-  //       .toList();
-
-  //   // Agrupar servicios por categoría
-  //   for (var category in categories) {
-  //     final categoryServices =
-  //         services.where((s) => s.categoryId == category.id).toList();
-  //     groupedServices[category.name] = categoryServices;
-  //   }
-
-  //   // Manejar servicios sin categoría
-  //   final servicesWithoutCategory =
-  //       services.where((s) => s.category == null).toList();
-  //   if (servicesWithoutCategory.isNotEmpty) {
-  //     groupedServices['Sin categoría'] = servicesWithoutCategory;
-  //   }
-
-  //   return groupedServices;
-  // }
-
-  // Map<String, List<ServiceEntity>> getServicesGroupedByCategory() {
-  //   final groupedServices = <String, List<ServiceEntity>>{};
-
-  //   for (var service in services) {
-  //     final categoryName = service.category?.name ?? 'Sin categoría';
-  //     if (!groupedServices.containsKey(categoryName)) {
-  //       groupedServices[categoryName] = [];
-  //     }
-  //     groupedServices[categoryName]!.add(service);
-  //   }
-
-  //   return groupedServices;
-  // }
 
   void clearServices() {
     services.clear();

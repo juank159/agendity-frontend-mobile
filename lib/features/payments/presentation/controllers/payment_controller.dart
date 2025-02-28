@@ -15,6 +15,8 @@ class PaymentController extends GetxController {
   final Rx<PaymentMethod> selectedPaymentMethod = PaymentMethod.CASH.obs;
   final RxString transactionId = ''.obs;
 
+  final Rx<DateTime> paymentDate = DateTime.now().toLocal().obs;
+
   PaymentController({
     required this.createPaymentUseCase,
   });
@@ -23,6 +25,8 @@ class PaymentController extends GetxController {
     try {
       isLoading.value = true;
       error.value = '';
+
+      paymentDate.value = DateTime.now().toLocal();
 
       final payment = PaymentEntity(
         appointmentId: appointment.id,

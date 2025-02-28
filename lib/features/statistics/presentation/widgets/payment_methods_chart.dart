@@ -193,7 +193,7 @@ class PaymentMethodsChart extends StatelessWidget {
                       Padding(
                         padding: EdgeInsets.all(8.0),
                         child: Text(
-                          'Cant.',
+                          'Cant',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),

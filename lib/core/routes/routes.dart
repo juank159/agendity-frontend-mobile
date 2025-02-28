@@ -30,6 +30,8 @@ import 'package:login_signup/features/services/presentation/screen/services_scre
 import 'package:login_signup/features/services/presentation/screen/new_service_screen.dart';
 import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
+import 'package:login_signup/features/whatsapp/presentation/bindings/whatsapp_binding.dart';
+import 'package:login_signup/features/whatsapp/presentation/screens/whatsapp_config_screen.dart';
 
 class GetRoutes {
   // Auth Routes
@@ -66,6 +68,9 @@ class GetRoutes {
 
   // statistics Routes
   static const String statistics = '/statistics';
+
+  // config whatsapp Routes
+  static const String configWhatsapp = '/whatsapp-config';
 
   static List<GetPage> routes = [
     // Auth Pages
@@ -198,6 +203,17 @@ class GetRoutes {
       name: statistics,
       page: () => const StatisticsDashboardScreen(),
       binding: StatisticsBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // Config Whatsapp Pages
+    GetPage(
+      name: configWhatsapp,
+      page: () => const WhatsappConfigScreen(),
+      binding: WhatsappBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,

@@ -1,11 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:login_signup/core/di/modules/appointments_module.dart';
 import 'package:login_signup/core/di/modules/employees_module.dart';
 import 'package:login_signup/core/di/modules/payment_module.dart';
 import 'package:login_signup/core/di/modules/statistics_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
+import 'package:login_signup/core/di/modules/whatsapp_module.dart';
+import 'package:login_signup/core/network/network_info.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
 import '../config/api_config.dart';
@@ -48,6 +51,24 @@ class DependencyInjection {
     }
   }
 
+  // static Future<void> _initCore() async {
+  //   try {
+  //     final dio = ApiConfig.createDio(EnvConfig.apiUrl);
+  //     Get.put<Dio>(dio, permanent: true);
+  //     Get.put<FlutterSecureStorage>(const FlutterSecureStorage(),
+  //         permanent: true);
+
+  //     final localStorage = LocalStorage(Get.find<FlutterSecureStorage>());
+  //     await localStorage.init();
+  //     Get.put<LocalStorage>(localStorage, permanent: true);
+
+  //     print('Core dependencies initialized successfully');
+  //   } catch (e) {
+  //     print('Error initializing core dependencies: $e');
+  //     rethrow;
+  //   }
+  // }
+
   static Future<void> _initCore() async {
     try {
       final dio = ApiConfig.createDio(EnvConfig.apiUrl);
@@ -55,9 +76,19 @@ class DependencyInjection {
       Get.put<FlutterSecureStorage>(const FlutterSecureStorage(),
           permanent: true);
 
+      // Agregar esta línea para inicializar InternetConnectionChecker
+      Get.put<InternetConnectionChecker>(InternetConnectionChecker(),
+          permanent: true);
+
       final localStorage = LocalStorage(Get.find<FlutterSecureStorage>());
       await localStorage.init();
       Get.put<LocalStorage>(localStorage, permanent: true);
+
+      // Inicializar NetworkInfo
+      Get.put<NetworkInfo>(
+        NetworkInfoImpl(internetConnectionChecker: Get.find()),
+        permanent: true,
+      );
 
       print('Core dependencies initialized successfully');
     } catch (e) {
@@ -81,6 +112,7 @@ class DependencyInjection {
       await EmployeesModule.init();
       await PaymentModule.init();
       await StatisticsModule.init();
+      await WhatsappModule.init();
 
       print('Features initialized successfully');
     } catch (e) {

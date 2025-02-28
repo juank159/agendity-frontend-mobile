@@ -12,10 +12,10 @@ class CacheFailure extends Failure {
   CacheFailure({required super.message});
 }
 
-class NetworkFailure extends Failure {
-  NetworkFailure({required super.message});
-}
-
 class StorageFailure extends Failure {
   StorageFailure({required super.message});
+}
+
+class NetworkFailure extends Failure {
+  NetworkFailure({super.message = 'Error de conexión a internet'});
 }

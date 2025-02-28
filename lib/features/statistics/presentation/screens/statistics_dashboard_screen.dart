@@ -1,6 +1,7 @@
 // lib/features/statistics/presentation/screens/statistics_dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/features/statistics/presentation/widgets/expandable_section.dart';
 import '../controllers/statistics_controller.dart';
 import '../widgets/date_range_selector.dart';
 import '../widgets/overview_stats_card.dart';
@@ -98,38 +99,46 @@ class StatisticsDashboardScreen extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Métodos de pago
-                const StatsSectionHeader(
+                ExpandableSection(
                   title: 'Métodos de pago',
                   icon: Icons.payment,
+                  isExpanded: controller.isPaymentMethodsExpanded,
+                  onToggle: controller.togglePaymentMethods,
+                  child: PaymentMethodsChart(),
                 ),
-                PaymentMethodsChart(),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
                 // Rendimiento por profesional
-                const StatsSectionHeader(
+                ExpandableSection(
                   title: 'Rendimiento por profesional',
                   icon: Icons.person,
+                  isExpanded: controller.isProfessionalsExpanded,
+                  onToggle: controller.toggleProfessionals,
+                  child: ProfessionalsPerformanceWidget(),
                 ),
-                ProfessionalsPerformanceWidget(),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
                 // Rendimiento por servicio
-                const StatsSectionHeader(
+                ExpandableSection(
                   title: 'Rendimiento por servicio',
                   icon: Icons.spa,
+                  isExpanded: controller.isServicesExpanded,
+                  onToggle: controller.toggleServices,
+                  child: ServicesPerformanceWidget(),
                 ),
-                ServicesPerformanceWidget(),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
                 // Top clientes
-                const StatsSectionHeader(
+                ExpandableSection(
                   title: 'Mejores clientes',
                   icon: Icons.people,
+                  isExpanded: controller.isTopClientsExpanded,
+                  onToggle: controller.toggleTopClients,
+                  child: TopClientsWidget(),
                 ),
-                TopClientsWidget(),
 
                 const SizedBox(height: 32),
               ],

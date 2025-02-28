@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
@@ -504,17 +505,26 @@ class AppointmentDetailsDialog extends StatelessWidget {
                     // ),
 
                     // Botones de acción
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    // Botones de acción
+                    // Botones de acción
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TextButton(
+                        // Botón de cerrar siempre visible
+                        ElevatedButton(
                           onPressed: () => Navigator.pop(context),
                           child: const Text('Cerrar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black87,
+                          ),
                         ),
-                        const SizedBox(width: 8),
 
-                        // Mostrar botón de pago solo si no está pagado
+                        // Mostrar botones adicionales solo si no está pagado
                         if (!isPaid) ...[
+                          const SizedBox(height: 8),
+
+                          // Botón de registrar pago
                           ElevatedButton.icon(
                             onPressed: () async {
                               // Cerrar el diálogo actual
@@ -528,9 +538,15 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                 ),
                               );
 
-                              // Si el pago se realizó correctamente, actualizar la vista
+// Si el pago se realizó correctamente
                               if (result == true) {
-                                // Puedes notificar aquí para actualizar la vista si es necesario
+                                // Aquí puedes notificar a otros widgets o controladores que necesiten actualizarse
+                                // Por ejemplo, podrías actualizar la lista de citas:
+                                if (Get.isRegistered<
+                                    AppointmentsController>()) {
+                                  Get.find<AppointmentsController>()
+                                      .fetchAppointments();
+                                }
                               }
                             },
                             icon: const Icon(Icons.payment, size: 18),
@@ -540,23 +556,23 @@ class AppointmentDetailsDialog extends StatelessWidget {
                               foregroundColor: Colors.white,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                        ],
 
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Acción para editar cita
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(Icons.edit, size: 18),
-                          label: const Text('Editar cita'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isPaid
-                                ? Colors.green
-                                : Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
+                          const SizedBox(height: 8),
+
+                          // Botón de editar
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              // Acción para editar cita
+                              Navigator.pop(context);
+                            },
+                            icon: const Icon(Icons.edit, size: 18),
+                            label: const Text('Editar cita'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],

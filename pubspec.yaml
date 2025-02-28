@@ -49,6 +49,7 @@ dependencies:
   image: ^4.0.17
   http_parser: ^4.0.2
   fl_chart: ^0.65.0
+  internet_connection_checker: ^1.0.0
 
 dev_dependencies:
   flutter_test:

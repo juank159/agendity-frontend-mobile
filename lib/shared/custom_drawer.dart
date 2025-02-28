@@ -235,7 +235,7 @@ class CustomDrawer extends GetView<UserInfoController> {
               title: 'Ajustes',
               onTap: () {
                 Get.back();
-                // Get.to(() => const AjustesScreen());
+                Get.toNamed('/whatsapp-config');
               },
             ),
             _DrawerTile(

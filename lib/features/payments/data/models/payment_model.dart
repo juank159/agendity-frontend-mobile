@@ -38,15 +38,14 @@ class PaymentModel extends PaymentEntity {
       amount: double.parse(json['amount'].toString()),
       paymentMethod: _parsePaymentMethod(json['payment_method']),
       customPaymentMethodId: json['custom_payment_method_id'],
-      status: PaymentStatus
-          .COMPLETED, // Asumimos que es siempre completado al crearse
+      status: PaymentStatus.COMPLETED,
       transactionId: json['transaction_id'],
       paymentDetails: json['payment_details'],
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? DateTime.parse(json['created_at']).toLocal()
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
+          ? DateTime.parse(json['updated_at']).toLocal()
           : null,
     );
   }
@@ -59,7 +58,15 @@ class PaymentModel extends PaymentEntity {
       'custom_payment_method_id': customPaymentMethodId,
       'transaction_id': transactionId,
       'payment_details': paymentDetails,
+      // No incluyas created_at ni updated_at
     };
+  }
+
+  String getFormattedDate(DateTime date) {
+    if (date == null) return 'N/A';
+    // Convertir a local y formatear
+    final localDate = date.toLocal();
+    return '${localDate.day}/${localDate.month}/${localDate.year} - ${localDate.hour}:${localDate.minute.toString().padLeft(2, '0')}';
   }
 
   static PaymentMethod _parsePaymentMethod(String? method) {

@@ -1,0 +1,12 @@
+// lib/core/usecases/usecase.dart
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+
+abstract class UseCase<Type, Params> {
+  Future<Either<Failure, Type>> call(Params params);
+}
+
+class NoParams {
+  @override
+  String toString() => 'No parameters';
+}

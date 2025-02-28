@@ -31,6 +31,8 @@ class StatisticsController extends GetxController {
     locale: 'es_CO',
     symbol: '\$',
     decimalDigits: 0,
+    customPattern:
+        '\$ #,###', // Define un patrón personalizado con el $ a la izquierda
   );
 
   // Para formatear porcentajes
@@ -74,6 +76,11 @@ class StatisticsController extends GetxController {
   final RxString errorClients = ''.obs;
   final RxString errorTopClients = ''.obs;
 
+  final RxBool isPaymentMethodsExpanded = false.obs;
+  final RxBool isProfessionalsExpanded = false.obs;
+  final RxBool isServicesExpanded = false.obs;
+  final RxBool isTopClientsExpanded = false.obs;
+
   StatisticsController({
     required this.getPaymentStatsUseCase,
     required this.getPaymentComparisonUseCase,
@@ -84,9 +91,36 @@ class StatisticsController extends GetxController {
     required this.getTopClientsUseCase,
   });
 
+  void _initializeDefaultDateRange() {
+    // Obtener la fecha actual
+    final DateTime now = DateTime.now();
+
+    // Crear el inicio del día actual (00:00:00)
+    final DateTime startOfToday = DateTime(now.year, now.month, now.day);
+
+    // Crear el final del día actual (23:59:59)
+    final DateTime endOfToday =
+        DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    // Establecer el rango de fecha predeterminado como el día actual
+    selectedDateRange.value = DateTimeRange(
+      start: startOfToday,
+      end: endOfToday,
+    );
+
+    // Inicialmente cargar datos para hoy
+    loadOverviewData();
+  }
+
   @override
   void onInit() {
     super.onInit();
+    // Configurar el rango de fechas por defecto (día actual)
+    final now = DateTime.now();
+    selectedDateRange.value = DateTimeRange(
+      start: DateTime(now.year, now.month, now.day),
+      end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+    );
     loadOverviewData();
   }
 
@@ -230,7 +264,10 @@ class StatisticsController extends GetxController {
 
   // Métodos de utilidad para formatear datos
   String formatCurrency(double value) {
-    return currencyFormat.format(value);
+    // Crear un formato sin el símbolo '$'
+    final formatWithoutSymbol = NumberFormat('#,###', 'es_CO');
+    // Retornar el formato con el símbolo $ a la izquierda usando interpolación
+    return '\$ ${formatWithoutSymbol.format(value)}';
   }
 
   String formatPercent(double value) {
@@ -266,5 +303,34 @@ class StatisticsController extends GetxController {
   // Método para refrescar todos los datos
   void refreshAllStats() {
     loadAllStats();
+  }
+
+  // Métodos para alternar la visibilidad
+  void togglePaymentMethods() {
+    isPaymentMethodsExpanded.value = !isPaymentMethodsExpanded.value;
+    if (isPaymentMethodsExpanded.value && paymentMethodStats.isEmpty) {
+      loadPaymentMethodStats();
+    }
+  }
+
+  void toggleProfessionals() {
+    isProfessionalsExpanded.value = !isProfessionalsExpanded.value;
+    if (isProfessionalsExpanded.value && professionalStats.isEmpty) {
+      loadProfessionalStats();
+    }
+  }
+
+  void toggleServices() {
+    isServicesExpanded.value = !isServicesExpanded.value;
+    if (isServicesExpanded.value && serviceStats.isEmpty) {
+      loadServiceStats();
+    }
+  }
+
+  void toggleTopClients() {
+    isTopClientsExpanded.value = !isTopClientsExpanded.value;
+    if (isTopClientsExpanded.value && topClients.isEmpty) {
+      loadTopClients();
+    }
   }
 }

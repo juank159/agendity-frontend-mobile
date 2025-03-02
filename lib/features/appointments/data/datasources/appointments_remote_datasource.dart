@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:login_signup/core/errors/exceptions.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
+import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class AppointmentsRemoteDataSource {
@@ -265,5 +267,72 @@ class AppointmentsRemoteDataSource {
       print('Error getting appointment: $e');
       rethrow;
     }
+  }
+
+  Future<List<AppointmentEntity>> getUpcomingAppointments() async {
+    try {
+      final token = await localStorage.getToken();
+
+      // Obtener la fecha actual y la fecha de mañana para filtrar
+      final now = DateTime.now();
+      final tomorrow = now.add(Duration(days: 1));
+
+      // Formatear las fechas como cadenas ISO8601
+      final startDateStr = now.toIso8601String();
+      final endDateStr = tomorrow.toIso8601String();
+
+      final response = await dio.get(
+        '/appointments',
+        queryParameters: {
+          'startDate': startDateStr,
+          'endDate': endDateStr,
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> appointmentsJson = response.data;
+        return appointmentsJson
+            .map((json) => AppointmentEntity(
+                  id: json['id'],
+                  title: json['title'] ?? 'Cita',
+                  startTime: DateTime.parse(json['date']),
+                  endTime: DateTime.parse(json['date'])
+                      .add(Duration(hours: 1)), // Estimar hora de fin
+                  clientName: json['client']?['name'] ?? 'Cliente',
+                  serviceTypes: _extractServiceNames(json),
+                  status: json['status'] ?? 'PENDING',
+                  totalPrice: json['total_price']?.toString() ?? '0',
+                  paymentStatus: json['payment_status'],
+                  notes: json['notes'],
+                  colors: null, // Ajustar según los datos disponibles
+                  ownerId: json['ownerId'],
+                  professionalId: json['professionalId'],
+                ))
+            .toList();
+      } else {
+        throw ServerException(
+          message: 'Failed to load upcoming appointments',
+          statusCode: response.statusCode ?? 0,
+        );
+      }
+    } catch (e) {
+      throw ServerException(
+        message: 'Error retrieving upcoming appointments: ${e.toString()}',
+      );
+    }
+  }
+
+// Método auxiliar para extraer nombres de servicios
+  List<String> _extractServiceNames(Map<String, dynamic> json) {
+    if (json['services'] != null && json['services'] is List) {
+      return (json['services'] as List)
+          .map((service) => service['name']?.toString() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
+    }
+    return [];
   }
 }

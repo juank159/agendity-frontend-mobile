@@ -20,7 +20,7 @@ class WhatsappModule {
 
     if (!Get.isRegistered<NetworkInfo>()) {
       // Si no está registrado, regístralo
-      Get.put(NetworkInfoImpl(internetConnectionChecker: Get.find()));
+      Get.put(NetworkInfoImpl(connectionChecker: Get.find()));
     }
 
     // Registrar data source

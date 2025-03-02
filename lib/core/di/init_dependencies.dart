@@ -51,24 +51,6 @@ class DependencyInjection {
     }
   }
 
-  // static Future<void> _initCore() async {
-  //   try {
-  //     final dio = ApiConfig.createDio(EnvConfig.apiUrl);
-  //     Get.put<Dio>(dio, permanent: true);
-  //     Get.put<FlutterSecureStorage>(const FlutterSecureStorage(),
-  //         permanent: true);
-
-  //     final localStorage = LocalStorage(Get.find<FlutterSecureStorage>());
-  //     await localStorage.init();
-  //     Get.put<LocalStorage>(localStorage, permanent: true);
-
-  //     print('Core dependencies initialized successfully');
-  //   } catch (e) {
-  //     print('Error initializing core dependencies: $e');
-  //     rethrow;
-  //   }
-  // }
-
   static Future<void> _initCore() async {
     try {
       final dio = ApiConfig.createDio(EnvConfig.apiUrl);
@@ -86,7 +68,7 @@ class DependencyInjection {
 
       // Inicializar NetworkInfo
       Get.put<NetworkInfo>(
-        NetworkInfoImpl(internetConnectionChecker: Get.find()),
+        NetworkInfoImpl(connectionChecker: Get.find()),
         permanent: true,
       );
 

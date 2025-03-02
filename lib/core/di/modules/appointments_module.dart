@@ -22,7 +22,7 @@ class AppointmentsModule {
       dio: Get.find(),
       localStorage: Get.find(),
     );
-    final repository = AppointmentsRepositoryImpl(remoteDataSource);
+    final repository = AppointmentsRepositoryImpl(remoteDataSource, Get.find());
 
     // Registrar casos de uso
     Get.put(GetAppointmentsUseCase(repository));

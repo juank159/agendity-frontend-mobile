@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/features/appointments/presentation/bindings/appointment_reminder_binding.dart';
 
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
 import 'package:login_signup/features/appointments/presentation/view/appointments_view.dart';
+import 'package:login_signup/features/appointments/presentation/view/upcoming_appointments_screen.dart';
 
 import 'package:login_signup/features/auth/presentation/bindings/login_binding.dart';
 import 'package:login_signup/features/auth/presentation/screen/screen.dart';
@@ -71,6 +73,9 @@ class GetRoutes {
 
   // config whatsapp Routes
   static const String configWhatsapp = '/whatsapp-config';
+
+  // notifications Routes
+  static const String notifications = '/notifications';
 
   static List<GetPage> routes = [
     // Auth Pages
@@ -214,6 +219,17 @@ class GetRoutes {
       name: configWhatsapp,
       page: () => const WhatsappConfigScreen(),
       binding: WhatsappBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // Notifications Pages
+    GetPage(
+      name: notifications,
+      page: () => const UpcomingAppointmentsScreen(),
+      binding: AppointmentReminderBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,

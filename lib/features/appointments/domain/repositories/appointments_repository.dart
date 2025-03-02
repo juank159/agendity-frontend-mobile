@@ -1,3 +1,5 @@
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 
 abstract class AppointmentsRepository {
@@ -8,4 +10,5 @@ abstract class AppointmentsRepository {
   Future<AppointmentEntity> updateAppointment(AppointmentEntity appointment);
   Future<void> deleteAppointment(String id);
   Future<AppointmentEntity> getAppointmentById(String id);
+  Future<Either<Failure, List<AppointmentEntity>>> getUpcomingAppointments();
 }

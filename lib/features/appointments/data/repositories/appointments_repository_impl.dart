@@ -1,4 +1,8 @@
+import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
+import 'package:login_signup/core/errors/exceptions.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/network/network_info.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
@@ -6,8 +10,12 @@ import 'package:login_signup/features/appointments/domain/repositories/appointme
 
 class AppointmentsRepositoryImpl implements AppointmentsRepository {
   final AppointmentsRemoteDataSource remoteDataSource;
+  final NetworkInfo networkInfo;
 
-  AppointmentsRepositoryImpl(this.remoteDataSource);
+  AppointmentsRepositoryImpl(
+    this.remoteDataSource,
+    this.networkInfo,
+  );
 
   @override
   Future<List<AppointmentEntity>> getAppointments({
@@ -114,6 +122,23 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
       );
     } catch (e) {
       throw AppointmentException(message: e.toString());
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<AppointmentEntity>>>
+      getUpcomingAppointments() async {
+    if (await networkInfo.isConnected) {
+      try {
+        final appointments = await remoteDataSource.getUpcomingAppointments();
+        return Right(appointments);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(message: e.message));
+      } catch (e) {
+        return Left(ServerFailure(message: e.toString()));
+      }
+    } else {
+      return Left(NetworkFailure());
     }
   }
 }

@@ -54,6 +54,12 @@ class AppointmentsView extends GetView<AppointmentsController> {
           },
           tooltip: 'Ir a hoy',
         ),
+        IconButton(
+          onPressed: () => Get.toNamed('/notifications'),
+          // ignore: prefer_const_constructors
+          icon: Icon(Icons.notifications),
+          tooltip: 'Notificaciones',
+        ),
       ],
     );
   }

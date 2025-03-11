@@ -18,7 +18,7 @@ class WhatsappSetupGuide extends StatelessWidget {
                     color: Theme.of(context).primaryColor),
                 const SizedBox(width: 8),
                 const Text(
-                  'Pasos para configurar CallMeBot:',
+                  'Pasos para configurar notificaciones:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -30,12 +30,12 @@ class WhatsappSetupGuide extends StatelessWidget {
             _buildStep(
               number: 1,
               text:
-                  'Guarda el contacto +34 621 64 49 18 en tu teléfono como "CallMeBot"',
+                  'Guarda el contacto +34 621 64 49 18 en tu teléfono como "notifcationes de WhatsApp"',
             ),
             _buildStep(
               number: 2,
               text:
-                  'Envía el mensaje "I allow callmebot to send me messages" a ese número por WhatsApp',
+                  'Envía el mensaje "Autorizo callmebot a enviarme mensajes" a ese número por WhatsApp si las comillas',
             ),
             _buildStep(
               number: 3,
@@ -44,12 +44,11 @@ class WhatsappSetupGuide extends StatelessWidget {
             _buildStep(
               number: 4,
               text:
-                  'Ingresa tu número de teléfono (con código de país, sin +) y API Key en este formulario',
+                  'Ingresa tu número de teléfono (sin código de país, sin +) y API Key en este formulario',
             ),
             _buildStep(
               number: 5,
-              text:
-                  'Haz clic en "Enviar mensaje de prueba" para verificar la configuración',
+              text: 'Haz clic en "Guardar configuracion"',
             ),
           ],
         ),

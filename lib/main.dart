@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/route_manager.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -22,7 +23,7 @@ Future<void> _initializeApp() async {
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-
+    await Firebase.initializeApp();
     // Configurar zona horaria por defecto
     await initializeDateFormatting('es', null);
 

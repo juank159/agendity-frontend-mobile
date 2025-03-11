@@ -1,17 +1,89 @@
-# login_signup
+📱 Login & Signup App
 
-A new Flutter project.
+Este es un proyecto de autenticación en Flutter con un backend desarrollado en Node.js y NestJS. Implementa autenticación con correo y contraseña, inicio de sesión con Google, almacenamiento seguro y manejo de notificaciones.
 
-## Getting Started
+🚀 Tecnologías Utilizadas
 
-This project is a starting point for a Flutter application.
+🖥️ Backend
 
-A few resources to get you started if this is your first Flutter project:
+Node.js con NestJS
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Base de datos: PostgreSQL (con Type ORM)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-# agendity-frontend-movile
+Autenticación con JWT
+
+📱 Frontend (Flutter)
+
+Flutter 3.5.4
+
+GetX para manejo de estado
+
+Dio para peticiones HTTP
+
+Firebase para autenticación y notificaciones push
+
+Flutter Secure Storage para almacenamiento seguro
+
+Syncfusion para calendario y gestión de eventos
+
+URL Launcher para abrir WhatsApp desde la app
+
+📂 Estructura del Proyecto
+
+login_signup/
+│-- lib/
+│ ├── main.dart # Punto de entrada de la app
+│ ├── screens/ # Pantallas principales de la app
+│ ├── services/ # Lógica de conexión con el backend
+│ ├── utils/ # Funciones y configuraciones auxiliares
+│ ├── widgets/ # Componentes reutilizables
+│-- assets/
+│ ├── images/ # Imágenes y logos
+│ ├── icon.png # Ícono de la aplicación
+│-- .env # Variables de entorno
+│-- pubspec.yaml # Dependencias y configuración de Flutter
+
+⚙️ Instalación
+
+1️⃣ Configurar el Backend
+
+Requisitos: Tener instalado Node.js y PostgreSQL
+
+git clone https://github.com/tuusuario/backend.git
+cd backend
+npm install
+cp .env.example .env # Configura tus variables de entorno
+npx prisma migrate dev
+npm run start:dev
+
+2️⃣ Configurar el Frontend
+
+Requisitos: Tener instalado Flutter 3.5.4
+
+git clone https://github.com/tuusuario/login_signup.git
+cd login_signup
+flutter pub get
+cp .env.example .env # Configura las variables de entorno
+flutter run
+
+🔔 Funcionalidades
+
+✅ Registro e inicio de sesión con correo y contraseña✅ Autenticación con Google✅ Manejo de tokens JWT✅ Almacenamiento seguro con flutter_secure_storage✅ Notificaciones push con Firebase Cloud Messaging✅ Integración con WhatsApp para recordatorios✅ Sincronización de eventos con Syncfusion Calendar
+
+📜 Dependencias Principales
+
+dependencies:
+flutter:
+sdk: flutter
+get: ^4.6.6
+dio: ^5.7.0
+firebase_core: ^2.15.1
+firebase_auth: ^4.7.3
+firebase_messaging: ^14.6.7
+flutter_secure_storage: ^9.2.2
+syncfusion_flutter_calendar: ^28.2.9
+url_launcher: ^6.3.1
+
+📩 Contacto
+
+Si tienes dudas o sugerencias, ¡contáctame en tuemail@example.com!

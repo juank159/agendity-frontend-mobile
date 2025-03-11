@@ -26,7 +26,7 @@ class RegisterRemoteDataSourceImpl implements RegisterRemoteDataSource {
   }) async {
     try {
       final response = await dio.post(
-        '/auth/register',
+        '/auth/register/owner',
         data: {
           'name': name,
           'lastname': lastname,

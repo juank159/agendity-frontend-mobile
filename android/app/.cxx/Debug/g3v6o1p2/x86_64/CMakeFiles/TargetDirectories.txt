@@ -1,0 +1,2 @@
+/Users/mac/Documents/Curso Flutter/login_signup/android/app/.cxx/Debug/g3v6o1p2/x86_64/CMakeFiles/edit_cache.dir
+/Users/mac/Documents/Curso Flutter/login_signup/android/app/.cxx/Debug/g3v6o1p2/x86_64/CMakeFiles/rebuild_cache.dir

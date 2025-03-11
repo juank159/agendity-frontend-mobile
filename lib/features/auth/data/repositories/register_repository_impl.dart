@@ -1,18 +1,19 @@
+// lib/features/auth/data/repositories/register_repository_impl.dart
 import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/exceptions.dart';
 import 'package:login_signup/core/errors/failures.dart';
-import 'package:login_signup/features/auth/data/datasources/register_local_datasource.dart';
-import 'package:login_signup/features/auth/data/datasources/register_remote_datasource.dart';
-import '../../domain/entities/user_entity.dart';
-
-import '../../domain/repositories/register_repository.dart';
+import 'package:login_signup/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:login_signup/features/auth/domain/entities/user_entity.dart';
+import 'package:login_signup/features/auth/domain/repositories/register_repository.dart';
+import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class RegisterRepositoryImpl implements RegisterRepository {
-  final RegisterRemoteDataSource remoteDataSource;
-  final RegisterLocalDataSource localDataSource;
+  final AuthRemoteDataSource remoteDataSource;
+  final LocalStorage localStorage;
 
   RegisterRepositoryImpl({
     required this.remoteDataSource,
-    required this.localDataSource,
+    required this.localStorage,
   });
 
   @override
@@ -24,7 +25,8 @@ class RegisterRepositoryImpl implements RegisterRepository {
     required String password,
   }) async {
     try {
-      final (registerModel, token) = await remoteDataSource.register(
+      // Llamar al datasource para registrar al usuario
+      final userModel = await remoteDataSource.register(
         name: name,
         lastname: lastname,
         email: email,
@@ -32,26 +34,12 @@ class RegisterRepositoryImpl implements RegisterRepository {
         password: password,
       );
 
-      await localDataSource.saveToken(token);
-      final user = UserEntity(
-        id: registerModel.id,
-        name: registerModel.name,
-        lastname: registerModel.lastname,
-        email: registerModel.email,
-        phone: registerModel.phone,
-      );
-      return Right(user);
+      // El token ya se guardó en el datasource, así que solo devolvemos el usuario
+      return Right(userModel);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  @override
-  Future<void> saveToken(String token) async {
-    try {
-      await localDataSource.saveToken(token);
-    } catch (e) {
-      throw StorageFailure(message: 'Error al guardar el token');
     }
   }
 }

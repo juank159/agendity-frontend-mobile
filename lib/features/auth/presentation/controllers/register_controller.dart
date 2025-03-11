@@ -1,3 +1,4 @@
+// lib/features/auth/presentation/controllers/register_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../domain/usecases/register_usecase.dart';
@@ -5,15 +6,27 @@ import '../../domain/usecases/register_usecase.dart';
 class RegisterController extends GetxController {
   final RegisterUseCase registerUseCase;
 
+  // Controllers de texto
   final nameController = TextEditingController();
   final lastnameController = TextEditingController();
   final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  // Estado de carga
   final isLoading = false.obs;
 
   RegisterController({required this.registerUseCase});
+
+  @override
+  void onClose() {
+    nameController.dispose();
+    lastnameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.onClose();
+  }
 
   bool validateInput() {
     if (nameController.text.isEmpty) {
@@ -69,29 +82,42 @@ class RegisterController extends GetxController {
 
     isLoading.value = true;
 
-    final result = await registerUseCase.call(
-      name: nameController.text.trim(),
-      lastname: lastnameController.text.trim(),
-      email: emailController.text.trim(),
-      phone: phoneController.text.trim(),
-      password: passwordController.text,
-    );
+    try {
+      final result = await registerUseCase(
+        name: nameController.text.trim(),
+        lastname: lastnameController.text.trim(),
+        email: emailController.text.trim(),
+        phone: phoneController.text.trim(),
+        password: passwordController.text,
+      );
 
-    result.fold(
-      (failure) {
-        _showSnackbar(
-          title: 'Error',
-          message: failure.message,
-          color: Colors.red,
-        );
-      },
-      (user) {
-        clearInputs();
-        Get.offAllNamed('/login');
-      },
-    );
-
-    isLoading.value = false;
+      result.fold(
+        (failure) {
+          _showSnackbar(
+            title: 'Error',
+            message: failure.message,
+            color: Colors.red,
+          );
+        },
+        (user) {
+          _showSnackbar(
+            title: 'Éxito',
+            message: 'Registro exitoso. Ahora puede iniciar sesión.',
+            color: Colors.green,
+          );
+          clearInputs();
+          Get.offAllNamed('/login');
+        },
+      );
+    } catch (e) {
+      _showSnackbar(
+        title: 'Error',
+        message: e.toString(),
+        color: Colors.red,
+      );
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   void clearInputs() {
@@ -108,7 +134,6 @@ class RegisterController extends GetxController {
     required Color color,
   }) {
     Get.snackbar(
-      duration: const Duration(seconds: 6),
       title,
       message,
       snackPosition: SnackPosition.TOP,
@@ -116,6 +141,7 @@ class RegisterController extends GetxController {
       colorText: Colors.white,
       margin: const EdgeInsets.all(15),
       borderRadius: 8,
+      duration: const Duration(seconds: 6),
       icon: Icon(
         color == Colors.green ? Icons.check_circle : Icons.error,
         color: Colors.white,

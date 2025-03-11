@@ -1,7 +1,8 @@
+// lib/features/auth/domain/usecases/register_usecase.dart
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
-import '../entities/user_entity.dart';
-import '../repositories/register_repository.dart';
+import 'package:login_signup/features/auth/domain/entities/user_entity.dart';
+import 'package:login_signup/features/auth/domain/repositories/register_repository.dart';
 
 class RegisterUseCase {
   final RegisterRepository repository;

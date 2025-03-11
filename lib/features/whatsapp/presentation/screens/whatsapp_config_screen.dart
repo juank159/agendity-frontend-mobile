@@ -1,4 +1,3 @@
-// lib/features/whatsapp/presentation/screens/whatsapp_config_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/whatsapp_controller.dart';
@@ -25,7 +24,7 @@ class WhatsappConfigScreen extends GetView<WhatsappController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Configuración de CallMeBot para WhatsApp',
+                  'Configuración de notificaciones para WhatsApp',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -38,12 +37,19 @@ class WhatsappConfigScreen extends GetView<WhatsappController> {
                 ),
                 const SizedBox(height: 24),
 
-                // Guía de configuración
-                const WhatsappSetupGuide(),
-                const SizedBox(height: 24),
+                // Si no hay configuración o estamos editando, mostrar la guía
+                if (!controller.hasExistingConfig.value ||
+                    controller.isEditing.value) ...[
+                  const WhatsappSetupGuide(),
+                  const SizedBox(height: 24),
+                ],
 
-                // Formulario de configuración
-                _buildConfigForm(context),
+                // Mostrar el estado actual o el formulario
+                controller.hasExistingConfig.value &&
+                        !controller.isEditing.value
+                    ? _buildConfigInfo(context)
+                    : _buildConfigForm(context),
+
                 const SizedBox(height: 24),
 
                 // Mensajes de error o éxito
@@ -60,6 +66,93 @@ class WhatsappConfigScreen extends GetView<WhatsappController> {
     );
   }
 
+  // Widget para mostrar la información de configuración existente
+  Widget _buildConfigInfo(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Configuración Actual',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow(
+              icon: Icons.phone,
+              label: 'Número de WhatsApp:',
+              value: '+57 ${controller.phoneNumber.value}',
+            ),
+            const Divider(),
+            _buildInfoRow(
+              icon: Icons.key,
+              label: 'API Key:',
+              value: controller.apiKey.value,
+              obscureText: true,
+            ),
+            const Divider(),
+            _buildInfoRow(
+              icon: Icons.notifications,
+              label: 'Estado:',
+              value:
+                  controller.isEnabled.value ? 'Habilitado' : 'Deshabilitado',
+              valueColor:
+                  controller.isEnabled.value ? Colors.green : Colors.red,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget auxiliar para mostrar filas de información
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    bool obscureText = false,
+    Color? valueColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  obscureText ? '••••••' : value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: valueColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Formulario de configuración
   Widget _buildConfigForm(BuildContext context) {
     return Form(
       child: Column(
@@ -68,10 +161,11 @@ class WhatsappConfigScreen extends GetView<WhatsappController> {
           TextFormField(
             initialValue: controller.phoneNumber.value,
             decoration: const InputDecoration(
-              labelText: 'Número de WhatsApp con código de país',
-              hintText: 'Ejemplo: 573138448436',
+              labelText: 'Número de WhatsApp (sin código de país)',
+              hintText: 'Ejemplo: 3138448436',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.phone),
+              prefixText: '+57 ',
             ),
             keyboardType: TextInputType.phone,
             onChanged: (value) => controller.phoneNumber.value = value,
@@ -105,11 +199,6 @@ class WhatsappConfigScreen extends GetView<WhatsappController> {
     return Obx(() {
       if (controller.errorMessage.value != null &&
           controller.errorMessage.value!.isNotEmpty) {
-        String displayMessage = controller.errorMessage.value!;
-        if (displayMessage.contains('not found for owner')) {
-          displayMessage =
-              'Debes guardar la configuración antes de enviar un mensaje de prueba';
-        }
         return Container(
           padding: const EdgeInsets.all(8),
           color: Colors.red.shade50,
@@ -151,71 +240,77 @@ class WhatsappConfigScreen extends GetView<WhatsappController> {
     });
   }
 
-  // Widget _buildActionButtons() {
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(vertical: 8.0),
-  //     child: Column(
-  //       // Cambiado de Row a Column para pantallas pequeñas
-  //       children: [
-  //         SizedBox(
-  //           width: double.infinity,
-  //           child: CustomButton(
-  //             onPressed: controller.saveConfig,
-  //             text: 'Guardar configuración',
-  //             icon: Icons.save,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 12),
-  //         SizedBox(
-  //           width: double.infinity,
-  //           child: CustomButton(
-  //             onPressed: controller.sendTestMessage,
-  //             text: 'Enviar mensaje de prueba',
-  //             icon: Icons.send,
-  //             color: Colors.green,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
   Widget _buildActionButtons() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: CustomButton(
-              onPressed: controller.saveConfig,
-              text: 'Guardar configuración',
-              icon: Icons.save,
+          if (controller.hasExistingConfig.value &&
+              !controller.isEditing.value) ...[
+            // Botones para configuración existente
+            Row(
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    onPressed: controller.enableEditing,
+                    text: 'Editar configuración',
+                    icon: Icons.edit,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: CustomButton(
+                    onPressed: controller.sendTestMessage,
+                    text: 'Enviar prueba',
+                    icon: Icons.send,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Obx(() {
-            // Verificar si los campos necesarios están llenos
-            bool canTest = controller.phoneNumber.value.isNotEmpty &&
-                controller.apiKey.value.isNotEmpty;
-
-            return SizedBox(
+            const SizedBox(height: 12),
+            SizedBox(
               width: double.infinity,
               child: CustomButton(
-                // Proporcionamos una función que no hace nada cuando está deshabilitado
-                onPressed: canTest
-                    ? () {
-                        controller.sendTestMessage();
-                      }
-                    : () {/* No hacer nada */},
-                text: 'Enviar mensaje de prueba',
-                icon: Icons.send,
-                color: canTest
-                    ? Colors.green
-                    : Colors.grey, // Cambiar color si está deshabilitado
+                onPressed: () {
+                  controller.isEnabled.value = !controller.isEnabled.value;
+                  controller.saveConfig();
+                },
+                text: controller.isEnabled.value
+                    ? 'Deshabilitar WhatsApp'
+                    : 'Habilitar WhatsApp',
+                icon: controller.isEnabled.value
+                    ? Icons.notifications_off
+                    : Icons.notifications_active,
+                color:
+                    controller.isEnabled.value ? Colors.orange : Colors.green,
               ),
-            );
-          }),
+            ),
+          ] else ...[
+            // Botones para nueva configuración o edición
+            Row(
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    onPressed: controller.saveConfig,
+                    text: 'Guardar configuración',
+                    icon: Icons.save,
+                  ),
+                ),
+                if (controller.isEditing.value) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: CustomButton(
+                      onPressed: controller.cancelEditing,
+                      text: 'Cancelar',
+                      icon: Icons.cancel,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
         ],
       ),
     );

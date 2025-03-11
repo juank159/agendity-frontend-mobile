@@ -5,6 +5,7 @@ import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:login_signup/core/di/modules/appointments_module.dart';
 import 'package:login_signup/core/di/modules/employees_module.dart';
 import 'package:login_signup/core/di/modules/payment_module.dart';
+import 'package:login_signup/core/di/modules/register_module.dart';
 import 'package:login_signup/core/di/modules/statistics_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
 import 'package:login_signup/core/di/modules/whatsapp_module.dart';
@@ -86,6 +87,7 @@ class DependencyInjection {
       }
 
       await AuthModule.init();
+      await RegisterModule.init();
       await UserModule.init();
       await ServicesModule.init();
       await CategoriesModule.init();

@@ -102,7 +102,6 @@
 //   }
 // }
 
-// lib/core/di/modules/auth_module.dart
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
@@ -258,6 +257,7 @@ class AuthModule {
         );
       }
 
+      // Register Controller
       if (!Get.isRegistered<RegisterController>()) {
         Get.put<RegisterController>(
           RegisterController(registerUseCase: Get.find()),

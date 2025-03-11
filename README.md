@@ -87,7 +87,7 @@ agendity-mobile/
 1. **Clonar el repositorio**
 
    ```bash
-   git clone https://github.com/tuusuario/agendity-mobile.git
+   git clone https://github.com/juank159/agendity-frontend-mobile
    cd agendity-mobile
    ```
 
@@ -193,12 +193,12 @@ Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](L
 
 Si tienes preguntas o sugerencias, no dudes en contactarnos:
 
-- Email: contacto@tuempresa.com
+- Email: agenditygroup@gmail.com
 - Twitter: [@agendityapp](https://twitter.com/agendityapp)
 - Sitio web: [www.agendity.com](https://www.agendity.com)
 
 ---
 
 <p align="center">
-  Desarrollado con ❤️ por <a href="https://github.com/juank159">Tu Nombre</a>
+  Desarrollado con ❤️ por <a href="https://github.com/juank159">Juan Carlos Pabon</a>
 </p>

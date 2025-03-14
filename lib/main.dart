@@ -8,34 +8,28 @@ import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/di/init_dependencies.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/bindings/initial_binding.dart';
-
-Future<void> _initializeApp() async {
-  try {
-    await EnvConfig.init();
-    EnvConfig.validateEnv();
-    await DependencyInjection.init();
-  } catch (e) {
-    debugPrint('Error en la inicialización: $e');
-    rethrow;
-  }
-}
+import 'package:login_signup/firebase_options.dart';
 
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp();
-    // Configurar zona horaria por defecto
-    await initializeDateFormatting('es', null);
 
-    // Configurar la zona horaria local
-    // timeago.setLocaleMessages('es', timeago.EsMessages());
+    // Inicializa Firebase con las opciones correctas para la plataforma
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // El resto de tu código de inicialización
+    await EnvConfig.init();
+    EnvConfig.validateEnv();
+    await initializeDateFormatting('es', null);
+    await DependencyInjection.init();
 
     debugPrint('Rutas registradas:');
     GetRoutes.routes.forEach((route) {
       debugPrint('Ruta: ${route.name}, Page: ${route.page}');
     });
 
-    await _initializeApp();
     runApp(const MyApp());
   } catch (e) {
     debugPrint('Error inicializando la aplicación: $e');

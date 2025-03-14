@@ -94,4 +94,121 @@ class AuthRemoteDataSource {
       throw ServerException(message: e.toString());
     }
   }
+
+  Future<void> requestVerificationCode({required String email}) async {
+    try {
+      final response = await _dio.post(
+        '/auth/verify/request-code',
+        data: {'email': email},
+      );
+
+      if (response.statusCode! < 200 || response.statusCode! >= 300) {
+        throw ServerException(
+          message: response.data['message'] ?? 'Error al solicitar código',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is DioException) {
+        throw ServerException(
+          message: e.response?.data?['message'] ?? 'Error de conexión',
+          statusCode: e.response?.statusCode,
+        );
+      }
+      throw ServerException(message: e.toString());
+    }
+  }
+
+  Future<bool> verifyEmail(
+      {required String email, required String code}) async {
+    try {
+      final response = await _dio.post(
+        '/auth/verify/email',
+        data: {
+          'email': email,
+          'code': code,
+        },
+      );
+
+      // Considera cualquier código 2xx como éxito
+      if (response.statusCode! >= 200 && response.statusCode! < 300) {
+        return response.data['is_verified'] ?? false;
+      }
+
+      throw ServerException(
+        message: response.data['message'] ?? 'Error de verificación',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is DioException) {
+        // Solo manejar errores reales (4xx, 5xx)
+        if (e.response?.statusCode != null && e.response!.statusCode! >= 400) {
+          throw ServerException(
+            message: e.response?.data?['message'] ?? 'Error de conexión',
+            statusCode: e.response?.statusCode,
+          );
+        }
+      }
+      throw ServerException(message: e.toString());
+    }
+  }
+
+  Future<void> requestPasswordReset({required String email}) async {
+    try {
+      final response = await _dio.post(
+        '/auth/forgot-password',
+        data: {'email': email},
+      );
+
+      if (response.statusCode! < 200 || response.statusCode! >= 300) {
+        throw ServerException(
+          message:
+              response.data['message'] ?? 'Error al solicitar recuperación',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is DioException) {
+        throw ServerException(
+          message: e.response?.data?['message'] ?? 'Error de conexión',
+          statusCode: e.response?.statusCode,
+        );
+      }
+      throw ServerException(message: e.toString());
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/auth/reset-password',
+        data: {
+          'email': email,
+          'code': code,
+          'new_password': newPassword,
+        },
+      );
+
+      if (response.statusCode! >= 200 && response.statusCode! < 300) {
+        return true;
+      }
+
+      throw ServerException(
+        message: response.data['message'] ?? 'Error al restablecer contraseña',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      if (e is DioException) {
+        throw ServerException(
+          message: e.response?.data?['message'] ?? 'Error de conexión',
+          statusCode: e.response?.statusCode,
+        );
+      }
+      throw ServerException(message: e.toString());
+    }
+  }
 }

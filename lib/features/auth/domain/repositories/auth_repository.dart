@@ -34,4 +34,15 @@ abstract class AuthRepository {
   });
 
   Future<Either<Failure, void>> signOut();
+  Future<Either<Failure, bool>> requestVerificationCode(
+      {required String email});
+  Future<Either<Failure, bool>> verifyEmail(
+      {required String email, required String code});
+
+  Future<Either<Failure, bool>> requestPasswordReset({required String email});
+  Future<Either<Failure, bool>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  });
 }

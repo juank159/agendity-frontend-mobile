@@ -64,6 +64,7 @@
 
 // lib/features/auth/data/repositories/auth_repository_impl.dart
 import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -140,5 +141,72 @@ class AuthRepositoryImpl implements AuthRepository {
       required String password}) {
     // TODO: implement register
     throw UnimplementedError();
+  }
+
+  @override
+  Future<Either<Failure, bool>> requestVerificationCode(
+      {required String email}) async {
+    try {
+      await _remoteDataSource.requestVerificationCode(email: email);
+      return const Right(true);
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> verifyEmail(
+      {required String email, required String code}) async {
+    try {
+      final result =
+          await _remoteDataSource.verifyEmail(email: email, code: code);
+      return Right(result);
+    } catch (e) {
+      if (e is ServerException) {
+        // Asegúrate de que solo los errores reales (códigos 4xx, 5xx) se traduzcan en Failure
+        if (e.statusCode == null ||
+            (e.statusCode != null && e.statusCode! >= 400)) {
+          return Left(ServerFailure(message: e.message));
+        }
+        // Si llegamos aquí con un código 2xx, algo salió mal en la lógica
+        return const Right(true);
+      }
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> requestPasswordReset(
+      {required String email}) async {
+    try {
+      await _remoteDataSource.requestPasswordReset(email: email);
+      return const Right(true);
+    } catch (e) {
+      if (e is ServerException) {
+        return Left(ServerFailure(message: e.message));
+      }
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      final result = await _remoteDataSource.resetPassword(
+        email: email,
+        code: code,
+        newPassword: newPassword,
+      );
+      return Right(result);
+    } catch (e) {
+      if (e is ServerException) {
+        return Left(ServerFailure(message: e.message));
+      }
+      return Left(ServerFailure(message: e.toString()));
+    }
   }
 }

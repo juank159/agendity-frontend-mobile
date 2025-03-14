@@ -22,7 +22,7 @@ import 'modules/clients_module.dart';
 class DependencyInjection {
   static Future<void> init() async {
     try {
-      await _initEnv();
+      // Ya no se llama a _initEnv() porque se inicializa antes en main()
       await _initCore();
       await _initFeatures();
       _initNavigation();

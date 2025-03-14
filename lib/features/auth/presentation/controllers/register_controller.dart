@@ -100,13 +100,10 @@ class RegisterController extends GetxController {
           );
         },
         (user) {
-          _showSnackbar(
-            title: 'Éxito',
-            message: 'Registro exitoso. Ahora puede iniciar sesión.',
-            color: Colors.green,
-          );
+          // En lugar de ir a login, vamos a la pantalla de verificación
+          final email = emailController.text.trim();
           clearInputs();
-          Get.offAllNamed('/login');
+          Get.offAllNamed('/verify-email', arguments: {'email': email});
         },
       );
     } catch (e) {

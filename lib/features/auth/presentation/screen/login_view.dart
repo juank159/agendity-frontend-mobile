@@ -117,6 +117,18 @@ class LoginView extends GetView<LoginController> {
                           onPressed: controller.loginUser,
                         )),
 
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => Get.toNamed(GetRoutes.forgotPassword),
+                    child: Text(
+                      '¿Olvidaste tu contraseña?',
+                      style: TextStyle(
+                        color: GlobalColors.mainColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 60),
 
                   // Inicio de sesión con redes sociales

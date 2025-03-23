@@ -16,16 +16,20 @@ import 'service_selector_dialog.dart';
 
 class AppointmentFormDialog extends StatelessWidget {
   final AppointmentsController controller;
+  final DateTime?
+      initialDateTime; // Parámetro para recibir la fecha/hora seleccionada
 
   const AppointmentFormDialog({
     Key? key,
     required this.controller,
+    this.initialDateTime,
   }) : super(key: key);
 
   static Future<void> show(
-    BuildContext context,
-    AppointmentsController controller,
-  ) {
+      BuildContext context, AppointmentsController controller,
+      [DateTime?
+          selectedDateTime] // Parámetro opcional para la fecha/hora seleccionada
+      ) {
     return showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -37,7 +41,10 @@ class AppointmentFormDialog extends StatelessWidget {
             maxHeight: MediaQuery.of(context).size.height * 0.9,
             maxWidth: MediaQuery.of(context).size.width * 0.9,
           ),
-          child: AppointmentFormDialog(controller: controller),
+          child: AppointmentFormDialog(
+            controller: controller,
+            initialDateTime: selectedDateTime,
+          ),
         ),
       ),
     );
@@ -49,8 +56,17 @@ class AppointmentFormDialog extends StatelessWidget {
     final selectedClientId = RxString('');
     final selectedClientName = RxString('');
     final notesController = TextEditingController();
-    final selectedDate = DateTime.now().obs;
-    final selectedTime = TimeOfDay.now().obs;
+
+    // Inicializar con la fecha/hora seleccionada si está disponible, de lo contrario usar la fecha actual
+    final now = DateTime.now();
+    final selectedDate =
+        Rx<DateTime>(initialDateTime != null ? initialDateTime! : now);
+
+    // Extraer la hora de la fecha inicial si está disponible
+    final selectedTime = Rx<TimeOfDay>(initialDateTime != null
+        ? TimeOfDay(
+            hour: initialDateTime!.hour, minute: initialDateTime!.minute)
+        : TimeOfDay.now());
 
     // Crear una variable para el controlador
     final employeesControllerRx = Rxn<EmployeesController>();
@@ -703,47 +719,6 @@ class AppointmentFormDialog extends StatelessWidget {
     );
   }
 
-  // Widget _buildDateTimePickers(
-  //   BuildContext context,
-  //   Rx<DateTime> selectedDate,
-  //   Rx<TimeOfDay> selectedTime,
-  // ) {
-  //   return Row(
-  //     children: [
-  //       Expanded(
-  //         child: Obx(() => OutlinedButton.icon(
-  //               icon: const Icon(Icons.calendar_today),
-  //               label: Text(
-  //                 DateFormat('dd/MM/yyyy').format(selectedDate.value),
-  //                 style: const TextStyle(fontSize: 13),
-  //               ),
-  //               onPressed: () async {
-  //                 final date = await showDatePicker(
-  //                   context: context,
-  //                   initialDate: selectedDate.value,
-  //                   firstDate: DateTime.now(),
-  //                   lastDate: DateTime.now().add(const Duration(days: 365)),
-  //                 );
-  //                 if (date != null) selectedDate.value = date;
-  //               },
-  //             )),
-  //       ),
-  //       const SizedBox(width: 8),
-  //       Expanded(
-  //         child: Obx(() => OutlinedButton.icon(
-  //               icon: const Icon(Icons.access_time),
-  //               label: Text(
-  //                 DateFormat('h:mm a').format(DateTime(2024, 1, 1,
-  //                     selectedTime.value.hour, selectedTime.value.minute)),
-  //                 style: TextStyle(fontSize: 10),
-  //               ),
-  //               onPressed: () => _showTimePicker(context, selectedTime),
-  //             )),
-  //       ),
-  //     ],
-  //   );
-  // }
-
   Widget _buildDateTimePickers(
     BuildContext context,
     Rx<DateTime> selectedDate,
@@ -957,6 +932,19 @@ class AppointmentFormDialog extends StatelessWidget {
       print(
           "Hora seleccionada por el usuario: ${selectedTime.value.format(context)}");
       print("Fecha y hora local: ${localDateTime.toString()}");
+
+      // Verificar si la fecha seleccionada es posterior a la actual
+      if (localDateTime.isBefore(DateTime.now())) {
+        Get.snackbar(
+          'Error',
+          'No se pueden crear citas en fechas pasadas',
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
+        );
+        return;
+      }
 
       controller.createAppointment(
         clientId: selectedClientId.value,

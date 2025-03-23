@@ -158,16 +158,42 @@ class AppointmentsRemoteDataSource {
       AppointmentModel appointment) async {
     try {
       final token = await localStorage.getToken();
+      final tenantId = _extractTenantId(token!);
 
-      final response = await dio.put(
+      // Construir un payload específico para la actualización
+      // que incluye solo los campos necesarios y en el formato correcto
+      final updateData = {
+        'client_id':
+            appointment.clientId, // Asegúrate de que esto no esté vacío
+        'professional_id': appointment.professionalId,
+        'service_ids': appointment.serviceIds, // Esto es una lista
+        'date': appointment.startTime.toIso8601String(),
+        'notes': appointment.notes ?? ''
+      };
+
+      print('=== UPDATE APPOINTMENT DEBUG ===');
+      print('Token: $token');
+      print('Tenant ID: $tenantId');
+      print('URL: ${dio.options.baseUrl}/appointments/${appointment.id}');
+      print('Data a enviar: $updateData');
+
+      final response = await dio.patch(
         '/appointments/${appointment.id}',
-        data: appointment.toJson(),
+        data: updateData, // Usar el objeto específico para actualización
         options: Options(
           headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'Authorization': 'Bearer $token',
+            'tenant-id': tenantId, // Añadir tenant-id al encabezado
           },
         ),
       );
+
+      print('=== UPDATE RESPONSE DEBUG ===');
+      print('Status code: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response data: ${response.data}');
 
       if (response.statusCode == 200) {
         return AppointmentModel.fromJson(response.data);
@@ -179,6 +205,19 @@ class AppointmentsRemoteDataSource {
         error: 'Failed to update appointment',
       );
     } catch (e) {
+      print('=== ERROR DEBUG ===');
+      print('Error tipo: ${e.runtimeType}');
+      if (e is DioException) {
+        print('DioError type: ${e.type}');
+        print('DioError message: ${e.message}');
+        print('DioError response status: ${e.response?.statusCode}');
+        print('DioError response data: ${e.response?.data}');
+        print('DioError requestOptions: ${e.requestOptions.path}');
+        print('DioError requestOptions headers: ${e.requestOptions.headers}');
+        print('DioError requestOptions data: ${e.requestOptions.data}');
+      } else {
+        print('Error general: $e');
+      }
       print('Error updating appointment: $e');
       rethrow;
     }

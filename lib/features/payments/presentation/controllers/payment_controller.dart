@@ -47,7 +47,7 @@ class PaymentController extends GetxController {
       Get.snackbar(
         'Éxito',
         'Pago registrado correctamente',
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.green[100],
         colorText: Colors.green[800],
       );

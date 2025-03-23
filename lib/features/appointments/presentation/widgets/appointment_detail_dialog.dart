@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/edit_appointment_dialog.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
@@ -561,9 +562,23 @@ class AppointmentDetailsDialog extends StatelessWidget {
 
                           // Botón de editar
                           ElevatedButton.icon(
-                            onPressed: () {
+                            onPressed: () async {
                               // Acción para editar cita
                               Navigator.pop(context);
+                              // Conseguir el controlador de citas
+                              final appointmentsController =
+                                  Get.find<AppointmentsController>();
+
+                              // Mostrar el diálogo de edición y esperar el resultado
+                              final result = await EditAppointmentDialog.show(
+                                context,
+                                appointment,
+                                appointmentsController,
+                              );
+
+                              if (result == true) {
+                                appointmentsController.fetchAppointments();
+                              }
                             },
                             icon: const Icon(Icons.edit, size: 18),
                             label: const Text('Editar cita'),

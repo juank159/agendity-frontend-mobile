@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
@@ -414,21 +415,32 @@ class AppointmentsController extends GetxController {
   }
 
   String _formatErrorMessage(dynamic error) {
-    if (error is DioException) {
-      if (error.response?.statusCode == 500) {
-        return 'Error del servidor. Por favor, contacta al soporte técnico.';
-      }
-      if (error.response?.data != null) {
-        final data = error.response?.data;
-        if (data is Map && data['message'] != null) {
-          return data['message'].toString();
-        }
-      }
-      return 'Error de conexión. Por favor, verifica tu conexión a internet.';
-    }
     if (error is AppointmentException) {
+      if (error.message == 'Horario no disponible') {
+        return 'El horario seleccionado no está disponible para este profesional';
+      }
       return error.message;
     }
+
+    if (error is DioException) {
+      // Errores HTTP comunes
+      switch (error.response?.statusCode) {
+        case 400:
+          return 'Solicitud incorrecta. Por favor, verifica los datos.';
+        case 401:
+          return 'No autorizado. Por favor, inicia sesión nuevamente.';
+        case 403:
+          return 'Acceso denegado.';
+        case 404:
+          return 'Recurso no encontrado.';
+        case 500:
+          return 'Error del servidor. Por favor, contacta al soporte técnico.';
+        default:
+          return 'Error de conexión. Por favor, verifica tu conexión a internet.';
+      }
+    }
+
+    // Para otros tipos de errores, devolvemos el mensaje tal cual
     return error.toString();
   }
 
@@ -446,13 +458,9 @@ class AppointmentsController extends GetxController {
     String? notes,
   }) async {
     try {
-      // Añadir esta verificación
+      // Verificaciones existentes...
       if (employeesController == null) {
         throw Exception('El controlador de empleados no está disponible');
-      }
-
-      if (selectedServiceIds.isEmpty) {
-        throw Exception('Debe seleccionar al menos un servicio');
       }
 
       if (selectedServiceIds.isEmpty) {
@@ -479,6 +487,22 @@ class AppointmentsController extends GetxController {
       print('Start Time: $startTime');
       print('Notes: $notes');
 
+      print('DEBUG - Hora local al crear: $startTime');
+
+      // Calcular duración total de los servicios seleccionados
+      int totalDurationMinutes = 0;
+      for (String serviceId in selectedServiceIds) {
+        final service = services.firstWhere((s) => s['id'] == serviceId,
+            orElse: () => {'duration': 30});
+        totalDurationMinutes +=
+            int.parse((service['duration'] ?? 30).toString());
+      }
+
+      // Calcular hora de finalización prevista
+      final endTime = startTime.add(Duration(minutes: totalDurationMinutes));
+      print(
+          'Hora de finalización prevista: $endTime (duración: $totalDurationMinutes min)');
+
       final appointment = AppointmentModel.create(
         serviceIds: selectedServiceIds.toList(),
         clientId: clientId,
@@ -489,71 +513,214 @@ class AppointmentsController extends GetxController {
         notes: notes ?? '',
       );
 
-      final createdAppointment = await createAppointmentUseCase(appointment);
+      try {
+        final createdAppointment = await createAppointmentUseCase(appointment);
 
-      // Limpiar la selección
-      selectedServiceIds.clear();
-      totalPrice.value = 0;
+        // La cita se creó exitosamente
+        selectedServiceIds.clear();
+        totalPrice.value = 0;
 
-      // Construir las fechas de inicio y fin del día
-      final startDate = DateTime(
-        startTime.year,
-        startTime.month,
-        startTime.day,
-      );
-      final endDate = DateTime(
-        startTime.year,
-        startTime.month,
-        startTime.day,
-        23,
-        59,
-        59,
-      );
+        // Recargar citas para el día actual
+        await _reloadAppointmentsForDay(startTime);
 
-      print('Recargando citas después de crear:');
-      print('Inicio: $startDate');
-      print('Fin: $endDate');
+        Get.snackbar(
+          'Éxito',
+          'Cita creada correctamente',
+          backgroundColor: Colors.green[100],
+          colorText: Colors.green[800],
+          duration: const Duration(seconds: 3),
+        );
 
-      // Primero actualizamos la fecha seleccionada
-      selectedDate.value = startTime;
+        update(['calendar-view']);
+      } catch (apiError) {
+        print('=== ERROR AL CREAR CITA ===');
+        print('Error tipo: ${apiError.runtimeType}');
+        print('Error detalle: $apiError');
 
-      // Forzamos limpieza de la lista actual de citas
-      appointments.clear();
+        // Buscar el error de horario no disponible de varias maneras
+        bool isHorarioNoDisponible = false;
 
-      // Esperamos a que se complete la recarga de citas
-      await fetchAppointments(
-        startDate: startDate,
-        endDate: endDate,
-      );
+        if (apiError is DioException) {
+          final responseData = apiError.response?.data;
+          final statusCode = apiError.response?.statusCode;
 
-      // Verificamos que la nueva cita esté en la lista
-      print('Total de citas después de recargar: ${appointments.length}');
+          print('DioException - statusCode: $statusCode');
+          print('DioException - responseData: $responseData');
 
-      // Notificamos el éxito después de la recarga
-      Get.snackbar(
-        'Éxito',
-        'Cita creada correctamente',
-        backgroundColor: Colors.green[100],
-        colorText: Colors.green[800],
-        duration: const Duration(seconds: 3),
-      );
+          // Verificar respuesta de DioException
+          if (statusCode == 400 &&
+              responseData is Map &&
+              responseData['message'] == 'Horario no disponible') {
+            isHorarioNoDisponible = true;
+          }
+        } else if (apiError is AppointmentException) {
+          print('AppointmentException - message: ${apiError.message}');
 
-      // Forzamos una actualización del calendario
-      update(['calendar-view']);
+          // Verificar AppointmentException
+          if (apiError.message.contains('Horario no disponible')) {
+            isHorarioNoDisponible = true;
+          }
+        }
+
+        // Verificación de texto para cualquier tipo de error
+        if (!isHorarioNoDisponible &&
+            apiError
+                .toString()
+                .toLowerCase()
+                .contains('horario no disponible')) {
+          isHorarioNoDisponible = true;
+        }
+
+        // Mostrar el diálogo si es un error de horario no disponible
+        if (isHorarioNoDisponible) {
+          print('ERROR DETECTADO: Horario no disponible - Mostrando diálogo');
+          _showHorarioNoDisponibleDialog();
+          return;
+        }
+
+        // Si no es un error de horario, propagarlo
+        throw apiError;
+      }
     } catch (e) {
       print('=== ERROR EN CONTROLLER ===');
-      print('Error: $e');
+      print('Error final: $e');
       error.value = e.toString();
-      Get.snackbar(
-        'Error',
-        'No se pudo crear la cita: ${e.toString()}',
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[800],
-        duration: const Duration(seconds: 4),
-      );
+
+      // Verificar una última vez si contiene el mensaje de horario no disponible
+      if (e.toString().toLowerCase().contains('horario no disponible')) {
+        _showHorarioNoDisponibleDialog();
+      } else {
+        // Mostrar error genérico
+        Get.snackbar(
+          'Error',
+          'No se pudo crear la cita: ${_formatErrorMessage(e)}',
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+          duration: const Duration(seconds: 4),
+        );
+      }
     } finally {
       isLoading.value = false;
     }
+  }
+
+// Método auxiliar para recargar las citas del día
+  Future<void> _reloadAppointmentsForDay(DateTime date) async {
+    // Construir las fechas de inicio y fin del día
+    final startDate = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    );
+    final endDate = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      23,
+      59,
+      59,
+    );
+
+    // Actualizar la fecha seleccionada
+    selectedDate.value = date;
+
+    // Forzar limpieza de la lista actual de citas
+    appointments.clear();
+
+    // Recargar citas
+    await fetchAppointments(
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  // Función para mostrar el diálogo personalizado
+  void _showHorarioNoDisponibleDialog() {
+    print('Mostrando diálogo de horario no disponible');
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icono de horario
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.schedule,
+                  color: Colors.orange[700],
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Título
+              Text(
+                'Horario no disponible',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Mensaje
+              Text(
+                'El profesional ${selectedEmployee.value?.name} ${selectedEmployee.value?.lastname} no está disponible en este horario.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Por favor, selecciona otra hora o elige otro profesional.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Solo un botón para cerrar el diálogo
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Get.back(); // Cerrar solo el diálogo, no el formulario
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(Get.context!).primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                  ),
+                  child: const Text(
+                    'Entendido',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
   }
 
   Future<void> selectEmployee(EmployeeEntity employee) async {
@@ -566,6 +733,129 @@ class AppointmentsController extends GetxController {
         backgroundColor: Colors.red[100],
         colorText: Colors.red[800],
       );
+    }
+  }
+
+  Future<void> updateAppointment({
+    required String appointmentId,
+    required String professionalId,
+    required List<String> serviceIds,
+    required DateTime startTime,
+    String? notes,
+  }) async {
+    try {
+      isLoading.value = true;
+      error.value = null;
+
+      // Buscar la cita en la lista de citas cargadas
+      final currentAppointment =
+          appointments.firstWhereOrNull((a) => a.id == appointmentId);
+      if (currentAppointment == null) {
+        throw Exception('No se pudo encontrar la cita a actualizar');
+      }
+
+      // Calcular duración total de los servicios seleccionados
+      int totalDurationMinutes = 0;
+      for (String serviceId in serviceIds) {
+        final service = services.firstWhere(
+          (s) => s['id'] == serviceId,
+          orElse: () => {'duration': 30},
+        );
+        totalDurationMinutes +=
+            int.parse((service['duration'] ?? 30).toString());
+      }
+
+      // Calcular hora de finalización prevista
+      final endTime = startTime.add(Duration(minutes: totalDurationMinutes));
+
+      print('=== DEBUG DATOS ANTES DE ACTUALIZAR CITA ===');
+      print('Appointment ID: $appointmentId');
+      print('Professional ID: $professionalId');
+      print('Service IDs: $serviceIds');
+      print('Start Time: $startTime');
+      print('End Time (calculada): $endTime');
+      print('Duración total: $totalDurationMinutes minutos');
+      print('Notes: $notes');
+
+      // Determinar clientId
+      // Si es una instancia de AppointmentModel, usamos su clientId directamente
+      String clientId = '';
+
+      if (currentAppointment is AppointmentModel) {
+        clientId = currentAppointment.clientId;
+      } else {
+        // Si no, tratamos de obtenerlo de alguna otra manera
+        // Por ejemplo, buscar en nuestro repositorio de clientes por el nombre
+        final client = clients.firstWhereOrNull(
+            (c) => c['name'] == currentAppointment.clientName);
+        if (client != null) {
+          clientId = client['id'];
+        } else {
+          throw Exception('No se pudo determinar el ID del cliente');
+        }
+      }
+
+      // Crear el modelo para actualización
+      final appointment = AppointmentModel(
+        id: appointmentId,
+        title: currentAppointment.title,
+        clientName: currentAppointment.clientName,
+        startTime: startTime,
+        endTime: endTime,
+        serviceTypes: currentAppointment.serviceTypes,
+        status: currentAppointment.status,
+        totalPrice: currentAppointment.totalPrice,
+        clientId: clientId,
+        serviceIds: serviceIds,
+        professionalId: professionalId,
+        ownerId: currentAppointment.ownerId,
+        paymentStatus: currentAppointment.paymentStatus,
+        notes: notes ?? currentAppointment.notes,
+        colors: currentAppointment.colors?.cast<String>(),
+      );
+
+      // Llamar al caso de uso para actualizar la cita
+      await updateAppointmentUseCase(appointment);
+
+      // Limpiar la selección
+      selectedServiceIds.clear();
+      totalPrice.value = 0;
+
+      // Recargar citas del día
+      await _reloadAppointmentsForDay(startTime);
+
+      // Get.snackbar(
+      //   'Éxito',
+      //   'Cita actualizada correctamente',
+      //   backgroundColor: Colors.green[100],
+      //   colorText: Colors.green[800],
+      //   duration: const Duration(seconds: 3),
+      // );
+
+      update(['calendar-view']);
+    } catch (e) {
+      print('=== ERROR AL ACTUALIZAR CITA ===');
+      print('Error tipo: ${e.runtimeType}');
+      print('Error detalle: $e');
+
+      error.value = e.toString();
+
+      // Verificar si es un error de horario no disponible
+      if (e.toString().toLowerCase().contains('horario no disponible')) {
+        _showHorarioNoDisponibleDialog();
+      } else {
+        // Mostrar error genérico
+        Get.snackbar(
+          'Error',
+          'No se pudo actualizar la cita: ${_formatErrorMessage(e)}',
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+          duration: const Duration(seconds: 4),
+        );
+      }
+      throw e; // Re-lanzar para que el formulario pueda manejar el error
+    } finally {
+      isLoading.value = false;
     }
   }
 

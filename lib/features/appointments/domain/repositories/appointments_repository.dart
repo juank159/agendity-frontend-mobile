@@ -11,4 +11,8 @@ abstract class AppointmentsRepository {
   Future<void> deleteAppointment(String id);
   Future<AppointmentEntity> getAppointmentById(String id);
   Future<Either<Failure, List<AppointmentEntity>>> getUpcomingAppointments();
+  Future<AppointmentEntity?> updateAppointmentDirect({
+    required String appointmentId,
+    required Map<String, dynamic> data,
+  });
 }

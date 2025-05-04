@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
-import 'package:login_signup/features/appointments/data/models/appointment_model.dart'; // Añadida esta importación
+// Añadida esta importación
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/professional_selector_dialog.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
@@ -56,6 +56,9 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
   final RxList<String> selectedServiceIds = <String>[].obs;
   final RxDouble totalPrice = 0.0.obs;
   final RxBool isLoading = false.obs;
+
+  Map<String, dynamic>? _selectedClient;
+  bool _showClientSelector = false;
 
   @override
   void initState() {
@@ -174,89 +177,8 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Detalles del cliente (solo mostrar, no editar)
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[300]!),
-                        color: Colors.white,
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.person,
-                                size: 18,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Cliente',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey[200]!),
-                            ),
-                            child: Row(
-                              children: [
-                                // Avatar/foto del cliente
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .primaryColor
-                                        .withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Theme.of(context)
-                                          .primaryColor
-                                          .withOpacity(0.3),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      _getClientInitials(
-                                          widget.appointment.clientName),
-                                      style: TextStyle(
-                                        color: Theme.of(context).primaryColor,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    widget.appointment.clientName,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Selector de cliente (nuevo)
+                    _buildClientSelector(context),
 
                     const SizedBox(height: 16),
 
@@ -1036,13 +958,41 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
       isLoading.value = true;
 
       try {
-        // Actualizar la cita
+        // Obtener el ID del cliente si se cambió
+        String? clientId;
+        if (_selectedClient != null) {
+          clientId = _selectedClient!['id'];
+          print(
+              '🔄 Cliente seleccionado: ${_selectedClient!['name']} (ID: $clientId)');
+        } else {
+          print('🔄 No se cambió el cliente');
+        }
+
+        print(
+            '🔄 Profesional seleccionado: ${widget.controller.selectedEmployee.value?.name} (ID: ${widget.controller.selectedEmployee.value?.id})');
+        print('🔄 Servicios seleccionados: $selectedServiceIds');
+        print('🔄 Hora seleccionada: $localDateTime');
+
+        // Calcular precio total (solo para referencia, no se enviará)
+        double totalPrice = 0;
+        for (var serviceId in selectedServiceIds) {
+          final service = widget.controller.services.firstWhere(
+            (s) => s['id'] == serviceId,
+            orElse: () => {'price': '0'},
+          );
+          totalPrice += double.parse(service['price']?.toString() ?? '0');
+        }
+
+        print('🔄 Precio total calculado: $totalPrice');
+
         await widget.controller.updateAppointment(
           appointmentId: widget.appointment.id!,
           professionalId: widget.controller.selectedEmployee.value!.id,
           serviceIds: selectedServiceIds.toList(),
           startTime: localDateTime,
           notes: notesController.text,
+          clientId: clientId,
+          // No enviamos totalPrice ya que el backend no lo acepta
         );
 
         // Recargar las citas
@@ -1072,6 +1022,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
             duration: const Duration(seconds: 4),
           );
         } else {
+          // Mostrar error genérico
           Get.snackbar(
             'Error',
             'No se pudo actualizar la cita: ${e.toString()}',
@@ -1084,6 +1035,199 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
         isLoading.value = false;
       }
     }
+  }
+
+  Widget _buildClientSelector(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+        color: Colors.white,
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Título con icono
+          Row(
+            children: [
+              Icon(
+                Icons.person,
+                size: 18,
+                color: Theme.of(context).primaryColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Cliente',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const Spacer(),
+              // Botón para cambiar cliente
+              TextButton.icon(
+                icon: Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: Theme.of(context).primaryColor,
+                ),
+                label: Text(
+                  'Cambiar',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showClientSelector = !_showClientSelector;
+                  });
+                },
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+
+          // Información del cliente actual
+          if (!_showClientSelector) ...[
+            const SizedBox(height: 12),
+            _buildClientDisplay(),
+          ],
+
+          // Selector de cliente (condicional)
+          if (_showClientSelector) ...[
+            const SizedBox(height: 12),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: ListView.builder(
+                itemCount: widget.controller.clients.length,
+                itemBuilder: (context, index) {
+                  final client = widget.controller.clients[index];
+                  final isSelected = _selectedClient != null &&
+                      _selectedClient!['id'] == client['id'];
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          Theme.of(context).primaryColor.withOpacity(0.1),
+                      child: Text(
+                        _getClientInitialsFromMap(client),
+                        style: TextStyle(
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      '${client['name']} ${client['lastname'] ?? ''}',
+                      style: TextStyle(
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(client['phone'] ?? ''),
+                    trailing: isSelected
+                        ? Icon(Icons.check_circle,
+                            color: Theme.of(context).primaryColor)
+                        : null,
+                    selected: isSelected,
+                    onTap: () {
+                      setState(() {
+                        _selectedClient = client;
+                        _showClientSelector = false;
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClientDisplay() {
+    final String clientName;
+    final String clientInitials;
+
+    if (_selectedClient != null) {
+      clientName =
+          '${_selectedClient!['name']} ${_selectedClient!['lastname'] ?? ''}';
+      clientInitials = _getClientInitialsFromMap(_selectedClient!);
+    } else {
+      clientName = widget.appointment.clientName;
+      clientInitials = _getClientInitials(widget.appointment.clientName);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          // Avatar/foto del cliente
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Theme.of(context).primaryColor.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                clientInitials,
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              clientName,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getClientInitialsFromMap(Map<String, dynamic> client) {
+    String initials = '';
+    if (client['name'] != null && client['name'].toString().isNotEmpty) {
+      initials += client['name'].toString()[0].toUpperCase();
+    }
+    if (client['lastname'] != null &&
+        client['lastname'].toString().isNotEmpty) {
+      initials += client['lastname'].toString()[0].toUpperCase();
+    }
+    return initials;
   }
 
   List<String> _getSelectedServiceNames() {

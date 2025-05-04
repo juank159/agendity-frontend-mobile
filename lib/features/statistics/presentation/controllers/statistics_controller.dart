@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import '../../domain/entities/payment_stats_entity.dart';
 import '../../domain/entities/payment_comparison_entity.dart';
 import '../../domain/entities/payment_method_stats_entity.dart';
@@ -25,6 +28,10 @@ class StatisticsController extends GetxController {
   final GetPaymentStatsByServiceUseCase getPaymentStatsByServiceUseCase;
   final GetPaymentStatsByClientUseCase getPaymentStatsByClientUseCase;
   final GetTopClientsUseCase getTopClientsUseCase;
+
+  final GetEmployeeStatsUseCase getEmployeeStatsUseCase;
+
+  final UserInfoController userInfoController = Get.find<UserInfoController>();
 
   // Para formatear valores monetarios
   final currencyFormat = NumberFormat.currency(
@@ -61,6 +68,8 @@ class StatisticsController extends GetxController {
   final RxList<ClientStatsEntity> clientStats = <ClientStatsEntity>[].obs;
   final RxList<TopClientEntity> topClients = <TopClientEntity>[].obs;
 
+  final Rx<EmployeeStatsEntity?> employeeStats = Rx<EmployeeStatsEntity?>(null);
+
   // Estados para la carga y errores
   final RxBool isLoadingOverview = false.obs;
   final RxBool isLoadingPaymentMethods = false.obs;
@@ -81,6 +90,9 @@ class StatisticsController extends GetxController {
   final RxBool isServicesExpanded = false.obs;
   final RxBool isTopClientsExpanded = false.obs;
 
+  final RxBool isLoadingEmployeeStats = false.obs;
+  final RxString errorEmployeeStats = ''.obs;
+
   StatisticsController({
     required this.getPaymentStatsUseCase,
     required this.getPaymentComparisonUseCase,
@@ -89,6 +101,7 @@ class StatisticsController extends GetxController {
     required this.getPaymentStatsByServiceUseCase,
     required this.getPaymentStatsByClientUseCase,
     required this.getTopClientsUseCase,
+    required this.getEmployeeStatsUseCase,
   });
 
   void _initializeDefaultDateRange() {
@@ -112,6 +125,20 @@ class StatisticsController extends GetxController {
     loadOverviewData();
   }
 
+  // Método para cargar datos basados en el rol
+  Future<void> loadStatsBasedOnRole() async {
+    // Verificar si es solo Employee
+    if (userInfoController.isOnlyEmployee()) {
+      print("Usuario es solo Employee, cargando estadísticas de empleado");
+      await loadEmployeeStats();
+    } else {
+      print(
+          "Usuario es Owner o tiene otros roles, cargando estadísticas completas");
+      await loadOverviewData();
+      // Cargar otras estadísticas si es necesario
+    }
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -122,13 +149,15 @@ class StatisticsController extends GetxController {
       end: DateTime(now.year, now.month, now.day, 23, 59, 59),
     );
     loadOverviewData();
+    loadStatsBasedOnRole();
   }
 
   // Método para cambiar el rango de fechas
   void setDateRange(DateTimeRange dateRange) {
     selectedDateRange.value = dateRange;
     refresh();
-    loadOverviewData();
+    //loadOverviewData();
+    loadStatsBasedOnRole();
   }
 
   // Método para cargar los datos de resumen (stats y comparación)
@@ -194,6 +223,24 @@ class StatisticsController extends GetxController {
     }
   }
 
+  Future<void> loadEmployeeStats() async {
+    isLoadingEmployeeStats.value = true;
+    errorEmployeeStats.value = '';
+
+    try {
+      final stats = await getEmployeeStatsUseCase(
+        selectedDateRange.value.start,
+        selectedDateRange.value.end,
+      );
+      employeeStats.value = stats;
+    } catch (e) {
+      errorEmployeeStats.value = e.toString();
+      debugPrint('Error cargando estadísticas de empleado: $e');
+    } finally {
+      isLoadingEmployeeStats.value = false;
+    }
+  }
+
   // Método para cargar estadísticas por servicio
   Future<void> loadServiceStats() async {
     isLoadingServices.value = true;
@@ -256,6 +303,7 @@ class StatisticsController extends GetxController {
   // Método para cargar todos los datos
   Future<void> loadAllStats() async {
     await loadOverviewData();
+    await loadEmployeeStats();
     await loadPaymentMethodStats();
     await loadProfessionalStats();
     await loadServiceStats();
@@ -263,11 +311,16 @@ class StatisticsController extends GetxController {
   }
 
   // Métodos de utilidad para formatear datos
-  String formatCurrency(double value) {
+  String formatCurrency(dynamic value) {
+    // Convertir el valor a double independientemente de si es int, double o null
+    final doubleValue =
+        value is int ? value.toDouble() : (value is double ? value : 0.0);
+
     // Crear un formato sin el símbolo '$'
     final formatWithoutSymbol = NumberFormat('#,###', 'es_CO');
+
     // Retornar el formato con el símbolo $ a la izquierda usando interpolación
-    return '\$ ${formatWithoutSymbol.format(value)}';
+    return '\$ ${formatWithoutSymbol.format(doubleValue)}';
   }
 
   String formatPercent(double value) {

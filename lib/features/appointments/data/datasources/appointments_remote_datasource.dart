@@ -223,6 +223,122 @@ class AppointmentsRemoteDataSource {
     }
   }
 
+  Future<AppointmentModel> updateAppointmentDirect(
+    String appointmentId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final token = await localStorage.getToken();
+      final tenantId = _extractTenantId(token!);
+
+      // Sanitizar los datos antes de enviarlos - esto eliminará total_price
+      final sanitizedData = _sanitizeRequestData(data);
+
+      print('\n🔄 DATASOURCE: UPDATE APPOINTMENT DIRECT');
+      print('👉 URL: ${dio.options.baseUrl}/appointments/$appointmentId');
+      print('👉 Método: PATCH');
+      print('👉 Headers: Authorization, Content-Type, tenant-id');
+      print(
+          '👉 Payload: ${json.encode(sanitizedData)}'); // Usar los datos sanitizados
+
+      final response = await dio.patch(
+        '/appointments/$appointmentId',
+        data: sanitizedData, // Usar los datos sanitizados
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+            'tenant-id': tenantId,
+          },
+        ),
+      );
+
+      print('\n✅ RESPUESTA DE LA API:');
+      print('👉 Status: ${response.statusCode}');
+      print('👉 Data: ${json.encode(response.data)}');
+
+      // Asegurar que obtengamos un objeto mapeado
+      if (response.data is Map) {
+        // Extraer información de clientId y professionalId
+        final Map<String, dynamic> responseData = response.data;
+
+        // Añadir IDs para mayor claridad
+        if (data.containsKey('professional_id')) {
+          print('👉 professionalId enviado: ${data['professional_id']}');
+          print(
+              '👉 professionalId recibido: ${responseData['professionalId']}');
+        }
+
+        if (data.containsKey('client_id')) {
+          print('👉 clientId enviado: ${data['client_id']}');
+        }
+      }
+
+      return AppointmentModel.fromJson(response.data);
+    } catch (e) {
+      print('\n❌ ERROR EN DATASOURCE:');
+      print('👉 Error: $e');
+
+      if (e is DioException) {
+        if (e.response != null) {
+          print('👉 Status code: ${e.response?.statusCode}');
+          print('👉 Response data: ${e.response?.data}');
+        }
+      }
+
+      rethrow;
+    }
+  }
+
+  Map<String, dynamic> _sanitizeRequestData(Map<String, dynamic> data) {
+    // Crear una copia para no modificar el original
+    final sanitizedData = Map<String, dynamic>.from(data);
+
+    // Eliminar campos que el backend no acepta
+    sanitizedData.remove('total_price');
+
+    // Sanitizar textos para cualquier campo que pueda tener emojis
+    if (sanitizedData.containsKey('notes')) {
+      sanitizedData['notes'] = _sanitizeText(sanitizedData['notes'].toString());
+    }
+
+    return sanitizedData;
+  }
+
+  String _sanitizeText(String text) {
+    try {
+      // Verificar si hay caracteres inválidos
+      return text;
+    } catch (e) {
+      // Eliminar emojis y caracteres problemáticos
+      return text
+          .replaceAll(RegExp(r'[\u{1F600}-\u{1F64F}]', unicode: true), "")
+          .replaceAll(RegExp(r'[\u{1F300}-\u{1F5FF}]', unicode: true), "")
+          .replaceAll(RegExp(r'[\u{1F680}-\u{1F6FF}]', unicode: true), "")
+          .replaceAll(RegExp(r'[\u{2600}-\u{26FF}]', unicode: true), "")
+          .replaceAll(RegExp(r'[\u{2700}-\u{27BF}]', unicode: true), "")
+          .trim();
+    }
+  }
+
+// Función auxiliar para sanitizar datos
+  Map<String, dynamic> _sanitizeData(Map<String, dynamic> data) {
+    final sanitizedData = Map<String, dynamic>.from(data);
+
+    // Sanitizar client_id y professional_id
+    if (sanitizedData.containsKey('client_id')) {
+      sanitizedData['client_id'] = sanitizedData['client_id'].toString();
+    }
+
+    if (sanitizedData.containsKey('professional_id')) {
+      sanitizedData['professional_id'] =
+          sanitizedData['professional_id'].toString();
+    }
+
+    return sanitizedData;
+  }
+
   // Añadir este método a tu AppointmentsRemoteDataSource
   Future<Map<String, dynamic>> getProfessionalById(String id) async {
     try {

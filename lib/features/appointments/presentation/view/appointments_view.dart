@@ -23,21 +23,28 @@ class AppointmentsView extends GetView<AppointmentsController> {
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       title: Obx(() {
-        String title = 'Mis Citas';
+        // Base del título dependiendo del rol del usuario
+        String baseTitle = controller.userRole.value == 'Employee'
+            ? 'Mis Citas Asignadas'
+            : 'Todas las Citas';
+
+        // Añadir el tipo de vista
+        String viewType = '';
         switch (controller.currentView.value) {
           case CalendarView.day:
-            title = 'Vista Diaria';
+            viewType = '(Día)';
             break;
           case CalendarView.week:
-            title = 'Vista Semanal';
+            viewType = '(Semana)';
             break;
           case CalendarView.month:
-            title = 'Vista Mensual';
+            viewType = '(Mes)';
             break;
           default:
-            title = 'Mis Citas';
+            viewType = '';
         }
-        return Text(title);
+
+        return Text('$baseTitle $viewType');
       }),
       actions: [
         IconButton(
@@ -49,15 +56,13 @@ class AppointmentsView extends GetView<AppointmentsController> {
           icon: const Icon(Icons.today),
           onPressed: () {
             controller.selectedDate.value = DateTime.now();
-            controller.changeView(controller.currentView
-                .value); // Usamos changeView en lugar del método privado
+            controller.changeView(controller.currentView.value);
           },
           tooltip: 'Ir a hoy',
         ),
         IconButton(
           onPressed: () => Get.toNamed('/notifications'),
-          // ignore: prefer_const_constructors
-          icon: Icon(Icons.notifications),
+          icon: const Icon(Icons.notifications),
           tooltip: 'Notificaciones',
         ),
       ],
@@ -78,8 +83,8 @@ class AppointmentsView extends GetView<AppointmentsController> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => controller.changeView(controller
-                    .currentView.value), // Usamos changeView para recargar
+                onPressed: () =>
+                    controller.changeView(controller.currentView.value),
                 child: const Text('Reintentar'),
               ),
             ],
@@ -92,6 +97,7 @@ class AppointmentsView extends GetView<AppointmentsController> {
   }
 
   Widget _buildFloatingActionButton(BuildContext context) {
+    // Podríamos restringir la creación de citas para empleados si fuera necesario
     return FloatingActionButton(
       onPressed: () => AppointmentFormDialog.show(context, controller),
       child: const Icon(Icons.add),

@@ -38,7 +38,13 @@ import 'package:login_signup/features/services/presentation/screen/new_category_
 import 'package:login_signup/features/services/presentation/screen/services_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/new_service_screen.dart';
 import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
+import 'package:login_signup/features/statistics/presentation/screens/employee_stats_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
+import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
+import 'package:login_signup/features/subscriptions/presentation/screens/payment_success_screen.dart';
+import 'package:login_signup/features/subscriptions/presentation/screens/payment_webview_screen.dart';
+import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
+import 'package:login_signup/features/theme/presentation/screen/theme_settings_screen.dart';
 import 'package:login_signup/features/whatsapp/presentation/bindings/whatsapp_binding.dart';
 import 'package:login_signup/features/whatsapp/presentation/screens/whatsapp_config_screen.dart';
 
@@ -80,12 +86,21 @@ class GetRoutes {
 
   // statistics Routes
   static const String statistics = '/statistics';
+  static const String employeeStats = '/employee-statistics';
 
   // config whatsapp Routes
   static const String configWhatsapp = '/whatsapp-config';
 
   // notifications Routes
   static const String notifications = '/notifications';
+
+  // theme Routes
+  static const String themeSettings = '/theme-settings';
+
+  // subscription Routes
+  static const String subscriptionPlans = '/subscription-plans';
+  static const String paymentWebview = '/payment-webview';
+  static const String paymentSuccess = '/payment-success';
 
   static List<GetPage> routes = [
     // Auth Pages
@@ -123,6 +138,13 @@ class GetRoutes {
       page: () => const ResetPasswordView(),
       binding: ResetPasswordBinding(),
       transition: Transition.fadeIn,
+    ),
+
+    // Theme Settings Page
+    GetPage(
+      name: themeSettings,
+      page: () => ThemeSettingsScreen(),
+      transition: Transition.rightToLeft,
     ),
 
     // Main Pages
@@ -242,6 +264,15 @@ class GetRoutes {
       preventDuplicates: true,
       middlewares: [AuthMiddleware()],
     ),
+    GetPage(
+      name: employeeStats,
+      page: () => const EmployeeStatsScreen(),
+      binding: StatisticsBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
 
     // Config Whatsapp Pages
     GetPage(
@@ -263,6 +294,32 @@ class GetRoutes {
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
       middlewares: [AuthMiddleware()],
+    ),
+
+    // Subscription Pages
+    GetPage(
+      name: subscriptionPlans,
+      page: () => const SubscriptionPlansScreen(),
+      binding: SubscriptionBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: paymentWebview,
+      page: () => const PaymentWebViewScreen(),
+      binding: SubscriptionBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: paymentSuccess,
+      page: () => const PaymentSuccessScreen(),
+      binding: SubscriptionBinding(),
+      transition: Transition.fadeIn,
     ),
   ];
 }

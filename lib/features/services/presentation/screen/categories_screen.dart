@@ -22,7 +22,7 @@ class CategoriesScreen extends GetView<CategoriesController> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
               // Retroceder directamente
-              Get.back();
+              Get.toNamed('/services');
             },
           ),
         ),

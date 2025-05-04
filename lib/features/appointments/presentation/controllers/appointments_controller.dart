@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
 
 import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
@@ -24,7 +28,13 @@ import 'package:login_signup/features/employees/domain/entities/employee_entity.
 
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
 
+// Nuevas importaciones para la funcionalidad de suscripción
+import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
+import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
+import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
+
 class AppointmentsController extends GetxController {
+  final AppointmentsRepository appointmentsRepository;
   final GetAppointmentsUseCase getAppointmentsUseCase;
   final CreateAppointmentUseCase createAppointmentUseCase;
   final UpdateAppointmentUseCase updateAppointmentUseCase;
@@ -49,8 +59,16 @@ class AppointmentsController extends GetxController {
   final RxList<String> selectedServiceIds = <String>[].obs;
   final RxDouble totalPrice = 0.0.obs;
 
-  EmployeesController? _employeesController;
+  // Nuevo estado para guardar el rol del usuario
+  final RxString userRole = ''.obs;
+  final RxString userId = ''.obs;
 
+  // Servicio de suscripciones
+  late CheckSubscriptionStatusUseCase? checkSubscriptionStatusUseCase;
+  final RxBool canCreateAppointment = true.obs;
+  final RxString subscriptionMessage = ''.obs;
+
+  EmployeesController? _employeesController;
   EmployeesController? get employeesController {
     if (_employeesController == null) {
       try {
@@ -70,17 +88,199 @@ class AppointmentsController extends GetxController {
   }
 
   AppointmentsController(
-    this.getAppointmentsUseCase,
-    this.createAppointmentUseCase,
-    this.updateAppointmentUseCase,
-    this.deleteAppointmentUseCase,
-    this.servicesDataSource,
-    this.clientsDataSource,
-    this.localStorage,
-  ) {
+      this.getAppointmentsUseCase,
+      this.createAppointmentUseCase,
+      this.updateAppointmentUseCase,
+      this.deleteAppointmentUseCase,
+      this.servicesDataSource,
+      this.clientsDataSource,
+      this.localStorage,
+      this.appointmentsRepository,
+      {this.checkSubscriptionStatusUseCase}) {
     _initializeControllers();
+    _getUserInfo();
     _initializeCalendar();
     _loadInitialData();
+
+    // Intentar obtener el servicio de suscripción si no fue inyectado
+    if (checkSubscriptionStatusUseCase == null) {
+      try {
+        checkSubscriptionStatusUseCase =
+            Get.find<CheckSubscriptionStatusUseCase>();
+      } catch (e) {
+        print('No se encontró CheckSubscriptionStatusUseCase: $e');
+      }
+    }
+  }
+
+  Future<bool> checkSubscriptionStatus() async {
+    try {
+      print('Verificando estado de suscripción...');
+
+      if (checkSubscriptionStatusUseCase == null) {
+        print(
+            'CheckSubscriptionStatusUseCase es null, intentando encontrarlo...');
+        try {
+          checkSubscriptionStatusUseCase =
+              Get.find<CheckSubscriptionStatusUseCase>();
+          print('CheckSubscriptionStatusUseCase encontrado con éxito');
+        } catch (e) {
+          print('No se pudo encontrar CheckSubscriptionStatusUseCase: $e');
+          return true; // Por defecto, permitir si no se puede verificar
+        }
+      }
+
+      if (checkSubscriptionStatusUseCase == null) {
+        print('CheckSubscriptionStatusUseCase sigue siendo null');
+        return true;
+      }
+
+      print('Llamando a checkSubscriptionStatusUseCase...');
+      final result = await checkSubscriptionStatusUseCase!.call();
+      print('Respuesta de CheckSubscriptionStatusUseCase: $result');
+
+      canCreateAppointment.value = result['canCreateAppointment'] ?? true;
+      subscriptionMessage.value = result['message'] ?? '';
+
+      print('Estado de suscripción: ${canCreateAppointment.value}');
+      print('Mensaje: ${subscriptionMessage.value}');
+
+      // Guardar el mensaje para el diálogo
+      if (!canCreateAppointment.value && result['message'] != null) {
+        subscriptionMessage.value = result['message'];
+      }
+
+      return canCreateAppointment.value;
+    } catch (e) {
+      print('Error verificando estado de suscripción: $e');
+      return true; // Por defecto, permitir si hay un error
+    }
+  }
+
+  void _showSubscriptionRequiredDialog() {
+    print('Mostrando diálogo de suscripción requerida');
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.workspace_premium,
+                  color: Colors.orange[700],
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Plan de prueba finalizado',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                subscriptionMessage.value.isNotEmpty
+                    ? subscriptionMessage.value
+                    : 'Has alcanzado el límite de citas de tu plan de prueba. Adquiere un plan para continuar.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Get.back(); // Cerrar diálogo
+
+                    // Navegación directa a la pantalla de planes
+                    Get.toNamed(GetRoutes.subscriptionPlans);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(Get.context!).primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Ver planes disponibles',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Get.back(); // Solo cerrar el diálogo
+                },
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
+  }
+
+  // Nuevo método para obtener la info del usuario
+  Future<void> _getUserInfo() async {
+    try {
+      final token = await localStorage.getToken();
+      if (token != null) {
+        // Extraer la información del token
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          final payload = json.decode(
+            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+          );
+
+          // Extraer roles y ID del usuario
+          final roles = payload['roles'];
+          userId.value = payload['id'] ?? '';
+
+          if (roles is List) {
+            if (roles.contains('Owner')) {
+              userRole.value = 'Owner';
+            } else if (roles.contains('Employee')) {
+              userRole.value = 'Employee';
+            }
+          } else if (roles is String) {
+            userRole.value = roles;
+          }
+
+          print('Rol de usuario detectado: ${userRole.value}');
+          print('ID de usuario: ${userId.value}');
+        }
+      }
+    } catch (e) {
+      print('Error al obtener información del usuario: $e');
+    }
   }
 
   void _initializeControllers() {
@@ -386,12 +586,45 @@ class AppointmentsController extends GetxController {
       );
 
       print('Citas obtenidas: ${result.length}');
-      result.forEach((appointment) {
-        print('Cita: ${appointment.startTime} - ${appointment.endTime}');
-      });
 
-      // Aseguramos que la lista se actualice correctamente
-      appointments.assignAll(result);
+      // Imprimir detalle de cada cita para diagnóstico
+      for (int i = 0; i < result.length; i++) {
+        print('---------- Cita #${i + 1} ----------');
+        print('ID: ${result[i].id}');
+        print('Professional ID: ${result[i].professionalId}');
+        print('Client: ${result[i].clientName}');
+        print('Date: ${result[i].startTime}');
+      }
+
+      print('ID del usuario actual: ${userId.value}');
+
+      // MODIFICACIÓN: Filtrar citas según el rol del usuario
+      List<AppointmentEntity> filteredAppointments = [];
+
+      if (userRole.value == 'Owner') {
+        // Si es Owner, mostrar todas las citas
+        filteredAppointments = result;
+        print('Rol Owner: Mostrando todas las citas (${result.length})');
+      } else if (userRole.value == 'Employee') {
+        // Si es Employee, mostrar solo las citas donde él es el profesional
+        filteredAppointments = result.where((appointment) {
+          print(
+              'Comparando: appointment.professionalId=${appointment.professionalId} con userId=${userId.value}');
+          return appointment.professionalId == userId.value;
+        }).toList();
+
+        print(
+            'Rol Employee: Filtrando citas para el profesional ${userId.value}');
+        print(
+            'Citas filtradas: ${filteredAppointments.length} de ${result.length}');
+      } else {
+        // Por defecto, mostrar todas las citas
+        filteredAppointments = result;
+        print('Rol no especificado: Mostrando todas las citas por defecto');
+      }
+
+      // Asignar las citas filtradas
+      appointments.assignAll(filteredAppointments);
 
       // Forzamos actualización del calendario después de cargar las citas
       update(['calendar-view']);
@@ -448,6 +681,7 @@ class AppointmentsController extends GetxController {
   void onInit() {
     super.onInit();
     print('AppointmentsController onInit');
+    _getUserInfo(); // Obtener información del usuario
     _initializeCalendar();
     _loadInitialData();
   }
@@ -458,6 +692,13 @@ class AppointmentsController extends GetxController {
     String? notes,
   }) async {
     try {
+      // Verificar estado de suscripción primero
+      final canContinue = await checkSubscriptionStatus();
+      if (!canContinue) {
+        _showSubscriptionRequiredDialog();
+        return;
+      }
+
       // Verificaciones existentes...
       if (employeesController == null) {
         throw Exception('El controlador de empleados no está disponible');
@@ -487,7 +728,7 @@ class AppointmentsController extends GetxController {
       print('Start Time: $startTime');
       print('Notes: $notes');
 
-      print('DEBUG - Hora local al crear: $startTime');
+      print("DEBUG - Hora local al crear: $startTime");
 
       // Calcular duración total de los servicios seleccionados
       int totalDurationMinutes = 0;
@@ -512,7 +753,6 @@ class AppointmentsController extends GetxController {
         totalPrice: totalPrice.value.toString(),
         notes: notes ?? '',
       );
-
       try {
         final createdAppointment = await createAppointmentUseCase(appointment);
 
@@ -537,38 +777,62 @@ class AppointmentsController extends GetxController {
         print('Error tipo: ${apiError.runtimeType}');
         print('Error detalle: $apiError');
 
-        // Buscar el error de horario no disponible de varias maneras
-        bool isHorarioNoDisponible = false;
+        // Verificar si es un error de límite de suscripción
+        bool isSubscriptionLimitReached = false;
 
-        if (apiError is DioException) {
+        if (apiError is AppointmentException) {
+          // Usar la nueva propiedad de AppointmentException
+          if (apiError.isSubscriptionLimitReached) {
+            isSubscriptionLimitReached = true;
+          }
+        } else if (apiError is DioException) {
           final responseData = apiError.response?.data;
           final statusCode = apiError.response?.statusCode;
 
           print('DioException - statusCode: $statusCode');
           print('DioException - responseData: $responseData');
 
-          // Verificar respuesta de DioException
           if (statusCode == 400 &&
               responseData is Map &&
-              responseData['message'] == 'Horario no disponible') {
-            isHorarioNoDisponible = true;
-          }
-        } else if (apiError is AppointmentException) {
-          print('AppointmentException - message: ${apiError.message}');
-
-          // Verificar AppointmentException
-          if (apiError.message.contains('Horario no disponible')) {
-            isHorarioNoDisponible = true;
+              responseData['message'] != null) {
+            final message = responseData['message'].toString().toLowerCase();
+            if (message.contains('límite de citas') ||
+                message.contains('adquiere un plan')) {
+              isSubscriptionLimitReached = true;
+            }
           }
         }
 
-        // Verificación de texto para cualquier tipo de error
-        if (!isHorarioNoDisponible &&
-            apiError
-                .toString()
-                .toLowerCase()
-                .contains('horario no disponible')) {
+        // También verificar en el mensaje de error general
+        if (!isSubscriptionLimitReached) {
+          final errorMessage = apiError.toString().toLowerCase();
+          if (errorMessage.contains('límite de citas') ||
+              errorMessage.contains('adquiere un plan')) {
+            isSubscriptionLimitReached = true;
+          }
+        }
+
+        // Si es un error de límite de suscripción, mostrar diálogo
+        if (isSubscriptionLimitReached) {
+          print('ERROR DETECTADO: Límite de suscripción - Mostrando diálogo');
+          _showSubscriptionRequiredDialog();
+          return;
+        }
+
+        // Verificar si es un error de horario no disponible
+        bool isHorarioNoDisponible = false;
+
+        if (apiError is AppointmentException &&
+            apiError.isHorarioNoDisponible) {
           isHorarioNoDisponible = true;
+        } else {
+          // Verificación de texto para cualquier tipo de error
+          if (apiError
+              .toString()
+              .toLowerCase()
+              .contains('horario no disponible')) {
+            isHorarioNoDisponible = true;
+          }
         }
 
         // Mostrar el diálogo si es un error de horario no disponible
@@ -578,7 +842,7 @@ class AppointmentsController extends GetxController {
           return;
         }
 
-        // Si no es un error de horario, propagarlo
+        // Si no es un error de horario ni de suscripción, propagarlo
         throw apiError;
       }
     } catch (e) {
@@ -586,8 +850,17 @@ class AppointmentsController extends GetxController {
       print('Error final: $e');
       error.value = e.toString();
 
-      // Verificar una última vez si contiene el mensaje de horario no disponible
-      if (e.toString().toLowerCase().contains('horario no disponible')) {
+      // Verificar una última vez si contiene mensajes específicos
+      final errorMessage = e.toString().toLowerCase();
+
+      if (errorMessage.contains('límite de citas') ||
+          errorMessage.contains('adquiere un plan')) {
+        print('ERROR DETECTADO: Límite de suscripción - Mostrando diálogo');
+        _showSubscriptionRequiredDialog();
+        return;
+      }
+
+      if (errorMessage.contains('horario no disponible')) {
         _showHorarioNoDisponibleDialog();
       } else {
         // Mostrar error genérico
@@ -604,7 +877,7 @@ class AppointmentsController extends GetxController {
     }
   }
 
-// Método auxiliar para recargar las citas del día
+  // Método auxiliar para recargar las citas del día
   Future<void> _reloadAppointmentsForDay(DateTime date) async {
     // Construir las fechas de inicio y fin del día
     final startDate = DateTime(
@@ -742,109 +1015,99 @@ class AppointmentsController extends GetxController {
     required List<String> serviceIds,
     required DateTime startTime,
     String? notes,
+    String? clientId,
+    String? totalPrice, // Mantenerlo como parámetro para recibirlo
   }) async {
     try {
+      // Verificar estado de suscripción primero
+      final canContinue = await checkSubscriptionStatus();
+      if (!canContinue) {
+        _showSubscriptionRequiredDialog();
+        return;
+      }
+
       isLoading.value = true;
       error.value = null;
 
-      // Buscar la cita en la lista de citas cargadas
+      // DIAGNÓSTICO: Mostrar todos los datos recibidos
+      print('\n🔍 ===== INICIO ACTUALIZACIÓN CITA =====');
+      print('📝 DATOS RECIBIDOS:');
+      print('ID: $appointmentId');
+      print('Profesional: $professionalId');
+      print('Servicios: $serviceIds');
+      print('Hora: $startTime');
+      print('Notas: $notes');
+      print('Cliente ID: $clientId');
+      print('Precio Total: $totalPrice'); // Solo para debug
+
+      // Buscar cita actual para comparación
       final currentAppointment =
           appointments.firstWhereOrNull((a) => a.id == appointmentId);
       if (currentAppointment == null) {
-        throw Exception('No se pudo encontrar la cita a actualizar');
+        throw Exception(
+            'No se pudo encontrar la cita ID: $appointmentId en la lista cargada');
       }
 
-      // Calcular duración total de los servicios seleccionados
-      int totalDurationMinutes = 0;
-      for (String serviceId in serviceIds) {
-        final service = services.firstWhere(
-          (s) => s['id'] == serviceId,
-          orElse: () => {'duration': 30},
-        );
-        totalDurationMinutes +=
-            int.parse((service['duration'] ?? 30).toString());
+      // Construir payload para la API - Asegurarse que todos los campos necesarios estén incluidos
+      final Map<String, dynamic> updateData = {
+        'professional_id': professionalId,
+        'service_ids': serviceIds,
+        'date': startTime.toIso8601String(),
+        'notes': notes ?? '',
+      };
+
+      // Añadir client_id solo si fue proporcionado
+      if (clientId != null && clientId.isNotEmpty) {
+        updateData['client_id'] = clientId;
       }
 
-      // Calcular hora de finalización prevista
-      final endTime = startTime.add(Duration(minutes: totalDurationMinutes));
+      // NO añadir total_price porque el backend no lo acepta
 
-      print('=== DEBUG DATOS ANTES DE ACTUALIZAR CITA ===');
-      print('Appointment ID: $appointmentId');
-      print('Professional ID: $professionalId');
-      print('Service IDs: $serviceIds');
-      print('Start Time: $startTime');
-      print('End Time (calculada): $endTime');
-      print('Duración total: $totalDurationMinutes minutos');
-      print('Notes: $notes');
+      print('\n📦 PAYLOAD A ENVIAR:');
+      print(json.encode(updateData));
 
-      // Determinar clientId
-      // Si es una instancia de AppointmentModel, usamos su clientId directamente
-      String clientId = '';
-
-      if (currentAppointment is AppointmentModel) {
-        clientId = currentAppointment.clientId;
-      } else {
-        // Si no, tratamos de obtenerlo de alguna otra manera
-        // Por ejemplo, buscar en nuestro repositorio de clientes por el nombre
-        final client = clients.firstWhereOrNull(
-            (c) => c['name'] == currentAppointment.clientName);
-        if (client != null) {
-          clientId = client['id'];
-        } else {
-          throw Exception('No se pudo determinar el ID del cliente');
-        }
-      }
-
-      // Crear el modelo para actualización
-      final appointment = AppointmentModel(
-        id: appointmentId,
-        title: currentAppointment.title,
-        clientName: currentAppointment.clientName,
-        startTime: startTime,
-        endTime: endTime,
-        serviceTypes: currentAppointment.serviceTypes,
-        status: currentAppointment.status,
-        totalPrice: currentAppointment.totalPrice,
-        clientId: clientId,
-        serviceIds: serviceIds,
-        professionalId: professionalId,
-        ownerId: currentAppointment.ownerId,
-        paymentStatus: currentAppointment.paymentStatus,
-        notes: notes ?? currentAppointment.notes,
-        colors: currentAppointment.colors?.cast<String>(),
+      // Hacer la llamada a la API
+      final result =
+          await Get.find<AppointmentsRepository>().updateAppointmentDirect(
+        appointmentId: appointmentId,
+        data: updateData,
       );
 
-      // Llamar al caso de uso para actualizar la cita
-      await updateAppointmentUseCase(appointment);
+      print('\n✅ RESPUESTA RECIBIDA:');
+      print('Éxito: ${result != null}');
+      if (result != null) {
+        print('Cliente actualizado: ${result.clientName}');
+        print('Profesional actualizado: ${result.professionalId}');
+        print('Servicios actualizados: ${result.serviceTypes}');
+        print('Hora actualizada: ${result.startTime}');
+      }
 
-      // Limpiar la selección
+      // Limpiar estado
       selectedServiceIds.clear();
-      totalPrice.value = 0;
+      this.totalPrice.value = 0;
 
-      // Recargar citas del día
+      // Recargar citas
       await _reloadAppointmentsForDay(startTime);
 
-      // Get.snackbar(
-      //   'Éxito',
-      //   'Cita actualizada correctamente',
-      //   backgroundColor: Colors.green[100],
-      //   colorText: Colors.green[800],
-      //   duration: const Duration(seconds: 3),
-      // );
+      Get.snackbar(
+        'Éxito',
+        'Cita actualizada correctamente',
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[800],
+        duration: const Duration(seconds: 3),
+      );
 
       update(['calendar-view']);
     } catch (e) {
-      print('=== ERROR AL ACTUALIZAR CITA ===');
-      print('Error tipo: ${e.runtimeType}');
-      print('Error detalle: $e');
+      print('\n❌ ERROR GENERAL:');
+      print('Tipo: ${e.runtimeType}');
+      print('Mensaje: $e');
 
       error.value = e.toString();
 
-      // Verificar si es un error de horario no disponible
       if (e.toString().toLowerCase().contains('horario no disponible')) {
         _showHorarioNoDisponibleDialog();
       } else {
-        // Mostrar error genérico
         Get.snackbar(
           'Error',
           'No se pudo actualizar la cita: ${_formatErrorMessage(e)}',
@@ -853,10 +1116,42 @@ class AppointmentsController extends GetxController {
           duration: const Duration(seconds: 4),
         );
       }
-      throw e; // Re-lanzar para que el formulario pueda manejar el error
+      throw e;
     } finally {
+      print('\n🏁 ===== FIN ACTUALIZACIÓN CITA =====\n');
       isLoading.value = false;
     }
+  }
+
+  // Método para encontrar ID de cliente por nombre
+  String _findClientIdByName(String clientName) {
+    final clientMatch = clients.firstWhereOrNull((c) =>
+        '${c['name']} ${c['lastname'] ?? ''}'.trim() == clientName.trim());
+
+    if (clientMatch != null) {
+      print('📍 Cliente encontrado por nombre: ${clientMatch['id']}');
+      return clientMatch['id'];
+    }
+
+    print('⚠️ No se encontró cliente con nombre: "$clientName"');
+    return '';
+  }
+
+  // Método auxiliar para extraer el Tenant ID del token JWT
+  String _extractTenantId(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length > 1) {
+        final payload = base64Url.normalize(parts[1]);
+        final decoded = utf8.decode(base64Url.decode(payload));
+        final Map<String, dynamic> data = jsonDecode(decoded);
+        final tenantId = data['tenant_id'] ?? '';
+        return tenantId;
+      }
+    } catch (e) {
+      print('Error extrayendo tenant_id: $e');
+    }
+    return '';
   }
 
   CalendarDataSource getCalendarDataSource() {
@@ -875,5 +1170,23 @@ class AppointmentsController extends GetxController {
     selectedServiceIds.clear();
     totalPrice.value = 0;
     super.onClose();
+  }
+
+  String sanitizeString(String input) {
+    if (input.isEmpty) return input;
+
+    try {
+      // Convertir a UTF-8 y volver a UTF-16 para validar
+      List<int> bytes = utf8.encode(input);
+      utf8.decode(bytes);
+      return input;
+    } catch (e) {
+      print('⚠️ UTF-16 ERROR: Detectado texto mal formado: "$input"');
+      // Elimina emojis y otros caracteres problemáticos
+      final pattern = RegExp(
+          r'[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]',
+          unicode: true);
+      return input.replaceAll(pattern, '?');
+    }
   }
 }

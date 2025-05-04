@@ -1,3 +1,5 @@
+import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
+
 import '../../domain/entities/payment_stats_entity.dart';
 import '../../domain/entities/payment_comparison_entity.dart';
 import '../../domain/entities/payment_method_stats_entity.dart';
@@ -58,5 +60,17 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
       {int limit = 5}) async {
     return await remoteDataSource.getTopClients(startDate, endDate,
         limit: limit);
+  }
+
+  @override
+  Future<EmployeeStatsEntity> getEmployeeStats(
+      DateTime startDate, DateTime endDate) async {
+    try {
+      final employeeStats =
+          await remoteDataSource.getEmployeeStats(startDate, endDate);
+      return employeeStats;
+    } catch (e) {
+      throw Exception('Error getting employee stats: $e');
+    }
   }
 }

@@ -2,6 +2,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import '../../../../shared/local_storage/local_storage.dart';
 import '../models/payment_stats_model.dart';
 import '../models/payment_comparison_model.dart';
@@ -213,6 +214,37 @@ class StatisticsRemoteDataSource {
     } catch (e) {
       debugPrint('Error en getTopClients: $e');
       throw Exception('Error loading top clients: $e');
+    }
+  }
+
+  Future<EmployeeStatsModel> getEmployeeStats(
+      DateTime startDate, DateTime endDate) async {
+    try {
+      final token = await localStorage.getToken();
+      print(
+          "Obteniendo estadísticas de empleado para el rango: ${_dateFormat.format(startDate)} a ${_dateFormat.format(endDate)}");
+
+      final response = await dio.get(
+        '/payments/employee-stats', // ¡Usa la ruta correcta para empleados!
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        queryParameters: {
+          'startDate': _dateFormat.format(startDate),
+          'endDate': _dateFormat.format(endDate),
+        },
+      );
+
+      print(
+          "Respuesta del servidor para estadísticas de empleado: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        return EmployeeStatsModel.fromJson(response.data);
+      }
+
+      throw Exception(
+          'Failed to load employee stats: Status ${response.statusCode}');
+    } catch (e) {
+      print('Error en getEmployeeStats: $e');
+      throw Exception('Error loading employee stats: $e');
     }
   }
 }

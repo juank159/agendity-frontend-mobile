@@ -1,3 +1,5 @@
+import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
+
 import '../entities/payment_stats_entity.dart';
 import '../entities/payment_comparison_entity.dart';
 import '../entities/payment_method_stats_entity.dart';
@@ -29,4 +31,7 @@ abstract class StatisticsRepository {
   Future<List<TopClientEntity>> getTopClients(
       DateTime startDate, DateTime endDate,
       {int limit = 5});
+
+  Future<EmployeeStatsEntity> getEmployeeStats(
+      DateTime startDate, DateTime endDate);
 }

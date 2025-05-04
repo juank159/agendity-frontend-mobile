@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
 import 'package:login_signup/features/statistics/data/repositories/statistics_repository_impl.dart';
 import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_comparison_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_method_usecase.dart';
@@ -70,6 +71,11 @@ class StatisticsModule {
         permanent: true,
       );
 
+      Get.put<GetEmployeeStatsUseCase>(
+        GetEmployeeStatsUseCase(Get.find()),
+        permanent: true,
+      );
+
       print('Statistics module initialized successfully');
     } catch (e) {
       print('Error initializing StatisticsModule: $e');
@@ -104,6 +110,9 @@ class StatisticsModule {
     }
     if (Get.isRegistered<GetTopClientsUseCase>()) {
       Get.delete<GetTopClientsUseCase>(force: true);
+    }
+    if (Get.isRegistered<GetEmployeeStatsUseCase>()) {
+      Get.delete<GetEmployeeStatsUseCase>(force: true);
     }
   }
 }

@@ -127,13 +127,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        if (isExpanded) {
-          _toggleMenu();
-          return false;
-        }
-        //Get.until((route) => route.isFirst);
-        //Get.offAllNamed('/');
-        Get.back();
+        // Permitir retroceder sin mostrar un cuadro de diálogo
         return true;
       },
       child: Scaffold(
@@ -154,9 +148,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            //Get.until((route) => route.isFirst);
-            // Get.offAllNamed('/');
-            Get.back();
+            // Retroceder directamente
+            Get.toNamed('/');
           },
         ),
       );
@@ -190,7 +183,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
         if (!isExpanded)
           FloatingActionButton(
             onPressed: _toggleMenu,
-            backgroundColor: AppColors.primary,
+            backgroundColor: AppColors.cardIndicator,
             child: const Icon(Icons.add),
           ),
         if (isExpanded) ...[

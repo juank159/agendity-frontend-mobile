@@ -7,6 +7,7 @@ class UserInfoController extends GetxController {
   final userName = ''.obs;
   final userEmail = ''.obs;
   final userInitial = ''.obs;
+  final userRoles = <String>[].obs;
 
   @override
   void onInit() {
@@ -29,6 +30,14 @@ class UserInfoController extends GetxController {
           userInitial.value = (payload['name'] as String?)?.isNotEmpty == true
               ? payload['name'].toString().substring(0, 1).toUpperCase()
               : 'U';
+          if (payload['roles'] != null) {
+            if (payload['roles'] is List) {
+              userRoles.assignAll(List<String>.from(payload['roles']));
+            } else if (payload['roles'] is String) {
+              userRoles.add(payload['roles']);
+            }
+          }
+          print('Roles del usuario: ${userRoles.join(', ')}');
         }
       }
     } catch (e) {
@@ -37,6 +46,22 @@ class UserInfoController extends GetxController {
       userName.value = 'Usuario';
       userEmail.value = 'correo@ejemplo.com';
       userInitial.value = 'U';
+      userRoles.clear();
     }
+  }
+
+  void printUserRoles() {
+    print('Roles del usuario desde UserInfoController: $userRoles');
+    print('¿Es solo Employee?: ${isOnlyEmployee()}');
+  }
+
+  // Método para verificar si el usuario tiene un rol específico
+  bool hasRole(String role) {
+    return userRoles.contains(role);
+  }
+
+  // Método para verificar si el usuario es solo empleado (tiene rol Employee pero no Owner)
+  bool isOnlyEmployee() {
+    return userRoles.contains('Employee') && !userRoles.contains('Owner');
   }
 }

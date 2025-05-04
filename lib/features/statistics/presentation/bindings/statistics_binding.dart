@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import '../../../../core/di/modules/statistics_module.dart';
 import '../controllers/statistics_controller.dart';
 import '../../domain/usecases/get_payment_stats_usecase.dart';
@@ -20,7 +21,8 @@ class StatisticsBinding extends Bindings {
           !Get.isRegistered<GetPaymentStatsByProfessionalUseCase>() ||
           !Get.isRegistered<GetPaymentStatsByServiceUseCase>() ||
           !Get.isRegistered<GetPaymentStatsByClientUseCase>() ||
-          !Get.isRegistered<GetTopClientsUseCase>()) {
+          !Get.isRegistered<GetTopClientsUseCase>() ||
+          !Get.isRegistered<GetEmployeeStatsUseCase>()) {
         StatisticsModule.init();
       }
 
@@ -35,6 +37,7 @@ class StatisticsBinding extends Bindings {
             getPaymentStatsByServiceUseCase: Get.find(),
             getPaymentStatsByClientUseCase: Get.find(),
             getTopClientsUseCase: Get.find(),
+            getEmployeeStatsUseCase: Get.find(),
           ),
         );
       }

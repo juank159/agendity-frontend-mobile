@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/professional_selector_dialog.dart';
 import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
 import 'package:login_signup/features/employees/data/repositories/employees_repository_impl.dart';
@@ -10,27 +11,34 @@ import 'package:login_signup/features/employees/domain/usecases/create_employee_
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
+import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
 import '../controllers/appointments_controller.dart';
 import 'client_selector_dialog.dart';
 import 'service_selector_dialog.dart';
 
 class AppointmentFormDialog extends StatelessWidget {
   final AppointmentsController controller;
-  final DateTime?
-      initialDateTime; // Parámetro para recibir la fecha/hora seleccionada
+  final DateTime? initialDateTime;
 
   const AppointmentFormDialog({
     Key? key,
     required this.controller,
     this.initialDateTime,
   }) : super(key: key);
-
   static Future<void> show(
       BuildContext context, AppointmentsController controller,
-      [DateTime?
-          selectedDateTime] // Parámetro opcional para la fecha/hora seleccionada
-      ) {
-    return showDialog(
+      [DateTime? selectedDateTime]) async {
+    // Primero verificar el estado de la suscripción
+    final canCreateAppointment = await controller.checkSubscriptionStatus();
+
+    if (!canCreateAppointment) {
+      // Usar Get.toNamed para navegar a la pantalla de suscripción directamente
+      Get.toNamed(GetRoutes.subscriptionPlans);
+      return;
+    }
+
+    showDialog(
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
@@ -44,6 +52,105 @@ class AppointmentFormDialog extends StatelessWidget {
           child: AppointmentFormDialog(
             controller: controller,
             initialDateTime: selectedDateTime,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Método para mostrar el diálogo cuando se requiere suscripción
+  static void _showSubscriptionRequiredDialog(
+      BuildContext context, AppointmentsController controller) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.workspace_premium,
+                  color: Colors.orange[700],
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Plan de prueba finalizado',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                controller.subscriptionMessage.value.isNotEmpty
+                    ? controller.subscriptionMessage.value
+                    : 'Has alcanzado el límite de citas de tu plan de prueba. Adquiere un plan para continuar.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Cerrar diálogo
+
+                    // Registrar el binding si no está registrado
+                    if (!Get.isRegistered<SubscriptionBinding>()) {
+                      Get.lazyPut<SubscriptionBinding>(
+                          () => SubscriptionBinding());
+                    }
+
+                    // Aplicar el binding y navegar a la pantalla de planes
+                    SubscriptionBinding().dependencies();
+                    Get.to(() => SubscriptionPlansScreen());
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Ver planes disponibles',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Solo cerrar el diálogo
+                },
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -84,7 +191,6 @@ class AppointmentFormDialog extends StatelessWidget {
       child: Form(
         key: formKey,
         child: Column(
-          // Cambiamos SingleChildScrollView por Column
           mainAxisSize: MainAxisSize.min,
           children: [
             // Título
@@ -96,7 +202,6 @@ class AppointmentFormDialog extends StatelessWidget {
 
             // Contenido principal en un scroll para que no afecte los botones
             Flexible(
-              // Agregamos Flexible aquí
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -390,7 +495,7 @@ class AppointmentFormDialog extends StatelessWidget {
     );
   }
 
-// Función auxiliar para mostrar iniciales cuando no hay foto
+  // Función auxiliar para mostrar iniciales cuando no hay foto
   Widget _buildProfessionalAvatar(
       EmployeeEntity employee, BuildContext context) {
     return Center(
@@ -458,7 +563,7 @@ class AppointmentFormDialog extends StatelessWidget {
     }
   }
 
-// Método para inicializar el módulo de empleados
+  // Método para inicializar el módulo de empleados
   Future<void> _initEmployeesModule() async {
     try {
       // Inicializar remotedatasource

@@ -77,229 +77,303 @@
 //     }
 //   }
 
+//   // Método para verificar si el usuario es Owner
+//   Future<bool> _isOwner(UserInfoController userController) async {
+//     try {
+//       final token = await userController.storage.read(key: 'token');
+//       if (token != null) {
+//         final parts = token.split('.');
+//         if (parts.length == 3) {
+//           final payload = json.decode(
+//             utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+//           );
+//           final roles = payload['roles'];
+//           return roles is List ? roles.contains('Owner') : roles == 'Owner';
+//         }
+//       }
+//       return false;
+//     } catch (e) {
+//       print('Error al verificar el rol de Owner: $e');
+//       return false;
+//     }
+//   }
+
+//   // Método para verificar si el usuario es Employee
+//   Future<bool> _isEmployee(UserInfoController userController) async {
+//     try {
+//       final token = await userController.storage.read(key: 'token');
+//       if (token != null) {
+//         final parts = token.split('.');
+//         if (parts.length == 3) {
+//           final payload = json.decode(
+//             utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+//           );
+//           final roles = payload['roles'];
+//           return roles is List
+//               ? roles.contains('Employee')
+//               : roles == 'Employee';
+//         }
+//       }
+//       return false;
+//     } catch (e) {
+//       print('Error al verificar el rol de Employee: $e');
+//       return false;
+//     }
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     final userController = _ensureUserInfoController();
+
 //     return SafeArea(
 //       child: Drawer(
 //         backgroundColor: const Color(0xFF1A1A2E),
-//         child: ListView(
-//           padding: EdgeInsets.zero,
-//           children: [
-//             const Padding(
-//               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//               child: ListTile(
-//                 leading: Icon(Icons.search, color: Colors.white),
-//                 title: Text('Buscar', style: TextStyle(color: Colors.white)),
-//                 contentPadding: EdgeInsets.zero,
-//               ),
-//             ),
-//             // Perfil de usuario
-//             Container(
-//               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-//               decoration: BoxDecoration(
-//                 border: Border(
-//                   bottom: BorderSide(
-//                     color: Colors.grey.withOpacity(0.3),
-//                     width: 1,
+//         child: FutureBuilder<List<bool>>(
+//           future: Future.wait(
+//               [_isOwner(userController), _isEmployee(userController)]),
+//           builder: (context, snapshot) {
+//             final bool isOwner =
+//                 snapshot.data != null ? snapshot.data![0] : false;
+//             final bool isEmployee =
+//                 snapshot.data != null ? snapshot.data![1] : false;
+
+//             return ListView(
+//               padding: EdgeInsets.zero,
+//               children: [
+//                 // Buscar - visible para todos
+//                 const Padding(
+//                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+//                   child: ListTile(
+//                     leading: Icon(Icons.search, color: Colors.white),
+//                     title:
+//                         Text('Buscar', style: TextStyle(color: Colors.white)),
+//                     contentPadding: EdgeInsets.zero,
 //                   ),
 //                 ),
-//               ),
-//               child: Column(
-//                 children: [
-//                   Obx(() => CircleAvatar(
-//                         radius: 30,
-//                         backgroundColor: Colors.orange,
-//                         child: Text(
-//                           userController.userInitial.value,
-//                           style: const TextStyle(
-//                             color: Colors.white,
-//                             fontSize: 24,
-//                             fontWeight: FontWeight.bold,
-//                           ),
-//                         ),
-//                       )),
-//                   const SizedBox(height: 12),
-//                   Obx(() => Text(
-//                         userController.userName.value,
-//                         style: const TextStyle(
-//                           color: Colors.white,
-//                           fontSize: 18,
-//                           fontWeight: FontWeight.w600,
-//                         ),
-//                       )),
-//                   const SizedBox(height: 4),
-//                   Obx(() => Text(
-//                         userController.userEmail.value,
-//                         style: TextStyle(
-//                           color: Colors.grey[400],
-//                           fontSize: 14,
-//                         ),
-//                       )),
-//                 ],
-//               ),
-//             ),
-//             _DrawerTile(
-//               icon: Icons.sell,
-//               title: 'Servicios',
-//               onTap: () async {
-//                 Get.back();
-//                 try {
-//                   final servicesController = Get.find<ServicesController>();
-//                   await servicesController.initializeServices();
-//                   Get.toNamed('/services');
-//                   await Get.toNamed(GetRoutes.services);
-//                 } catch (e) {
-//                   print('Error inicializando servicios: $e');
-//                   Get.toNamed('/services');
-//                 }
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.people,
-//               title: 'Clientela',
-//               onTap: () async {
-//                 Get.back();
-//                 try {
-//                   final clientsController = Get.find<ClientsController>();
-//                   await clientsController
-//                       .loadClients(); // Método similar a initializeServices
-//                   Get.toNamed('/clients'); // Usar la ruta definida en GetRoutes
-//                 } catch (e) {
-//                   print('Error inicializando clientes: $e');
-//                   Get.toNamed('/clients');
-//                 }
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.message,
-//               title: 'Mensajes',
-//               onTap: () {
-//                 Get.back();
-//                 // Get.to(() => const MensajesScreen());
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.monetization_on,
-//               title: 'Gastos',
-//               onTap: () {
-//                 Get.back();
-//                 // Get.to(() => const GastosScreen());
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.bar_chart,
-//               title: 'Informes',
-//               onTap: () {
-//                 Get.back();
-//                 try {
-//                   print('Roles del usuario: ${userController.userRoles}');
+//                 // Perfil de usuario - visible para todos
+//                 Container(
+//                   padding:
+//                       const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+//                   decoration: BoxDecoration(
+//                     border: Border(
+//                       bottom: BorderSide(
+//                         color: Colors.grey.withOpacity(0.3),
+//                         width: 1,
+//                       ),
+//                     ),
+//                   ),
+//                   child: Column(
+//                     children: [
+//                       Obx(() => CircleAvatar(
+//                             radius: 30,
+//                             backgroundColor: Colors.orange,
+//                             child: Text(
+//                               userController.userInitial.value,
+//                               style: const TextStyle(
+//                                 color: Colors.white,
+//                                 fontSize: 24,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
+//                           )),
+//                       const SizedBox(height: 12),
+//                       Obx(() => Text(
+//                             userController.userName.value,
+//                             style: const TextStyle(
+//                               color: Colors.white,
+//                               fontSize: 18,
+//                               fontWeight: FontWeight.w600,
+//                             ),
+//                           )),
+//                       const SizedBox(height: 4),
+//                       Obx(() => Text(
+//                             userController.userEmail.value,
+//                             style: TextStyle(
+//                               color: Colors.grey[400],
+//                               fontSize: 14,
+//                             ),
+//                           )),
+//                     ],
+//                   ),
+//                 ),
 
-//                   // Extraer el token y verificar el rol
-//                   final token =
-//                       userController.storage.read(key: 'token').then((value) {
-//                     if (value != null) {
-//                       final parts = value.split('.');
-//                       if (parts.length == 3) {
-//                         final payload = json.decode(
-//                           utf8.decode(
-//                               base64Url.decode(base64Url.normalize(parts[1]))),
-//                         );
-
-//                         final roles = payload['roles'];
-//                         final bool isEmployee = roles is List
-//                             ? roles.contains('Employee') &&
-//                                 !roles.contains('Owner')
-//                             : roles == 'Employee';
-
-//                         print('Es solo empleado: $isEmployee');
-
-//                         // Navegar a la ruta correspondiente
-//                         if (isEmployee) {
-//                           Get.toNamed('/employee-statistics');
-//                         } else {
-//                           Get.toNamed('/statistics');
-//                         }
+//                 // Elementos condicionales según el rol
+//                 // Solo visible para Owner
+//                 if (isOwner) ...[
+//                   _DrawerTile(
+//                     icon: Icons.sell,
+//                     title: 'Servicios',
+//                     onTap: () async {
+//                       Get.back();
+//                       try {
+//                         final servicesController =
+//                             Get.find<ServicesController>();
+//                         await servicesController.initializeServices();
+//                         Get.toNamed('/services');
+//                         await Get.toNamed(GetRoutes.services);
+//                       } catch (e) {
+//                         print('Error inicializando servicios: $e');
+//                         Get.toNamed('/services');
 //                       }
+//                     },
+//                   ),
+//                   _DrawerTile(
+//                     icon: Icons.people,
+//                     title: 'Clientela',
+//                     onTap: () async {
+//                       Get.back();
+//                       try {
+//                         final clientsController = Get.find<ClientsController>();
+//                         await clientsController
+//                             .loadClients(); // Método similar a initializeServices
+//                         Get.toNamed(
+//                             '/clients'); // Usar la ruta definida en GetRoutes
+//                       } catch (e) {
+//                         print('Error inicializando clientes: $e');
+//                         Get.toNamed('/clients');
+//                       }
+//                     },
+//                   ),
+//                   _DrawerTile(
+//                     icon: Icons.message,
+//                     title: 'Mensajes',
+//                     onTap: () {
+//                       Get.back();
+//                       // Get.to(() => const MensajesScreen());
+//                     },
+//                   ),
+//                   _DrawerTile(
+//                     icon: Icons.monetization_on,
+//                     title: 'Gastos',
+//                     onTap: () {
+//                       Get.back();
+//                       // Get.to(() => const GastosScreen());
+//                     },
+//                   ),
+//                   _DrawerTile(
+//                     icon: Icons.calendar_today,
+//                     title: 'Reserva Online',
+//                     onTap: () {
+//                       Get.back();
+//                       // Get.to(() => const ReservaScreen());
+//                     },
+//                   ),
+//                   _DrawerTile(
+//                     icon: Icons.person,
+//                     title: 'Personal',
+//                     onTap: () async {
+//                       Get.back(); // Cerrar el drawer primero
+//                       try {
+//                         // Usar la constante de rutas
+//                         await Get.toNamed(GetRoutes.employees);
+//                       } catch (e) {
+//                         print('Error al navegar a Personal: $e');
+//                         Get.snackbar(
+//                           'Error',
+//                           'No se pudo cargar la pantalla de Personal',
+//                           backgroundColor: Colors.red[100],
+//                           colorText: Colors.red[900],
+//                           snackPosition: SnackPosition.BOTTOM,
+//                         );
+//                       }
+//                     },
+//                   ),
+//                   _DrawerTile(
+//                     icon: Icons.description,
+//                     title: 'Formularios',
+//                     onTap: () {
+//                       Get.back();
+//                       // Get.to(() => const FormulariosScreen());
+//                     },
+//                   ),
+//                 ],
+
+//                 // Visible para Owner y Employee
+//                 _DrawerTile(
+//                   icon: Icons.bar_chart,
+//                   title: 'Informes',
+//                   onTap: () {
+//                     Get.back();
+//                     try {
+//                       print('Roles del usuario: ${userController.userRoles}');
+
+//                       // Extraer el token y verificar el rol
+//                       final token = userController.storage
+//                           .read(key: 'token')
+//                           .then((value) {
+//                         if (value != null) {
+//                           final parts = value.split('.');
+//                           if (parts.length == 3) {
+//                             final payload = json.decode(
+//                               utf8.decode(base64Url
+//                                   .decode(base64Url.normalize(parts[1]))),
+//                             );
+
+//                             final roles = payload['roles'];
+//                             final bool isEmployee = roles is List
+//                                 ? roles.contains('Employee') &&
+//                                     !roles.contains('Owner')
+//                                 : roles == 'Employee';
+
+//                             print('Es solo empleado: $isEmployee');
+
+//                             // Navegar a la ruta correspondiente
+//                             if (isEmployee) {
+//                               Get.toNamed('/employee-statistics');
+//                             } else {
+//                               Get.toNamed('/statistics');
+//                             }
+//                           }
+//                         }
+//                       });
+//                     } catch (e) {
+//                       print('Error al verificar rol y navegar: $e');
+//                       // Si hay error, intentar la ruta de estadísticas general
+//                       Get.toNamed('/statistics');
 //                     }
-//                   });
-//                 } catch (e) {
-//                   print('Error al verificar rol y navegar: $e');
-//                   // Si hay error, intentar la ruta de estadísticas general
-//                   Get.toNamed('/statistics');
-//                 }
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.calendar_today,
-//               title: 'Reserva Online',
-//               onTap: () {
-//                 Get.back();
-//                 // Get.to(() => const ReservaScreen());
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.person,
-//               title: 'Personal',
-//               onTap: () async {
-//                 Get.back(); // Cerrar el drawer primero
-//                 try {
-//                   // Usar la constante de rutas
-//                   await Get.toNamed(GetRoutes.employees);
-//                 } catch (e) {
-//                   print('Error al navegar a Personal: $e');
-//                   Get.snackbar(
-//                     'Error',
-//                     'No se pudo cargar la pantalla de Personal',
-//                     backgroundColor: Colors.red[100],
-//                     colorText: Colors.red[900],
-//                     snackPosition: SnackPosition.BOTTOM,
-//                   );
-//                 }
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.description,
-//               title: 'Formularios',
-//               onTap: () {
-//                 Get.back();
-//                 // Get.to(() => const FormulariosScreen());
-//               },
-//             ),
-//             Divider(color: Colors.grey.withOpacity(0.3)),
-//             _DrawerTile(
-//               icon: Icons.settings,
-//               title: 'Ajustes',
-//               onTap: () {
-//                 Get.back();
-//                 Get.toNamed('/whatsapp-config');
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.logout_rounded,
-//               title: 'Cerrar Sesión',
-//               onTap: () {
-//                 Get.back();
-//                 _showLogoutDialog();
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.help,
-//               title: 'Centro de ayuda',
-//               onTap: () {
-//                 Get.back();
-//                 // Get.to(() => const AyudaScreen());
-//               },
-//             ),
-//             _DrawerTile(
-//               icon: Icons.send,
-//               title: 'Enviar opiniones',
-//               onTap: () {
-//                 Get.back();
-//                 // Get.to(() => const OpinionesScreen());
-//               },
-//             ),
-//           ],
+//                   },
+//                 ),
+
+//                 // Separador si hay elementos de Owner que mostrar
+//                 if (isOwner) Divider(color: Colors.grey.withOpacity(0.3)),
+
+//                 // Elementos visibles para todos los roles
+//                 _DrawerTile(
+//                   icon: Icons.settings,
+//                   title: 'Ajustes',
+//                   onTap: () {
+//                     Get.back();
+//                     Get.toNamed('/whatsapp-config');
+//                   },
+//                 ),
+//                 _DrawerTile(
+//                   icon: Icons.logout_rounded,
+//                   title: 'Cerrar Sesión',
+//                   onTap: () {
+//                     Get.back();
+//                     _showLogoutDialog();
+//                   },
+//                 ),
+//                 _DrawerTile(
+//                   icon: Icons.help,
+//                   title: 'Centro de ayuda',
+//                   onTap: () {
+//                     Get.back();
+//                     Get.toNamed('/subscription-plans');
+//                     // Get.to(() => const AyudaScreen());
+//                   },
+//                 ),
+//                 _DrawerTile(
+//                   icon: Icons.send,
+//                   title: 'Enviar opiniones',
+//                   onTap: () {
+//                     Get.back();
+//                     // Get.to(() => const OpinionesScreen());
+//                   },
+//                 ),
+//               ],
+//             );
+//           },
 //         ),
 //       ),
 //     );
@@ -331,7 +405,10 @@
 //   }
 // }
 
+// lib/widgets/custom_drawer.dart
+
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -360,43 +437,114 @@ class CustomDrawer extends GetView<UserInfoController> {
     try {
       final logoutController = Get.find<LogoutController>();
       Get.dialog(
-        AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          title: const Text(
-            'Cerrar Sesión',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            '¿Está seguro que desea cerrar la sesión?',
-            style: TextStyle(fontSize: 16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.grey),
+        BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            elevation: 10,
+            backgroundColor: Colors.white,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: Colors.red.shade700,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '¿Cerrar Sesión?',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '¿Está seguro que desea cerrar la sesión?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Get.back(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Get.back();
+                            logoutController.logout();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cerrar Sesión',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Get.back();
-                logoutController.logout();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Cerrar Sesión'),
-            ),
-          ],
+          ),
         ),
-        barrierDismissible: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withOpacity(0.3),
       );
     } catch (e) {
       print('Error al mostrar diálogo de logout: $e');
@@ -458,282 +606,483 @@ class CustomDrawer extends GetView<UserInfoController> {
   Widget build(BuildContext context) {
     final userController = _ensureUserInfoController();
 
-    return SafeArea(
-      child: Drawer(
-        backgroundColor: const Color(0xFF1A1A2E),
-        child: FutureBuilder<List<bool>>(
-          future: Future.wait(
-              [_isOwner(userController), _isEmployee(userController)]),
-          builder: (context, snapshot) {
-            final bool isOwner =
-                snapshot.data != null ? snapshot.data![0] : false;
-            final bool isEmployee =
-                snapshot.data != null ? snapshot.data![1] : false;
+    return Drawer(
+      width: MediaQuery.of(context).size.width * 0.85,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF1A237E), // Azul oscuro
+              const Color(0xFF0D47A1), // Azul profundo
+              const Color(0xFF01579B), // Azul oscuro
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: FutureBuilder<List<bool>>(
+            future: Future.wait(
+                [_isOwner(userController), _isEmployee(userController)]),
+            builder: (context, snapshot) {
+              final bool isOwner =
+                  snapshot.data != null ? snapshot.data![0] : false;
+              final bool isEmployee =
+                  snapshot.data != null ? snapshot.data![1] : false;
 
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                // Buscar - visible para todos
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ListTile(
-                    leading: Icon(Icons.search, color: Colors.white),
-                    title:
-                        Text('Buscar', style: TextStyle(color: Colors.white)),
-                    contentPadding: EdgeInsets.zero,
+              return Column(
+                children: [
+                  // Perfil de usuario
+                  Container(
+                    padding: const EdgeInsets.only(top: 30, bottom: 20),
+                    child: Column(
+                      children: [
+                        // Avatar del usuario
+                        Obx(() => Container(
+                              height: 100,
+                              width: 100,
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.blue.shade300,
+                                    Colors.blue.shade600,
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 10,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.7),
+                                  width: 4,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  userController.userInitial.value,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 42,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            )),
+
+                        // Nombre de usuario
+                        Obx(() => Text(
+                              userController.userName.value,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            )),
+
+                        // Email del usuario
+                        Obx(() => Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                userController.userEmail.value,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            )),
+
+                        // Chip de rol
+                        Container(
+                          margin: const EdgeInsets.only(top: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isOwner
+                                ? Colors.amber.withOpacity(0.2)
+                                : Colors.blue.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isOwner
+                                  ? Colors.amber.withOpacity(0.5)
+                                  : Colors.blue.withOpacity(0.5),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            isOwner ? "PROPIETARIO" : "EMPLEADO",
+                            style: TextStyle(
+                              color: isOwner ? Colors.amber : Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                // Perfil de usuario - visible para todos
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Colors.grey.withOpacity(0.3),
-                        width: 1,
+
+                  // Separador decorativo
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    height: 2,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          Colors.white.withOpacity(0.5),
+                          Colors.transparent,
+                        ],
                       ),
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      Obx(() => CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.orange,
-                            child: Text(
-                              userController.userInitial.value,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          )),
-                      const SizedBox(height: 12),
-                      Obx(() => Text(
-                            userController.userName.value,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          )),
-                      const SizedBox(height: 4),
-                      Obx(() => Text(
-                            userController.userEmail.value,
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 14,
-                            ),
-                          )),
-                    ],
-                  ),
-                ),
 
-                // Elementos condicionales según el rol
-                // Solo visible para Owner
-                if (isOwner) ...[
-                  _DrawerTile(
-                    icon: Icons.sell,
-                    title: 'Servicios',
-                    onTap: () async {
-                      Get.back();
-                      try {
-                        final servicesController =
-                            Get.find<ServicesController>();
-                        await servicesController.initializeServices();
-                        Get.toNamed('/services');
-                        await Get.toNamed(GetRoutes.services);
-                      } catch (e) {
-                        print('Error inicializando servicios: $e');
-                        Get.toNamed('/services');
-                      }
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.people,
-                    title: 'Clientela',
-                    onTap: () async {
-                      Get.back();
-                      try {
-                        final clientsController = Get.find<ClientsController>();
-                        await clientsController
-                            .loadClients(); // Método similar a initializeServices
-                        Get.toNamed(
-                            '/clients'); // Usar la ruta definida en GetRoutes
-                      } catch (e) {
-                        print('Error inicializando clientes: $e');
-                        Get.toNamed('/clients');
-                      }
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.message,
-                    title: 'Mensajes',
-                    onTap: () {
-                      Get.back();
-                      // Get.to(() => const MensajesScreen());
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.monetization_on,
-                    title: 'Gastos',
-                    onTap: () {
-                      Get.back();
-                      // Get.to(() => const GastosScreen());
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.calendar_today,
-                    title: 'Reserva Online',
-                    onTap: () {
-                      Get.back();
-                      // Get.to(() => const ReservaScreen());
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.person,
-                    title: 'Personal',
-                    onTap: () async {
-                      Get.back(); // Cerrar el drawer primero
-                      try {
-                        // Usar la constante de rutas
-                        await Get.toNamed(GetRoutes.employees);
-                      } catch (e) {
-                        print('Error al navegar a Personal: $e');
-                        Get.snackbar(
-                          'Error',
-                          'No se pudo cargar la pantalla de Personal',
-                          backgroundColor: Colors.red[100],
-                          colorText: Colors.red[900],
-                          snackPosition: SnackPosition.BOTTOM,
-                        );
-                      }
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.description,
-                    title: 'Formularios',
-                    onTap: () {
-                      Get.back();
-                      // Get.to(() => const FormulariosScreen());
-                    },
+                  // Lista de opciones del menú
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.03),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
+                        ),
+                        child: ListView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.only(top: 20, bottom: 20),
+                          children: [
+                            // Sección: Buscar
+                            _buildSectionTitle('NAVEGACIÓN'),
+
+                            _buildDrawerItem(
+                              icon: Icons.search,
+                              title: 'Buscar',
+                              onTap: () {
+                                Get.back();
+                                // Implementar acción de búsqueda
+                              },
+                            ),
+
+                            // Elementos condicionales según el rol
+                            if (isOwner) ...[
+                              _buildDrawerItem(
+                                icon: Icons.sell,
+                                title: 'Servicios',
+                                onTap: () async {
+                                  Get.back();
+                                  try {
+                                    final servicesController =
+                                        Get.find<ServicesController>();
+                                    await servicesController
+                                        .initializeServices();
+                                    Get.toNamed('/services');
+                                  } catch (e) {
+                                    print('Error inicializando servicios: $e');
+                                    Get.toNamed('/services');
+                                  }
+                                },
+                              ),
+                              _buildDrawerItem(
+                                icon: Icons.people,
+                                title: 'Clientela',
+                                onTap: () async {
+                                  Get.back();
+                                  try {
+                                    final clientsController =
+                                        Get.find<ClientsController>();
+                                    await clientsController.loadClients();
+                                    Get.toNamed('/clients');
+                                  } catch (e) {
+                                    print('Error inicializando clientes: $e');
+                                    Get.toNamed('/clients');
+                                  }
+                                },
+                                badgeCount:
+                                    0, // Opcional: añade un contador dinámico
+                              ),
+                              _buildDrawerItem(
+                                icon: Icons.message,
+                                title: 'Mensajes',
+                                onTap: () {
+                                  Get.back();
+                                  // Implementar navegación
+                                },
+                                isBeta: true, // Indica que es una función beta
+                              ),
+                              _buildDrawerItem(
+                                icon: Icons.monetization_on,
+                                title: 'Gastos',
+                                onTap: () {
+                                  Get.back();
+                                  // Implementar navegación
+                                },
+                              ),
+                              _buildDrawerItem(
+                                icon: Icons.calendar_today,
+                                title: 'Reserva Online',
+                                onTap: () {
+                                  Get.back();
+                                  // Implementar navegación
+                                },
+                              ),
+                              _buildDrawerItem(
+                                icon: Icons.person,
+                                title: 'Personal',
+                                onTap: () async {
+                                  Get.back();
+                                  try {
+                                    await Get.toNamed(GetRoutes.employees);
+                                  } catch (e) {
+                                    print('Error al navegar a Personal: $e');
+                                    Get.snackbar(
+                                      'Error',
+                                      'No se pudo cargar la pantalla de Personal',
+                                      backgroundColor: Colors.red[100],
+                                      colorText: Colors.red[900],
+                                      snackPosition: SnackPosition.BOTTOM,
+                                    );
+                                  }
+                                },
+                              ),
+                              _buildDrawerItem(
+                                icon: Icons.description,
+                                title: 'Formularios',
+                                onTap: () {
+                                  Get.back();
+                                  // Implementar navegación
+                                },
+                              ),
+                            ],
+
+                            // Visible para Owner y Employee
+                            _buildDrawerItem(
+                              icon: Icons.bar_chart,
+                              title: 'Informes',
+                              onTap: () {
+                                Get.back();
+                                try {
+                                  print(
+                                      'Roles del usuario: ${userController.userRoles}');
+
+                                  // Extraer el token y verificar el rol
+                                  final token = userController.storage
+                                      .read(key: 'token')
+                                      .then((value) {
+                                    if (value != null) {
+                                      final parts = value.split('.');
+                                      if (parts.length == 3) {
+                                        final payload = json.decode(
+                                          utf8.decode(base64Url.decode(
+                                              base64Url.normalize(parts[1]))),
+                                        );
+
+                                        final roles = payload['roles'];
+                                        final bool isEmployee = roles is List
+                                            ? roles.contains('Employee') &&
+                                                !roles.contains('Owner')
+                                            : roles == 'Employee';
+
+                                        print('Es solo empleado: $isEmployee');
+
+                                        // Navegar a la ruta correspondiente
+                                        if (isEmployee) {
+                                          Get.toNamed('/employee-statistics');
+                                        } else {
+                                          Get.toNamed('/statistics');
+                                        }
+                                      }
+                                    }
+                                  });
+                                } catch (e) {
+                                  print('Error al verificar rol y navegar: $e');
+                                  // Si hay error, intentar la ruta de estadísticas general
+                                  Get.toNamed('/statistics');
+                                }
+                              },
+                            ),
+
+                            // Sección: Configuración
+                            const SizedBox(height: 16),
+                            _buildSectionTitle('CONFIGURACIÓN'),
+
+                            _buildDrawerItem(
+                              icon: Icons.settings,
+                              title: 'Ajustes',
+                              onTap: () {
+                                Get.back();
+                                Get.toNamed('/whatsapp-config');
+                              },
+                            ),
+                            _buildDrawerItem(
+                              icon: Icons.help,
+                              title: 'Centro de ayuda',
+                              onTap: () {
+                                Get.back();
+                                Get.toNamed('/subscription-plans');
+                              },
+                            ),
+                            _buildDrawerItem(
+                              icon: Icons.send,
+                              title: 'Enviar opiniones',
+                              onTap: () {
+                                Get.back();
+                                // Implementar navegación
+                              },
+                            ),
+
+                            // Sección: Cuenta
+                            const SizedBox(height: 16),
+                            _buildSectionTitle('CUENTA'),
+
+                            _buildDrawerItem(
+                              icon: Icons.logout_rounded,
+                              title: 'Cerrar Sesión',
+                              onTap: () {
+                                Get.back();
+                                _showLogoutDialog();
+                              },
+                              isDestructive:
+                                  true, // Estilo especial para acciones destructivas
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-
-                // Visible para Owner y Employee
-                _DrawerTile(
-                  icon: Icons.bar_chart,
-                  title: 'Informes',
-                  onTap: () {
-                    Get.back();
-                    try {
-                      print('Roles del usuario: ${userController.userRoles}');
-
-                      // Extraer el token y verificar el rol
-                      final token = userController.storage
-                          .read(key: 'token')
-                          .then((value) {
-                        if (value != null) {
-                          final parts = value.split('.');
-                          if (parts.length == 3) {
-                            final payload = json.decode(
-                              utf8.decode(base64Url
-                                  .decode(base64Url.normalize(parts[1]))),
-                            );
-
-                            final roles = payload['roles'];
-                            final bool isEmployee = roles is List
-                                ? roles.contains('Employee') &&
-                                    !roles.contains('Owner')
-                                : roles == 'Employee';
-
-                            print('Es solo empleado: $isEmployee');
-
-                            // Navegar a la ruta correspondiente
-                            if (isEmployee) {
-                              Get.toNamed('/employee-statistics');
-                            } else {
-                              Get.toNamed('/statistics');
-                            }
-                          }
-                        }
-                      });
-                    } catch (e) {
-                      print('Error al verificar rol y navegar: $e');
-                      // Si hay error, intentar la ruta de estadísticas general
-                      Get.toNamed('/statistics');
-                    }
-                  },
-                ),
-
-                // Separador si hay elementos de Owner que mostrar
-                if (isOwner) Divider(color: Colors.grey.withOpacity(0.3)),
-
-                // Elementos visibles para todos los roles
-                _DrawerTile(
-                  icon: Icons.settings,
-                  title: 'Ajustes',
-                  onTap: () {
-                    Get.back();
-                    Get.toNamed('/whatsapp-config');
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.logout_rounded,
-                  title: 'Cerrar Sesión',
-                  onTap: () {
-                    Get.back();
-                    _showLogoutDialog();
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.help,
-                  title: 'Centro de ayuda',
-                  onTap: () {
-                    Get.back();
-                    Get.toNamed('/subscription-plans');
-                    // Get.to(() => const AyudaScreen());
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.send,
-                  title: 'Enviar opiniones',
-                  onTap: () {
-                    Get.back();
-                    // Get.to(() => const OpinionesScreen());
-                  },
-                ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
   }
-}
 
-class _DrawerTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final Widget? trailing;
-  final VoidCallback? onTap;
+  // Widget para crear títulos de sección
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 10),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue.shade300,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
 
-  const _DrawerTile({
-    required this.icon,
-    required this.title,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
-      trailing: trailing,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      onTap: onTap,
+  // Widget para crear items del drawer
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    int badgeCount = 0,
+    bool isBeta = false,
+    bool isDestructive = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: isDestructive
+              ? Colors.red.withOpacity(0.1)
+              : Colors.white.withOpacity(0.1),
+          highlightColor: isDestructive
+              ? Colors.red.withOpacity(0.05)
+              : Colors.white.withOpacity(0.05),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isDestructive
+                        ? Colors.red.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: isDestructive ? Colors.red.shade300 : Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: isDestructive ? Colors.red.shade300 : Colors.white,
+                    ),
+                  ),
+                ),
+                if (badgeCount > 0)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      badgeCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                if (isBeta)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.amber,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      "BETA",
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

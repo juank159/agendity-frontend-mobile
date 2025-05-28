@@ -77,7 +77,16 @@ class AppointmentsController extends GetxController {
         print('Error al obtener EmployeesController: $e');
         try {
           // Intentar crear un nuevo controlador
-          _employeesController = EmployeesController();
+          _employeesController = EmployeesController(
+              getEmployeesUseCase: Get.find(),
+              getEmployeeByIdUseCase: Get.find(),
+              createEmployeeUseCase: Get.find(),
+              updateEmployeeUseCase: Get.find(),
+              deleteEmployeeUseCase: Get.find(),
+              toggleEmployeeStatusUseCase: Get.find(),
+              restoreEmployeeUseCase: Get.find(),
+              getDeletedEmployeesUseCase: Get.find());
+
           Get.put(_employeesController!);
         } catch (innerError) {
           print('No se pudo crear EmployeesController: $innerError');
@@ -153,7 +162,38 @@ class AppointmentsController extends GetxController {
       return canCreateAppointment.value;
     } catch (e) {
       print('Error verificando estado de suscripción: $e');
-      return true; // Por defecto, permitir si hay un error
+
+      // Verificar si es un error relacionado con la suscripción
+      final errorMessage = e.toString().toLowerCase();
+
+      if (errorMessage.contains('límite de citas') ||
+          errorMessage.contains('plan de prueba') ||
+          errorMessage.contains('trial')) {
+        canCreateAppointment.value = false;
+
+        // Extraer el mensaje para mostrarlo en el diálogo correspondiente
+        final message = e.toString();
+        final cleanMessage =
+            message.contains(':') ? message.split(':').last.trim() : message;
+        subscriptionMessage.value =
+            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
+
+        return false;
+      } else if (errorMessage.contains('suscripción no está activa') ||
+          errorMessage.contains('actualiza tu plan')) {
+        canCreateAppointment.value = false;
+
+        // Extraer el mensaje para mostrarlo en el diálogo correspondiente
+        final message = e.toString();
+        final cleanMessage =
+            message.contains(':') ? message.split(':').last.trim() : message;
+        subscriptionMessage.value =
+            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
+
+        return false;
+      }
+
+      return true; // Por defecto, permitir si hay un error no relacionado con suscripción
     }
   }
 
@@ -297,7 +337,16 @@ class AppointmentsController extends GetxController {
   void _initializeEmployeesController() {
     try {
       // Intentar registrar un nuevo controlador directamente
-      _employeesController = EmployeesController();
+      _employeesController = EmployeesController(
+          getEmployeesUseCase: Get.find(),
+          getEmployeeByIdUseCase: Get.find(),
+          createEmployeeUseCase: Get.find(),
+          updateEmployeeUseCase: Get.find(),
+          deleteEmployeeUseCase: Get.find(),
+          toggleEmployeeStatusUseCase: Get.find(),
+          restoreEmployeeUseCase: Get.find(),
+          getDeletedEmployeesUseCase: Get.find());
+
       Get.put(_employeesController!);
       print('EmployeesController inicializado manualmente');
     } catch (e) {
@@ -311,7 +360,12 @@ class AppointmentsController extends GetxController {
         _employeesController = EmployeesController(
             getEmployeesUseCase: getEmployeesUseCase,
             getEmployeeByIdUseCase: getEmployeeByIdUseCase,
-            createEmployeeUseCase: createEmployeeUseCase);
+            createEmployeeUseCase: createEmployeeUseCase,
+            updateEmployeeUseCase: Get.find(),
+            deleteEmployeeUseCase: Get.find(),
+            toggleEmployeeStatusUseCase: Get.find(),
+            restoreEmployeeUseCase: Get.find(),
+            getDeletedEmployeesUseCase: Get.find());
 
         Get.put(_employeesController!);
       } catch (innerError) {
@@ -695,7 +749,15 @@ class AppointmentsController extends GetxController {
       // Verificar estado de suscripción primero
       final canContinue = await checkSubscriptionStatus();
       if (!canContinue) {
-        _showSubscriptionRequiredDialog();
+        // En lugar de mostrar siempre el mismo diálogo, detectar el mensaje para mostrar el adecuado
+        final message = subscriptionMessage.value.toLowerCase();
+        if (message.contains('límite de citas') ||
+            message.contains('plan de prueba') ||
+            message.contains('trial')) {
+          _showTrialEndedDialog();
+        } else {
+          _showInactiveSubscriptionDialog();
+        }
         return;
       }
 
@@ -778,44 +840,69 @@ class AppointmentsController extends GetxController {
         print('Error detalle: $apiError');
 
         // Verificar si es un error de límite de suscripción
-        bool isSubscriptionLimitReached = false;
+        bool isTrialEnded = false;
+        bool isSubscriptionInactive = false;
 
-        if (apiError is AppointmentException) {
-          // Usar la nueva propiedad de AppointmentException
-          if (apiError.isSubscriptionLimitReached) {
-            isSubscriptionLimitReached = true;
-          }
-        } else if (apiError is DioException) {
+        // Analizar el mensaje de error para determinar el tipo específico
+        if (apiError is DioException) {
           final responseData = apiError.response?.data;
           final statusCode = apiError.response?.statusCode;
-
-          print('DioException - statusCode: $statusCode');
-          print('DioException - responseData: $responseData');
 
           if (statusCode == 400 &&
               responseData is Map &&
               responseData['message'] != null) {
             final message = responseData['message'].toString().toLowerCase();
+
+            // Detectar si es fin del plan de prueba o suscripción inactiva
             if (message.contains('límite de citas') ||
-                message.contains('adquiere un plan')) {
-              isSubscriptionLimitReached = true;
+                message.contains('plan de prueba') ||
+                message.contains('trial')) {
+              isTrialEnded = true;
+              subscriptionMessage.value = responseData['message'].toString();
+            } else if (message.contains('suscripción no está activa') ||
+                message.contains('actualiza tu plan')) {
+              isSubscriptionInactive = true;
+              subscriptionMessage.value = responseData['message'].toString();
             }
           }
         }
 
-        // También verificar en el mensaje de error general
-        if (!isSubscriptionLimitReached) {
+        // También verificar en el mensaje de error general si no se detectó antes
+        if (!isTrialEnded && !isSubscriptionInactive) {
           final errorMessage = apiError.toString().toLowerCase();
+
           if (errorMessage.contains('límite de citas') ||
-              errorMessage.contains('adquiere un plan')) {
-            isSubscriptionLimitReached = true;
+              errorMessage.contains('plan de prueba') ||
+              errorMessage.contains('trial')) {
+            isTrialEnded = true;
+            // Extraer el mensaje para el diálogo, eliminar la parte de AppointmentException
+            final message = apiError.toString();
+            final cleanMessage = message.contains(':')
+                ? message.split(':').last.trim()
+                : message;
+            subscriptionMessage.value =
+                cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
+          } else if (errorMessage.contains('suscripción no está activa') ||
+              errorMessage.contains('actualiza tu plan')) {
+            isSubscriptionInactive = true;
+            // Extraer el mensaje para el diálogo, eliminar la parte de AppointmentException
+            final message = apiError.toString();
+            final cleanMessage = message.contains(':')
+                ? message.split(':').last.trim()
+                : message;
+            subscriptionMessage.value =
+                cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
           }
         }
 
-        // Si es un error de límite de suscripción, mostrar diálogo
-        if (isSubscriptionLimitReached) {
-          print('ERROR DETECTADO: Límite de suscripción - Mostrando diálogo');
-          _showSubscriptionRequiredDialog();
+        // Mostrar el diálogo correspondiente
+        if (isTrialEnded) {
+          print('ERROR DETECTADO: Fin de plan de prueba - Mostrando diálogo');
+          _showTrialEndedDialog();
+          return;
+        } else if (isSubscriptionInactive) {
+          print('ERROR DETECTADO: Suscripción inactiva - Mostrando diálogo');
+          _showInactiveSubscriptionDialog();
           return;
         }
 
@@ -853,10 +940,39 @@ class AppointmentsController extends GetxController {
       // Verificar una última vez si contiene mensajes específicos
       final errorMessage = e.toString().toLowerCase();
 
+      // Analizar el tipo de error de suscripción
+      bool isTrialEnded = false;
+      bool isSubscriptionInactive = false;
+
       if (errorMessage.contains('límite de citas') ||
-          errorMessage.contains('adquiere un plan')) {
-        print('ERROR DETECTADO: Límite de suscripción - Mostrando diálogo');
-        _showSubscriptionRequiredDialog();
+          errorMessage.contains('plan de prueba') ||
+          errorMessage.contains('trial')) {
+        isTrialEnded = true;
+        // Extraer el mensaje limpio para el diálogo
+        final message = e.toString();
+        final cleanMessage =
+            message.contains(':') ? message.split(':').last.trim() : message;
+        subscriptionMessage.value =
+            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
+      } else if (errorMessage.contains('suscripción no está activa') ||
+          errorMessage.contains('actualiza tu plan')) {
+        isSubscriptionInactive = true;
+        // Extraer el mensaje limpio para el diálogo
+        final message = e.toString();
+        final cleanMessage =
+            message.contains(':') ? message.split(':').last.trim() : message;
+        subscriptionMessage.value =
+            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
+      }
+
+      // Mostrar el diálogo correspondiente
+      if (isTrialEnded) {
+        print('ERROR DETECTADO: Fin de plan de prueba - Mostrando diálogo');
+        _showTrialEndedDialog();
+        return;
+      } else if (isSubscriptionInactive) {
+        print('ERROR DETECTADO: Suscripción inactiva - Mostrando diálogo');
+        _showInactiveSubscriptionDialog();
         return;
       }
 
@@ -1187,6 +1303,197 @@ class AppointmentsController extends GetxController {
           r'[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]',
           unicode: true);
       return input.replaceAll(pattern, '?');
+    }
+  }
+
+  // Diálogo para cuando se acaba el plan de prueba
+  void _showTrialEndedDialog() {
+    print('Mostrando diálogo de fin de plan de prueba');
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.star,
+                  color: Colors.orange[700],
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Plan de prueba finalizado',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Has alcanzado el límite de citas de tu plan de prueba. Actualiza a un plan premium para continuar gestionando tus citas.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Get.back(); // Cerrar diálogo
+                    Get.toNamed(GetRoutes.subscriptionPlans);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Ver planes disponibles',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Get.back(); // Solo cerrar el diálogo
+                },
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
+  }
+
+// Diálogo para cuando la suscripción no está activa
+  void _showInactiveSubscriptionDialog() {
+    print('Mostrando diálogo de suscripción inactiva');
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.assignment_late_rounded,
+                  color: Colors.red[400],
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Suscripción inactiva',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tu suscripción no está activa actualmente. Por favor, actualiza tu plan para seguir gestionando tus citas.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Get.back(); // Cerrar diálogo
+                    Get.toNamed(GetRoutes.subscriptionPlans);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Ver planes disponibles',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Get.back(); // Solo cerrar el diálogo
+                },
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
+  }
+
+// Método público para elegir qué diálogo mostrar
+  void showSubscriptionDialog() {
+    final message = subscriptionMessage.value.toLowerCase();
+
+    if (message.contains('límite de citas') ||
+        message.contains('plan de prueba') ||
+        message.contains('trial')) {
+      _showTrialEndedDialog();
+    } else {
+      _showInactiveSubscriptionDialog();
     }
   }
 }

@@ -6,12 +6,14 @@ import 'package:login_signup/features/appointments/presentation/bindings/appoint
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
 import 'package:login_signup/features/appointments/presentation/view/appointments_view.dart';
 import 'package:login_signup/features/appointments/presentation/view/upcoming_appointments_screen.dart';
+
 import 'package:login_signup/features/auth/presentation/bindings/email_verification_binding.dart';
 import 'package:login_signup/features/auth/presentation/bindings/forgot_password_binding.dart';
 
 import 'package:login_signup/features/auth/presentation/bindings/login_binding.dart';
 import 'package:login_signup/features/auth/presentation/bindings/register_binding.dart';
 import 'package:login_signup/features/auth/presentation/bindings/reset_password_binding.dart';
+
 import 'package:login_signup/features/auth/presentation/screen/email_verification_view.dart';
 import 'package:login_signup/features/auth/presentation/screen/forgot_password_view.dart';
 import 'package:login_signup/features/auth/presentation/screen/reset_password_view.dart';
@@ -20,11 +22,17 @@ import 'package:login_signup/features/auth/presentation/screen/screen.dart';
 import 'package:login_signup/features/clients/presentation/bindings/clients_binding.dart';
 import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
 import 'package:login_signup/features/clients/presentation/screen/edit_client_screen.dart';
+import 'package:login_signup/features/clients/presentation/screen/new_client_screen.dart';
+import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 
 import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
+import 'package:login_signup/features/employees/presentation/bindings/verify_employee_email_binding.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/presentation/screens/create_employee_screen.dart';
+import 'package:login_signup/features/employees/presentation/screens/edit_employee_screen.dart';
+import 'package:login_signup/features/employees/presentation/screens/employee_details_screen.dart';
 import 'package:login_signup/features/employees/presentation/screens/employees_list_screen.dart';
+import 'package:login_signup/features/employees/presentation/screens/verify_employee_email_screen.dart';
 
 import 'package:login_signup/features/services/presentation/bindings/categories_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/edit_service_binding.dart';
@@ -73,7 +81,7 @@ class GetRoutes {
   //Clients Routes
   static const String clients = '/clients';
   static const String addClient = '/clients/new';
-  static const String editClient = '/clients/edit/:id';
+  static const String editClient = '/clients/edit';
 
   //Calendar Routes
   static const String calendar = '/calendar';
@@ -82,7 +90,10 @@ class GetRoutes {
   // employees Routes
   static const String employees = '/employees';
   static const String addEmployee = '/employees/new';
+  static const String verifyEmployeeEmail = '/verify-employee-email';
   static const String editEmployee = '/employees/edit/:id';
+  static const String employeeDetails = '/employee-details';
+  static const String employeeEdit = '/edit-employee/:id';
 
   // statistics Routes
   static const String statistics = '/statistics';
@@ -222,19 +233,38 @@ class GetRoutes {
       binding: ClientsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
-      preventDuplicates: true,
+      preventDuplicates: true, // Asegúrate de tener esto en true
       middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: addClient,
+      page: () => const NewClientScreen(),
+      binding: ClientsBinding(),
     ),
 
     // employees Pages
+    // GetPage(
+    //   name: employees,
+    //   page: () => const EmployeesListScreen(),
+    //   binding: EmployeesBinding(),
+    //   transition: Transition.fadeIn,
+    //   transitionDuration: const Duration(milliseconds: 300),
+    //   preventDuplicates: true,
+    //   middlewares: [AuthMiddleware()],
+    //   // Agrega esta opción para eliminar rutas previas
+    //   popGesture: false,
+    // ),
+
     GetPage(
       name: employees,
       page: () => const EmployeesListScreen(),
       binding: EmployeesBinding(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 300),
       preventDuplicates: true,
       middlewares: [AuthMiddleware()],
+      // Agrega esta opción para eliminar rutas previas
+      popGesture: false,
     ),
     GetPage(
       name: addEmployee,
@@ -250,8 +280,35 @@ class GetRoutes {
               getEmployeesUseCase: Get.find(),
               getEmployeeByIdUseCase: Get.find(),
               createEmployeeUseCase: Get.find(),
+              updateEmployeeUseCase: Get.find(),
+              deleteEmployeeUseCase: Get.find(),
+              toggleEmployeeStatusUseCase: Get.find(),
+              restoreEmployeeUseCase: Get.find(),
+              getDeletedEmployeesUseCase: Get.find(),
             ));
       }),
+    ),
+
+    GetPage(
+      name: verifyEmployeeEmail,
+      page: () => const VerifyEmployeeEmailScreen(),
+      binding: VerifyEmployeeEmailBinding(),
+      transition: Transition.rightToLeft,
+    ),
+
+    GetPage(
+      name: employeeDetails,
+      page: () => EmployeeDetailsScreen(
+        employee: Get.arguments as EmployeeEntity,
+      ),
+      binding: EmployeesBinding(),
+    ),
+    GetPage(
+      name: employeeEdit,
+      page: () => EditEmployeeScreen(
+        employeeId: Get.parameters['id'] ?? '',
+      ),
+      binding: EmployeesBinding(),
     ),
 
     // statistics Pages

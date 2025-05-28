@@ -1,4 +1,6 @@
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+import 'package:login_signup/features/employees/domain/entities/role_entity.dart';
+import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
 
 class EmployeeModel extends EmployeeEntity {
   EmployeeModel({
@@ -10,8 +12,14 @@ class EmployeeModel extends EmployeeEntity {
     String? image,
     required bool isActive,
     required List<RoleEntity> roles,
-    List<String>? serviceIds,
+    Map<String, ServiceAssignment>? serviceAssignments,
     Map<String, Map<String, String>>? schedule,
+
+    // 🆕 NUEVOS PARÁMETROS para Soft Delete
+    bool isDeleted = false,
+    DateTime? deletedAt,
+    String? deletionReason,
+    String? deletedBy,
   }) : super(
           id: id,
           name: name,
@@ -21,14 +29,23 @@ class EmployeeModel extends EmployeeEntity {
           image: image,
           isActive: isActive,
           roles: roles,
-          serviceIds: serviceIds,
+          serviceAssignments: serviceAssignments,
           schedule: schedule,
+
+          // 🆕 NUEVOS CAMPOS
+          isDeleted: isDeleted,
+          deletedAt: deletedAt,
+          deletionReason: deletionReason,
+          deletedBy: deletedBy,
         );
 
   factory EmployeeModel.fromJson(Map<String, dynamic> json) {
-    // Procesamos el horario si existe
+    // Procesamos el horario si existe (tu lógica existente)
     Map<String, Map<String, String>>? scheduleMap;
-    if (json['schedule'] != null) {
+
+    // Verificar si hay un campo 'schedule' directo en el JSON
+    if (json['schedule'] != null && json['schedule'] is Map) {
+      print('Encontrado schedule en formato de objeto');
       scheduleMap = {};
       (json['schedule'] as Map<String, dynamic>).forEach((key, value) {
         if (value is Map) {
@@ -39,8 +56,40 @@ class EmployeeModel extends EmployeeEntity {
         }
       });
     }
+    // Si no hay schedule, buscar en schedules (array de horarios)
+    else if (json['schedules'] != null &&
+        json['schedules'] is List &&
+        (json['schedules'] as List).isNotEmpty) {
+      print('Encontrado schedule en formato de array: ${json['schedules']}');
+      scheduleMap = {};
+      final dayMap = {
+        1: 'monday',
+        2: 'tuesday',
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday',
+        7: 'sunday'
+      };
 
-    // Procesar roles
+      for (var scheduleItem in (json['schedules'] as List)) {
+        final dayNum = scheduleItem['day_of_week'] is int
+            ? scheduleItem['day_of_week'] as int
+            : int.tryParse(scheduleItem['day_of_week']?.toString() ?? '') ?? 0;
+
+        final day = dayMap[dayNum];
+        if (day != null) {
+          scheduleMap[day] = {
+            'start': scheduleItem['start_time']?.toString() ?? '',
+            'end': scheduleItem['end_time']?.toString() ?? '',
+          };
+        }
+      }
+    } else {
+      print('No se encontró información de horario en el JSON');
+    }
+
+    // Procesar roles (tu lógica existente)
     final rolesList = <RoleEntity>[];
     if (json['roles'] != null) {
       rolesList.addAll((json['roles'] as List).map((roleJson) => RoleEntity(
@@ -51,10 +100,25 @@ class EmployeeModel extends EmployeeEntity {
           )));
     }
 
-    // Procesar serviceIds
-    List<String>? serviceIds;
-    if (json['serviceIds'] != null) {
-      serviceIds = List<String>.from(json['serviceIds']);
+    // Procesar asignaciones de servicios (tu lógica existente)
+    Map<String, ServiceAssignment>? serviceAssignments;
+    if (json['services'] != null) {
+      serviceAssignments = {};
+      (json['services'] as List).forEach((serviceJson) {
+        final serviceId = serviceJson['serviceId']?.toString() ??
+            serviceJson['id']?.toString() ??
+            '';
+        if (serviceId.isNotEmpty) {
+          serviceAssignments![serviceId] = ServiceAssignment(
+            serviceId: serviceId,
+            commissionPercentage: double.tryParse(
+                    serviceJson['commissionPercentage']?.toString() ?? '0') ??
+                0,
+            customPrice:
+                double.tryParse(serviceJson['customPrice']?.toString() ?? ''),
+          );
+        }
+      });
     }
 
     return EmployeeModel(
@@ -66,13 +130,21 @@ class EmployeeModel extends EmployeeEntity {
       image: json['image']?.toString(),
       isActive: json['isActive'] as bool? ?? true,
       roles: rolesList,
-      serviceIds: serviceIds,
+      serviceAssignments: serviceAssignments,
       schedule: scheduleMap,
+
+      // 🆕 NUEVOS CAMPOS de Soft Delete
+      isDeleted: json['isDeleted'] as bool? ?? false,
+      deletedAt: json['deletedAt'] != null
+          ? DateTime.tryParse(json['deletedAt'].toString())
+          : null,
+      deletionReason: json['deletionReason']?.toString(),
+      deletedBy: json['deletedBy']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
-    final data = {
+    final Map<String, dynamic> data = {
       'id': id,
       'name': name,
       'lastname': lastname,
@@ -88,35 +160,79 @@ class EmployeeModel extends EmployeeEntity {
                 'route': role.route,
               })
           .toList(),
-      'serviceIds': serviceIds,
-      'schedule': schedule,
+
+      // 🆕 NUEVOS CAMPOS
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt?.toIso8601String(),
+      'deletionReason': deletionReason,
+      'deletedBy': deletedBy,
     };
 
+    // Añadir schedule como dynamic (tu lógica existente)
+    if (schedule != null) {
+      data['schedule'] = schedule as dynamic;
+    }
+
+    // Convertir serviceAssignments a formato esperado por la API (tu lógica existente)
+    if (serviceAssignments != null && serviceAssignments!.isNotEmpty) {
+      List<Map<String, dynamic>> servicesArray = [];
+      serviceAssignments!.forEach((serviceId, assignment) {
+        servicesArray.add({
+          'serviceId': serviceId,
+          'commissionPercentage': assignment.commissionPercentage,
+          if (assignment.customPrice != null)
+            'customPrice': assignment.customPrice,
+        });
+      });
+      data['services'] = servicesArray as dynamic;
+    }
+
     // Eliminamos valores nulos
-    data.removeWhere((key, value) => value == null);
+    data.removeWhere((key, _) => data[key] == null);
     return data;
   }
 
-  // Para crear un nuevo empleado (sin ID)
+  // Para crear un nuevo empleado (sin ID) - tu lógica existente
   Map<String, dynamic> toCreateJson({String? password}) {
-    final data = {
+    final Map<String, dynamic> data = {
       'name': name,
       'lastname': lastname,
       'email': email,
       'phone': phone,
-      'serviceIds': serviceIds,
-      'schedule': schedule,
     };
 
-    if (password != null) {
+    // Incluir el horario si existe y no está vacío
+    if (schedule != null && schedule!.isNotEmpty) {
+      print('Incluyendo horario en la petición: $schedule');
+      data['schedule'] = schedule as dynamic;
+    } else {
+      print('No hay horario para incluir en la petición');
+    }
+
+    // Convertir serviceAssignments a formato esperado por la API
+    if (serviceAssignments != null && serviceAssignments!.isNotEmpty) {
+      List<Map<String, dynamic>> servicesArray = [];
+      serviceAssignments!.forEach((serviceId, assignment) {
+        servicesArray.add({
+          'serviceId': serviceId,
+          'commissionPercentage': assignment.commissionPercentage,
+          if (assignment.customPrice != null)
+            'customPrice': assignment.customPrice,
+        });
+      });
+      data['services'] = servicesArray as dynamic;
+    }
+
+    if (password != null && password.isNotEmpty) {
       data['password'] = password;
     }
 
     // Eliminamos valores nulos
-    data.removeWhere((key, value) => value == null);
+    data.removeWhere((key, _) => data[key] == null);
     return data;
   }
 
+  // 🆕 NUEVO: Método copyWith para actualizaciones
   EmployeeModel copyWith({
     String? id,
     String? name,
@@ -126,8 +242,12 @@ class EmployeeModel extends EmployeeEntity {
     String? image,
     bool? isActive,
     List<RoleEntity>? roles,
-    List<String>? serviceIds,
+    Map<String, ServiceAssignment>? serviceAssignments,
     Map<String, Map<String, String>>? schedule,
+    bool? isDeleted,
+    DateTime? deletedAt,
+    String? deletionReason,
+    String? deletedBy,
   }) {
     return EmployeeModel(
       id: id ?? this.id,
@@ -138,8 +258,12 @@ class EmployeeModel extends EmployeeEntity {
       image: image ?? this.image,
       isActive: isActive ?? this.isActive,
       roles: roles ?? this.roles,
-      serviceIds: serviceIds ?? this.serviceIds,
+      serviceAssignments: serviceAssignments ?? this.serviceAssignments,
       schedule: schedule ?? this.schedule,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deletionReason: deletionReason ?? this.deletionReason,
+      deletedBy: deletedBy ?? this.deletedBy,
     );
   }
 }

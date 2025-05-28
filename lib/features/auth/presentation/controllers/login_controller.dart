@@ -1,17 +1,12 @@
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 // import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
-// import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
-// import 'package:login_signup/shared/local_storage/local_storage.dart';
-
-// import '../widgets/custom_dialog.dart';
-// import '../../../../core/errors/failures.dart';
 
 // class LoginController extends GetxController {
-//   final LoginUseCase _loginUseCase;
+//   final LoginUseCase loginUseCase;
 
-//   LoginController({required LoginUseCase loginUseCase})
-//       : _loginUseCase = loginUseCase;
+//   // Cambiamos esto para usar UniqueKey en vez de GlobalKey
+//   final formKey = UniqueKey();
 
 //   // Controllers
 //   final emailController = TextEditingController();
@@ -20,22 +15,14 @@
 //   // Observables
 //   final isLoading = false.obs;
 //   final isPasswordHidden = true.obs;
-//   final emailError = RxnString();
-//   final passwordError = RxnString();
+//   final emailError = Rx<String?>(null);
+//   final passwordError = Rx<String?>(null);
 
-//   // Form
-//   final formKey = GlobalKey<FormState>();
-
-//   @override
-//   void onInit() {
-//     super.onInit();
-//     // Limpiamos errores cuando el usuario empiece a escribir
-//     emailController.addListener(() => emailError.value = null);
-//     passwordController.addListener(() => passwordError.value = null);
-//   }
+//   LoginController({required this.loginUseCase});
 
 //   @override
 //   void onClose() {
+//     // Cleanup controllers
 //     emailController.dispose();
 //     passwordController.dispose();
 //     super.onClose();
@@ -47,11 +34,11 @@
 
 //   String? validateEmail(String? value) {
 //     if (value == null || value.isEmpty) {
-//       emailError.value = 'El correo es requerido';
+//       emailError.value = 'Por favor, ingrese su correo electrónico';
 //       return emailError.value;
 //     }
 //     if (!GetUtils.isEmail(value)) {
-//       emailError.value = 'Ingrese un correo válido';
+//       emailError.value = 'Por favor, ingrese un correo válido';
 //       return emailError.value;
 //     }
 //     emailError.value = null;
@@ -60,7 +47,7 @@
 
 //   String? validatePassword(String? value) {
 //     if (value == null || value.isEmpty) {
-//       passwordError.value = 'La contraseña es requerida';
+//       passwordError.value = 'Por favor, ingrese su contraseña';
 //       return passwordError.value;
 //     }
 //     if (value.length < 6) {
@@ -72,112 +59,62 @@
 //   }
 
 //   Future<void> loginUser() async {
-//     // Validar el formulario
-//     if (!formKey.currentState!.validate()) {
-//       _showErrorDialog('Por favor, complete todos los campos correctamente');
+//     // Limpiar errores previos
+//     emailError.value = null;
+//     passwordError.value = null;
+
+//     // Validar campos
+//     final emailValid = validateEmail(emailController.text) == null;
+//     final passwordValid = validatePassword(passwordController.text) == null;
+
+//     if (!emailValid || !passwordValid) {
 //       return;
 //     }
 
-//     try {
-//       isLoading.value = true;
+//     isLoading.value = true;
 
-//       final result = await _loginUseCase(
+//     try {
+//       final result = await loginUseCase(
 //         email: emailController.text.trim(),
 //         password: passwordController.text,
 //       );
 
 //       result.fold(
-//         (failure) => _handleFailure(failure),
-//         (user) => _handleSuccess(),
-//       );
-//     } catch (e) {
-//       _showErrorDialog('Error inesperado: ${e.toString()}');
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-
-//   void _handleFailure(Failure failure) {
-//     String errorMessage = _mapFailureToMessage(failure);
-//     _showErrorDialog(errorMessage);
-//   }
-
-//   void _handleSuccess() async {
-//     try {
-//       final result = await _loginUseCase(
-//         email: emailController.text.trim(),
-//         password: passwordController.text,
-//       );
-
-//       result.fold(
-//         (failure) => _handleFailure(failure),
-//         (userEntity) async {
-//           try {
-//             // Guardar los datos del usuario
-//             await Get.find<LocalStorage>()
-//                 .saveUserData('userId', userEntity.id);
-
-//             // Inicializar o actualizar UserInfoController
-//             if (!Get.isRegistered<UserInfoController>()) {
-//               Get.put(UserInfoController());
-//             } else {
-//               // Recargar la información si ya existe el controlador
-//               await Get.find<UserInfoController>().loadUserInfo();
-//             }
-
-//             clearInputs();
-//             Get.offAllNamed('/home');
-//           } catch (e) {
-//             _showErrorDialog('Error al procesar la información del usuario');
-//           }
+//         (failure) {
+//           isLoading.value = false;
+//           Get.snackbar(
+//             'Error',
+//             failure.message,
+//             snackPosition: SnackPosition.TOP,
+//             backgroundColor: Colors.red.withOpacity(0.9),
+//             colorText: Colors.white,
+//             margin: const EdgeInsets.all(15),
+//             borderRadius: 8,
+//           );
+//         },
+//         (user) {
+//           isLoading.value = false;
+//           Get.offAllNamed('/');
 //         },
 //       );
 //     } catch (e) {
-//       _showErrorDialog('Error inesperado durante el inicio de sesión');
+//       isLoading.value = false;
+//       Get.snackbar(
+//         'Error',
+//         'Ha ocurrido un error inesperado',
+//         snackPosition: SnackPosition.TOP,
+//         backgroundColor: Colors.red.withOpacity(0.9),
+//         colorText: Colors.white,
+//         margin: const EdgeInsets.all(15),
+//         borderRadius: 8,
+//       );
 //     }
 //   }
-
-//   String _mapFailureToMessage(Failure failure) {
-//     if (failure is ServerFailure) {
-//       if (failure.message.contains('401')) {
-//         return 'Credenciales incorrectas. Por favor, verifica tu correo y contraseña';
-//       }
-//       if (failure.message.contains('404')) {
-//         return 'Usuario no encontrado. ¿Estás registrado?';
-//       }
-//       if (failure.message.contains('429')) {
-//         return 'Demasiados intentos. Por favor, espera unos minutos';
-//       }
-//       if (failure.message.contains('500')) {
-//         return 'Error en el servidor. Por favor, inténtalo más tarde';
-//       }
-//       return 'Error de conexión. Verifica tu conexión a internet';
-//     }
-//     return 'Error inesperado. Por favor, inténtalo de nuevo';
-//   }
-
-//   void _showErrorDialog(String message) {
-//     CustomDialog.show(
-//       title: 'Error de inicio de sesión',
-//       message: message,
-//       type: DialogType.error,
-//     );
-//   }
-
-//   void clearInputs() {
-//     emailController.clear();
-//     passwordController.clear();
-//     emailError.value = null;
-//     passwordError.value = null;
-//   }
-
-//   // Método para pruebas y depuración
-//   bool isValidEmail(String email) => GetUtils.isEmail(email);
-//   bool isValidPassword(String password) => password.length >= 6;
 // }
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/errors/failures.dart'; // Importa la clase Failure
 import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
 
 class LoginController extends GetxController {
@@ -242,10 +179,10 @@ class LoginController extends GetxController {
     passwordError.value = null;
 
     // Validar campos
-    final emailValid = validateEmail(emailController.text) == null;
-    final passwordValid = validatePassword(passwordController.text) == null;
+    final emailValidationMessage = validateEmail(emailController.text);
+    final passwordValidationMessage = validatePassword(passwordController.text);
 
-    if (!emailValid || !passwordValid) {
+    if (emailValidationMessage != null || passwordValidationMessage != null) {
       return;
     }
 
@@ -259,10 +196,13 @@ class LoginController extends GetxController {
 
       result.fold(
         (failure) {
+          print(
+              'LoginController: Falla en fold. Tipo: ${failure.runtimeType}, Mensaje: ${failure.message}'); // Debug
           isLoading.value = false;
           Get.snackbar(
             'Error',
-            failure.message,
+            failure
+                .message, // Aquí se mostrará el mensaje específico de la falla
             snackPosition: SnackPosition.TOP,
             backgroundColor: Colors.red.withOpacity(0.9),
             colorText: Colors.white,
@@ -271,15 +211,30 @@ class LoginController extends GetxController {
           );
         },
         (user) {
+          print('LoginController: Login exitoso en fold.'); // Debug
           isLoading.value = false;
           Get.offAllNamed('/');
         },
       );
     } catch (e) {
+      print(
+          'LoginController: Capturada excepción en catch general: ${e.runtimeType} - ${e.toString()}'); // Debug
       isLoading.value = false;
+      String errorMessage = 'Ha ocurrido un error inesperado.';
+      if (e is Failure) {
+        // Si la excepción es una de tus clases Failure
+        errorMessage = e.message; // Usa el mensaje de la Failure
+      } else {
+        // Para cualquier otra excepción no controlada
+        errorMessage =
+            'Ha ocurrido un error inesperado. Por favor, inténtelo de nuevo.';
+        print(
+            'Error inesperado no manejado: $e'); // Imprime el error completo para depuración
+      }
+
       Get.snackbar(
         'Error',
-        'Ha ocurrido un error inesperado',
+        errorMessage,
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red.withOpacity(0.9),
         colorText: Colors.white,

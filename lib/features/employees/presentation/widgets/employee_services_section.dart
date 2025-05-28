@@ -10,10 +10,10 @@ class EmployeeServicesSection extends StatelessWidget {
   final ServicesController servicesController;
 
   const EmployeeServicesSection({
-    Key? key,
+    super.key,
     required this.employeesController,
     required this.servicesController,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +74,8 @@ class EmployeeServicesSection extends StatelessWidget {
               services: entry.value,
               selectedIds: employeesController.selectedServiceIds,
               onToggle: employeesController.toggleServiceSelection,
+              updateCommission: employeesController.updateServiceCommission,
+              commissions: employeesController.serviceCommissions,
             );
           }).toList(),
         );
@@ -81,53 +83,13 @@ class EmployeeServicesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceCheckbox({
-    required ServiceEntity serviceEntity,
-    required RxList<String> selectedIds,
-    required Function(String) onToggle,
-  }) {
-    return Obx(() {
-      final isSelected = selectedIds.contains(serviceEntity.id ?? '');
-      return CheckboxListTile(
-        title: Text(serviceEntity.name),
-        subtitle: Row(
-          children: [
-            Text(
-              '\$${serviceEntity.price}',
-              style: TextStyle(
-                color: Colors.green[700],
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (isSelected)
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Icon(
-                  Icons.check_circle,
-                  color: Colors.green[700],
-                  size: 16,
-                ),
-              ),
-          ],
-        ),
-        value: isSelected,
-        onChanged: (_) => onToggle(serviceEntity.id ?? ''),
-        activeColor: AppColors.primary,
-        dense: true,
-        contentPadding: EdgeInsets.zero,
-        // Añadir un indicador visual adicional
-        secondary: isSelected
-            ? const Icon(Icons.check_circle, color: AppColors.primary)
-            : null,
-      );
-    });
-  }
-
   Widget _buildCategoryServicesList({
     required String categoryName,
     required List<dynamic> services,
     required RxList<String> selectedIds,
     required Function(String) onToggle,
+    required Function(String, double) updateCommission,
+    required RxMap<String, double> commissions,
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -150,23 +112,64 @@ class EmployeeServicesSection extends StatelessWidget {
             const SizedBox(height: 8),
             ...services.map((service) {
               final ServiceEntity serviceEntity = service as ServiceEntity;
+              final serviceId = serviceEntity.id ?? '';
+
               return GetBuilder<EmployeesController>(
                 builder: (controller) {
-                  return CheckboxListTile(
-                    title: Text(serviceEntity.name),
-                    subtitle: Text(
-                      '\$${serviceEntity.price}',
-                      style: TextStyle(
-                        color: Colors.green[700],
-                        fontWeight: FontWeight.bold,
+                  final isSelected =
+                      controller.selectedServiceIds.contains(serviceId);
+
+                  return Column(
+                    children: [
+                      CheckboxListTile(
+                        title: Text(serviceEntity.name),
+                        subtitle: Text(
+                          '\$${serviceEntity.price}',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        value: isSelected,
+                        onChanged: (_) => onToggle(serviceId),
+                        activeColor: AppColors.cardIndicator,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
-                    ),
-                    value: controller.selectedServiceIds
-                        .contains(serviceEntity.id ?? ''),
-                    onChanged: (_) => onToggle(serviceEntity.id ?? ''),
-                    activeColor: AppColors.primary,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
+
+                      // Mostrar el selector de porcentaje si el servicio está seleccionado
+                      if (isSelected)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: 32.0, right: 16.0, bottom: 8.0),
+                          child: Row(
+                            children: [
+                              const Text(
+                                "Comisión: ",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              Expanded(
+                                child: Obx(() => Slider(
+                                      value: commissions[serviceId] ?? 0.0,
+                                      min: 0.0,
+                                      max: 100.0,
+                                      divisions: 20,
+                                      label:
+                                          "${commissions[serviceId]?.toStringAsFixed(1) ?? '0.0'}%",
+                                      onChanged: (value) =>
+                                          updateCommission(serviceId, value),
+                                    )),
+                              ),
+                              Obx(() => Text(
+                                    "${commissions[serviceId]?.toStringAsFixed(1) ?? '0.0'}%",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )),
+                            ],
+                          ),
+                        ),
+                    ],
                   );
                 },
               );

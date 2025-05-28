@@ -22,10 +22,11 @@ class AppointmentFormDialog extends StatelessWidget {
   final DateTime? initialDateTime;
 
   const AppointmentFormDialog({
-    Key? key,
+    super.key,
     required this.controller,
     this.initialDateTime,
-  }) : super(key: key);
+  });
+
   static Future<void> show(
       BuildContext context, AppointmentsController controller,
       [DateTime? selectedDateTime]) async {
@@ -33,8 +34,8 @@ class AppointmentFormDialog extends StatelessWidget {
     final canCreateAppointment = await controller.checkSubscriptionStatus();
 
     if (!canCreateAppointment) {
-      // Usar Get.toNamed para navegar a la pantalla de suscripción directamente
-      Get.toNamed(GetRoutes.subscriptionPlans);
+      // Usar el método público que maneja ambos diálogos
+      controller.showSubscriptionDialog();
       return;
     }
 
@@ -591,6 +592,11 @@ class AppointmentFormDialog extends StatelessWidget {
         getEmployeesUseCase: getEmployeesUseCase,
         getEmployeeByIdUseCase: getEmployeeByIdUseCase,
         createEmployeeUseCase: createEmployeeUseCase,
+        updateEmployeeUseCase: Get.find(),
+        deleteEmployeeUseCase: Get.find(),
+        toggleEmployeeStatusUseCase: Get.find(),
+        restoreEmployeeUseCase: Get.find(),
+        getDeletedEmployeesUseCase: Get.find(),
       );
 
       Get.put(controller);
@@ -927,68 +933,230 @@ class AppointmentFormDialog extends StatelessWidget {
     );
   }
 
+  // void _showTimePicker(BuildContext context, Rx<TimeOfDay> selectedTime) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       DateTime tempDateTime = DateTime(
+  //         2024,
+  //         1,
+  //         1,
+  //         selectedTime.value.hour,
+  //         selectedTime.value.minute,
+  //       );
+
+  //       return Dialog(
+  //         backgroundColor: Colors.transparent,
+  //         child: Container(
+  //           height: 300,
+  //           decoration: BoxDecoration(
+  //             color: Colors.grey[900],
+  //             borderRadius: BorderRadius.circular(14),
+  //           ),
+  //           child: Column(
+  //             children: [
+  //               Container(
+  //                 height: 250,
+  //                 padding: const EdgeInsets.symmetric(horizontal: 24),
+  //                 child: CupertinoDatePicker(
+  //                   mode: CupertinoDatePickerMode.time,
+  //                   initialDateTime: tempDateTime,
+  //                   use24hFormat: false,
+  //                   onDateTimeChanged: (DateTime newTime) {
+  //                     tempDateTime = newTime;
+  //                   },
+  //                   backgroundColor: Colors.blueGrey[900],
+  //                 ),
+  //               ),
+  //               Row(
+  //                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  //                 children: [
+  //                   TextButton(
+  //                     onPressed: () => Navigator.pop(context),
+  //                     child: Text(
+  //                       'Cancelar',
+  //                       style: TextStyle(color: Colors.deepPurple.shade200),
+  //                     ),
+  //                   ),
+  //                   TextButton(
+  //                     onPressed: () {
+  //                       selectedTime.value = TimeOfDay(
+  //                         hour: tempDateTime.hour,
+  //                         minute: tempDateTime.minute,
+  //                       );
+  //                       Navigator.pop(context);
+  //                     },
+  //                     child: Text(
+  //                       'ACEPTAR',
+  //                       style: TextStyle(
+  //                         color: Colors.deepPurple.shade200,
+  //                         fontWeight: FontWeight.bold,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+
   void _showTimePicker(BuildContext context, Rx<TimeOfDay> selectedTime) {
+    // Almacenar temporalmente la hora seleccionada
+    DateTime tempDateTime = DateTime(
+      2024,
+      1,
+      1,
+      selectedTime.value.hour,
+      selectedTime.value.minute,
+    );
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        DateTime tempDateTime = DateTime(
-          2024,
-          1,
-          1,
-          selectedTime.value.hour,
-          selectedTime.value.minute,
-        );
-
+      builder: (context) {
         return Dialog(
           backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Container(
-            height: 300,
             decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(14),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  height: 250,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: CupertinoDatePicker(
-                    mode: CupertinoDatePickerMode.time,
-                    initialDateTime: tempDateTime,
-                    use24hFormat: false,
-                    onDateTimeChanged: (DateTime newTime) {
-                      tempDateTime = newTime;
-                    },
-                    backgroundColor: Colors.transparent,
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.access_time_rounded,
+                          color: Colors.grey.shade800,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        "Seleccionar Hora",
+                        style: TextStyle(
+                          color: Colors.grey.shade800,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Cancelar',
-                        style: TextStyle(color: Colors.deepPurple.shade200),
+
+                // Divider
+                Divider(color: Colors.grey.shade200, height: 1),
+
+                // Time Picker
+                Container(
+                  height: 216,
+                  margin: const EdgeInsets.symmetric(vertical: 16),
+                  child: Theme(
+                    data: ThemeData.light().copyWith(
+                      primaryColor: Colors.teal.shade600,
+                      colorScheme: ColorScheme.light(
+                        primary: Colors.teal.shade600,
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        selectedTime.value = TimeOfDay(
-                          hour: tempDateTime.hour,
-                          minute: tempDateTime.minute,
-                        );
-                        Navigator.pop(context);
-                      },
-                      child: Text(
-                        'ACEPTAR',
-                        style: TextStyle(
-                          color: Colors.deepPurple.shade200,
-                          fontWeight: FontWeight.bold,
+                      cupertinoOverrideTheme: CupertinoThemeData(
+                        textTheme: CupertinoTextThemeData(
+                          dateTimePickerTextStyle: TextStyle(
+                            color: Colors.grey.shade800,
+                            fontSize: 22,
+                          ),
                         ),
                       ),
                     ),
-                  ],
+                    child: CupertinoDatePicker(
+                      mode: CupertinoDatePickerMode.time,
+                      initialDateTime: tempDateTime,
+                      use24hFormat: false,
+                      onDateTimeChanged: (DateTime newTime) {
+                        tempDateTime = newTime;
+                      },
+                      backgroundColor: Colors.transparent,
+                    ),
+                  ),
+                ),
+
+                // Buttons
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      // Cancel button
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'CANCELAR',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Confirm button
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            selectedTime.value = TimeOfDay(
+                              hour: tempDateTime.hour,
+                              minute: tempDateTime.minute,
+                            );
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'ACEPTAR',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

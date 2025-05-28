@@ -113,7 +113,17 @@ class AppointmentsBinding implements Bindings {
   void _ensureEmployeesController() {
     if (!Get.isRegistered<EmployeesController>()) {
       try {
-        Get.put(EmployeesController(), permanent: false);
+        Get.put(
+            EmployeesController(
+                getEmployeesUseCase: Get.find(),
+                getEmployeeByIdUseCase: Get.find(),
+                createEmployeeUseCase: Get.find(),
+                updateEmployeeUseCase: Get.find(),
+                deleteEmployeeUseCase: Get.find(),
+                toggleEmployeeStatusUseCase: Get.find(),
+                restoreEmployeeUseCase: Get.find(),
+                getDeletedEmployeesUseCase: Get.find()),
+            permanent: false);
         print('EmployeesController registrado desde AppointmentsBinding');
       } catch (e) {
         print('Error al registrar EmployeesController: $e');

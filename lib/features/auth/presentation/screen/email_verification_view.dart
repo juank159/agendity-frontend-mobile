@@ -8,7 +8,7 @@ import 'package:login_signup/utils/global_colors.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 
 class EmailVerificationView extends GetView<EmailVerificationController> {
-  const EmailVerificationView({Key? key}) : super(key: key);
+  const EmailVerificationView({super.key});
 
   @override
   Widget build(BuildContext context) {

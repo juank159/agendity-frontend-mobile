@@ -11,6 +11,7 @@ import 'package:login_signup/features/employees/domain/usecases/get_employee_by_
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
+import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 
 import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointment_data_source.dart';
@@ -21,7 +22,8 @@ import 'package:login_signup/features/appointments/domain/usescases/delete_appoi
 import 'package:login_signup/features/appointments/domain/usescases/get_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usescases/update_appointment_usecase.dart';
 
-import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
+import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
+import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
@@ -40,7 +42,8 @@ class AppointmentsController extends GetxController {
   final UpdateAppointmentUseCase updateAppointmentUseCase;
   final DeleteAppointmentUseCase deleteAppointmentUseCase;
   final ServicesRemoteDataSource servicesDataSource;
-  final ClientsRemoteDataSource clientsDataSource;
+  final GetClientsUseCase getClientsUseCase;
+  final GetClientsPaginatedUseCase getClientsPaginatedUseCase;
   final LocalStorage localStorage;
 
   // Cambiar la referencia directa a una propiedad que se puede reinicializar
@@ -49,11 +52,32 @@ class AppointmentsController extends GetxController {
   // Estado observable
   final RxList<AppointmentEntity> appointments = <AppointmentEntity>[].obs;
   final RxList<Map<String, dynamic>> services = <Map<String, dynamic>>[].obs;
-  final RxList<Map<String, dynamic>> clients = <Map<String, dynamic>>[].obs;
+  
+  // ✅ PAGINACIÓN REAL DEL SERVIDOR PARA CLIENTES
+  final RxList<ClientEntity> clients = <ClientEntity>[].obs;
+  final RxString clientSearchQuery = ''.obs;
+  final RxBool isClientsLoading = false.obs;
+  final RxBool isLoadingMoreClients = false.obs;
+  
+  // ✅ VARIABLES DE PAGINACIÓN DE CLIENTES
+  final RxInt clientsCurrentPage = 1.obs;
+  final RxInt clientsPageSize = 20.obs; // Para búsqueda de clientes en appointments
+  final RxBool hasMoreClients = false.obs;
+  
+  // ✅ CACHE DE BÚSQUEDA PARA OPTIMIZACIÓN
+  String _lastSearchQuery = '';
+  final Map<String, List<ClientEntity>> _clientSearchCache = {};
+  static const int _maxCacheEntries = 10;
+  
   final Rx<DateTime> selectedDate = DateTime.now().obs;
   final RxBool isLoading = false.obs;
   final Rx<String?> error = Rx<String?>(null);
   final Rx<CalendarView> currentView = CalendarView.month.obs;
+
+  // Cache inteligente para optimizar cargas
+  final Map<String, List<AppointmentEntity>> _appointmentsCache = {};
+  final Map<String, DateTime> _cacheTimestamps = {};
+  static const int _cacheExpirationMinutes = 5;
 
   // Nuevo estado para manejar múltiples servicios seleccionados
   final RxList<String> selectedServiceIds = <String>[].obs;
@@ -102,7 +126,8 @@ class AppointmentsController extends GetxController {
       this.updateAppointmentUseCase,
       this.deleteAppointmentUseCase,
       this.servicesDataSource,
-      this.clientsDataSource,
+      this.getClientsUseCase,
+      this.getClientsPaginatedUseCase,
       this.localStorage,
       this.appointmentsRepository,
       {this.checkSubscriptionStatusUseCase}) {
@@ -110,6 +135,9 @@ class AppointmentsController extends GetxController {
     _getUserInfo();
     _initializeCalendar();
     _loadInitialData();
+    
+    // ✅ CONFIGURAR BÚSQUEDA REACTIVA CON DEBOUNCE OPTIMIZADO PARA EL SERVIDOR
+    debounce(clientSearchQuery, (_) => _searchClientsFromServer(), time: const Duration(milliseconds: 800));
 
     // Intentar obtener el servicio de suscripción si no fue inyectado
     if (checkSubscriptionStatusUseCase == null) {
@@ -380,7 +408,8 @@ class AppointmentsController extends GetxController {
     final now = DateTime.now();
     selectedDate.value = now;
 
-    // Cargar citas del día actual
+    // Solo cargar citas del día actual (optimización inicial)
+    print('🎯 Inicializando calendario con vista diaria - solo día actual');
     fetchAppointments(
       startDate: DateTime(now.year, now.month, now.day),
       endDate: DateTime(now.year, now.month, now.day, 23, 59, 59),
@@ -411,14 +440,117 @@ class AppointmentsController extends GetxController {
     }
   }
 
+  // ✅ NUEVO MÉTODO: CARGAR CLIENTES CON PAGINACIÓN REAL DEL SERVIDOR
   Future<void> loadClients() async {
     try {
-      final result = await clientsDataSource.getClients();
-      clients.assignAll(result);
+      print('🔄 AppointmentsController: Cargando clientes con paginación del servidor...');
+      isClientsLoading.value = true;
+      clientsCurrentPage.value = 1;
+
+      final result = await getClientsPaginatedUseCase.execute(
+        page: clientsCurrentPage.value,
+        limit: clientsPageSize.value,
+        search: clientSearchQuery.value.isNotEmpty ? clientSearchQuery.value : null,
+      );
+
+      // ✅ ACTUALIZAR VARIABLES DE PAGINACIÓN
+      hasMoreClients.value = result.hasNextPage;
+      
+      // ✅ REEMPLAZAR LOS CLIENTES (PRIMERA PÁGINA)
+      clients.assignAll(result.data);
+      
+      print('✅ Clientes cargados: ${result.data.length}');
+      print('📊 Total en servidor: ${result.total}');
+      print('📊 Página ${result.page}/${result.totalPages}');
+      print('📊 Tiene más: ${result.hasNextPage}');
+
     } catch (e) {
-      print('Error loading clients: $e');
+      print('❌ Error loading clients: $e');
       error.value = e.toString();
+    } finally {
+      isClientsLoading.value = false;
     }
+  }
+
+  // ✅ NUEVO MÉTODO: BÚSQUEDA EN EL SERVIDOR CON DEBOUNCE Y CACHE OPTIMIZADO
+  Future<void> _searchClientsFromServer() async {
+    // ✅ OPTIMIZACIÓN: Evitar búsquedas vacías o muy cortas
+    final query = clientSearchQuery.value.trim();
+    if (query.length > 0 && query.length < 2) {
+      print('🔍 Búsqueda muy corta, esperando más caracteres...');
+      return;
+    }
+    
+    // ✅ OPTIMIZACIÓN: Evitar búsquedas duplicadas
+    if (isClientsLoading.value) {
+      print('🔍 Búsqueda ya en progreso, ignorando...');
+      return;
+    }
+    
+    // ✅ OPTIMIZACIÓN: Verificar cache de búsqueda
+    if (_lastSearchQuery == query && _clientSearchCache.containsKey(query)) {
+      print('🔍 Usando cache para búsqueda: "$query"');
+      clients.assignAll(_clientSearchCache[query]!);
+      return;
+    }
+    
+    print('🔍 Iniciando búsqueda optimizada para: "$query"');
+    _lastSearchQuery = query;
+    clientsCurrentPage.value = 1; // Resetear a la primera página
+    await loadClients(); // Cargar con el nuevo criterio de búsqueda
+    
+    // ✅ GUARDAR EN CACHE (máximo 10 entradas)
+    if (query.isNotEmpty && clients.isNotEmpty) {
+      if (_clientSearchCache.length >= _maxCacheEntries) {
+        _clientSearchCache.remove(_clientSearchCache.keys.first);
+      }
+      _clientSearchCache[query] = List.from(clients);
+    }
+  }
+
+  // ✅ CARGAR MÁS CLIENTES (SIGUIENTE PÁGINA)
+  Future<void> loadMoreClients() async {
+    if (!hasMoreClients.value || isLoadingMoreClients.value) return;
+
+    try {
+      isLoadingMoreClients.value = true;
+      clientsCurrentPage.value++;
+
+      final result = await getClientsPaginatedUseCase.execute(
+        page: clientsCurrentPage.value,
+        limit: clientsPageSize.value,
+        search: clientSearchQuery.value.isNotEmpty ? clientSearchQuery.value : null,
+      );
+
+      // ✅ ACTUALIZAR VARIABLES DE PAGINACIÓN
+      hasMoreClients.value = result.hasNextPage;
+      
+      // ✅ AÑADIR MÁS CLIENTES A LA LISTA EXISTENTE
+      clients.addAll(result.data);
+      
+      print('✅ Más clientes cargados: ${result.data.length}');
+      print('📊 Total clientes en memoria: ${clients.length}');
+
+    } catch (e) {
+      print('❌ Error cargando más clientes: $e');
+      clientsCurrentPage.value--; // Revertir incremento en caso de error
+    } finally {
+      isLoadingMoreClients.value = false;
+    }
+  }
+
+  // ✅ Método público para actualizar la búsqueda
+  void updateClientSearch(String query) {
+    clientSearchQuery.value = query;
+  }
+
+  // ✅ Método para limpiar la búsqueda CON CACHE
+  void clearClientSearch() {
+    clientSearchQuery.value = '';
+    _lastSearchQuery = '';
+    // ✅ OPTIMIZACIÓN: Limpiar cache al limpiar búsqueda
+    _clientSearchCache.clear();
+    print('🔍 Cache de búsqueda limpiado');
   }
 
   // Nuevo método para manejar la selección de servicios
@@ -447,18 +579,16 @@ class AppointmentsController extends GetxController {
   }
 
   void changeView(CalendarView view, {DateTime? targetDate}) {
-    print('Cambiando vista de ${currentView.value} a $view');
+    print('🔄 Cambiando vista de ${currentView.value} a $view');
 
     final now = DateTime.now();
     DateTime selectedDateTime;
 
     // Determinar la fecha y hora a usar
     if (targetDate != null) {
-      // Si se proporciona una fecha específica, usar la hora actual
       selectedDateTime = DateTime(targetDate.year, targetDate.month,
           targetDate.day, now.hour, now.minute);
     } else {
-      // Si no hay fecha específica, usar fecha y hora actual
       selectedDateTime = now;
     }
 
@@ -466,43 +596,15 @@ class AppointmentsController extends GetxController {
     currentView.value = view;
     selectedDate.value = selectedDateTime;
 
-    DateTime startDate;
-    DateTime endDate;
+    // Usar el método optimizado para obtener el rango
+    final dateRange = _getOptimizedDateRange(view, selectedDateTime);
+    final startDate = dateRange['start']!;
+    final endDate = dateRange['end']!;
 
-    switch (view) {
-      case CalendarView.day:
-        startDate = DateTime(selectedDateTime.year, selectedDateTime.month,
-            selectedDateTime.day);
-        endDate = DateTime(selectedDateTime.year, selectedDateTime.month,
-            selectedDateTime.day, 23, 59, 59);
-        print('Vista día: ${startDate.toString()} - ${endDate.toString()}');
-        break;
+    print('📊 Vista $view optimizada:');
+    print('📅 Rango: ${startDate.toString()} - ${endDate.toString()}');
 
-      case CalendarView.week:
-      case CalendarView.workWeek:
-        // Obtener el inicio de la semana (lunes)
-        startDate = selectedDateTime
-            .subtract(Duration(days: selectedDateTime.weekday - 1));
-        startDate = DateTime(startDate.year, startDate.month, startDate.day);
-        // Fin de semana (domingo)
-        endDate = startDate
-            .add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
-        print('Vista semana: ${startDate.toString()} - ${endDate.toString()}');
-        break;
-
-      case CalendarView.month:
-      default:
-        startDate = DateTime(selectedDateTime.year, selectedDateTime.month, 1);
-        endDate = DateTime(
-            selectedDateTime.year, selectedDateTime.month + 1, 0, 23, 59, 59);
-        print('Vista mes: ${startDate.toString()} - ${endDate.toString()}');
-        break;
-    }
-
-    print('Consultando citas para el rango:');
-    print('Inicio: $startDate');
-    print('Fin: $endDate');
-
+    // Usar fetchAppointments con el rango optimizado
     fetchAppointments(
       startDate: startDate,
       endDate: endDate,
@@ -541,82 +643,152 @@ class AppointmentsController extends GetxController {
     if (details.visibleDates.isEmpty) return;
 
     final middleDate = details.visibleDates[details.visibleDates.length ~/ 2];
-    final now = DateTime.now();
-
-    // Inicializar con valores por defecto
-    DateTime startDate =
-        DateTime(middleDate.year, middleDate.month, middleDate.day);
-    DateTime endDate =
-        DateTime(middleDate.year, middleDate.month, middleDate.day, 23, 59, 59);
     bool needsUpdate = false;
 
-    print('Evaluando cambio de vista: ${currentView.value}');
-    print('Fecha actual seleccionada: ${selectedDate.value}');
-    print('Nueva fecha media: $middleDate');
+    print('📍 Evaluando cambio de vista: ${currentView.value}');
+    print('📅 Fecha actual: ${selectedDate.value}');
+    print('📅 Nueva fecha: $middleDate');
 
+    // Verificar si necesitamos actualizar según la vista
     switch (currentView.value) {
       case CalendarView.day:
-        // Para vista diaria, siempre actualizar al deslizar
-        if (selectedDate.value.day != middleDate.day ||
+        // Para vista diaria, actualizar solo si cambia el día
+        needsUpdate = selectedDate.value.day != middleDate.day ||
             selectedDate.value.month != middleDate.month ||
-            selectedDate.value.year != middleDate.year) {
-          startDate =
-              DateTime(middleDate.year, middleDate.month, middleDate.day);
-          endDate = DateTime(
-              middleDate.year, middleDate.month, middleDate.day, 23, 59, 59);
-          needsUpdate = true;
-          print('Deslizamiento en vista día: ${startDate.toString()}');
-        }
+            selectedDate.value.year != middleDate.year;
         break;
 
       case CalendarView.week:
       case CalendarView.workWeek:
+        // Para vista semanal, actualizar solo si cambia la semana
         final currentWeekStart = selectedDate.value
             .subtract(Duration(days: selectedDate.value.weekday - 1));
         final newWeekStart =
             middleDate.subtract(Duration(days: middleDate.weekday - 1));
-
-        if (currentWeekStart.day != newWeekStart.day ||
-            currentWeekStart.month != newWeekStart.month) {
-          startDate =
-              DateTime(newWeekStart.year, newWeekStart.month, newWeekStart.day);
-          endDate = startDate.add(
-              const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
-          needsUpdate = true;
-          print(
-              'Deslizamiento en vista semana: ${startDate.toString()} - ${endDate.toString()}');
-        }
+        
+        needsUpdate = currentWeekStart.day != newWeekStart.day ||
+            currentWeekStart.month != newWeekStart.month ||
+            currentWeekStart.year != newWeekStart.year;
         break;
 
       case CalendarView.month:
-      case CalendarView.timelineDay:
-      case CalendarView.timelineWeek:
-      case CalendarView.timelineWorkWeek:
-      case CalendarView.timelineMonth:
-      case CalendarView.schedule:
-        if (selectedDate.value.month != middleDate.month ||
-            selectedDate.value.year != middleDate.year) {
-          startDate = DateTime(middleDate.year, middleDate.month, 1);
-          endDate =
-              DateTime(middleDate.year, middleDate.month + 1, 0, 23, 59, 59);
-          needsUpdate = true;
-          print(
-              'Deslizamiento en vista mes: ${startDate.toString()} - ${endDate.toString()}');
-        }
+      default:
+        // Para vista mensual, actualizar solo si cambia el mes
+        needsUpdate = selectedDate.value.month != middleDate.month ||
+            selectedDate.value.year != middleDate.year;
         break;
     }
 
     if (needsUpdate) {
-      print('Actualizando vista con nuevo rango:');
-      print('Inicio: $startDate');
-      print('Fin: $endDate');
-
+      print('🔄 Actualizando vista con optimización');
       selectedDate.value = middleDate;
+      
+      // Usar el método optimizado que incluye caché
+      final dateRange = _getOptimizedDateRange(currentView.value, middleDate);
+      
       fetchAppointments(
-        startDate: startDate,
-        endDate: endDate,
+        startDate: dateRange['start'],
+        endDate: dateRange['end'],
       );
+    } else {
+      print('✅ No se necesita actualización - usando datos existentes');
     }
+  }
+
+  // Método para generar clave de caché
+  String _generateCacheKey(DateTime? startDate, DateTime? endDate) {
+    final start = startDate?.toIso8601String() ?? 'null';
+    final end = endDate?.toIso8601String() ?? 'null';
+    final role = userRole.value.isNotEmpty ? userRole.value : 'unknown';
+    final user = userId.value.isNotEmpty ? userId.value : 'unknown';
+    return '${start}_${end}_${role}_${user}';
+  }
+
+  // Método para verificar si el caché es válido
+  bool _isCacheValid(String cacheKey) {
+    if (!_appointmentsCache.containsKey(cacheKey) || 
+        !_cacheTimestamps.containsKey(cacheKey)) {
+      return false;
+    }
+    
+    final cacheTime = _cacheTimestamps[cacheKey]!;
+    final now = DateTime.now();
+    final difference = now.difference(cacheTime).inMinutes;
+    
+    return difference < _cacheExpirationMinutes;
+  }
+
+  // Método para limpiar caché expirado
+  void _cleanExpiredCache() {
+    final now = DateTime.now();
+    final expiredKeys = <String>[];
+    
+    _cacheTimestamps.forEach((key, timestamp) {
+      if (now.difference(timestamp).inMinutes >= _cacheExpirationMinutes) {
+        expiredKeys.add(key);
+      }
+    });
+    
+    for (final key in expiredKeys) {
+      _appointmentsCache.remove(key);
+      _cacheTimestamps.remove(key);
+    }
+  }
+
+  // Método para invalidar caché cuando se modifican las citas
+  void _invalidateCache() {
+    print('🗑️ Invalidando caché de citas');
+    _appointmentsCache.clear();
+    _cacheTimestamps.clear();
+  }
+
+  // Método para invalidar caché de un rango específico
+  void _invalidateCacheForDate(DateTime date) {
+    final keysToRemove = <String>[];
+    
+    _cacheTimestamps.keys.forEach((key) {
+      // Si la clave contiene la fecha afectada, invalidarla
+      if (key.contains(date.toIso8601String().substring(0, 10))) {
+        keysToRemove.add(key);
+      }
+    });
+    
+    for (final key in keysToRemove) {
+      _appointmentsCache.remove(key);
+      _cacheTimestamps.remove(key);
+      print('🗑️ Cache invalidado para: $key');
+    }
+  }
+
+  // Método optimizado para calcular rangos mínimos según la vista
+  Map<String, DateTime> _getOptimizedDateRange(CalendarView view, DateTime selectedDate) {
+    DateTime startDate;
+    DateTime endDate;
+    
+    switch (view) {
+      case CalendarView.day:
+        // Solo el día actual
+        startDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+        endDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 23, 59, 59);
+        break;
+        
+      case CalendarView.week:
+      case CalendarView.workWeek:
+        // Solo la semana actual
+        final weekStart = selectedDate.subtract(Duration(days: selectedDate.weekday - 1));
+        startDate = DateTime(weekStart.year, weekStart.month, weekStart.day);
+        endDate = startDate.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+        break;
+        
+      case CalendarView.month:
+      default:
+        // Solo el mes actual
+        startDate = DateTime(selectedDate.year, selectedDate.month, 1);
+        endDate = DateTime(selectedDate.year, selectedDate.month + 1, 0, 23, 59, 59);
+        break;
+    }
+    
+    return {'start': startDate, 'end': endDate};
   }
 
   Future<void> fetchAppointments({
@@ -627,63 +799,92 @@ class AppointmentsController extends GetxController {
       isLoading.value = true;
       error.value = null;
 
+      // Si no se especifican fechas, usar el rango optimizado según la vista actual
+      if (startDate == null || endDate == null) {
+        final dateRange = _getOptimizedDateRange(currentView.value, selectedDate.value);
+        startDate = dateRange['start'];
+        endDate = dateRange['end'];
+      }
+
       final localStartDate = startDate?.toLocal();
       final localEndDate = endDate?.toLocal();
 
-      print('Consultando citas:');
-      print('Inicio: ${localStartDate?.toString()}');
-      print('Fin: ${localEndDate?.toString()}');
+      print('🔍 Consultando citas optimizadas (Vista: ${currentView.value}):');
+      print('📅 Inicio: ${localStartDate?.toString()}');
+      print('📅 Fin: ${localEndDate?.toString()}');
 
+      // Generar clave de caché
+      final cacheKey = _generateCacheKey(localStartDate, localEndDate);
+      
+      // Limpiar caché expirado
+      _cleanExpiredCache();
+      
+      // Verificar si tenemos datos válidos en caché
+      if (_isCacheValid(cacheKey)) {
+        print('💾 Usando datos del caché para: $cacheKey');
+        final cachedAppointments = _appointmentsCache[cacheKey]!;
+        appointments.assignAll(cachedAppointments);
+        update(['calendar-view']);
+        isLoading.value = false;
+        return;
+      }
+
+      print('🌐 Cargando desde API...');
       final result = await getAppointmentsUseCase(
         startDate: localStartDate,
         endDate: localEndDate,
       );
 
-      print('Citas obtenidas: ${result.length}');
+      print('📊 Citas obtenidas: ${result.length}');
 
-      // Imprimir detalle de cada cita para diagnóstico
-      for (int i = 0; i < result.length; i++) {
-        print('---------- Cita #${i + 1} ----------');
-        print('ID: ${result[i].id}');
-        print('Professional ID: ${result[i].professionalId}');
-        print('Client: ${result[i].clientName}');
-        print('Date: ${result[i].startTime}');
+      // PRIMER FILTRO: Por rango de fechas (solucionar problema del backend)
+      List<AppointmentEntity> dateFilteredAppointments = [];
+      if (localStartDate != null && localEndDate != null) {
+        dateFilteredAppointments = result.where((appointment) {
+          final appointmentDate = appointment.startTime.toLocal();
+          final isInRange = appointmentDate.isAfter(localStartDate.subtract(const Duration(seconds: 1))) &&
+                           appointmentDate.isBefore(localEndDate.add(const Duration(seconds: 1)));
+          
+          if (!isInRange) {
+            print('⚠️ Cita fuera de rango descartada: ${appointment.startTime} (${appointment.clientName})');
+          }
+          return isInRange;
+        }).toList();
+        
+        print('📅 Filtro de fechas: ${dateFilteredAppointments.length} de ${result.length} citas en rango');
+      } else {
+        dateFilteredAppointments = result;
       }
 
-      print('ID del usuario actual: ${userId.value}');
-
-      // MODIFICACIÓN: Filtrar citas según el rol del usuario
+      // SEGUNDO FILTRO: Por rol del usuario
       List<AppointmentEntity> filteredAppointments = [];
 
       if (userRole.value == 'Owner') {
-        // Si es Owner, mostrar todas las citas
-        filteredAppointments = result;
-        print('Rol Owner: Mostrando todas las citas (${result.length})');
+        filteredAppointments = dateFilteredAppointments;
+        print('👑 Rol Owner: Mostrando todas las citas en rango (${dateFilteredAppointments.length})');
       } else if (userRole.value == 'Employee') {
-        // Si es Employee, mostrar solo las citas donde él es el profesional
-        filteredAppointments = result.where((appointment) {
-          print(
-              'Comparando: appointment.professionalId=${appointment.professionalId} con userId=${userId.value}');
+        filteredAppointments = dateFilteredAppointments.where((appointment) {
           return appointment.professionalId == userId.value;
         }).toList();
-
-        print(
-            'Rol Employee: Filtrando citas para el profesional ${userId.value}');
-        print(
-            'Citas filtradas: ${filteredAppointments.length} de ${result.length}');
+        print('👤 Rol Employee: Filtrando citas para el profesional ${userId.value}');
+        print('✅ Citas filtradas: ${filteredAppointments.length} de ${dateFilteredAppointments.length}');
       } else {
-        // Por defecto, mostrar todas las citas
-        filteredAppointments = result;
-        print('Rol no especificado: Mostrando todas las citas por defecto');
+        filteredAppointments = dateFilteredAppointments;
+        print('⚠️ Rol no especificado: Mostrando todas las citas en rango por defecto');
       }
+
+      // Guardar en caché
+      _appointmentsCache[cacheKey] = List.from(filteredAppointments);
+      _cacheTimestamps[cacheKey] = DateTime.now();
+      print('💾 Datos guardados en caché: $cacheKey');
 
       // Asignar las citas filtradas
       appointments.assignAll(filteredAppointments);
 
-      // Forzamos actualización del calendario después de cargar las citas
+      // Forzar actualización del calendario
       update(['calendar-view']);
     } catch (e) {
-      print('Error al cargar citas: $e');
+      print('❌ Error al cargar citas: $e');
       error.value = _formatErrorMessage(e);
     } finally {
       isLoading.value = false;
@@ -734,10 +935,9 @@ class AppointmentsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    print('AppointmentsController onInit');
-    _getUserInfo(); // Obtener información del usuario
-    _initializeCalendar();
-    _loadInitialData();
+    print('🚀 AppointmentsController onInit - optimizado');
+    // No inicializar aquí para evitar cargas duplicadas
+    // La inicialización se hace en el constructor
   }
 
   Future<void> createAppointment({
@@ -746,7 +946,36 @@ class AppointmentsController extends GetxController {
     String? notes,
   }) async {
     try {
-      // Verificar estado de suscripción primero
+      // Verificar permisos de usuario primero
+      final userController = Get.find<UserInfoController>();
+      if (!userController.isOwner()) {
+        Get.snackbar(
+          'Acceso denegado',
+          'Solo los usuarios Owner pueden crear citas',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      // Verificar horario del profesional
+      if (selectedEmployee.value != null) {
+        final isValidTime = _isAppointmentTimeValid(startTime, selectedEmployee.value!);
+        if (!isValidTime) {
+          Get.snackbar(
+            'Horario inválido',
+            'La hora seleccionada está fuera del horario de trabajo del profesional',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 4),
+          );
+          return;
+        }
+      }
+
+      // Verificar estado de suscripción
       final canContinue = await checkSubscriptionStatus();
       if (!canContinue) {
         // En lugar de mostrar siempre el mismo diálogo, detectar el mensaje para mostrar el adecuado
@@ -821,6 +1050,9 @@ class AppointmentsController extends GetxController {
         // La cita se creó exitosamente
         selectedServiceIds.clear();
         totalPrice.value = 0;
+
+        // Invalidar caché para la fecha afectada
+        _invalidateCacheForDate(startTime);
 
         // Recargar citas para el día actual
         await _reloadAppointmentsForDay(startTime);
@@ -1202,6 +1434,9 @@ class AppointmentsController extends GetxController {
       selectedServiceIds.clear();
       this.totalPrice.value = 0;
 
+      // Invalidar caché para la fecha afectada
+      _invalidateCacheForDate(startTime);
+
       // Recargar citas
       await _reloadAppointmentsForDay(startTime);
 
@@ -1242,11 +1477,11 @@ class AppointmentsController extends GetxController {
   // Método para encontrar ID de cliente por nombre
   String _findClientIdByName(String clientName) {
     final clientMatch = clients.firstWhereOrNull((c) =>
-        '${c['name']} ${c['lastname'] ?? ''}'.trim() == clientName.trim());
+        '${c.name} ${c.lastname}'.trim() == clientName.trim());
 
     if (clientMatch != null) {
-      print('📍 Cliente encontrado por nombre: ${clientMatch['id']}');
-      return clientMatch['id'];
+      print('📍 Cliente encontrado por nombre: ${clientMatch.id}');
+      return clientMatch.id ?? '';
     }
 
     print('⚠️ No se encontró cliente con nombre: "$clientName"');
@@ -1285,6 +1520,7 @@ class AppointmentsController extends GetxController {
     _employeesController = null;
     selectedServiceIds.clear();
     totalPrice.value = 0;
+    _invalidateCache(); // Limpiar caché al cerrar
     super.onClose();
   }
 
@@ -1494,6 +1730,92 @@ class AppointmentsController extends GetxController {
       _showTrialEndedDialog();
     } else {
       _showInactiveSubscriptionDialog();
+    }
+  }
+
+  bool _isAppointmentTimeValid(DateTime appointmentTime, dynamic employee) {
+    try {
+      // Si el empleado no tiene horario definido, permitir cualquier hora
+      if (employee.schedule == null || employee.schedule.isEmpty) {
+        print('⚠️ Empleado ${employee.name} no tiene horario definido - permitiendo cualquier hora');
+        return true;
+      }
+
+      // Obtener el día de la semana (lunes = 1, domingo = 7)
+      final dayOfWeek = appointmentTime.weekday;
+      final dayNames = {
+        1: 'monday',
+        2: 'tuesday', 
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday',
+        7: 'sunday'
+      };
+
+      final dayName = dayNames[dayOfWeek];
+      if (dayName == null) return false;
+
+      // Verificar si el empleado trabaja ese día
+      final daySchedule = employee.schedule[dayName];
+      if (daySchedule == null) {
+        print('⚠️ Empleado ${employee.name} no trabaja los ${dayName}');
+        return false;
+      }
+
+      // Obtener horarios de inicio y fin
+      final startTimeStr = daySchedule['start']?.toString();
+      final endTimeStr = daySchedule['end']?.toString();
+      
+      if (startTimeStr == null || endTimeStr == null) {
+        print('⚠️ Horarios no definidos para ${employee.name} el ${dayName}');
+        return false;
+      }
+
+      // Parsear horarios (formato: "09:00:00")
+      final startTimeParts = startTimeStr.split(':');
+      final endTimeParts = endTimeStr.split(':');
+      
+      if (startTimeParts.length < 2 || endTimeParts.length < 2) {
+        print('⚠️ Formato de horario inválido para ${employee.name}');
+        return false;
+      }
+
+      final startHour = int.parse(startTimeParts[0]);
+      final startMinute = int.parse(startTimeParts[1]);
+      final endHour = int.parse(endTimeParts[0]);
+      final endMinute = int.parse(endTimeParts[1]);
+
+      // Crear horarios del día de la cita
+      final appointmentDate = DateTime(appointmentTime.year, appointmentTime.month, appointmentTime.day);
+      final workStartTime = appointmentDate.add(Duration(hours: startHour, minutes: startMinute));
+      final workEndTime = appointmentDate.add(Duration(hours: endHour, minutes: endMinute));
+
+      // Calcular duración total de los servicios seleccionados
+      int totalDurationMinutes = 0;
+      for (String serviceId in selectedServiceIds) {
+        final service = services.firstWhere((s) => s['id'] == serviceId,
+            orElse: () => {'duration': 30});
+        totalDurationMinutes += int.parse((service['duration'] ?? 30).toString());
+      }
+
+      // Verificar que la cita empiece y termine dentro del horario laboral
+      final appointmentEndTime = appointmentTime.add(Duration(minutes: totalDurationMinutes));
+      
+      final isValid = appointmentTime.isAfter(workStartTime.subtract(const Duration(minutes: 1))) &&
+                     appointmentEndTime.isBefore(workEndTime.add(const Duration(minutes: 1)));
+
+      print('🕐 Validación de horario para ${employee.name}:');
+      print('   Día: $dayName');
+      print('   Horario laboral: ${startTimeStr} - ${endTimeStr}');
+      print('   Cita: ${appointmentTime.hour}:${appointmentTime.minute.toString().padLeft(2, '0')} - ${appointmentEndTime.hour}:${appointmentEndTime.minute.toString().padLeft(2, '0')}');
+      print('   Duración total: $totalDurationMinutes min');
+      print('   ✅ Válido: $isValid');
+
+      return isValid;
+    } catch (e) {
+      print('❌ Error validando horario: $e');
+      return true; // En caso de error, permitir la cita
     }
   }
 }

@@ -16,6 +16,7 @@ class ClientsBinding extends Bindings {
     // Main clients controller
     Get.lazyPut(() => ClientsController(
           getClientsUseCase: Get.find(),
+          getClientsPaginatedUseCase: Get.find(),
           createClientUseCase: Get.find(),
           importContactsUseCase: Get.find(),
           localStorage: Get.find(),
@@ -41,7 +42,7 @@ class ClientsBinding extends Bindings {
   void _initializeClientsModule() async {
     try {
       // Verificar si los use cases ya están registrados
-      if (!Get.isRegistered<GetClientsUseCase>()) {
+      if (!Get.isRegistered<GetClientsUseCase>() || !Get.isRegistered<GetClientsPaginatedUseCase>()) {
         await ClientsModule.init();
         print('ClientsModule inicializado desde ClientsBinding');
       }

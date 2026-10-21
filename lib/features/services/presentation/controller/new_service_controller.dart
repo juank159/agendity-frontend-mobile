@@ -114,8 +114,10 @@ class NewServiceController extends GetxController {
     try {
       final result = await getCategoriesUseCase.execute();
       categories.value = result;
-      // Ya no seleccionamos una categoría por defecto
-      selectedCategory.value = null;
+      // Si solo hay una categoría, seleccionarla automáticamente
+      if (result.length == 1 && selectedCategory.value == null) {
+        selectedCategory.value = result.first;
+      }
     } catch (e) {
       _showError('Error al cargar las categorías');
     }
@@ -135,14 +137,8 @@ class NewServiceController extends GetxController {
 
   void selectColor(MaterialColor color) {
     selectedColor.value = color;
-    // Podemos agregar una validación aquí si es necesario
-    print(
-        'Color seleccionado: #${color.shade500.value.toRadixString(16).substring(2)}');
   }
 
-  // void selectColor(MaterialColor color) {
-  //   selectedColor.value = color;
-  // }
 
   void showDurationPicker() {
     Get.dialog(

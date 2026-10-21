@@ -17,7 +17,7 @@ class ThemeConfig {
           fontWeight: FontWeight.bold,
         ),
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: Colors.white,
         shadowColor: Colors.black12,
       ),
@@ -61,7 +61,7 @@ class ThemeConfig {
           fontWeight: FontWeight.bold,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: Colors.grey[850],
         shadowColor: Colors.black45,
       ),
@@ -105,7 +105,7 @@ class ThemeConfig {
           fontWeight: FontWeight.bold,
         ),
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: Colors.black,
         shadowColor: Colors.yellowAccent,
       ),

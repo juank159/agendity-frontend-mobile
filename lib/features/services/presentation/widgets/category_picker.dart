@@ -1,127 +1,9 @@
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:login_signup/features/services/domain/entities/category.dart';
-
-// class CategoryPicker extends StatelessWidget {
-//   final List<CategoryEntity> categories;
-//   final Rxn<CategoryEntity> selectedCategory;
-//   final Function(CategoryEntity) onChanged;
-
-//   const CategoryPicker({
-//     required this.categories,
-//     required this.selectedCategory,
-//     required this.onChanged,
-//     super.key,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Dialog(
-//       shape: RoundedRectangleBorder(
-//         borderRadius: BorderRadius.circular(28),
-//       ),
-//       child: Container(
-//         padding: const EdgeInsets.all(16),
-//         child: Column(
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             const Text(
-//               'Categoría',
-//               style: TextStyle(
-//                 fontSize: 20,
-//                 fontWeight: FontWeight.w500,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             SizedBox(
-//               height: 250,
-//               child: Obx(() => ListWheelScrollView.useDelegate(
-//                     itemExtent: 50,
-//                     perspective: 0.006,
-//                     diameterRatio: 1.6,
-//                     physics: const FixedExtentScrollPhysics(),
-//                     onSelectedItemChanged: (index) {
-//                       onChanged(categories[index]);
-//                     },
-//                     controller: FixedExtentScrollController(
-//                       initialItem: selectedCategory.value != null
-//                           ? categories.indexOf(selectedCategory.value!)
-//                           : 0,
-//                     ),
-//                     childDelegate: ListWheelChildBuilderDelegate(
-//                       childCount: categories.length,
-//                       builder: (context, index) {
-//                         final category = categories[index];
-//                         final isSelected =
-//                             selectedCategory.value?.id == category.id;
-//                         return Container(
-//                           width: double.infinity,
-//                           padding: const EdgeInsets.symmetric(vertical: 8),
-//                           decoration: BoxDecoration(
-//                             color: isSelected
-//                                 ? Colors.grey.shade200
-//                                 : Colors.transparent,
-//                           ),
-//                           child: Center(
-//                             child: Text(
-//                               category.name,
-//                               style: TextStyle(
-//                                 fontSize: isSelected ? 22 : 16,
-//                                 fontWeight: isSelected
-//                                     ? FontWeight.bold
-//                                     : FontWeight.normal,
-//                                 color: isSelected
-//                                     ? Colors.black
-//                                     : Colors.grey[500],
-//                               ),
-//                             ),
-//                           ),
-//                         );
-//                       },
-//                     ),
-//                   )),
-//             ),
-//             Padding(
-//               padding: const EdgeInsets.only(top: 8),
-//               child: Row(
-//                 mainAxisAlignment: MainAxisAlignment.end,
-//                 children: [
-//                   TextButton(
-//                     onPressed: () => Get.back(),
-//                     child: const Text(
-//                       'CANCELAR',
-//                       style: TextStyle(
-//                         color: Colors.deepPurple,
-//                         fontWeight: FontWeight.w500,
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(width: 8),
-//                   TextButton(
-//                     onPressed: () => Get.back(),
-//                     child: const Text(
-//                       'ACEPTAR',
-//                       style: TextStyle(
-//                         color: Colors.deepPurple,
-//                         fontWeight: FontWeight.w500,
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
+// lib/features/services/presentation/widgets/category_picker.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 
-class CategoryPicker extends StatelessWidget {
+class CategoryPicker extends StatefulWidget {
   final List<CategoryEntity> categories;
   final Rxn<CategoryEntity> selectedCategory;
   final Function(CategoryEntity) onChanged;
@@ -132,6 +14,25 @@ class CategoryPicker extends StatelessWidget {
     required this.onChanged,
     super.key,
   });
+
+  @override
+  State<CategoryPicker> createState() => _CategoryPickerState();
+}
+
+class _CategoryPickerState extends State<CategoryPicker> {
+  CategoryEntity? tempSelectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar con la categoría actualmente seleccionada
+    tempSelectedCategory = widget.selectedCategory.value;
+    
+    // Si hay categorías disponibles y no hay selección, seleccionar la primera
+    if (widget.categories.isNotEmpty && tempSelectedCategory == null) {
+      tempSelectedCategory = widget.categories.first;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,57 +70,9 @@ class CategoryPicker extends StatelessWidget {
           // Category Picker
           SizedBox(
             height: 250,
-            child: Stack(
-              children: [
-                // Selector highlight (fixed bar, doesn't move)
-                Positioned.fill(
-                  child: Center(
-                    child: Container(
-                      height: 50,
-                      color: Colors.grey.shade200,
-                    ),
-                  ),
-                ),
-
-                // Scrollable list of categories
-                Obx(() => ListWheelScrollView.useDelegate(
-                      itemExtent: 50,
-                      perspective: 0.006,
-                      diameterRatio: 1.6,
-                      physics: const FixedExtentScrollPhysics(),
-                      onSelectedItemChanged: (index) {
-                        onChanged(categories[index]);
-                      },
-                      controller: FixedExtentScrollController(
-                        initialItem: selectedCategory.value != null
-                            ? categories.indexOf(selectedCategory.value!)
-                            : 0,
-                      ),
-                      childDelegate: ListWheelChildBuilderDelegate(
-                        childCount: categories.length,
-                        builder: (context, index) {
-                          final category = categories[index];
-                          final isSelected =
-                              selectedCategory.value?.id == category.id;
-                          return Center(
-                            child: Text(
-                              category.name,
-                              style: TextStyle(
-                                fontSize: isSelected ? 20 : 18,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? Colors.black
-                                    : Colors.grey.shade600,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    )),
-              ],
-            ),
+            child: widget.categories.length == 1
+                ? _buildSingleCategoryView()
+                : _buildMultipleCategoryView(),
           ),
 
           // Buttons
@@ -249,7 +102,12 @@ class CategoryPicker extends StatelessWidget {
                 // Confirm button
                 Expanded(
                   child: TextButton(
-                    onPressed: () => Get.back(),
+                    onPressed: () {
+                      if (tempSelectedCategory != null) {
+                        widget.onChanged(tempSelectedCategory!);
+                      }
+                      Get.back();
+                    },
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       foregroundColor: Colors.blue,
@@ -268,6 +126,100 @@ class CategoryPicker extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSingleCategoryView() {
+    final category = widget.categories.first;
+    // Asegurar que la única categoría está seleccionada
+    if (tempSelectedCategory == null) {
+      tempSelectedCategory = category;
+    }
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200, width: 2),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        title: Text(
+          category.name,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        trailing: Icon(
+          Icons.check_circle,
+          color: Colors.blue.shade600,
+          size: 28,
+        ),
+        onTap: () {
+          setState(() {
+            tempSelectedCategory = category;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildMultipleCategoryView() {
+    return Stack(
+      children: [
+        // Selector highlight (fixed bar, doesn't move)
+        Positioned.fill(
+          child: Center(
+            child: Container(
+              height: 50,
+              color: Colors.grey.shade200,
+            ),
+          ),
+        ),
+
+        // Scrollable list of categories
+        ListWheelScrollView.useDelegate(
+          itemExtent: 50,
+          perspective: 0.006,
+          diameterRatio: 1.6,
+          physics: const FixedExtentScrollPhysics(),
+          controller: FixedExtentScrollController(
+            initialItem: tempSelectedCategory != null
+                ? widget.categories.indexOf(tempSelectedCategory!)
+                : 0,
+          ),
+          onSelectedItemChanged: (index) {
+            setState(() {
+              tempSelectedCategory = widget.categories[index];
+            });
+          },
+          childDelegate: ListWheelChildBuilderDelegate(
+            childCount: widget.categories.length,
+            builder: (context, index) {
+              final category = widget.categories[index];
+              final isSelected = tempSelectedCategory?.id == category.id;
+              return Center(
+                child: Text(
+                  category.name,
+                  style: TextStyle(
+                    fontSize: isSelected ? 20 : 18,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: isSelected
+                        ? Colors.black
+                        : Colors.grey.shade600,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

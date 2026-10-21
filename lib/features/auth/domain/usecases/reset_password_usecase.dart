@@ -7,12 +7,20 @@ class ResetPasswordUseCase {
 
   ResetPasswordUseCase(this.repository);
 
+  /// Ejecuta el caso de uso de restablecer contraseña
+  ///
+  /// [email] - Email del usuario
+  /// [code] - Código de verificación de 6 dígitos
+  /// [newPassword] - Nueva contraseña que cumple los requisitos de seguridad
+  ///
+  /// Retorna [Right(true)] si la contraseña se restableció exitosamente
+  /// Retorna [Left(Failure)] si hubo algún error
   Future<Either<Failure, bool>> call({
     required String email,
     required String code,
     required String newPassword,
-  }) {
-    return repository.resetPassword(
+  }) async {
+    return await repository.resetPassword(
       email: email,
       code: code,
       newPassword: newPassword,

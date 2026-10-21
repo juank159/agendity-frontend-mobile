@@ -133,6 +133,41 @@
 
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
+// ✅ MODELO DE PAGINACIÓN PARA RESPUESTAS DEL BACKEND
+class PaginatedResponse<T> {
+  final List<T> data;
+  final int total;
+  final int page;
+  final int limit;
+  final int totalPages;
+  final bool hasNextPage;
+  final bool hasPrevPage;
+
+  PaginatedResponse({
+    required this.data,
+    required this.total,
+    required this.page,
+    required this.limit,
+    required this.totalPages,
+    required this.hasNextPage,
+    required this.hasPrevPage,
+  });
+
+  factory PaginatedResponse.fromJson(Map<String, dynamic> json, T Function(Map<String, dynamic>) itemFactory) {
+    return PaginatedResponse(
+      data: (json['data'] as List).map((item) => itemFactory(item as Map<String, dynamic>)).toList(),
+      total: json['total'] ?? 0,
+      page: json['page'] ?? 1,
+      limit: json['limit'] ?? 10,
+      totalPages: json['totalPages'] ?? 1,
+      hasNextPage: json['hasNextPage'] ?? false,
+      hasPrevPage: json['hasPrevPage'] ?? false,
+    );
+  }
+}
+
+typedef PaginatedClientResponse = PaginatedResponse<ClientModel>;
+
 class ClientModel extends ClientEntity {
   ClientModel({
     String? id,

@@ -2,12 +2,42 @@
 
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/repositories/clients_repository.dart';
+import 'package:login_signup/features/clients/data/models/client_model.dart';
 
-// Casos de uso existentes...
+// ✅ NUEVO CASO DE USO PARA PAGINACIÓN
+class GetClientsPaginatedUseCase {
+  final ClientsRepository repository;
+  GetClientsPaginatedUseCase(this.repository);
+  
+  Future<PaginatedClientResponse> execute({
+    int page = 1,
+    int limit = 10,
+    String? search,
+    String sortBy = 'created_at',
+    String sortOrder = 'DESC',
+    String status = 'all',
+    String source = 'all',
+  }) {
+    print('🔥 GetClientsPaginatedUseCase: execute() llamado con parámetros:');
+    print('   page: $page, limit: $limit, search: $search');
+    return repository.getClientsPaginated(
+      page: page,
+      limit: limit,
+      search: search,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
+      status: status,
+      source: source,
+    );
+  }
+}
+
+// ✅ CASO DE USO LEGACY PARA RETROCOMPATIBILIDAD
 class GetClientsUseCase {
   final ClientsRepository repository;
   GetClientsUseCase(this.repository);
   Future<List<ClientEntity>> execute() {
+    print('🔥 GetClientsUseCase: execute() LEGACY llamado');
     return repository.getClients();
   }
 }
@@ -80,13 +110,18 @@ class ImportContactsUseCase {
   final ClientsRepository repository;
   ImportContactsUseCase(this.repository);
 
-  Future<void> execute(List<ClientEntity> clients) async {
+  Future<Map<String, dynamic>> execute(List<ClientEntity> clients) async {
     try {
       if (clients.isEmpty) {
         throw Exception('No hay contactos para importar');
       }
 
       _validateClients(clients);
+
+      int totalSent = 0;
+      int totalSuccess = 0;
+      int totalFailed = 0;
+      List<dynamic> allErrors = [];
 
       const int batchSize = 50;
       for (var i = 0; i < clients.length; i += batchSize) {
@@ -95,16 +130,41 @@ class ImportContactsUseCase {
         final batch = clients.sublist(i, end);
 
         try {
-          await repository.importDeviceContacts(batch);
-          print(
-              'Importado lote ${(i ~/ batchSize) + 1} de ${(clients.length / batchSize).ceil()}');
+          print('🔄 UseCase: Procesando lote ${(i ~/ batchSize) + 1} de ${(clients.length / batchSize).ceil()} (${batch.length} contactos)');
+          
+          final result = await repository.importDeviceContacts(batch);
+          
+          totalSent += batch.length;
+          totalSuccess += result['success'] as int;
+          totalFailed += result['failed'] as int;
+          allErrors.addAll(result['errors'] as List);
+          
+          print('✅ Lote ${(i ~/ batchSize) + 1} completado: ${result['success']}/${batch.length} exitosos');
+          
         } catch (e) {
-          print('Error importando lote ${(i ~/ batchSize) + 1}: $e');
+          print('❌ Error importando lote ${(i ~/ batchSize) + 1}: $e');
+          totalFailed += batch.length;
+          allErrors.add('Lote ${(i ~/ batchSize) + 1}: $e');
           continue;
         }
       }
+
+      final summary = {
+        'totalSent': totalSent,
+        'totalSuccess': totalSuccess,
+        'totalFailed': totalFailed,
+        'errors': allErrors,
+      };
+
+      print('🏁 UseCase - Resumen final de importación:');
+      print('   • Total enviados: $totalSent');
+      print('   • Total exitosos: $totalSuccess');
+      print('   • Total fallidos: $totalFailed');
+
+      return summary;
+      
     } catch (e) {
-      print('Error en ImportContactsUseCase: $e');
+      print('❌ Error en ImportContactsUseCase: $e');
       throw Exception('Error al importar contactos: $e');
     }
   }

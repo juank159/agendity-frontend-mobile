@@ -51,6 +51,6 @@ class WhatsappLauncher {
     required String time,
     String? location,
   }) {
-    return "👋 Hola $clientName, le recordamos su cita para *$serviceName* programada para *$date* a las *$time*. Lo esperamos en ${location ?? 'nuestra ubicación habitual'}.";
+    return "👋 Hola, te recordamos tu cita para *$serviceName* programada para *$date* a las *$time*. te esperamos en ${location ?? 'nuestra ubicación habitual'}.";
   }
 }

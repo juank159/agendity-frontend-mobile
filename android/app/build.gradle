@@ -8,12 +8,13 @@ plugins {
 
 android {
     namespace = "com.example.login_signup"
-    compileSdk = 34
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -23,7 +24,7 @@ android {
     defaultConfig {
         applicationId = "com.example.login_signup"
         minSdk = 23
-        targetSdk = 34  
+        targetSdk = 35  
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
@@ -64,6 +65,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:32.7.0')  // Añadido Firebase BOM
     implementation 'com.google.firebase:firebase-analytics'  // Añadido Firebase Analytics
     implementation 'com.google.firebase:firebase-auth'  
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }
 
 // Aplicar plugin de Google Services

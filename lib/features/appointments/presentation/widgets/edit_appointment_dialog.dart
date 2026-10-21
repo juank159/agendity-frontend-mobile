@@ -1,3 +1,4 @@
+// lib/features/appointments/presentation/widgets/edit_appointment_dialog.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -8,6 +9,7 @@ import 'package:login_signup/features/appointments/presentation/controllers/appo
 import 'package:login_signup/features/appointments/presentation/widgets/professional_selector_dialog.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
 class EditAppointmentDialog extends StatefulWidget {
   final AppointmentEntity appointment;
@@ -57,7 +59,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
   final RxDouble totalPrice = 0.0.obs;
   final RxBool isLoading = false.obs;
 
-  Map<String, dynamic>? _selectedClient;
+  ClientEntity? _selectedClient;
   bool _showClientSelector = false;
 
   @override
@@ -961,9 +963,9 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
         // Obtener el ID del cliente si se cambió
         String? clientId;
         if (_selectedClient != null) {
-          clientId = _selectedClient!['id'];
+          clientId = _selectedClient!.id;
           print(
-              '🔄 Cliente seleccionado: ${_selectedClient!['name']} (ID: $clientId)');
+              '🔄 Cliente seleccionado: ${_selectedClient!.name} (ID: $clientId)');
         } else {
           print('🔄 No se cambió el cliente');
         }
@@ -1115,14 +1117,14 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                 itemBuilder: (context, index) {
                   final client = widget.controller.clients[index];
                   final isSelected = _selectedClient != null &&
-                      _selectedClient!['id'] == client['id'];
+                      _selectedClient!.id == client.id;
 
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor:
                           Theme.of(context).primaryColor.withOpacity(0.1),
                       child: Text(
-                        _getClientInitialsFromMap(client),
+                        _getClientInitials(client),
                         style: TextStyle(
                           color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.bold,
@@ -1130,13 +1132,13 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                       ),
                     ),
                     title: Text(
-                      '${client['name']} ${client['lastname'] ?? ''}',
+                      '${client.name} ${client.lastname}',
                       style: TextStyle(
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
-                    subtitle: Text(client['phone'] ?? ''),
+                    subtitle: Text(client.phone),
                     trailing: isSelected
                         ? Icon(Icons.check_circle,
                             color: Theme.of(context).primaryColor)
@@ -1164,11 +1166,11 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
 
     if (_selectedClient != null) {
       clientName =
-          '${_selectedClient!['name']} ${_selectedClient!['lastname'] ?? ''}';
-      clientInitials = _getClientInitialsFromMap(_selectedClient!);
+          '${_selectedClient!.name} ${_selectedClient!.lastname}';
+      clientInitials = _getClientInitials(_selectedClient!);
     } else {
       clientName = widget.appointment.clientName;
-      clientInitials = _getClientInitials(widget.appointment.clientName);
+      clientInitials = _getClientInitialsFromString(widget.appointment.clientName);
     }
 
     return Container(
@@ -1218,6 +1220,29 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
     );
   }
 
+  String _getClientInitials(ClientEntity client) {
+    String initials = '';
+    if (client.name.isNotEmpty) {
+      initials += client.name[0].toUpperCase();
+    }
+    if (client.lastname.isNotEmpty) {
+      initials += client.lastname[0].toUpperCase();
+    }
+    return initials;
+  }
+
+  String _getClientInitialsFromString(String clientName) {
+    String initials = '';
+    final parts = clientName.split(' ');
+    if (parts.isNotEmpty && parts[0].isNotEmpty) {
+      initials += parts[0][0].toUpperCase();
+    }
+    if (parts.length > 1 && parts[1].isNotEmpty) {
+      initials += parts[1][0].toUpperCase();
+    }
+    return initials;
+  }
+
   String _getClientInitialsFromMap(Map<String, dynamic> client) {
     String initials = '';
     if (client['name'] != null && client['name'].toString().isNotEmpty) {
@@ -1248,15 +1273,6 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
     return initials;
   }
 
-  String _getClientInitials(String fullName) {
-    final parts = fullName.split(' ');
-    String initials = '';
-    if (parts.isNotEmpty && parts[0].isNotEmpty)
-      initials += parts[0][0].toUpperCase();
-    if (parts.length > 1 && parts[1].isNotEmpty)
-      initials += parts[1][0].toUpperCase();
-    return initials;
-  }
 
   @override
   void dispose() {

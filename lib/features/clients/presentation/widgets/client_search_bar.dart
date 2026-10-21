@@ -1,81 +1,3 @@
-// // lib/features/clients/presentation/widgets/client_search_bar.dart
-
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
-
-// class ClientSearchBar extends GetView<ClientsController> {
-//   const ClientSearchBar({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-//       decoration: BoxDecoration(
-//         color: Colors.white.withOpacity(0.9),
-//         borderRadius: BorderRadius.circular(20),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(0.08),
-//             spreadRadius: 1,
-//             blurRadius: 10,
-//             offset: const Offset(0, 3),
-//           ),
-//         ],
-//         border: Border.all(
-//           color: Colors.white.withOpacity(0.7),
-//           width: 1,
-//         ),
-//       ),
-//       child: TextField(
-//         onChanged: (value) => controller.searchQuery.value = value,
-//         style: const TextStyle(
-//           color: Colors.black87,
-//           fontSize: 16,
-//         ),
-//         decoration: InputDecoration(
-//           hintText: 'Buscar cliente por nombre o teléfono',
-//           hintStyle: TextStyle(
-//             color: Colors.grey.shade500,
-//             fontSize: 16,
-//           ),
-//           prefixIcon: Icon(
-//             Icons.search_rounded,
-//             color: Colors.blue.shade700,
-//             size: 24,
-//           ),
-//           suffixIcon: IconButton(
-//             icon: Icon(
-//               Icons.filter_list_rounded,
-//               color: Colors.blue.shade600,
-//             ),
-//             onPressed: () {
-//               // Acción para filtros
-//               Get.snackbar(
-//                 'Filtros',
-//                 'Opciones de filtrado próximamente',
-//                 backgroundColor: Colors.blue.shade200,
-//                 colorText: Colors.white,
-//                 snackPosition: SnackPosition.BOTTOM,
-//               );
-//             },
-//           ),
-//           filled: true,
-//           fillColor: Colors.transparent,
-//           border: OutlineInputBorder(
-//             borderRadius: BorderRadius.circular(20),
-//             borderSide: BorderSide.none,
-//           ),
-//           contentPadding: const EdgeInsets.symmetric(
-//             horizontal: 20,
-//             vertical: 16,
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 // lib/features/clients/presentation/widgets/client_search_bar.dart
 
 import 'package:flutter/material.dart';
@@ -148,7 +70,7 @@ class ClientSearchBar extends GetView<ClientsController> {
                 () => IconButton(
                   icon: Icon(
                     Icons.filter_list_rounded,
-                    color: controller.isFilterActive.value
+                    color: controller.hasActiveFilters
                         ? Colors.blue.shade700
                         : Colors.blue.shade400,
                     size: 28,
@@ -162,7 +84,7 @@ class ClientSearchBar extends GetView<ClientsController> {
 
         // Chips de filtros activos
         Obx(() {
-          if (!controller.isFilterActive.value) {
+          if (!controller.hasActiveFilters) {
             return const SizedBox.shrink();
           }
 
@@ -174,35 +96,35 @@ class ClientSearchBar extends GetView<ClientsController> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
                 // Chip para filtro por estado (activo/inactivo)
-                if (controller.activeFilter.value != null)
+                if (controller.statusFilter.value != 'all')
                   _buildFilterChip(
-                    label: controller.activeFilter.value == true
+                    label: controller.statusFilter.value == 'active'
                         ? 'Activos'
                         : 'Inactivos',
-                    onRemoved: () => controller.activeFilter.value = null,
+                    onRemoved: () => controller.applyStatusFilter('all'),
                     color: Colors.green,
                   ),
 
                 // Chip para filtro por origen (dispositivo/manual)
-                if (controller.sourceFilter.value != null)
+                if (controller.sourceFilter.value != 'all')
                   _buildFilterChip(
-                    label: controller.sourceFilter.value == true
+                    label: controller.sourceFilter.value == 'imported'
                         ? 'Importados'
                         : 'Manuales',
-                    onRemoved: () => controller.sourceFilter.value = null,
+                    onRemoved: () => controller.applySourceFilter('all'),
                     color: Colors.orange,
                   ),
 
                 // Chip para ordenamiento
-                if (controller.sortOrder.value != null)
+                if (controller.sortBy.value != 'created_at' || controller.sortOrder.value != 'DESC')
                   _buildFilterChip(
-                    label: 'Ord: ${_getSortLabel(controller.sortOrder.value!)}',
-                    onRemoved: () => controller.sortOrder.value = null,
+                    label: 'Ord: ${_getSortLabel(controller.sortBy.value, controller.sortOrder.value)}',
+                    onRemoved: () => controller.applySortFilter('created_at', 'DESC'),
                     color: Colors.purple,
                   ),
 
                 // Si hay algún filtro activo, mostrar botón para limpiar todos
-                if (controller.isFilterActive.value)
+                if (controller.hasActiveFilters)
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: ActionChip(
@@ -259,18 +181,13 @@ class ClientSearchBar extends GetView<ClientsController> {
   }
 
   // Obtiene la etiqueta para el tipo de ordenamiento
-  String _getSortLabel(String sortType) {
-    switch (sortType) {
-      case 'name_asc':
-        return 'A-Z';
-      case 'name_desc':
-        return 'Z-A';
-      case 'date_asc':
-        return 'Más antiguo';
-      case 'date_desc':
-        return 'Más reciente';
-      default:
-        return 'Personalizado';
+  String _getSortLabel(String sortBy, String sortOrder) {
+    if (sortBy == 'name') {
+      return sortOrder == 'ASC' ? 'A-Z' : 'Z-A';
+    } else if (sortBy == 'created_at') {
+      return sortOrder == 'ASC' ? 'Más antiguo' : 'Más reciente';
+    } else {
+      return 'Personalizado';
     }
   }
 
@@ -353,23 +270,23 @@ class _FilterOptionsBottomSheet extends GetView<ClientsController> {
                 children: [
                   _buildFilterOption(
                     title: 'Todos los clientes',
-                    isSelected: controller.activeFilter.value == null,
+                    isSelected: controller.statusFilter.value == 'all',
                     onTap: () {
-                      controller.activeFilter.value = null;
+                      controller.applyStatusFilter('all');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Clientes activos',
-                    isSelected: controller.activeFilter.value == true,
+                    isSelected: controller.statusFilter.value == 'active',
                     onTap: () {
-                      controller.activeFilter.value = true;
+                      controller.applyStatusFilter('active');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Clientes inactivos',
-                    isSelected: controller.activeFilter.value == false,
+                    isSelected: controller.statusFilter.value == 'inactive',
                     onTap: () {
-                      controller.activeFilter.value = false;
+                      controller.applyStatusFilter('inactive');
                     },
                   ),
                 ],
@@ -383,23 +300,23 @@ class _FilterOptionsBottomSheet extends GetView<ClientsController> {
                 children: [
                   _buildFilterOption(
                     title: 'Todos los orígenes',
-                    isSelected: controller.sourceFilter.value == null,
+                    isSelected: controller.sourceFilter.value == 'all',
                     onTap: () {
-                      controller.sourceFilter.value = null;
+                      controller.applySourceFilter('all');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Importados de contactos',
-                    isSelected: controller.sourceFilter.value == true,
+                    isSelected: controller.sourceFilter.value == 'imported',
                     onTap: () {
-                      controller.sourceFilter.value = true;
+                      controller.applySourceFilter('imported');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Creados manualmente',
-                    isSelected: controller.sourceFilter.value == false,
+                    isSelected: controller.sourceFilter.value == 'manual',
                     onTap: () {
-                      controller.sourceFilter.value = false;
+                      controller.applySourceFilter('manual');
                     },
                   ),
                 ],
@@ -413,37 +330,37 @@ class _FilterOptionsBottomSheet extends GetView<ClientsController> {
                 children: [
                   _buildFilterOption(
                     title: 'Predeterminado',
-                    isSelected: controller.sortOrder.value == null,
+                    isSelected: controller.sortBy.value == 'created_at' && controller.sortOrder.value == 'DESC',
                     onTap: () {
-                      controller.sortOrder.value = null;
+                      controller.applySortFilter('created_at', 'DESC');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Nombre (A-Z)',
-                    isSelected: controller.sortOrder.value == 'name_asc',
+                    isSelected: controller.sortBy.value == 'name' && controller.sortOrder.value == 'ASC',
                     onTap: () {
-                      controller.sortOrder.value = 'name_asc';
+                      controller.applySortFilter('name', 'ASC');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Nombre (Z-A)',
-                    isSelected: controller.sortOrder.value == 'name_desc',
+                    isSelected: controller.sortBy.value == 'name' && controller.sortOrder.value == 'DESC',
                     onTap: () {
-                      controller.sortOrder.value = 'name_desc';
+                      controller.applySortFilter('name', 'DESC');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Más recientes primero',
-                    isSelected: controller.sortOrder.value == 'date_desc',
+                    isSelected: controller.sortBy.value == 'created_at' && controller.sortOrder.value == 'DESC',
                     onTap: () {
-                      controller.sortOrder.value = 'date_desc';
+                      controller.applySortFilter('created_at', 'DESC');
                     },
                   ),
                   _buildFilterOption(
                     title: 'Más antiguos primero',
-                    isSelected: controller.sortOrder.value == 'date_asc',
+                    isSelected: controller.sortBy.value == 'created_at' && controller.sortOrder.value == 'ASC',
                     onTap: () {
-                      controller.sortOrder.value = 'date_asc';
+                      controller.applySortFilter('created_at', 'ASC');
                     },
                   ),
                 ],
@@ -470,7 +387,7 @@ class _FilterOptionsBottomSheet extends GetView<ClientsController> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      controller.applyFilters();
+                      // Los filtros ya se aplican automáticamente al cambiarlos
                       Get.back();
                     },
                     style: ElevatedButton.styleFrom(

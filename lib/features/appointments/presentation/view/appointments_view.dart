@@ -1,3 +1,4 @@
+// lib/features/appointments/presentation/view/appointments_view.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar.dart';
@@ -6,6 +7,7 @@ import 'package:login_signup/features/appointments/presentation/widgets/view_sel
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import '../controllers/appointments_controller.dart';
 import 'package:login_signup/shared/custom_drawer.dart';
+import '../../../auth/presentation/controllers/user_info_controller.dart';
 
 class AppointmentsView extends GetView<AppointmentsController> {
   const AppointmentsView({Key? key}) : super(key: key);
@@ -21,6 +23,8 @@ class AppointmentsView extends GetView<AppointmentsController> {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final userController = Get.find<UserInfoController>();
+    
     return AppBar(
       title: Obx(() {
         // Base del título dependiendo del rol del usuario
@@ -52,19 +56,21 @@ class AppointmentsView extends GetView<AppointmentsController> {
           onPressed: () => ViewSelectorBottomSheet.show(context, controller),
           tooltip: 'Cambiar vista',
         ),
-        IconButton(
-          icon: const Icon(Icons.today),
-          onPressed: () {
-            controller.selectedDate.value = DateTime.now();
-            controller.changeView(controller.currentView.value);
-          },
-          tooltip: 'Ir a hoy',
-        ),
-        IconButton(
-          onPressed: () => Get.toNamed('/notifications'),
-          icon: const Icon(Icons.notifications),
-          tooltip: 'Notificaciones',
-        ),
+        // IconButton(
+        //   icon: const Icon(Icons.today),
+        //   onPressed: () {
+        //     controller.selectedDate.value = DateTime.now();
+        //     controller.changeView(controller.currentView.value);
+        //   },
+        //   tooltip: 'Ir a hoy',
+        // ),
+        // Solo mostrar el ícono de notificaciones a usuarios Owner
+        if (userController.isOwner())
+          IconButton(
+            onPressed: () => Get.toNamed('/notifications'),
+            icon: const Icon(Icons.notifications),
+            tooltip: 'Notificaciones',
+          ),
       ],
     );
   }
@@ -96,8 +102,14 @@ class AppointmentsView extends GetView<AppointmentsController> {
     });
   }
 
-  Widget _buildFloatingActionButton(BuildContext context) {
-    // Podríamos restringir la creación de citas para empleados si fuera necesario
+  Widget? _buildFloatingActionButton(BuildContext context) {
+    final userController = Get.find<UserInfoController>();
+
+    // Solo los usuarios Owner pueden crear citas
+    if (!userController.isOwner()) {
+      return null;
+    }
+
     return FloatingActionButton(
       onPressed: () => AppointmentFormDialog.show(context, controller),
       child: const Icon(Icons.add),

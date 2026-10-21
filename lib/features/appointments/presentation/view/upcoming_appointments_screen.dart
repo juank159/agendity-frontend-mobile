@@ -17,10 +17,55 @@ class UpcomingAppointmentsScreen
       appBar: AppBar(
         title: Text('Recordatorio de Citas'),
         actions: [
+          // ✅ Botón para refrescar y limpiar automáticamente
           IconButton(
             icon: Icon(Icons.refresh),
-            onPressed: () => controller.fetchUpcomingAppointments(),
+            onPressed: () => controller.refreshAndClean(),
+            tooltip: 'Refrescar y limpiar',
           ),
+          // ✅ Botón para limpiar citas pasadas manualmente
+          IconButton(
+            icon: Icon(Icons.cleaning_services),
+            onPressed: () => controller.cleanExpiredAppointments(),
+            tooltip: 'Limpiar citas pasadas',
+          ),
+          // ✅ Botón de debug para desarrolladores (opcional)
+          if (true) // Cambiar a false en producción
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert),
+              onSelected: (value) {
+                switch (value) {
+                  case 'debug':
+                    controller.debugNotifications();
+                    break;
+                  case 'cancel_all':
+                    controller.cancelAllAppointmentNotifications();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'debug',
+                  child: Row(
+                    children: [
+                      Icon(Icons.bug_report, size: 20),
+                      SizedBox(width: 8),
+                      Text('Debug Notificaciones'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'cancel_all',
+                  child: Row(
+                    children: [
+                      Icon(Icons.cancel, size: 20),
+                      SizedBox(width: 8),
+                      Text('Cancelar Todas'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: Obx(() {
@@ -37,9 +82,9 @@ class UpcomingAppointmentsScreen
 
         if (controller.upcomingAppointments.isEmpty) {
           return EmptyState(
-            icon: Icons.event_busy,
+            icon: Icons.event_available,
             message: 'No hay citas próximas',
-            subMessage: 'Las próximas aparecerán aquí',
+            subMessage: 'Solo se muestran citas futuras que requieren recordatorios.\nLas citas pasadas se limpian automáticamente.',
           );
         }
 

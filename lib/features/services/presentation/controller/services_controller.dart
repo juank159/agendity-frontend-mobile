@@ -16,7 +16,6 @@ class ServicesController extends GetxController {
 
   @override
   void onInit() {
-    print('ServicesController: Inicializado');
     super.onInit();
   }
 
@@ -77,30 +76,12 @@ class ServicesController extends GetxController {
     try {
       isLoading.value = true;
       final result = await _getServicesUseCase.execute();
-      services.clear();
       services.assignAll(result);
-      print('Servicios cargados: ${services.length}');
-
-      // Notificar a los widgets que usan GetBuilder
-      update();
-
-      // Procesar los servicios para depuración
-      for (var service in services) {
-        print('Service: ${service.name}');
-        print('Category ID: ${service.categoryId}');
-        print('Category: ${service.category?.name}');
-        print('-------------------');
-      }
-
-      // Imprimir categorías agrupadas
-      final groups = getServicesGroupedByCategory();
-      print('Grouped Services: ${groups.keys.toList()}');
     } catch (e) {
       print('Error cargando servicios: $e');
       services.clear();
     } finally {
       isLoading.value = false;
-      update(); // Segunda actualización para asegurar que se refleje el cambio de isLoading
     }
   }
 
@@ -115,11 +96,6 @@ class ServicesController extends GetxController {
     final groupedServices = <String, List<ServiceEntity>>{};
 
     for (var service in services) {
-      print('Service: ${service.name}');
-      print('Category ID: ${service.categoryId}');
-      print('Category: ${service.category?.name}');
-      print('-------------------');
-
       final categoryName = service.category?.name ?? 'Sin categoría';
 
       if (!groupedServices.containsKey(categoryName)) {
@@ -128,7 +104,6 @@ class ServicesController extends GetxController {
       groupedServices[categoryName]!.add(service);
     }
 
-    print('Grouped Services: ${groupedServices.keys.toList()}');
     return groupedServices;
   }
 
@@ -140,7 +115,6 @@ class ServicesController extends GetxController {
 
   @override
   void onClose() {
-    print('ServicesController: Cerrando controlador');
     clearServices();
     super.onClose();
   }

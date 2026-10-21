@@ -6,6 +6,7 @@ import 'package:login_signup/features/appointments/presentation/widgets/appointm
 
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import '../controllers/appointments_controller.dart';
+import '../../../auth/presentation/controllers/user_info_controller.dart';
 
 class AppointmentCalendar extends StatelessWidget {
   final AppointmentsController controller;
@@ -20,8 +21,10 @@ class AppointmentCalendar extends StatelessWidget {
     return GetBuilder<AppointmentsController>(
       id: 'calendar-view',
       builder: (controller) {
-        print(
-            'Reconstruyendo calendario con ${controller.appointments.length} citas');
+        // ✅ OPTIMIZACIÓN: Solo loggear en debug cuando sea necesario
+        if (controller.appointments.length > 0) {
+          print('Reconstruyendo calendario con ${controller.appointments.length} citas');
+        }
 
         // Crear regiones de tiempo para indicar fechas pasadas
         final List<TimeRegion> timeRegions = [];
@@ -66,7 +69,45 @@ class AppointmentCalendar extends StatelessWidget {
                             targetDate: selectedDate);
                       } else if (controller.currentView.value ==
                           CalendarView.day) {
-                        // En vista diaria, verificar si la fecha no está en el pasado
+                        // En vista diaria, verificar permisos y fecha
+                        try {
+                          final userController = Get.find<UserInfoController>();
+                          print('🔍 Verificando permisos para crear cita');
+                          print('📋 Roles del usuario: ${userController.userRoles}');
+                          print('👑 ¿Es Owner?: ${userController.isOwner()}');
+                          print('👤 ¿Es Employee?: ${userController.isEmployee()}');
+                          print('🔒 ¿Es solo Employee?: ${userController.isOnlyEmployee()}');
+                          
+                          // Verificar si el usuario es Owner
+                          if (!userController.isOwner()) {
+                            print('❌ Acceso denegado: Usuario no es Owner');
+                            Get.snackbar(
+                              'Acceso restringido',
+                              'Solo los propietarios pueden crear citas',
+                              backgroundColor: Colors.orange[100],
+                              colorText: Colors.orange[800],
+                              duration: const Duration(seconds: 3),
+                              snackPosition: SnackPosition.TOP,
+                              icon: const Icon(Icons.lock, color: Colors.orange),
+                            );
+                            return;
+                          }
+                          
+                          print('✅ Usuario autorizado para crear citas');
+                        } catch (e) {
+                          print('❌ Error al verificar permisos: $e');
+                          Get.snackbar(
+                            'Error',
+                            'No se pudo verificar los permisos del usuario',
+                            backgroundColor: Colors.red[100],
+                            colorText: Colors.red[800],
+                            duration: const Duration(seconds: 3),
+                            snackPosition: SnackPosition.TOP,
+                          );
+                          return;
+                        }
+                        
+                        // Verificar si la fecha no está en el pasado
                         if (!_isDateInPast(selectedDate)) {
                           // Llamar al diálogo de creación de cita con la fecha y hora seleccionada
                           AppointmentFormDialog.show(
@@ -80,6 +121,7 @@ class AppointmentCalendar extends StatelessWidget {
                             colorText: Colors.red[800],
                             duration: const Duration(seconds: 3),
                             snackPosition: SnackPosition.TOP,
+                            icon: const Icon(Icons.calendar_today, color: Colors.red),
                           );
                         }
                       }

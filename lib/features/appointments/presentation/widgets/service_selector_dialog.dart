@@ -143,9 +143,6 @@ class ServiceSelectorDialog extends StatelessWidget {
                 final serviceId = service['id'].toString();
                 final price = double.parse(service['price'].toString());
 
-                // Formatear precio con el símbolo a la izquierda
-                final formattedPrice = currencyFormat.format(price);
-
                 return Obx(() {
                   final isSelected =
                       controller.selectedServiceIds.contains(serviceId);
@@ -241,20 +238,6 @@ class ServiceSelectorDialog extends StatelessWidget {
                               ),
                             ),
 
-                            // Espacio entre nombre y precio
-                            const SizedBox(width: 8),
-
-                            // Precio (con símbolo $ a la izquierda)
-                            Text(
-                              formattedPrice,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? Theme.of(context).primaryColor
-                                    : Colors.black87,
-                              ),
-                            ),
                           ],
                         ),
                       ),

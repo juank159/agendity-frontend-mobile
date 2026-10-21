@@ -178,7 +178,7 @@ class ClientHeader extends GetView<ClientsController> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Obx(() => Text(
-                            '${controller.clients.length}',
+                            '${controller.totalRecords.value}',
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,

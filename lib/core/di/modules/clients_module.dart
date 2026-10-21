@@ -30,7 +30,15 @@ class ClientsModule {
         );
       }
 
-      // Use Cases existentes
+      // ✅ NUEVO USE CASE PAGINADO
+      if (!Get.isRegistered<GetClientsPaginatedUseCase>()) {
+        Get.put<GetClientsPaginatedUseCase>(
+          GetClientsPaginatedUseCase(Get.find()),
+          permanent: true,
+        );
+      }
+
+      // ✅ USE CASE LEGACY PARA RETROCOMPATIBILIDAD
       if (!Get.isRegistered<GetClientsUseCase>()) {
         Get.put<GetClientsUseCase>(
           GetClientsUseCase(Get.find()),
@@ -83,6 +91,9 @@ class ClientsModule {
     // Existing use cases
     if (Get.isRegistered<CreateClientUseCase>()) {
       Get.delete<CreateClientUseCase>();
+    }
+    if (Get.isRegistered<GetClientsPaginatedUseCase>()) {
+      Get.delete<GetClientsPaginatedUseCase>();
     }
     if (Get.isRegistered<GetClientsUseCase>()) {
       Get.delete<GetClientsUseCase>();

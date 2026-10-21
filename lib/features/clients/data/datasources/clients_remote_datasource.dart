@@ -367,7 +367,8 @@ class ClientsRemoteDataSource {
     if (token == null || token.isEmpty) {
       throw Exception('Token no disponible');
     }
-    print('Token actual: $token');
+    // ✅ OPTIMIZACIÓN: Solo loggear en debug, no el token completo
+    print('🔑 Token obtenido para clientes');
     return token;
   }
 
@@ -403,11 +404,85 @@ class ClientsRemoteDataSource {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getClients() async {
+  Future<Map<String, dynamic>> getClients({
+    int page = 1,
+    int limit = 10,
+    String? search,
+    String sortBy = 'created_at',
+    String sortOrder = 'DESC',
+    String status = 'all',
+    String source = 'all',
+  }) async {
     try {
+      print('🔄 ClientsRemoteDataSource: Iniciando getClients() PAGINADO');
       final token = await _getValidToken();
+
+      // ✅ CONSTRUIR PARÁMETROS DE CONSULTA
+      final Map<String, dynamic> queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        'sortBy': sortBy,
+        'sortOrder': sortOrder,
+        'status': status,
+        'source': source,
+      };
+
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      print('=== REQUEST CLIENTES PAGINADO ===');
+      print('URL: ${dio.options.baseUrl}/clients');
+      print('Method: GET');
+      print('Query Parameters: $queryParams');
+      print('Headers: {Authorization: Bearer [hidden]}');
+      
       final response = await dio.get(
         '/clients',
+        queryParameters: queryParams,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          validateStatus: (status) => status! < 500,
+        ),
+      );
+
+      print('=== RESPONSE CLIENTES PAGINADO ===');
+      print('Status code: ${response.statusCode}');
+      print('Response type: ${response.data.runtimeType}');
+
+      if (response.statusCode == 200) {
+        final paginatedData = response.data as Map<String, dynamic>;
+        
+        print('📊 Datos de paginación recibidos:');
+        print('   Total: ${paginatedData['total']}');
+        print('   Página: ${paginatedData['page']}');
+        print('   Límite: ${paginatedData['limit']}');
+        print('   Total páginas: ${paginatedData['totalPages']}');
+        print('   Tiene siguiente: ${paginatedData['hasNextPage']}');
+        print('   Clientes en esta página: ${paginatedData['data']?.length ?? 0}');
+
+        return paginatedData;
+      } else {
+        throw Exception('Error al obtener clientes: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      print('❌ DioException en getClients: ${e.message}');
+      print('❌ Response: ${e.response?.data}');
+      throw Exception(_handleDioError(e));
+    } catch (e) {
+      print('❌ Exception general en getClientes: $e');
+      throw Exception('Error al cargar clientes: $e');
+    }
+  }
+
+  // ✅ MÉTODO LEGACY PARA RETROCOMPATIBILIDAD
+  Future<List<Map<String, dynamic>>> getClientsLegacy() async {
+    try {
+      print('🔄 ClientsRemoteDataSource: Usando endpoint LEGACY /clients/all');
+      final token = await _getValidToken();
+      
+      final response = await dio.get(
+        '/clients/all',
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
           validateStatus: (status) => status! < 500,
@@ -415,13 +490,14 @@ class ClientsRemoteDataSource {
       );
 
       if (response.statusCode == 200) {
-        return List<Map<String, dynamic>>.from(response.data);
+        final clientsList = List<Map<String, dynamic>>.from(response.data);
+        print('✅ Clientes legacy parseados: ${clientsList.length}');
+        return clientsList;
       } else {
-        throw Exception('Error al obtener clientes: ${response.statusCode}');
+        throw Exception('Error al obtener clientes legacy: ${response.statusCode}');
       }
-    } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
     } catch (e) {
+      print('❌ Error en getClientsLegacy: $e');
       throw Exception('Error al cargar clientes: $e');
     }
   }
@@ -525,9 +601,11 @@ class ClientsRemoteDataSource {
     }
   }
 
-  Future<void> importDeviceContacts(List<ClientEntity> clients) async {
+  Future<Map<String, dynamic>> importDeviceContacts(List<ClientEntity> clients) async {
     try {
       final token = await _getValidToken();
+
+      print('📤 Enviando ${clients.length} contactos al backend...');
 
       // Convertir a formato esperado por el backend
       final cleanClients = clients
@@ -553,7 +631,20 @@ class ClientsRemoteDataSource {
       if (response.statusCode != 201 && response.statusCode != 200) {
         throw Exception('Error: ${response.data['message']}');
       }
+
+      // ✅ RETORNAR ESTADÍSTICAS DETALLADAS DEL BACKEND
+      final data = response.data as Map<String, dynamic>;
+      print('📊 Respuesta del backend: $data');
+      
+      return {
+        'total': data['total'] ?? clients.length,
+        'success': data['success'] ?? 0,
+        'failed': data['failed'] ?? 0,
+        'errors': data['errors'] ?? [],
+      };
+      
     } catch (e) {
+      print('❌ Error en importDeviceContacts: $e');
       throw Exception('Error al importar contactos: $e');
     }
   }

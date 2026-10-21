@@ -428,13 +428,17 @@ class AppointmentsRemoteDataSource {
     try {
       final token = await localStorage.getToken();
 
-      // Obtener la fecha actual y la fecha de mañana para filtrar
+      // ✅ MEJORADO: Obtener citas futuras para los próximos 7 días
       final now = DateTime.now();
-      final tomorrow = now.add(Duration(days: 1));
+      final nextWeek = now.add(Duration(days: 7));
 
       // Formatear las fechas como cadenas ISO8601
       final startDateStr = now.toIso8601String();
-      final endDateStr = tomorrow.toIso8601String();
+      final endDateStr = nextWeek.toIso8601String();
+
+      print('🔍 Solicitando citas próximas:');
+      print('   Desde: $startDateStr');
+      print('   Hasta: $endDateStr');
 
       final response = await dio.get(
         '/appointments',
@@ -443,30 +447,59 @@ class AppointmentsRemoteDataSource {
           'endDate': endDateStr,
         },
         options: Options(
-          headers: {'Authorization': 'Bearer $token'},
+          headers: {
+            'Authorization': 'Bearer $token',
+            'tenant-id': _extractTenantId(token!),
+          },
         ),
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> appointmentsJson = response.data;
-        return appointmentsJson
-            .map((json) => AppointmentEntity(
-                  id: json['id'],
-                  title: json['title'] ?? 'Cita',
-                  startTime: DateTime.parse(json['date']),
-                  endTime: DateTime.parse(json['date'])
-                      .add(Duration(hours: 1)), // Estimar hora de fin
-                  clientName: json['client']?['name'] ?? 'Cliente',
-                  serviceTypes: _extractServiceNames(json),
-                  status: json['status'] ?? 'PENDING',
-                  totalPrice: json['total_price']?.toString() ?? '0',
-                  paymentStatus: json['payment_status'],
-                  notes: json['notes'],
-                  colors: null, // Ajustar según los datos disponibles
-                  ownerId: json['ownerId'],
-                  professionalId: json['professionalId'],
-                ))
-            .toList();
+        
+        // ✅ FILTRO ADICIONAL: Solo citas futuras que no han enviado recordatorio
+        final filteredAppointments = appointmentsJson.where((json) {
+          // ✅ CORRECCIÓN: Convertir a hora local para comparación correcta
+          final appointmentDate = DateTime.parse(json['date']).toLocal();
+          final nowLocal = now.toLocal();
+          final isFuture = appointmentDate.isAfter(nowLocal);
+          
+          // Verificar que no se haya enviado recordatorio
+          final reminderSent = json['reminderSent'] ?? false; // ✅ Corrección: usar 'reminderSent' no 'reminder_sent'
+          
+          final shouldInclude = isFuture && !reminderSent;
+          
+          print('🔍 Analizando cita: ${json['client']?['name']}');
+          print('   Fecha UTC: ${json['date']}');
+          print('   Fecha Local: $appointmentDate');
+          print('   Hora actual: $nowLocal');
+          print('   Es futura: $isFuture');
+          print('   Recordatorio enviado: $reminderSent');
+          print('   Incluir: $shouldInclude');
+          
+          return shouldInclude;
+        }).map((json) => AppointmentEntity(
+              id: json['id'],
+              title: json['title'] ?? 'Cita',
+              startTime: DateTime.parse(json['date']),
+              endTime: DateTime.parse(json['date'])
+                  .add(Duration(hours: 1)), // Estimar hora de fin
+              clientName: json['client']?['name'] ?? 'Cliente',
+              serviceTypes: _extractServiceNames(json),
+              status: json['status'] ?? 'PENDING',
+              totalPrice: json['total_price']?.toString() ?? '0',
+              paymentStatus: json['payment_status'],
+              notes: json['notes'],
+              colors: null, // Ajustar según los datos disponibles
+              ownerId: json['ownerId'],
+              professionalId: json['professionalId'],
+            )).toList();
+
+        print('📊 Citas procesadas:');
+        print('   Total recibidas: ${appointmentsJson.length}');
+        print('   Válidas para recordatorios: ${filteredAppointments.length}');
+
+        return filteredAppointments;
       } else {
         throw ServerException(
           message: 'Failed to load upcoming appointments',
@@ -477,6 +510,39 @@ class AppointmentsRemoteDataSource {
       throw ServerException(
         message: 'Error retrieving upcoming appointments: ${e.toString()}',
       );
+    }
+  }
+
+  // ✅ NUEVO MÉTODO: Marcar recordatorio como enviado
+  Future<bool> markReminderAsSent(String appointmentId) async {
+    try {
+      final token = await localStorage.getToken();
+
+      print('📤 Enviando petición para marcar recordatorio como enviado');
+      print('   Appointment ID: $appointmentId');
+
+      final response = await dio.patch(
+        '/appointments/$appointmentId/reminder/mark-sent',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'tenant-id': _extractTenantId(token!),
+          },
+        ),
+      );
+
+      print('✅ Respuesta del servidor: ${response.statusCode}');
+      print('   Data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('❌ Error inesperado: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error en markReminderAsSent: $e');
+      return false;
     }
   }
 

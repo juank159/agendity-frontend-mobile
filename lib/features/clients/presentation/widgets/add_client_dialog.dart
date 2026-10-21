@@ -185,9 +185,15 @@ class AddClientDialog {
     final controller = Get.find<ClientsController>();
     Get.back();
 
+    bool isDialogShowing = true;
+    
     Get.dialog(
       WillPopScope(
-        onWillPop: () async => false,
+        onWillPop: () async {
+          print('⏹️ Usuario presionó botón atrás durante importación');
+          isDialogShowing = false;
+          return true; // Permitir cerrar el diálogo
+        },
         child: Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -197,25 +203,58 @@ class AddClientDialog {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Importando contactos...',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  width: 60,
+                  height: 60,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 4,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.contacts,
+                      color: Colors.blue.shade600,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Importando contactos...',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 Text(
-                  'Estamos sincronizando tus contactos',
+                  'Procesando tus contactos del dispositivo\nEsto puede tomar unos segundos',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    print('⏹️ Usuario canceló la importación manualmente');
+                    isDialogShowing = false;
+                    Get.back();
+                  },
+                  child: Text(
+                    'Si tarda mucho, toca aquí para cerrar',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 12,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
               ],
@@ -227,9 +266,35 @@ class AddClientDialog {
     );
 
     try {
-      await controller.importContacts();
+      print('🚀 Iniciando proceso de importación...');
+      
+      await controller.importContacts().timeout(
+        const Duration(minutes: 10),
+        onTimeout: () {
+          print('⏰ Timeout: La importación tomó demasiado tiempo');
+          throw Exception('La importación tomó demasiado tiempo. Intenta nuevamente.');
+        },
+      );
+      
+      print('✅ Importación completada, cerrando diálogo...');
+      
+      // ✅ SOLUCIÓN: Usar Get.until para cerrar específicamente todos los diálogos hasta llegar a la página principal
+      if (isDialogShowing) {
+        Get.until((route) => !Get.isDialogOpen!);
+        print('✅ Diálogo cerrado exitosamente con Get.until');
+      } else {
+        print('ℹ️ Diálogo ya fue cerrado por el usuario');
+      }
+      
     } catch (e) {
-      Get.back();
+      print('❌ Error durante importación: $e');
+      
+      // Cerrar el diálogo de loading si está abierto
+      if (isDialogShowing) {
+        Get.until((route) => !Get.isDialogOpen!);
+      }
+      
+      // Mostrar diálogo de error
       Get.dialog(
         Dialog(
           shape: RoundedRectangleBorder(

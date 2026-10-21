@@ -453,6 +453,27 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
     }
     return '';
   }
+
+  // ✅ NUEVO MÉTODO: Marcar recordatorio como enviado
+  Future<bool> markReminderAsSent(String appointmentId) async {
+    try {
+      print('📤 Marcando recordatorio como enviado para cita: $appointmentId');
+      
+      final response = await remoteDataSource.markReminderAsSent(appointmentId);
+      
+      print('✅ Recordatorio marcado como enviado exitosamente');
+      return response;
+    } on DioException catch (e) {
+      print('❌ Error marcando recordatorio como enviado: ${e.response?.data}');
+      
+      // No lanzar excepción para no bloquear el flujo principal
+      // Solo registrar el error
+      return false;
+    } catch (e) {
+      print('❌ Error general marcando recordatorio: $e');
+      return false;
+    }
+  }
 }
 
 class AppointmentException implements Exception {

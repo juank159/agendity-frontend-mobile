@@ -14,6 +14,9 @@ import 'package:login_signup/features/appointments/domain/usescases/update_appoi
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
+import 'package:login_signup/features/clients/data/repositories/client_repository_impl.dart';
+import 'package:login_signup/features/clients/domain/repositories/clients_repository.dart';
+import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
@@ -46,12 +49,8 @@ class AppointmentsBinding implements Bindings {
       ),
     );
 
-    Get.lazyPut<ClientsRemoteDataSource>(
-      () => ClientsRemoteDataSource(
-        dio: Get.find(),
-        localStorage: Get.find(),
-      ),
-    );
+    // ClientsRemoteDataSource y ClientsRepository ya están registrados en ClientsModule
+    // No necesitamos registrarlos aquí
 
     // Repository
     Get.lazyPut<AppointmentsRepository>(
@@ -83,6 +82,9 @@ class AppointmentsBinding implements Bindings {
       () => GetUpcomingAppointmentsUseCase(Get.find<AppointmentsRepository>()),
     );
 
+    // GetClientsUseCase ya está registrado en ClientsModule
+    // No necesitamos registrarlo aquí
+
     // Controller principal
     Get.lazyPut<AppointmentsController>(
       () => AppointmentsController(
@@ -91,7 +93,8 @@ class AppointmentsBinding implements Bindings {
         Get.find<UpdateAppointmentUseCase>(),
         Get.find<DeleteAppointmentUseCase>(),
         Get.find<ServicesRemoteDataSource>(),
-        Get.find<ClientsRemoteDataSource>(),
+        Get.find<GetClientsUseCase>(),
+        Get.find<GetClientsPaginatedUseCase>(),
         Get.find<LocalStorage>(),
         Get.find<AppointmentsRepository>(),
       ),

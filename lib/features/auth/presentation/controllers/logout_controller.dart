@@ -88,6 +88,7 @@ import 'package:login_signup/core/di/modules/employees_module.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import '../../../../core/di/init_dependencies.dart';
 import '../../../../core/di/modules/services_module.dart';
@@ -120,13 +121,12 @@ class LogoutController extends GetxController {
             // Limpieza ordenada y completa
             await _cleanupDependencies();
 
-            // Navegación y reinicio
+            // Navegación (SIN reinicializar dependencias de auth)
             await Get.offAllNamed('/login');
-            await DependencyInjection.initAuthDependencies();
             _showSuccessMessage();
           } catch (e) {
             print('Error durante la limpieza: $e');
-            _showErrorMessage('Error al reiniciar la aplicación');
+            _showErrorMessage('Error al cerrar sesión');
           }
         },
       );
@@ -139,36 +139,42 @@ class LogoutController extends GetxController {
   }
 
   Future<void> _cleanupDependencies() async {
-    // Eliminar los controladores en orden inverso a su dependencia
-    final controllers = [
-      'AppointmentsController',
-      'ServicesController',
-      'EmployeesController',
-      'UserInfoController',
-      'CustomBottomNavigationController'
-    ];
-
-    for (final controller in controllers) {
-      try {
-        if (Get.isRegistered(tag: controller)) {
-          Get.delete(tag: controller, force: true);
-          print('Controller eliminado: $controller');
-        }
-      } catch (e) {
-        print('Error al eliminar $controller: $e');
+    try {
+      // Limpiar información del usuario
+      if (Get.isRegistered<UserInfoController>()) {
+        Get.find<UserInfoController>().clearUserInfo();
       }
-    }
 
-    // Limpiar los módulos
-    if (Get.isRegistered<ServicesController>()) {
-      Get.find<ServicesController>().clearServices();
-    }
-    ServicesModule.reset();
-    ClientsModule.reset();
-    EmployeesModule.reset();
+      // Resetear controlador de navegación si existe
+      if (Get.isRegistered<CustomBottomNavigationController>()) {
+        Get.find<CustomBottomNavigationController>().reset();
+      }
 
-    // Eliminar todas las demás dependencias
-    Get.deleteAll(force: true);
+      // Limpiar módulos de funcionalidades (mantener auth)
+      await _cleanupFeatureModules();
+
+      print('✅ Limpieza de dependencias completada - auth preservado');
+    } catch (e) {
+      print('Error durante la limpieza de dependencias: $e');
+    }
+  }
+
+  Future<void> _cleanupFeatureModules() async {
+    try {
+      // Limpiar solo los módulos de funcionalidades, NO los de auth
+      if (Get.isRegistered<ServicesController>()) {
+        Get.find<ServicesController>().clearServices();
+      }
+      
+      // Reset de módulos de funcionalidades (preservar auth)
+      ServicesModule.reset();
+      ClientsModule.reset();
+      EmployeesModule.reset();
+      
+      print('Módulos de funcionalidades limpiados (auth preservado)');
+    } catch (e) {
+      print('Error al limpiar módulos de funcionalidades: $e');
+    }
   }
 
   Future<void> _cleanupControllers() async {

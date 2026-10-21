@@ -1,143 +1,48 @@
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
-
-// class LoginController extends GetxController {
-//   final LoginUseCase loginUseCase;
-
-//   // Cambiamos esto para usar UniqueKey en vez de GlobalKey
-//   final formKey = UniqueKey();
-
-//   // Controllers
-//   final emailController = TextEditingController();
-//   final passwordController = TextEditingController();
-
-//   // Observables
-//   final isLoading = false.obs;
-//   final isPasswordHidden = true.obs;
-//   final emailError = Rx<String?>(null);
-//   final passwordError = Rx<String?>(null);
-
-//   LoginController({required this.loginUseCase});
-
-//   @override
-//   void onClose() {
-//     // Cleanup controllers
-//     emailController.dispose();
-//     passwordController.dispose();
-//     super.onClose();
-//   }
-
-//   void togglePasswordVisibility() {
-//     isPasswordHidden.value = !isPasswordHidden.value;
-//   }
-
-//   String? validateEmail(String? value) {
-//     if (value == null || value.isEmpty) {
-//       emailError.value = 'Por favor, ingrese su correo electrónico';
-//       return emailError.value;
-//     }
-//     if (!GetUtils.isEmail(value)) {
-//       emailError.value = 'Por favor, ingrese un correo válido';
-//       return emailError.value;
-//     }
-//     emailError.value = null;
-//     return null;
-//   }
-
-//   String? validatePassword(String? value) {
-//     if (value == null || value.isEmpty) {
-//       passwordError.value = 'Por favor, ingrese su contraseña';
-//       return passwordError.value;
-//     }
-//     if (value.length < 6) {
-//       passwordError.value = 'La contraseña debe tener al menos 6 caracteres';
-//       return passwordError.value;
-//     }
-//     passwordError.value = null;
-//     return null;
-//   }
-
-//   Future<void> loginUser() async {
-//     // Limpiar errores previos
-//     emailError.value = null;
-//     passwordError.value = null;
-
-//     // Validar campos
-//     final emailValid = validateEmail(emailController.text) == null;
-//     final passwordValid = validatePassword(passwordController.text) == null;
-
-//     if (!emailValid || !passwordValid) {
-//       return;
-//     }
-
-//     isLoading.value = true;
-
-//     try {
-//       final result = await loginUseCase(
-//         email: emailController.text.trim(),
-//         password: passwordController.text,
-//       );
-
-//       result.fold(
-//         (failure) {
-//           isLoading.value = false;
-//           Get.snackbar(
-//             'Error',
-//             failure.message,
-//             snackPosition: SnackPosition.TOP,
-//             backgroundColor: Colors.red.withOpacity(0.9),
-//             colorText: Colors.white,
-//             margin: const EdgeInsets.all(15),
-//             borderRadius: 8,
-//           );
-//         },
-//         (user) {
-//           isLoading.value = false;
-//           Get.offAllNamed('/');
-//         },
-//       );
-//     } catch (e) {
-//       isLoading.value = false;
-//       Get.snackbar(
-//         'Error',
-//         'Ha ocurrido un error inesperado',
-//         snackPosition: SnackPosition.TOP,
-//         backgroundColor: Colors.red.withOpacity(0.9),
-//         colorText: Colors.white,
-//         margin: const EdgeInsets.all(15),
-//         borderRadius: 8,
-//       );
-//     }
-//   }
-// }
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/errors/failures.dart'; // Importa la clase Failure
+import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
+import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 
 class LoginController extends GetxController {
   final LoginUseCase loginUseCase;
 
-  // Cambiamos esto para usar UniqueKey en vez de GlobalKey
-  final formKey = UniqueKey();
+  // Form key corregido
+  final formKey = GlobalKey<FormState>();
 
   // Controllers
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  // Observables
+  // Observables para estado
   final isLoading = false.obs;
   final isPasswordHidden = true.obs;
-  final emailError = Rx<String?>(null);
-  final passwordError = Rx<String?>(null);
+
+  // Observables para errores (corregidos para trabajar con la vista mejorada)
+  final emailError = ''.obs;
+  final passwordError = ''.obs;
 
   LoginController({required this.loginUseCase});
 
   @override
+  void onInit() {
+    super.onInit();
+
+    // Mostrar mensaje si viene desde verificación de email
+    if (Get.arguments != null && Get.arguments['message'] != null) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        final messageType = Get.arguments['messageType'] ?? 'info';
+        _showSnackbar(
+          title: messageType == 'success' ? 'Éxito' : 'Información',
+          message: Get.arguments['message'],
+          color: messageType == 'success' ? Colors.green : Colors.blue,
+        );
+      });
+    }
+  }
+
+  @override
   void onClose() {
-    // Cleanup controllers
     emailController.dispose();
     passwordController.dispose();
     super.onClose();
@@ -147,6 +52,7 @@ class LoginController extends GetxController {
     isPasswordHidden.value = !isPasswordHidden.value;
   }
 
+  // Validación de email actualizada
   String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       emailError.value = 'Por favor, ingrese su correo electrónico';
@@ -156,10 +62,11 @@ class LoginController extends GetxController {
       emailError.value = 'Por favor, ingrese un correo válido';
       return emailError.value;
     }
-    emailError.value = null;
+    emailError.value = '';
     return null;
   }
 
+  // Validación de contraseña actualizada
   String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       passwordError.value = 'Por favor, ingrese su contraseña';
@@ -169,23 +76,55 @@ class LoginController extends GetxController {
       passwordError.value = 'La contraseña debe tener al menos 6 caracteres';
       return passwordError.value;
     }
-    passwordError.value = null;
+    passwordError.value = '';
     return null;
   }
 
-  Future<void> loginUser() async {
+  // Validación completa mejorada
+  bool _validateAllFields() {
+    bool isValid = true;
+
     // Limpiar errores previos
-    emailError.value = null;
-    passwordError.value = null;
+    emailError.value = '';
+    passwordError.value = '';
 
-    // Validar campos
-    final emailValidationMessage = validateEmail(emailController.text);
-    final passwordValidationMessage = validatePassword(passwordController.text);
+    // Validar email
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      emailError.value = 'El correo electrónico es obligatorio';
+      isValid = false;
+    } else if (!email.isEmail) {
+      emailError.value = 'Ingrese un correo electrónico válido';
+      isValid = false;
+    }
 
-    if (emailValidationMessage != null || passwordValidationMessage != null) {
+    // Validar contraseña
+    final password = passwordController.text;
+    if (password.isEmpty) {
+      passwordError.value = 'La contraseña es obligatoria';
+      isValid = false;
+    } else if (password.length < 6) {
+      passwordError.value = 'La contraseña debe tener al menos 6 caracteres';
+      isValid = false;
+    }
+
+    return isValid;
+  }
+
+  Future<void> loginUser() async {
+    print('🔑 Iniciando proceso de login...');
+
+    // Validar campos primero
+    if (!_validateAllFields()) {
+      _showSnackbar(
+        title: 'Error de validación',
+        message: 'Por favor, corrija los errores antes de continuar',
+        color: Colors.red,
+      );
       return;
     }
 
+    print('✅ Validación exitosa, procediendo con login...');
     isLoading.value = true;
 
     try {
@@ -196,51 +135,143 @@ class LoginController extends GetxController {
 
       result.fold(
         (failure) {
-          print(
-              'LoginController: Falla en fold. Tipo: ${failure.runtimeType}, Mensaje: ${failure.message}'); // Debug
+          print('❌ Error en login: ${failure.message}');
           isLoading.value = false;
-          Get.snackbar(
-            'Error',
-            failure
-                .message, // Aquí se mostrará el mensaje específico de la falla
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.red.withOpacity(0.9),
-            colorText: Colors.white,
-            margin: const EdgeInsets.all(15),
-            borderRadius: 8,
+
+          // Manejar errores específicos
+          String errorMessage = failure.message;
+          if (errorMessage.toLowerCase().contains('credenciales')) {
+            emailError.value = 'Credenciales incorrectas';
+            passwordError.value = 'Credenciales incorrectas';
+          } else if (errorMessage.toLowerCase().contains('email') ||
+              errorMessage.toLowerCase().contains('correo')) {
+            emailError.value = 'Correo electrónico no encontrado';
+          } else if (errorMessage.toLowerCase().contains('password') ||
+              errorMessage.toLowerCase().contains('contraseña')) {
+            passwordError.value = 'Contraseña incorrecta';
+          }
+
+          _showSnackbar(
+            title: 'Error de inicio de sesión',
+            message: failure.message,
+            color: Colors.red,
           );
         },
         (user) {
-          print('LoginController: Login exitoso en fold.'); // Debug
+          print('✅ Login exitoso para usuario: ${user.name}');
           isLoading.value = false;
-          Get.offAllNamed('/');
+
+          // IMPORTANTE: Actualizar UserInfoController ANTES de mostrar mensajes
+          _updateUserInfoAfterLogin();
+
+          // Mensaje de bienvenida mejorado
+          _showSnackbar(
+            title: '¡Bienvenido!',
+            message: 'Hola ${user.name}, has iniciado sesión correctamente.',
+            color: Colors.green,
+            duration: const Duration(seconds: 2),
+          );
+
+          // Limpiar campos después del login exitoso
+          _clearFields();
+
+          // Navegar al dashboard con un pequeño delay para mostrar el mensaje
+          Future.delayed(const Duration(milliseconds: 800), () {
+            Get.offAllNamed('/');
+          });
         },
       );
     } catch (e) {
-      print(
-          'LoginController: Capturada excepción en catch general: ${e.runtimeType} - ${e.toString()}'); // Debug
+      print('❌ Error inesperado en login: ${e.toString()}');
       isLoading.value = false;
+
       String errorMessage = 'Ha ocurrido un error inesperado.';
       if (e is Failure) {
-        // Si la excepción es una de tus clases Failure
-        errorMessage = e.message; // Usa el mensaje de la Failure
+        errorMessage = e.message;
       } else {
-        // Para cualquier otra excepción no controlada
         errorMessage =
             'Ha ocurrido un error inesperado. Por favor, inténtelo de nuevo.';
-        print(
-            'Error inesperado no manejado: $e'); // Imprime el error completo para depuración
+        print('Error inesperado no manejado: $e');
       }
 
-      Get.snackbar(
-        'Error',
-        errorMessage,
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red.withOpacity(0.9),
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(15),
-        borderRadius: 8,
+      _showSnackbar(
+        title: 'Error inesperado',
+        message: errorMessage,
+        color: Colors.red,
       );
+    }
+  }
+
+  // Método para limpiar campos
+  void _clearFields() {
+    emailController.clear();
+    passwordController.clear();
+    emailError.value = '';
+    passwordError.value = '';
+  }
+
+  // Método centralizado para mostrar snackbars
+  void _showSnackbar({
+    required String title,
+    required String message,
+    required Color color,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: color.withOpacity(0.9),
+      colorText: Colors.white,
+      margin: const EdgeInsets.all(15),
+      borderRadius: 12,
+      duration: duration,
+      icon: Icon(
+        color == Colors.green
+            ? Icons.check_circle
+            : color == Colors.blue
+                ? Icons.info
+                : Icons.error,
+        color: Colors.white,
+      ),
+      animationDuration: const Duration(milliseconds: 500),
+    );
+  }
+
+  // Método helper para limpiar errores manualmente si es necesario
+  void clearErrors() {
+    emailError.value = '';
+    passwordError.value = '';
+  }
+
+  // Método para verificar si hay errores
+  bool get hasErrors =>
+      emailError.value.isNotEmpty || passwordError.value.isNotEmpty;
+
+  // Método para actualizar UserInfoController después del login
+  void _updateUserInfoAfterLogin() {
+    try {
+      // Buscar o crear UserInfoController
+      UserInfoController userController;
+
+      if (Get.isRegistered<UserInfoController>()) {
+        userController = Get.find<UserInfoController>();
+        print('📱 UserInfoController encontrado, recargando datos...');
+      } else {
+        userController = UserInfoController();
+        Get.put(userController, permanent: true);
+        print('📱 UserInfoController creado después del login');
+      }
+
+      // Forzar la recarga INMEDIATA de la información del usuario
+      userController.refreshUserInfo().then((_) {
+        print(
+            '✅ Información del usuario actualizada: ${userController.userName.value} - Roles: ${userController.userRoles}');
+      }).catchError((e) {
+        print('❌ Error al actualizar información del usuario: $e');
+      });
+    } catch (e) {
+      print('❌ Error al inicializar UserInfoController después del login: $e');
     }
   }
 }

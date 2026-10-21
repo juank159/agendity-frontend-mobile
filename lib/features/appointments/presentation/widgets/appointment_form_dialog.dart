@@ -1,3 +1,4 @@
+// lib/features/appointments/presentation/widgets/appointment_form_dialog.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,10 +15,11 @@ import 'package:login_signup/features/employees/presentation/controllers/employe
 import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
 import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
 import '../controllers/appointments_controller.dart';
-import 'client_selector_dialog.dart';
+import 'client_search_selector.dart';
 import 'service_selector_dialog.dart';
+import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
-class AppointmentFormDialog extends StatelessWidget {
+class AppointmentFormDialog extends StatefulWidget {
   final AppointmentsController controller;
   final DateTime? initialDateTime;
 
@@ -26,6 +28,9 @@ class AppointmentFormDialog extends StatelessWidget {
     required this.controller,
     this.initialDateTime,
   });
+
+  @override
+  State<AppointmentFormDialog> createState() => _AppointmentFormDialogState();
 
   static Future<void> show(
       BuildContext context, AppointmentsController controller,
@@ -157,23 +162,49 @@ class AppointmentFormDialog extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
+  // Variables de estado persistentes para el cliente seleccionado
+  final selectedClientId = RxString('');
+  final selectedClientName = RxString('');
+  late final TextEditingController notesController;
+
+  @override
+  void initState() {
+    super.initState();
+    notesController = TextEditingController();
+    
+    // Cargar clientes solo una vez al inicializar el widget
+    if (widget.controller.clients.isEmpty) {
+      print('🚨 AppointmentFormDialog: Lista de clientes vacía, cargando...');
+      widget.controller.loadClients();
+    } else {
+      print('✅ AppointmentFormDialog: Clientes ya cargados: ${widget.controller.clients.length}');
+      // ✅ CON PAGINACIÓN REAL, NO NECESITAMOS FILTRO LOCAL
+      // Los clientes ya vienen filtrados del servidor
+    }
+  }
+
+  @override
+  void dispose() {
+    notesController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final formKey = GlobalKey<FormState>();
-    final selectedClientId = RxString('');
-    final selectedClientName = RxString('');
-    final notesController = TextEditingController();
 
     // Inicializar con la fecha/hora seleccionada si está disponible, de lo contrario usar la fecha actual
     final now = DateTime.now();
     final selectedDate =
-        Rx<DateTime>(initialDateTime != null ? initialDateTime! : now);
+        Rx<DateTime>(widget.initialDateTime != null ? widget.initialDateTime! : now);
 
     // Extraer la hora de la fecha inicial si está disponible
-    final selectedTime = Rx<TimeOfDay>(initialDateTime != null
+    final selectedTime = Rx<TimeOfDay>(widget.initialDateTime != null
         ? TimeOfDay(
-            hour: initialDateTime!.hour, minute: initialDateTime!.minute)
+            hour: widget.initialDateTime!.hour, minute: widget.initialDateTime!.minute)
         : TimeOfDay.now());
 
     // Crear una variable para el controlador
@@ -182,9 +213,7 @@ class AppointmentFormDialog extends StatelessWidget {
     // Intentar inicializar el módulo de empleados y obtener el controlador
     _initializeEmployeesController().then((controller) {
       employeesControllerRx.value = controller;
-      if (controller != null) {
-        controller.loadEmployees();
-      }
+      // NO cargar empleados automáticamente - solo obtener el controlador
     });
 
     return Container(
@@ -210,20 +239,19 @@ class AppointmentFormDialog extends StatelessWidget {
                     // Selector de profesional
                     Obx(() => employeesControllerRx.value != null
                         ? _buildProfessionalSelector(
-                            context, controller, employeesControllerRx.value!)
+                            context, widget.controller, employeesControllerRx.value!)
                         : _buildErrorMessage(
                             context, "Cargando profesionales...")),
 
                     const SizedBox(height: 16),
 
                     // Selector de servicios
-                    _buildServicesSummary(controller, context),
+                    _buildServicesSummary(widget.controller, context),
 
                     const SizedBox(height: 16),
 
                     // Selector de cliente
-                    _buildClientSelector(
-                        context, selectedClientId, selectedClientName),
+                    _buildClientSelector(context),
 
                     const SizedBox(height: 16),
 
@@ -281,16 +309,14 @@ class AppointmentFormDialog extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Obx(() => ElevatedButton(
-                      onPressed: controller.selectedServiceIds.isNotEmpty &&
-                              controller.selectedEmployee.value != null &&
+                      onPressed: widget.controller.selectedServiceIds.isNotEmpty &&
+                              widget.controller.selectedEmployee.value != null &&
                               selectedClientId.value.isNotEmpty
                           ? () => _handleSubmit(
                                 context,
                                 formKey,
-                                selectedClientId,
                                 selectedDate,
                                 selectedTime,
-                                notesController,
                               )
                           : null,
                       style: ElevatedButton.styleFrom(
@@ -353,7 +379,7 @@ class AppointmentFormDialog extends StatelessWidget {
 
           // Mostrar profesional seleccionado o mensaje si no hay ninguno
           Obx(() {
-            final selectedEmployee = controller.selectedEmployee.value;
+            final selectedEmployee = widget.controller.selectedEmployee.value;
 
             if (selectedEmployee == null) {
               return Container(
@@ -460,6 +486,10 @@ class AppointmentFormDialog extends StatelessWidget {
             width: double.infinity,
             child: TextButton.icon(
               onPressed: () async {
+                // Cargar empleados solo cuando se requiere abrir el selector
+                if (employeesController.employees.isEmpty) {
+                  await employeesController.loadEmployees();
+                }
                 await ProfessionalSelectorDialog.show(
                   context,
                   controller,
@@ -467,13 +497,13 @@ class AppointmentFormDialog extends StatelessWidget {
                 );
               },
               icon: Icon(
-                controller.selectedEmployee.value == null
+                widget.controller.selectedEmployee.value == null
                     ? Icons.person_add_outlined
                     : Icons.edit_outlined,
                 size: 18,
               ),
               label: Text(
-                controller.selectedEmployee.value == null
+                widget.controller.selectedEmployee.value == null
                     ? 'Seleccionar profesional'
                     : 'Cambiar profesional',
                 style: const TextStyle(fontSize: 14),
@@ -645,7 +675,7 @@ class AppointmentFormDialog extends StatelessWidget {
 
           // Información de servicios y precio
           Obx(() {
-            if (controller.selectedServiceIds.isEmpty) {
+            if (widget.controller.selectedServiceIds.isEmpty) {
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
@@ -658,8 +688,8 @@ class AppointmentFormDialog extends StatelessWidget {
               );
             }
 
-            final selectedServicesCount = controller.selectedServiceIds.length;
-            final serviceNames = controller.getSelectedServiceNames();
+            final selectedServicesCount = widget.controller.selectedServiceIds.length;
+            final serviceNames = widget.controller.getSelectedServiceNames();
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -687,7 +717,7 @@ class AppointmentFormDialog extends StatelessWidget {
                     Text(
                       NumberFormat.currency(
                               locale: 'es', symbol: '\$', decimalDigits: 0)
-                          .format(controller.totalPrice.value),
+                          .format(widget.controller.totalPrice.value),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -729,16 +759,16 @@ class AppointmentFormDialog extends StatelessWidget {
             width: double.infinity,
             child: TextButton.icon(
               onPressed: () async {
-                await ServiceSelectorDialog.show(context, controller);
+                await ServiceSelectorDialog.show(context, widget.controller);
               },
               icon: Icon(
-                controller.selectedServiceIds.isEmpty
+                widget.controller.selectedServiceIds.isEmpty
                     ? Icons.add_circle_outline
                     : Icons.edit_outlined,
                 size: 18,
               ),
               label: Text(
-                controller.selectedServiceIds.isEmpty
+                widget.controller.selectedServiceIds.isEmpty
                     ? 'Seleccionar servicios'
                     : 'Modificar selección',
                 style: const TextStyle(fontSize: 14),
@@ -760,11 +790,7 @@ class AppointmentFormDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildClientSelector(
-    BuildContext context,
-    RxString selectedClientId,
-    RxString selectedClientName,
-  ) {
+  Widget _buildClientSelector(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -806,12 +832,16 @@ class AppointmentFormDialog extends StatelessWidget {
           ),
           TextButton.icon(
             onPressed: () async {
+              // ✅ Usar el nuevo ClientSearchSelector con ClientEntity
               final result =
-                  await ClientSelectorDialog.show(context, controller);
+                  await ClientSearchSelector.show(context, widget.controller);
               if (result != null) {
-                selectedClientId.value = result['id'].toString();
-                selectedClientName.value =
-                    '${result['name']} ${result['lastname']}';
+                setState(() {
+                  selectedClientId.value = result.id ?? '';
+                  selectedClientName.value =
+                      '${result.name} ${result.lastname}';
+                });
+                print('🎯 Cliente seleccionado: ${selectedClientName.value} (ID: ${selectedClientId.value})');
               }
             },
             icon: const Icon(Icons.person_add_outlined, size: 20),
@@ -1169,10 +1199,8 @@ class AppointmentFormDialog extends StatelessWidget {
   void _handleSubmit(
     BuildContext context,
     GlobalKey<FormState> formKey,
-    RxString selectedClientId,
     Rx<DateTime> selectedDate,
     Rx<TimeOfDay> selectedTime,
-    TextEditingController notesController,
   ) {
     if (formKey.currentState?.validate() ?? false) {
       if (selectedClientId.value.isEmpty) {
@@ -1181,13 +1209,13 @@ class AppointmentFormDialog extends StatelessWidget {
         return;
       }
 
-      if (controller.selectedEmployee.value == null) {
+      if (widget.controller.selectedEmployee.value == null) {
         Get.snackbar('Error', 'Debe seleccionar un profesional',
             snackPosition: SnackPosition.BOTTOM);
         return;
       }
 
-      if (controller.selectedServiceIds.isEmpty) {
+      if (widget.controller.selectedServiceIds.isEmpty) {
         Get.snackbar('Error', 'Debe seleccionar al menos un servicio',
             snackPosition: SnackPosition.BOTTOM);
         return;
@@ -1219,7 +1247,7 @@ class AppointmentFormDialog extends StatelessWidget {
         return;
       }
 
-      controller.createAppointment(
+      widget.controller.createAppointment(
         clientId: selectedClientId.value,
         startTime: localDateTime,
         notes: notesController.text,

@@ -126,35 +126,36 @@ import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class ClientsController extends GetxController {
   final GetClientsUseCase getClientsUseCase;
+  final GetClientsPaginatedUseCase getClientsPaginatedUseCase;
   final CreateClientUseCase createClientUseCase;
   final ImportContactsUseCase importContactsUseCase;
   final LocalStorage localStorage;
 
+  // ✅ NUEVAS VARIABLES PARA PAGINACIÓN REAL DEL SERVIDOR
   final RxList<ClientEntity> clients = <ClientEntity>[].obs;
-  final RxList<ClientEntity> filteredClients = <ClientEntity>[].obs;
-  final RxList<ClientEntity> paginatedClients = <ClientEntity>[].obs;
   final RxBool isLoading = false.obs;
+  final RxBool isLoadingMore = false.obs;
   final RxString searchQuery = ''.obs;
 
-  // Variables para filtrado
-  final RxBool isFilterActive = false.obs;
-  final Rxn<bool> activeFilter =
-      Rxn<bool>(); // true = activos, false = inactivos, null = todos
-  final Rxn<bool> sourceFilter =
-      Rxn<bool>(); // true = importados, false = manuales, null = todos
-  final Rxn<String> sortOrder = Rxn<
-      String>(); // name_asc, name_desc, date_asc, date_desc, null = predeterminado
+  // ✅ VARIABLES DE PAGINACIÓN DEL SERVIDOR
+  final RxInt currentPage = 1.obs; // Empezar en página 1 (backend)
+  final RxInt pageSize = 20.obs; // Clientes por página
+  final RxInt totalRecords = 0.obs; // Total de registros en el servidor
+  final RxInt totalPages = 0.obs; // Total de páginas en el servidor
+  final RxBool hasNextPage = false.obs; // Si hay más páginas
+  final RxBool hasPrevPage = false.obs; // Si hay página anterior
 
-  // Variables para paginación
-  final RxInt currentPage = 0.obs;
-  final RxInt pageSize = 10.obs; // Clientes por página
-  final RxInt totalPages = 0.obs;
-  final RxBool hasMorePages = true.obs;
-  final RxBool isLoadingMore = false.obs;
+  // ✅ VARIABLES DE FILTRADO PARA EL SERVIDOR (ORDENAR A-Z POR DEFECTO)
+  final RxString statusFilter = 'all'.obs; // all, active, inactive
+  final RxString sourceFilter = 'all'.obs; // all, manual, imported
+  final RxString sortBy = 'name'.obs; // name, lastname, email, phone, created_at (A-Z por defecto)
+  final RxString sortOrder = 'ASC'.obs; // ASC, DESC (A-Z por defecto)
+  
   final ScrollController scrollController = ScrollController();
 
   ClientsController({
     required this.getClientsUseCase,
+    required this.getClientsPaginatedUseCase,
     required this.createClientUseCase,
     required this.importContactsUseCase,
     required this.localStorage,
@@ -165,9 +166,10 @@ class ClientsController extends GetxController {
     super.onInit();
     loadClients();
 
-    // Observar cambios en la búsqueda para aplicar filtros
-    ever(searchQuery, (_) => applyFilters());
-
+    // ✅ OBSERVAR CAMBIOS EN LA BÚSQUEDA PARA RECARGAR DESDE EL SERVIDOR
+    // Usar debounce para evitar demasiadas peticiones al servidor
+    debounce(searchQuery, (_) => _reloadClientsFromServer(), time: const Duration(milliseconds: 500));
+    
     // Configurar scroll controller para paginación
     scrollController.addListener(_scrollListener);
   }
@@ -179,180 +181,157 @@ class ClientsController extends GetxController {
     super.onClose();
   }
 
-  // Escuchar el scroll para cargar más elementos cuando sea necesario
+  // ✅ ESCUCHAR EL SCROLL PARA CARGAR MÁS PÁGINAS DEL SERVIDOR
   void _scrollListener() {
     if (scrollController.position.pixels >=
             scrollController.position.maxScrollExtent - 200 &&
         !isLoadingMore.value &&
-        hasMorePages.value) {
+        hasNextPage.value) {
       loadMoreClients();
     }
   }
 
+  // ✅ RECARGAR CLIENTES DESDE EL SERVIDOR (USADO EN DEBOUNCE DE BÚSQUEDA)
+  Future<void> _reloadClientsFromServer() async {
+    currentPage.value = 1; // Resetear a la primera página
+    await loadClients(); // Cargar la primera página con nuevos filtros
+  }
+
+  // ✅ CARGAR CLIENTES DESDE EL SERVIDOR CON PAGINACIÓN REAL
   Future<void> loadClients() async {
     try {
       isLoading.value = true;
+      print('🔄 ClientsController: Cargando clientes con paginación del servidor...');
 
-      final result = await getClientsUseCase.execute();
-      clients.assignAll(result);
+      final result = await getClientsPaginatedUseCase.execute(
+        page: currentPage.value,
+        limit: pageSize.value,
+        search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        sortBy: sortBy.value,
+        sortOrder: sortOrder.value,
+        status: statusFilter.value,
+        source: sourceFilter.value,
+      );
 
-      // Resetear paginación
-      currentPage.value = 0;
+      // ✅ ACTUALIZAR VARIABLES DE PAGINACIÓN CON DATOS DEL SERVIDOR
+      totalRecords.value = result.total;
+      totalPages.value = result.totalPages;
+      hasNextPage.value = result.hasNextPage;
+      hasPrevPage.value = result.hasPrevPage;
 
-      // Aplicar filtros iniciales
-      applyFilters();
+      // ✅ SI ES LA PRIMERA PÁGINA, REEMPLAZAR LOS CLIENTES
+      // SI ES CARGA DE MÁS PÁGINAS, AÑADIR AL FINAL
+      if (currentPage.value == 1) {
+        clients.assignAll(result.data);
+        print('✅ Primera página cargada: ${result.data.length} clientes');
+      } else {
+        clients.addAll(result.data);
+        print('✅ Página ${currentPage.value} agregada: ${result.data.length} clientes más');
+      }
+
+      print('📊 Total clientes en memoria: ${clients.length}');
+      print('📊 Total en servidor: ${totalRecords.value}');
+      print('📊 Página ${currentPage.value}/${totalPages.value}');
+      print('📊 Tiene siguiente: ${hasNextPage.value}');
+
     } catch (e) {
-      _showError('Error al cargar los clientes');
+      print('❌ Error al cargar clientes: $e');
+      _showError('Error al cargar los clientes: $e');
     } finally {
       isLoading.value = false;
     }
   }
 
-  // Cargar más clientes (paginación)
+  // ✅ CARGAR MÁS CLIENTES DESDE EL SERVIDOR (SIGUIENTE PÁGINA)
   Future<void> loadMoreClients() async {
-    if (!hasMorePages.value || isLoadingMore.value) return;
+    if (!hasNextPage.value || isLoadingMore.value) return;
 
     try {
       isLoadingMore.value = true;
+      print('🔄 Cargando página ${currentPage.value + 1}...');
 
-      // Simular una carga retrasada para mostrar el efecto
-      await Future.delayed(const Duration(milliseconds: 500));
+      // ✅ GUARDAR POSICIÓN ACTUAL DEL SCROLL ANTES DE CARGAR MÁS
+      final double currentPosition = scrollController.offset;
+      final int currentItemsCount = clients.length;
 
-      // Incrementar la página actual
+      // Incrementar la página para cargar la siguiente
       currentPage.value++;
 
-      // Aplicar paginación
-      _applyPagination();
+      // Cargar la siguiente página (se agregará a los clientes existentes)
+      await loadClients();
+
+      // ✅ MANTENER POSICIÓN RELATIVA DEL SCROLL
+      // Calcular nueva posición basada en los nuevos elementos cargados
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (scrollController.hasClients) {
+          // Mantener aproximadamente la misma posición relativa
+          final double itemHeight = 90; // Altura aproximada de cada card
+          final double newPosition = currentPosition + (itemHeight * 0.5); // Ajuste suave
+          
+          scrollController.animateTo(
+            newPosition.clamp(0.0, scrollController.position.maxScrollExtent),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+
     } catch (e) {
-      print('Error al cargar más clientes: $e');
+      print('❌ Error al cargar más clientes: $e');
+      // Revertir el incremento de página en caso de error
+      currentPage.value--;
+      _showError('Error al cargar más clientes');
     } finally {
       isLoadingMore.value = false;
     }
   }
 
-  // Verifica si hay algún filtro activo
-  void _checkFilterStatus() {
-    isFilterActive.value = activeFilter.value != null ||
-        sourceFilter.value != null ||
-        sortOrder.value != null;
+  // ✅ MÉTODOS PARA APLICAR FILTROS EN EL SERVIDOR
+  Future<void> applyStatusFilter(String status) async {
+    if (statusFilter.value != status) {
+      statusFilter.value = status;
+      await _reloadClientsFromServer();
+    }
   }
 
-  // Aplica todos los filtros y actualiza la lista filtrada
-  void applyFilters() {
-    if (clients.isEmpty) return;
-
-    _checkFilterStatus();
-
-    // Comenzar con todos los clientes
-    List<ClientEntity> result = List.from(clients);
-
-    // Aplicar filtro de búsqueda por texto
-    if (searchQuery.value.isNotEmpty) {
-      final query = searchQuery.value.toLowerCase();
-      result = result.where((client) {
-        final name = '${client.name} ${client.lastname}'.toLowerCase();
-        final phone = client.phone.toLowerCase();
-        final email = client.email.toLowerCase();
-        return name.contains(query) ||
-            phone.contains(query) ||
-            email.contains(query);
-      }).toList();
+  Future<void> applySourceFilter(String source) async {
+    if (sourceFilter.value != source) {
+      sourceFilter.value = source;
+      await _reloadClientsFromServer();
     }
-
-    // Aplicar filtro por estado (activo/inactivo)
-    if (activeFilter.value != null) {
-      result = result
-          .where((client) => client.isActive == activeFilter.value)
-          .toList();
-    }
-
-    // Aplicar filtro por origen (importado/manual)
-    if (sourceFilter.value != null) {
-      result = result
-          .where((client) => client.isFromDevice == sourceFilter.value)
-          .toList();
-    }
-
-    // Aplicar ordenamiento
-    if (sortOrder.value != null) {
-      switch (sortOrder.value) {
-        case 'name_asc':
-          result.sort((a, b) =>
-              '${a.name} ${a.lastname}'.compareTo('${b.name} ${b.lastname}'));
-          break;
-        case 'name_desc':
-          result.sort((a, b) =>
-              '${b.name} ${b.lastname}'.compareTo('${a.name} ${a.lastname}'));
-          break;
-        case 'date_asc':
-          result.sort((a, b) {
-            final dateA = a.createdAt ?? DateTime(1900);
-            final dateB = b.createdAt ?? DateTime(1900);
-            return dateA.compareTo(dateB);
-          });
-          break;
-        case 'date_desc':
-          result.sort((a, b) {
-            final dateA = a.createdAt ?? DateTime(1900);
-            final dateB = b.createdAt ?? DateTime(1900);
-            return dateB.compareTo(dateA);
-          });
-          break;
-      }
-    }
-
-    // Actualizar la lista filtrada
-    filteredClients.assignAll(result);
-
-    // Recalcular el número total de páginas
-    totalPages.value = (filteredClients.length / pageSize.value).ceil();
-
-    // Resetear a la primera página cuando se aplican filtros
-    currentPage.value = 0;
-
-    // Aplicar paginación
-    _applyPagination();
   }
 
-  // Aplica la paginación a la lista filtrada
-  void _applyPagination() {
-    if (filteredClients.isEmpty) {
-      paginatedClients.clear();
-      hasMorePages.value = false;
-      return;
+  Future<void> applySortFilter(String sortByField, String order) async {
+    if (sortBy.value != sortByField || sortOrder.value != order) {
+      sortBy.value = sortByField;
+      sortOrder.value = order;
+      await _reloadClientsFromServer();
     }
-
-    final start = 0;
-    final end = (currentPage.value + 1) * pageSize.value;
-    final actualEnd =
-        end > filteredClients.length ? filteredClients.length : end;
-
-    // Verificar si hay más páginas disponibles
-    hasMorePages.value = actualEnd < filteredClients.length;
-
-    // Obtener los clientes paginados (todos hasta la página actual)
-    final paginatedResult = filteredClients.sublist(start, actualEnd);
-    paginatedClients.assignAll(paginatedResult);
   }
 
-  // Limpia todos los filtros
-  void clearAllFilters() {
-    activeFilter.value = null;
-    sourceFilter.value = null;
-    sortOrder.value = null;
+  // ✅ VERIFICAR SI HAY FILTROS ACTIVOS (CONSIDERANDO A-Z COMO DEFECTO)
+  bool get hasActiveFilters {
+    return searchQuery.value.isNotEmpty ||
+        statusFilter.value != 'all' ||
+        sourceFilter.value != 'all' ||
+        sortBy.value != 'name' ||
+        sortOrder.value != 'ASC';
+  }
+
+  // ✅ LIMPIAR TODOS LOS FILTROS Y RECARGAR DESDE EL SERVIDOR (A-Z POR DEFECTO)
+  Future<void> clearAllFilters() async {
     searchQuery.value = '';
-    isFilterActive.value = false;
-
-    // Resetear paginación
-    currentPage.value = 0;
-
-    // Re-aplicar filtros (que ahora son todos nulos)
-    applyFilters();
+    statusFilter.value = 'all';
+    sourceFilter.value = 'all';
+    sortBy.value = 'name'; // A-Z por defecto
+    sortOrder.value = 'ASC'; // A-Z por defecto
+    
+    await _reloadClientsFromServer();
   }
 
-  // Refrescar la lista de clientes
+  // ✅ REFRESCAR LA LISTA DE CLIENTES (PULL TO REFRESH)
   Future<void> refreshClients() async {
-    await loadClients();
+    await _reloadClientsFromServer();
   }
 
   Future<void> importContacts() async {
@@ -395,22 +374,71 @@ class ClientsController extends GetxController {
         throw Exception('No hay contactos válidos para importar');
       }
 
-      await importContactsUseCase.execute(validContacts);
-      await loadClients();
-      _showSuccess('${validContacts.length} contactos importados');
+      print('🔄 Iniciando importación de ${validContacts.length} contactos...');
+      
+      Map<String, dynamic> importResult;
+      try {
+        importResult = await importContactsUseCase.execute(validContacts);
+        print('✅ Importación completada en UseCase');
+      } catch (e) {
+        print('❌ Error en importContactsUseCase: $e');
+        throw e;
+      }
+      
+      try {
+        print('🔄 Recargando lista de clientes...');
+        await loadClients();
+        print('✅ Lista de clientes recargada exitosamente');
+      } catch (e) {
+        print('❌ Error al recargar clientes: $e');
+        throw e;
+      }
+      
+      try {
+        print('🎉 Mostrando mensaje de éxito...');
+        
+        // ✅ MENSAJE DETALLADO CON ESTADÍSTICAS REALES
+        final int sent = validContacts.length;
+        final int success = importResult['totalSuccess'] as int;
+        final int failed = importResult['totalFailed'] as int;
+        
+        String message;
+        if (failed > 0) {
+          message = '$success de $sent contactos importados exitosamente\n($failed rechazados por duplicados o datos inválidos)';
+        } else {
+          message = '$success contactos importados exitosamente';
+        }
+        
+        _showSuccess(message);
+        print('✅ Mensaje de éxito mostrado: $success exitosos, $failed fallidos');
+      } catch (e) {
+        print('❌ Error al mostrar mensaje: $e');
+        throw e;
+      }
+      
+      print('🏁 Función importContacts completada exitosamente');
+      
     } catch (e) {
+      print('❌ Error durante importación: $e');
       throw Exception('Error al importar contactos: $e');
     }
   }
 
   void _showSuccess(String message) {
     Get.snackbar(
-      'Éxito',
+      '🎉 Importación Exitosa',
       message,
-      backgroundColor: Colors.green,
+      backgroundColor: Colors.green.shade600,
       colorText: Colors.white,
       snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
+      icon: const Icon(
+        Icons.check_circle_outline,
+        color: Colors.white,
+        size: 32,
+      ),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
     );
   }
 

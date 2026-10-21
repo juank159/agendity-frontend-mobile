@@ -99,7 +99,7 @@ class NotificationService {
         body,
         tz.TZDateTime.from(scheduledTime, tz.local),
         platformChannelSpecifics,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle, // ✅ Cambio a inexact para evitar permisos especiales
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: payload,
@@ -107,13 +107,31 @@ class NotificationService {
       print('Notification scheduled successfully for: $scheduledTime');
     } catch (e) {
       print('Error scheduling notification: $e');
-      // Mostrar la notificación inmediatamente como fallback
-      await showNotification(
-        id: id,
-        title: title,
-        body: body,
-        payload: payload,
-      );
+      
+      // ✅ FALLBACK MEJORADO: Intentar con modo normal primero
+      try {
+        await flutterLocalNotificationsPlugin.zonedSchedule(
+          id,
+          title,
+          body,
+          tz.TZDateTime.from(scheduledTime, tz.local),
+          platformChannelSpecifics,
+          androidScheduleMode: AndroidScheduleMode.alarmClock, // Modo menos restrictivo
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          payload: payload,
+        );
+        print('Notification scheduled with alarmClock mode');
+      } catch (e2) {
+        print('Failed with alarmClock mode: $e2');
+        // Como último recurso, mostrar inmediatamente
+        await showNotification(
+          id: id,
+          title: title,
+          body: body,
+          payload: payload,
+        );
+      }
     }
   }
 
@@ -146,5 +164,46 @@ class NotificationService {
       platformChannelSpecifics,
       payload: payload,
     );
+  }
+
+  // ✅ NUEVO MÉTODO: Cancelar una notificación programada
+  Future<void> cancelNotification(int id) async {
+    try {
+      await flutterLocalNotificationsPlugin.cancel(id);
+      print('Notification cancelled successfully for ID: $id');
+    } catch (e) {
+      print('Error cancelling notification ID $id: $e');
+    }
+  }
+
+  // ✅ NUEVO MÉTODO: Cancelar todas las notificaciones
+  Future<void> cancelAllNotifications() async {
+    try {
+      await flutterLocalNotificationsPlugin.cancelAll();
+      print('All notifications cancelled successfully');
+    } catch (e) {
+      print('Error cancelling all notifications: $e');
+    }
+  }
+
+  // ✅ NUEVO MÉTODO: Obtener notificaciones pendientes
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    try {
+      return await flutterLocalNotificationsPlugin.pendingNotificationRequests();
+    } catch (e) {
+      print('Error getting pending notifications: $e');
+      return [];
+    }
+  }
+
+  // ✅ NUEVO MÉTODO: Verificar si una notificación específica está pendiente
+  Future<bool> isNotificationPending(int id) async {
+    try {
+      final pendingNotifications = await getPendingNotifications();
+      return pendingNotifications.any((notification) => notification.id == id);
+    } catch (e) {
+      print('Error checking if notification is pending: $e');
+      return false;
+    }
   }
 }

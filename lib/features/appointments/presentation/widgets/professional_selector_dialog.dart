@@ -215,22 +215,9 @@ class ProfessionalSelectorDialog extends StatelessWidget {
                                             ? Theme.of(context).primaryColor
                                             : Colors.black87,
                                       ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    if (employee.roles.isNotEmpty)
-                                      Text(
-                                        'Profesional',
-                                        style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600]),
-                                      ),
-                                    if (employee.phone != null &&
-                                        employee.phone!.isNotEmpty)
-                                      Text(
-                                        employee.phone!,
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[500]),
-                                      ),
                                   ],
                                 ),
                               ),

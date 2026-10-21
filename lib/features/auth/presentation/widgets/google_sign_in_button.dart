@@ -10,12 +10,12 @@ class GoogleSignInButton extends StatelessWidget {
   final double borderRadius;
 
   const GoogleSignInButton({
-    Key? key,
+    super.key,
     this.text = 'Continuar con Google',
     this.width = double.infinity,
     this.height = 50,
     this.borderRadius = 8,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

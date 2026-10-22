@@ -77,22 +77,16 @@ class GetRoutes {
   // Categories Routes
   static const String categories = '/categories';
   static const String addCategory = '/categories/new';
-  static const String editCategory = '/categories/edit/:id';
 
   //Clients Routes
   static const String clients = '/clients';
   static const String addClient = '/clients/new';
   static const String editClient = '/clients/edit';
 
-  //Calendar Routes
-  static const String calendar = '/calendar';
-  static const String calendarEvent = '/calendar/event';
-
   // employees Routes
   static const String employees = '/employees';
   static const String addEmployee = '/employees/new';
   static const String verifyEmployeeEmail = '/verify-employee-email';
-  static const String editEmployee = '/employees/edit/:id';
   static const String employeeDetails = '/employee-details';
   static const String employeeEdit = '/edit-employee/:id';
 

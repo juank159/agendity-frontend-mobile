@@ -93,7 +93,6 @@ import 'package:login_signup/features/auth/presentation/controllers/user_info_co
 import '../../domain/usecases/logout_usecase.dart';
 import '../../../../core/di/init_dependencies.dart';
 import '../../../../core/di/modules/services_module.dart';
-import '../../../../shared/controller/custom_bottom_navigation_controller.dart';
 
 class LogoutController extends GetxController {
   final LogoutUseCase _logoutUseCase;
@@ -105,11 +104,6 @@ class LogoutController extends GetxController {
   Future<void> logout() async {
     try {
       isLoading.value = true;
-
-      // Resetear el controlador de navegación primero
-      if (Get.isRegistered<CustomBottomNavigationController>()) {
-        Get.find<CustomBottomNavigationController>().reset();
-      }
 
       final result = await _logoutUseCase.execute();
 
@@ -144,11 +138,6 @@ class LogoutController extends GetxController {
       // Limpiar información del usuario
       if (Get.isRegistered<UserInfoController>()) {
         Get.find<UserInfoController>().clearUserInfo();
-      }
-
-      // Resetear controlador de navegación si existe
-      if (Get.isRegistered<CustomBottomNavigationController>()) {
-        Get.find<CustomBottomNavigationController>().reset();
       }
 
       // Limpiar módulos de funcionalidades (mantener auth)

@@ -19,7 +19,6 @@ import '../config/api_config.dart';
 import 'modules/auth_module.dart';
 import 'modules/services_module.dart';
 import 'modules/categories_module.dart';
-import 'modules/navigation_module.dart';
 import 'modules/clients_module.dart';
 
 class DependencyInjection {
@@ -28,7 +27,6 @@ class DependencyInjection {
       // Ya no se llama a _initEnv() porque se inicializa antes en main()
       await _initCore();
       await _initFeatures();
-      _initNavigation();
       _initThemeController(); // Añadimos la inicialización del controlador de temas
     } catch (e) {
       print('Error initializing dependencies: $e');
@@ -106,15 +104,6 @@ class DependencyInjection {
       print('Features initialized successfully');
     } catch (e) {
       print('Error initializing features: $e');
-      rethrow;
-    }
-  }
-
-  static void _initNavigation() {
-    try {
-      NavigationModule.init();
-    } catch (e) {
-      print('Error initializing navigation: $e');
       rethrow;
     }
   }

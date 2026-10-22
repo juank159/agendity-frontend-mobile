@@ -9,7 +9,6 @@ import 'package:login_signup/core/config/theme_config.dart';
 
 import 'package:login_signup/core/di/init_dependencies.dart';
 import 'package:login_signup/core/routes/routes.dart';
-import 'package:login_signup/core/bindings/initial_binding.dart';
 import 'package:login_signup/firebase_options.dart';
 import 'package:login_signup/shared/controller/theme_controller.dart';
 
@@ -115,8 +114,6 @@ class MyApp extends StatelessWidget {
               : controller.isDarkMode
                   ? ThemeMode.dark
                   : ThemeMode.light,
-
-          initialBinding: InitialBinding(),
 
           // Configuración de localización
           localizationsDelegates: const [

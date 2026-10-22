@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 class ApiConfig {
   static Dio createDio(String baseUrl) {
@@ -20,29 +21,29 @@ class ApiConfig {
 
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        print('=== REQUEST ===');
-        print('URL: ${options.uri}');
-        print('Method: ${options.method}');
-        print('Headers: ${options.headers}');
-        print('Query Parameters: ${options.queryParameters}');
-        print('Data: ${options.data}');
+        // Solo en debug y nunca headers ni cuerpo (llevan el token y la contraseña).
+        if (kDebugMode) {
+          print('=== REQUEST === ${options.method} ${options.uri}');
+        }
         return handler.next(options);
       },
       onResponse: (response, handler) {
-        print('=== RESPONSE ===');
-        print('Status code: ${response.statusCode}');
-        print('Headers: ${response.headers}');
-        print('Data: ${response.data}');
+        // Sin headers ni cuerpo: la respuesta del login trae el token.
+        if (kDebugMode) {
+          print('=== RESPONSE === ${response.statusCode} '
+              '${response.requestOptions.method} ${response.requestOptions.uri}');
+        }
         return handler.next(response);
       },
       onError: (error, handler) async {
-        print('\n=== ERROR ===');
-        print('Error Type: ${error.type}');
-        print(
-            'Error [${error.response?.statusCode}] ${error.requestOptions.uri}');
-        print('Request Headers: ${error.requestOptions.headers}');
-        if (error.response?.data != null) {
-          print('Error data: ${error.response?.data}');
+        if (kDebugMode) {
+          print('\n=== ERROR ===');
+          print('Error Type: ${error.type}');
+          print(
+              'Error [${error.response?.statusCode}] ${error.requestOptions.uri}');
+          if (error.response?.data != null) {
+            print('Error data: ${error.response?.data}');
+          }
         }
 
         var retryCount = error.requestOptions.extra['retryCount'] ?? 0;

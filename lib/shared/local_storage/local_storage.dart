@@ -98,7 +98,6 @@ class LocalStorage {
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: 'token', value: token);
-    print('Token guardado: $token');
 
     // Extraer y guardar el ID del usuario del token JWT
     try {
@@ -120,26 +119,16 @@ class LocalStorage {
 
   Future<String?> getToken() async {
     final token = await _storage.read(key: 'token');
-    print('Token actual: $token');
     return token;
   }
 
   Future<void> deleteToken() async {
-    print('Intentando eliminar token...');
-    final tokenAntes = await getToken();
-    print('Token antes de eliminar: $tokenAntes');
-
     await _storage.delete(key: 'token');
-
-    final tokenDespues = await getToken();
-    print('Token después de eliminar: $tokenDespues');
   }
 
   Future<void> clearAllData() async {
     print('Limpiando todos los datos almacenados...');
     await _storage.deleteAll();
-    final allData = await _storage.readAll();
-    print('Datos restantes después de limpiar: $allData');
   }
 
   Future<void> saveUserData(String key, String value) async {

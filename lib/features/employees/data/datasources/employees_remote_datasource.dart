@@ -168,7 +168,6 @@ class EmployeesRemoteDataSource {
       final Map<String, dynamic> data =
           (employee as EmployeeModel).toCreateJson(password: password);
 
-      print('Enviando datos al servidor: $data');
       print('Enviando horario: ${data['schedule']}');
 
       final response = await dio.post(
@@ -314,8 +313,6 @@ class EmployeesRemoteDataSource {
         print('⚠️ NO HAY SERVICIOS PARA AÑADIR A LA PETICIÓN');
       }
 
-      // Log completo de datos
-      print('⭐ ENVIANDO DATOS AL SERVIDOR: $data');
 
       // Hacer la petición HTTP
       final response = await dio.patch(

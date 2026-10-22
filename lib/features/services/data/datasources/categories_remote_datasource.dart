@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'dart:math';
 import '../../../../shared/local_storage/local_storage.dart';
 import '../models/category_model.dart';
 
@@ -17,7 +16,7 @@ class CategoriesRemoteDataSource {
     try {
       final token = await localStorage.getToken();
       debugPrint(
-          'Obteniendo categorías con token: ${token != null ? token.substring(0, min(token.length, 10)) + '...' : 'null'}');
+          'Obteniendo categorías');
 
       final response = await dio.get(
         '/categories',
@@ -52,7 +51,7 @@ class CategoriesRemoteDataSource {
     try {
       final token = await localStorage.getToken();
       debugPrint(
-          'Creando categoría con token: ${token != null ? token.substring(0, min(token.length, 10)) + '...' : 'null'}');
+          'Creando categoría');
 
       // Usamos toJson con isCreating = true para enviar solo name y description
       final dataToSend = category.toJson(isCreating: true);
@@ -94,7 +93,7 @@ class CategoriesRemoteDataSource {
     try {
       final token = await localStorage.getToken();
       debugPrint(
-          'Actualizando estado de categoría $id a $isActive con token: ${token != null ? token.substring(0, min(token.length, 10)) + '...' : 'null'}');
+          'Actualizando estado de categoría $id a $isActive');
 
       // Primero obtenemos los datos actuales para mantener los valores
       final getResponse = await dio.get(
@@ -150,7 +149,7 @@ class CategoriesRemoteDataSource {
     try {
       final token = await localStorage.getToken();
       debugPrint(
-          'Actualizando categoría $id: nombre=$name, descripción=$description con token: ${token != null ? token.substring(0, min(token.length, 10)) + '...' : 'null'}');
+          'Actualizando categoría $id: nombre=$name, descripción=$description');
 
       final response = await dio.patch(
         '/categories/$id',

@@ -31,7 +31,6 @@ class AuthService extends GetxService {
 
   Future<bool> checkAuth() async {
     final token = await _localStorage.getToken();
-    print('AuthService: Token actual: $token'); // Debug
     isAuthenticated.value = token != null;
     return isAuthenticated.value;
   }

@@ -516,11 +516,6 @@ class ClientsRemoteDataSource {
       print('=== REQUEST ===');
       print('URL: ${dio.options.baseUrl}/clients');
       print('Method: POST');
-      print('Headers: ${{
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token'
-      }}');
       print('Query Parameters: {}');
       print('Data: $clientData');
 
@@ -536,7 +531,6 @@ class ClientsRemoteDataSource {
       // Imprimir detalles de la respuesta para debugging
       print('=== RESPONSE ===');
       print('Status code: ${response.statusCode}');
-      print('Headers: ${response.headers.map}');
       print('Data: ${response.data}');
 
       if (response.statusCode != 201 && response.statusCode != 200) {

@@ -104,7 +104,6 @@ class AppointmentsRemoteDataSource {
       };
 
       print('=== CREATE APPOINTMENT DEBUG ===');
-      print('Token: $token');
       print('Tenant ID: ${_extractTenantId(token!)}');
       print('URL: ${dio.options.baseUrl}/appointments');
       print('Data a enviar: $data');
@@ -124,7 +123,6 @@ class AppointmentsRemoteDataSource {
 
       print('=== RESPONSE DEBUG ===');
       print('Status code: ${response.statusCode}');
-      print('Response headers: ${response.headers}');
       print('Response data: ${response.data}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -145,7 +143,6 @@ class AppointmentsRemoteDataSource {
         print('DioError response status: ${e.response?.statusCode}');
         print('DioError response data: ${e.response?.data}');
         print('DioError requestOptions: ${e.requestOptions.path}');
-        print('DioError requestOptions headers: ${e.requestOptions.headers}');
         print('DioError requestOptions data: ${e.requestOptions.data}');
       } else {
         print('Error general: $e');
@@ -172,7 +169,6 @@ class AppointmentsRemoteDataSource {
       };
 
       print('=== UPDATE APPOINTMENT DEBUG ===');
-      print('Token: $token');
       print('Tenant ID: $tenantId');
       print('URL: ${dio.options.baseUrl}/appointments/${appointment.id}');
       print('Data a enviar: $updateData');
@@ -192,7 +188,6 @@ class AppointmentsRemoteDataSource {
 
       print('=== UPDATE RESPONSE DEBUG ===');
       print('Status code: ${response.statusCode}');
-      print('Response headers: ${response.headers}');
       print('Response data: ${response.data}');
 
       if (response.statusCode == 200) {
@@ -213,7 +208,6 @@ class AppointmentsRemoteDataSource {
         print('DioError response status: ${e.response?.statusCode}');
         print('DioError response data: ${e.response?.data}');
         print('DioError requestOptions: ${e.requestOptions.path}');
-        print('DioError requestOptions headers: ${e.requestOptions.headers}');
         print('DioError requestOptions data: ${e.requestOptions.data}');
       } else {
         print('Error general: $e');

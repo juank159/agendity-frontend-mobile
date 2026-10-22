@@ -144,7 +144,6 @@ class VerifyEmployeeEmailController extends GetxController {
         final dio = Get.find<Dio>();
         final localStorage = Get.find<LocalStorage>();
         final token = await localStorage.getToken();
-        print('Token actual: $token');
 
         // Intento con la ruta correcta en la API
         final response = await dio.post(
@@ -295,9 +294,6 @@ class VerifyEmployeeEmailController extends GetxController {
         final localStorage = Get.find<LocalStorage>();
         final token = await localStorage.getToken();
 
-        // Verificación segura para token
-        print(
-            'Token para verificación: ${token != null ? (token.length > 20 ? token.substring(0, 20) + "..." : token) : "null"}');
 
         // Llamada API para verificar
         final response = await dio.post(

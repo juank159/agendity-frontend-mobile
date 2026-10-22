@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:get/get.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
@@ -106,7 +107,7 @@ class UserInfoController extends GetxController {
 
   // Método para obtener la ruta de estadísticas según el rol
   String getStatisticsRoute() {
-    return isOnlyEmployee() ? '/employee-statistics' : '/statistics';
+    return isOnlyEmployee() ? GetRoutes.employeeStats : GetRoutes.statistics;
   }
 
   // Método para recargar información del usuario (útil después de cambios de rol)

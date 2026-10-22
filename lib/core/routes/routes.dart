@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/appointments/presentation/bindings/appointment_reminder_binding.dart';
 
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
@@ -113,6 +114,24 @@ class GetRoutes {
   static const String paymentWebview = '/payment-webview';
   static const String paymentSuccess = '/payment-success';
 
+  // Ruta desconocida (GetMaterialApp.unknownRoute)
+  static const String notFound = '/not-found';
+
+  static final GetPage unknownRoute = GetPage(
+    name: notFound,
+    page: () => Scaffold(
+      appBar: AppBar(title: const Text('Página no encontrada')),
+      body: ErrorState(
+        title: 'Página no encontrada',
+        message: 'La pantalla que buscas no existe o ya no está disponible.',
+        icon: Icons.explore_off_outlined,
+        actionLabel: 'Volver al inicio',
+        actionIcon: Icons.home_outlined,
+        onRetry: () => Get.offAllNamed(home),
+      ),
+    ),
+  );
+
   static List<GetPage> routes = [
     // Auth Pages
     GetPage(
@@ -120,7 +139,7 @@ class GetRoutes {
         page: () => const SplashView(),
         transition: Transition.noTransition),
     GetPage(
-      name: '/login',
+      name: login,
       page: () => const LoginView(),
       binding: LoginBinding(),
       //preventDuplicates: true, // Agregar esto

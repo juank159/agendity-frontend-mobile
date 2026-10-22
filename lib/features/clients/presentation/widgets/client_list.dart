@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // lib/features/clients/presentation/widgets/client_list.dart
 
 import 'package:flutter/material.dart';
@@ -142,7 +143,7 @@ class ClientList extends GetView<ClientsController> {
                             borderRadius: BorderRadius.circular(12),
                             onTap: () {
                               Get.toNamed(
-                                '/clients/edit',
+                                GetRoutes.editClient,
                                 arguments: {'clientId': client.id},
                                 preventDuplicates: true,
                               );

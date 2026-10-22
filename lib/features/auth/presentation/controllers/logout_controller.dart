@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 // import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
@@ -122,7 +123,7 @@ class LogoutController extends GetxController {
             await _cleanupDependencies();
 
             // Navegación (SIN reinicializar dependencias de auth)
-            await Get.offAllNamed('/login');
+            await Get.offAllNamed(GetRoutes.login);
             _showSuccessMessage();
           } catch (e) {
             print('Error durante la limpieza: $e');

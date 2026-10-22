@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../domain/usecases/register_usecase.dart';
@@ -232,7 +233,7 @@ class RegisterController extends GetxController {
               clearInputs();
 
               Future.delayed(const Duration(milliseconds: 1000), () {
-                Get.offAllNamed('/verify-email', arguments: {
+                Get.offAllNamed(GetRoutes.verifyEmail, arguments: {
                   'email': email,
                   'isNewUser': true,
                 });
@@ -251,7 +252,7 @@ class RegisterController extends GetxController {
               clearInputs();
 
               Future.delayed(const Duration(milliseconds: 1000), () {
-                Get.offAllNamed('/verify-email', arguments: {
+                Get.offAllNamed(GetRoutes.verifyEmail, arguments: {
                   'email': email,
                   'isNewUser': true,
                 });

@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -75,7 +76,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Get.offAllNamed('/appointments');
+                      Get.offAllNamed(GetRoutes.home);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,

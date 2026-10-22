@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // lib/features/clients/presentation/widgets/add_client_dialog.dart
 
 import 'package:flutter/material.dart';
@@ -67,7 +68,7 @@ class AddClientDialog {
                 backgroundColor: Colors.green.shade50,
                 onTap: () {
                   Get.back();
-                  Get.toNamed('/clients/new');
+                  Get.toNamed(GetRoutes.addClient);
                 },
               ),
               const SizedBox(height: 16),

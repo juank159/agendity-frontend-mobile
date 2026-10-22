@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
@@ -256,7 +257,7 @@ class NewServiceController extends GetxController {
 
       // Navegar a la pantalla de servicios
       Get.offNamed(
-          '/services'); // Esto cerrará la pantalla actual y navegará a servicios
+          GetRoutes.services); // Esto cerrará la pantalla actual y navegará a servicios
     } catch (e) {
       _showError('No se pudo crear el servicio: ${e.toString()}');
     } finally {

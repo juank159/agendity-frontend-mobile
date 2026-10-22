@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 // import 'package:login_signup/features/auth/domain/usecases/reset_password_usecase.dart';
@@ -138,7 +139,7 @@ class ForgotPasswordController extends GetxController {
             color: Colors.green,
           );
           // Navegar a la pantalla de recuperación de contraseña
-          Get.toNamed('/reset-password',
+          Get.toNamed(GetRoutes.resetPassword,
               arguments: {'email': emailController.text.trim()});
         },
       );

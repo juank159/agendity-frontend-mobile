@@ -149,7 +149,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             // Retroceder directamente
-            Get.toNamed('/');
+            Get.toNamed(GetRoutes.home);
           },
         ),
       );

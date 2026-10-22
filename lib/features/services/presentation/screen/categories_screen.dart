@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controller/categories_controller.dart';
@@ -22,7 +23,7 @@ class CategoriesScreen extends GetView<CategoriesController> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
               // Retroceder directamente
-              Get.toNamed('/services');
+              Get.toNamed(GetRoutes.services);
             },
           ),
         ),
@@ -50,7 +51,7 @@ class CategoriesScreen extends GetView<CategoriesController> {
                   ElevatedButton.icon(
                     // Modificado para manejar el resultado
                     onPressed: () =>
-                        Get.toNamed('/categories/new')?.then((result) {
+                        Get.toNamed(GetRoutes.addCategory)?.then((result) {
                       if (result == true) {
                         controller.loadCategories();
                       }
@@ -140,7 +141,7 @@ class CategoriesScreen extends GetView<CategoriesController> {
         floatingActionButton: Obx(() => controller.categories.isNotEmpty
             ? FloatingActionButton(
                 // Modificado para manejar el resultado
-                onPressed: () => Get.toNamed('/categories/new')?.then((result) {
+                onPressed: () => Get.toNamed(GetRoutes.addCategory)?.then((result) {
                   if (result == true) {
                     controller.loadCategories();
                   }

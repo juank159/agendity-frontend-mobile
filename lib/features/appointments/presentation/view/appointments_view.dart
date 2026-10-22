@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // lib/features/appointments/presentation/view/appointments_view.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -67,7 +68,7 @@ class AppointmentsView extends GetView<AppointmentsController> {
         // Solo mostrar el ícono de notificaciones a usuarios Owner
         if (userController.isOwner())
           IconButton(
-            onPressed: () => Get.toNamed('/notifications'),
+            onPressed: () => Get.toNamed(GetRoutes.notifications),
             icon: const Icon(Icons.notifications),
             tooltip: 'Notificaciones',
           ),

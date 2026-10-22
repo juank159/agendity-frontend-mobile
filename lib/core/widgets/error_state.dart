@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 class ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
+  final String title;
+  final String actionLabel;
+  final IconData actionIcon;
+  final IconData icon;
 
   const ErrorState({
     Key? key,
     required this.message,
     required this.onRetry,
+    this.title = 'Ocurrió un error',
+    this.actionLabel = 'Reintentar',
+    this.actionIcon = Icons.refresh,
+    this.icon = Icons.error_outline,
   }) : super(key: key);
 
   @override
@@ -19,13 +27,13 @@ class ErrorState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.error_outline,
+              icon,
               size: 80,
               color: Colors.red[300],
             ),
             SizedBox(height: 16),
             Text(
-              'Ocurrió un error',
+              title,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -45,8 +53,8 @@ class ErrorState extends StatelessWidget {
             SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: onRetry,
-              icon: Icon(Icons.refresh),
-              label: Text('Reintentar'),
+              icon: Icon(actionIcon),
+              label: Text(actionLabel),
             ),
           ],
         ),

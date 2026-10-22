@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // import 'dart:async';
 
 // import 'package:flutter/material.dart';
@@ -127,7 +128,7 @@ class _SplashState extends State<SplashView>
     Timer(const Duration(seconds: 2), () {
       print('🚀 Navegando desde splash a login...');
       // Usar offAllNamed en lugar de to() para limpiar el stack
-      Get.offAllNamed('/login');
+      Get.offAllNamed(GetRoutes.login);
     });
   }
 

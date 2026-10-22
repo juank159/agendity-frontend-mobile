@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // import 'dart:convert';
 
 // import 'package:flutter/material.dart';
@@ -1268,7 +1269,7 @@ class EmployeesListScreen extends StatelessWidget {
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () {
-                Get.offAllNamed('/');
+                Get.offAllNamed(GetRoutes.home);
               },
             ),
             centerTitle: true,

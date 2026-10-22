@@ -55,6 +55,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           initialRoute: GetRoutes.splas,
           getPages: GetRoutes.routes,
+          unknownRoute: GetRoutes.unknownRoute,
 
           // Definir los temas
           theme: ThemeConfig.lightTheme.copyWith(

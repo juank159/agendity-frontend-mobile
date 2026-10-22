@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
@@ -177,7 +178,7 @@ class LoginController extends GetxController {
 
           // Navegar al dashboard con un pequeño delay para mostrar el mensaje
           Future.delayed(const Duration(milliseconds: 800), () {
-            Get.offAllNamed('/');
+            Get.offAllNamed(GetRoutes.home);
           });
         },
       );

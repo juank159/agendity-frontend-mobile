@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -173,7 +174,7 @@ class SubscriptionController extends GetxController {
 
       if (url.isNotEmpty) {
         print('SubscriptionController - Abriendo WebView con URL: $url');
-        Get.toNamed('/payment-webview', arguments: {'url': url});
+        Get.toNamed(GetRoutes.paymentWebview, arguments: {'url': url});
       } else {
         print('SubscriptionController - URL vacía, no se puede abrir WebView');
         Get.snackbar(

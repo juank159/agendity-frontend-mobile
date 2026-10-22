@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // import 'dart:async';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
@@ -874,7 +875,7 @@ class ResetPasswordController extends GetxController {
 
               try {
                 Get.until((route) => false);
-                Get.offAllNamed('/login');
+                Get.offAllNamed(GetRoutes.login);
               } catch (e) {
                 debugPrint('Error en navegación: $e');
                 Get.offAll(
@@ -885,7 +886,7 @@ class ResetPasswordController extends GetxController {
                   transition: Transition.fade,
                 );
                 Future.delayed(const Duration(milliseconds: 100), () {
-                  Get.offAllNamed('/login');
+                  Get.offAllNamed(GetRoutes.login);
                 });
               }
             });

@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // // lib/features/auth/presentation/views/email_verification_view.dart
 // import 'package:flutter/material.dart';
 // import 'package:flutter_svg/flutter_svg.dart';
@@ -184,7 +185,7 @@ class EmailVerificationView extends GetView<EmailVerificationController> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Get.offAllNamed('/login'),
+          onPressed: () => Get.offAllNamed(GetRoutes.login),
         ),
       ),
       body: Obx(

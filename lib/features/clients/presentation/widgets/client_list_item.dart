@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/utils/string_utils.dart';
@@ -56,7 +57,7 @@ class ClientListItem extends StatelessWidget {
       ),
       trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
       onTap: () => Get.toNamed(
-        '/clients/edit/${client.id}',
+        GetRoutes.editClient,
         arguments: {'clientId': client.id},
       ),
     );

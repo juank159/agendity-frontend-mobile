@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
@@ -66,7 +67,7 @@ class NewCategoryController extends GetxController {
       }
 
       // Clave del cambio: usar Get.back() con result para indicar éxito
-      Get.offAndToNamed('/categories');
+      Get.offAndToNamed(GetRoutes.categories);
     } catch (e) {
       debugPrint('Error al crear categoría: $e');
       showError('No se pudo crear la categoría: ${e.toString()}');

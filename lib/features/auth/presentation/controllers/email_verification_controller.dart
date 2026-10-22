@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // lib/features/auth/presentation/controllers/email_verification_controller.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -196,7 +197,7 @@ class EmailVerificationController extends GetxController {
 
             // Navegar al login para que inicie sesión manualmente
             Future.delayed(const Duration(seconds: 2), () {
-              Get.offAllNamed('/login', arguments: {
+              Get.offAllNamed(GetRoutes.login, arguments: {
                 'message':
                     'Email verificado correctamente. Inicia sesión con tus credenciales.',
                 'messageType': 'success'

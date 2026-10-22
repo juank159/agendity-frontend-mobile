@@ -337,10 +337,10 @@ class CustomDrawer extends GetView<UserInfoController> {
                                         Get.find<ServicesController>();
                                     await servicesController
                                         .initializeServices();
-                                    Get.toNamed('/services');
+                                    Get.toNamed(GetRoutes.services);
                                   } catch (e) {
                                     print('Error inicializando servicios: $e');
-                                    Get.toNamed('/services');
+                                    Get.toNamed(GetRoutes.services);
                                   }
                                 },
                               ),
@@ -353,10 +353,10 @@ class CustomDrawer extends GetView<UserInfoController> {
                                     final clientsController =
                                         Get.find<ClientsController>();
                                     await clientsController.loadClients();
-                                    Get.toNamed('/clients');
+                                    Get.toNamed(GetRoutes.clients);
                                   } catch (e) {
                                     print('Error inicializando clientes: $e');
-                                    Get.toNamed('/clients');
+                                    Get.toNamed(GetRoutes.clients);
                                   }
                                 },
                                 badgeCount:
@@ -436,7 +436,7 @@ class CustomDrawer extends GetView<UserInfoController> {
                               title: 'Ajustes',
                               onTap: () {
                                 Get.back();
-                                Get.toNamed('/whatsapp-config');
+                                Get.toNamed(GetRoutes.configWhatsapp);
                               },
                             ),
                             _buildDrawerItem(
@@ -444,7 +444,7 @@ class CustomDrawer extends GetView<UserInfoController> {
                               title: 'Centro de ayuda',
                               onTap: () {
                                 Get.back();
-                                Get.toNamed('/subscription-plans');
+                                Get.toNamed(GetRoutes.subscriptionPlans);
                               },
                             ),
                             _buildDrawerItem(

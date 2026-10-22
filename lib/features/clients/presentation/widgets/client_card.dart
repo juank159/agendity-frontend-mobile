@@ -1,3 +1,4 @@
+import 'package:login_signup/core/routes/routes.dart';
 // presentation/widgets/client_card.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -13,7 +14,7 @@ class ClientCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: () => Get.toNamed(
-          '/clients/edit',
+          GetRoutes.editClient,
           arguments: {'clientId': client.id},
         ),
         child: ListTile(

@@ -322,7 +322,7 @@ class PaymentWebViewScreen extends GetView<SubscriptionController> {
                   onPressed: () {
                     Get.back(); // Cerrar diálogo
                     Get.offAllNamed(
-                        '/appointments'); // Regresar a la pantalla principal
+                        GetRoutes.home); // Regresar a la pantalla principal
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange[700],

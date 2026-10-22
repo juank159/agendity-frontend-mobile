@@ -352,15 +352,14 @@ class ClientsRemoteDataSource {
   final Dio dio;
   final LocalStorage localStorage;
 
+  /// Timeout largo solo para subidas de archivos e importación en lote.
+  /// Se pasa por petición: el Dio es compartido y no se deben mutar sus `options`.
+  static const Duration _longTimeout = Duration(seconds: 60);
+
   ClientsRemoteDataSource({
     required this.dio,
     required this.localStorage,
-  }) {
-    // Configurar timeouts más largos para subida de archivos
-    dio.options.connectTimeout = const Duration(seconds: 60);
-    dio.options.receiveTimeout = const Duration(seconds: 60);
-    dio.options.sendTimeout = const Duration(seconds: 60);
-  }
+  });
 
   Future<String> _getValidToken() async {
     final token = await localStorage.getToken();
@@ -618,6 +617,8 @@ class ClientsRemoteDataSource {
         data: {'clients': cleanClients},
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
+          sendTimeout: _longTimeout,
+          receiveTimeout: _longTimeout,
           validateStatus: (status) => status! < 500,
         ),
       );
@@ -674,6 +675,8 @@ class ClientsRemoteDataSource {
         data: formData,
         queryParameters: {'folder': 'clients'},
         options: Options(
+          sendTimeout: _longTimeout,
+          receiveTimeout: _longTimeout,
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'multipart/form-data',
@@ -753,6 +756,8 @@ class ClientsRemoteDataSource {
         '/upload/image', // Usamos el nuevo endpoint centralizado
         data: formData,
         options: Options(
+          sendTimeout: _longTimeout,
+          receiveTimeout: _longTimeout,
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'multipart/form-data',

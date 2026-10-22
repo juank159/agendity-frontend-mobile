@@ -1,20 +1,30 @@
 import 'package:login_signup/core/routes/routes.dart';
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/config/api_config.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/create_paid_subscription_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_all_plans_usecase.dart';
+import 'package:login_signup/features/subscriptions/domain/usecases/get_current_subscription_usecase.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
+
+/// Estado de la verificación de un pago contra el backend.
+enum PaymentVerificationStatus {
+  idle,
+  verifying,
+  approved,
+  pending,
+  failed,
+  error
+}
 
 class SubscriptionController extends GetxController {
   final CheckSubscriptionStatusUseCase checkSubscriptionStatusUseCase;
   final GetAllPlansUseCase getAllPlansUseCase;
   final CreatePaidSubscriptionUseCase createPaidSubscriptionUseCase;
+  final GetCurrentSubscriptionUseCase getCurrentSubscriptionUseCase;
 
   // Estado
   final RxBool isLoading = false.obs;
@@ -26,10 +36,16 @@ class SubscriptionController extends GetxController {
   final Rx<SubscriptionPlanEntity?> selectedPlan =
       Rx<SubscriptionPlanEntity?>(null);
 
+  // Verificación del pago (pantalla de la webview)
+  final Rx<PaymentVerificationStatus> paymentVerification =
+      PaymentVerificationStatus.idle.obs;
+  final RxString paymentVerificationMessage = ''.obs;
+
   SubscriptionController({
     required this.checkSubscriptionStatusUseCase,
     required this.getAllPlansUseCase,
     required this.createPaidSubscriptionUseCase,
+    required this.getCurrentSubscriptionUseCase,
   });
 
   @override
@@ -174,6 +190,7 @@ class SubscriptionController extends GetxController {
 
       if (url.isNotEmpty) {
         print('SubscriptionController - Abriendo WebView con URL: $url');
+        resetPaymentVerification();
         Get.toNamed(GetRoutes.paymentWebview, arguments: {'url': url});
       } else {
         print('SubscriptionController - URL vacía, no se puede abrir WebView');
@@ -215,63 +232,55 @@ class SubscriptionController extends GetxController {
     return '';
   }
 
-  // Método para actualizar la suscripción después del pago exitoso
+  /// Consulta en el backend si el pago quedó confirmado.
+  ///
+  /// Solo `status == 'active'` cuenta como pagado. No se usa la URL de la
+  /// webview para decidir. Nota: hasta la tarea 2.03 el backend puede devolver
+  /// la suscripción de otro tenant.
+  Future<PaymentVerificationStatus> verifyPayment() async {
+    paymentVerification.value = PaymentVerificationStatus.verifying;
+    paymentVerificationMessage.value = '';
 
-  Future<void> refreshSubscriptionStatus() async {
     try {
-      isLoading.value = true;
-      error.value = null;
+      final subscription = await getCurrentSubscriptionUseCase();
 
-      // Obtener el token almacenado
-      final token = await Get.find<LocalStorage>().getToken();
-
-      if (token == null || token.isEmpty) {
-        print(
-            'SubscriptionController - No hay token disponible para actualización');
-        return;
+      switch (subscription.status) {
+        case 'active':
+          paymentVerification.value = PaymentVerificationStatus.approved;
+          paymentVerificationMessage.value = subscription.statusMessage;
+          if (subscription.plan != null) {
+            selectedPlan.value = subscription.plan;
+          }
+          await checkStatus();
+          break;
+        case 'pending':
+          paymentVerification.value = PaymentVerificationStatus.pending;
+          paymentVerificationMessage.value =
+              'Tu pago aún no ha sido confirmado. Puede tardar unos minutos.';
+          break;
+        default:
+          paymentVerification.value = PaymentVerificationStatus.failed;
+          paymentVerificationMessage.value =
+              'No encontramos un pago confirmado para tu suscripción.';
       }
-
-      // Extraer el tenant_id del token
-      final tenantId = _extractTenantIdFromToken(token);
-
-      if (tenantId.isEmpty) {
-        print(
-            'SubscriptionController - No se pudo obtener tenant_id para actualización');
-        return;
-      }
-
-      // URL para llamar a la API - usamos la URL base existente
-      final String baseUrl =
-          'http://192.168.0.5:3000/api'; // Ajusta según tu entorno
-      final String url = '$baseUrl/subscriptions/refresh-status';
-
-      print(
-          'SubscriptionController - Enviando solicitud de actualización a: $url');
-
-      // Crear una instancia de Dio usando tu configuración existente
-      final dio = ApiConfig.createDio(baseUrl);
-
-      // Realizar la llamada a la API
-      final response = await dio.post(
-        '/subscriptions/refresh-status',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'tenant-id': tenantId,
-          },
-        ),
-      );
-
-      print(
-          'SubscriptionController - Respuesta de refresh-status: ${response.statusCode} - ${response.data}');
-
-      // Actualizar el estado local después de la respuesta
-      await checkStatus();
     } catch (e) {
-      print('SubscriptionController - Error en refreshSubscriptionStatus: $e');
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
+      paymentVerification.value = PaymentVerificationStatus.error;
+      paymentVerificationMessage.value =
+          'No se pudo verificar el estado del pago. Revisa tu conexión e inténtalo de nuevo.';
     }
+
+    return paymentVerification.value;
+  }
+
+  /// El usuario rechazó el pago (flujo de demostración).
+  void markPaymentRejected() {
+    paymentVerification.value = PaymentVerificationStatus.failed;
+    paymentVerificationMessage.value =
+        'Tu pago no pudo ser procesado. Intenta nuevamente con otro método de pago.';
+  }
+
+  void resetPaymentVerification() {
+    paymentVerification.value = PaymentVerificationStatus.idle;
+    paymentVerificationMessage.value = '';
   }
 }

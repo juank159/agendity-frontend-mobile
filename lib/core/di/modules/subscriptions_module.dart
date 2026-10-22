@@ -6,6 +6,7 @@ import 'package:login_signup/features/subscriptions/domain/repositories/subscrip
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/create_paid_subscription_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_all_plans_usecase.dart';
+import 'package:login_signup/features/subscriptions/domain/usecases/get_current_subscription_usecase.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class SubscriptionsModule {
@@ -61,6 +62,15 @@ class SubscriptionsModule {
         print('Registrando CreatePaidSubscriptionUseCase');
         Get.put<CreatePaidSubscriptionUseCase>(
           CreatePaidSubscriptionUseCase(
+            Get.find<SubscriptionRepository>(),
+          ),
+          permanent: true,
+        );
+      }
+
+      if (!Get.isRegistered<GetCurrentSubscriptionUseCase>()) {
+        Get.put<GetCurrentSubscriptionUseCase>(
+          GetCurrentSubscriptionUseCase(
             Get.find<SubscriptionRepository>(),
           ),
           permanent: true,

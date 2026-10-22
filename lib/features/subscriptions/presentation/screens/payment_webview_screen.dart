@@ -3,172 +3,203 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/widgets/error_state.dart';
+import 'package:login_signup/core/widgets/loading_state.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
 
-class PaymentWebViewScreen extends GetView<SubscriptionController> {
+/// Muestra el checkout de Wompi y, cuando detecta la redirección de vuelta,
+/// confirma el pago consultando el backend (`SubscriptionController.verifyPayment`).
+///
+/// La URL nunca decide si el pago fue exitoso: ni `id=`, ni `transaction_id=`,
+/// ni los errores `net::ERR` de la webview.
+class PaymentWebViewScreen extends StatefulWidget {
   const PaymentWebViewScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<PaymentWebViewScreen> createState() => _PaymentWebViewScreenState();
+}
+
+class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
+  final SubscriptionController controller = Get.find<SubscriptionController>();
+
+  late final String _url;
+  WebViewController? _webViewController;
+  final RxInt _progress = 0.obs;
+  final Rx<String?> _loadError = Rx<String?>(null);
+  bool _callbackHandled = false;
+
+  bool get _isDemoUrl => _url.startsWith('myapp://');
+
+  @override
+  void initState() {
+    super.initState();
     final args = Get.arguments as Map<String, dynamic>?;
-    final String url = args?['url'] ?? '';
+    _url = (args?['url'] as String?) ?? '';
+    controller.resetPaymentVerification();
 
-    print('PaymentWebViewScreen - URL recibida: $url');
+    if (_url.isEmpty) return;
 
-    if (url.isEmpty) {
-      print('PaymentWebViewScreen - URL vacía, mostrando error');
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Error'),
-        ),
-        body: const Center(
-          child: Text('No se proporcionó una URL válida para el pago.'),
-        ),
-      );
-    }
-
-    // Si la URL usa un esquema personalizado (para pruebas), manejarlo directamente
-    if (url.startsWith('myapp://')) {
-      print(
-          'PaymentWebViewScreen - Detectada URL con esquema personalizado: $url');
-
-      // Mostrar un diálogo de demostración de pago
+    if (_isDemoUrl) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPaymentDemoDialog(context, url);
+        if (mounted) _showPaymentDemoDialog();
       });
-
-      // Retornar un scaffold vacío mientras tanto
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Pagar Suscripción'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Get.back(),
-            ),
-          ],
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return;
     }
 
-    print('PaymentWebViewScreen - Cargando WebView con URL: $url');
-
-    // Para URLs normales, usar WebView
-    final WebViewController webViewController = WebViewController()
+    _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onProgress: (int progress) {
-            print('WebView cargando: $progress%');
+          onProgress: (progress) => _progress.value = progress,
+          onPageStarted: (url) {
+            // Algunas plataformas no pasan los 302 por onNavigationRequest.
+            if (_isCallbackUrl(url)) _onCallbackDetected();
           },
-          onPageStarted: (String url) {
-            print('Cargando: $url');
-          },
-          onPageFinished: (String url) {
-            print('Carga completa: $url');
-
-            // Verificar si estamos en cualquier URL que contenga payment-callback o tuapp.com
-            if (url.contains('payment-callback') ||
-                url.contains('tuapp.com') ||
-                url.contains('transaction_id=') ||
-                url.contains('id=')) {
-              _handlePaymentSuccess();
-            }
-          },
-          onNavigationRequest: (NavigationRequest request) {
-            print('Solicitando navegación a: ${request.url}');
-
-            // Detectar cualquier redirección relacionada con el callback
-            if (request.url.contains('payment-callback') ||
-                request.url.contains('tuapp.com') ||
-                request.url.contains('myapp://')) {
-              print('Detectada redirección a callback: ${request.url}');
-              _handlePaymentSuccess();
+          onNavigationRequest: (request) {
+            if (_isCallbackUrl(request.url)) {
+              _onCallbackDetected();
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
           },
-          onWebResourceError: (WebResourceError error) {
-            print('Error de WebView: ${error.description}');
-
-            // Si la URL de callback falla (porque probablemente es ficticia),
-            // consideramos que el pago fue exitoso
-            if (error.description.contains('ERR_CONNECTION') ||
-                error.description.contains('net::ERR')) {
-              _handlePaymentSuccess();
+          onWebResourceError: (error) {
+            // Un error de carga NO significa pago exitoso. Solo se informa si
+            // falla la página principal y no estamos ya verificando.
+            if (error.isForMainFrame == true && !_callbackHandled) {
+              _loadError.value = error.description;
             }
           },
         ),
       )
-      ..loadRequest(Uri.parse(url));
+      ..loadRequest(Uri.parse(_url));
+  }
 
+  /// La redirección de vuelta es `myapp://payment-callback` o, cuando el
+  /// backend la reemplaza para Wompi, una URL http(s) con ruta `/payment-callback`.
+  bool _isCallbackUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    if (uri.scheme == 'myapp') return uri.host == 'payment-callback';
+    return uri.path.contains('/payment-callback');
+  }
+
+  void _onCallbackDetected() {
+    if (_callbackHandled) return;
+    _callbackHandled = true;
+    _verifyPayment();
+  }
+
+  Future<void> _verifyPayment() async {
+    final status = await controller.verifyPayment();
+    if (status == PaymentVerificationStatus.approved && mounted) {
+      Get.offAllNamed(GetRoutes.paymentSuccess);
+    }
+  }
+
+  void _reloadCheckout() {
+    _loadError.value = null;
+    _webViewController?.loadRequest(Uri.parse(_url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pagar Suscripción'),
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
+            tooltip: 'Cerrar',
             onPressed: () => Get.back(),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          LinearProgressIndicator(
-            backgroundColor: Colors.grey[200],
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).primaryColor,
-            ),
-          ),
-          Expanded(
-            child: WebViewWidget(controller: webViewController),
-          ),
-        ],
-      ),
+      body: _url.isEmpty
+          ? ErrorState(
+              title: 'Enlace de pago no válido',
+              message: 'No se proporcionó una URL válida para el pago.',
+              actionLabel: 'Volver',
+              actionIcon: Icons.arrow_back,
+              onRetry: () => Get.back(),
+            )
+          : Obx(() {
+              final status = controller.paymentVerification.value;
+              if (status != PaymentVerificationStatus.idle) {
+                return _buildVerification(context, status);
+              }
+              if (_isDemoUrl) {
+                return const LoadingState(message: 'Abriendo pago de prueba…');
+              }
+              if (_loadError.value != null) {
+                return ErrorState(
+                  title: 'No se pudo cargar la página de pago',
+                  message: _loadError.value!,
+                  onRetry: _reloadCheckout,
+                );
+              }
+              return Column(
+                children: [
+                  if (_progress.value < 100)
+                    LinearProgressIndicator(value: _progress.value / 100),
+                  Expanded(
+                    child: WebViewWidget(controller: _webViewController!),
+                  ),
+                ],
+              );
+            }),
     );
   }
 
-  // Nuevo método simplificado para manejar redirecciones exitosas
-  void _handlePaymentSuccess() {
-    // Actualizar la suscripción en el backend antes de redirigir
-    _updateSubscriptionStatus().then((_) {
-      // Navegar a la pantalla de éxito
-      Get.offAllNamed(GetRoutes.paymentSuccess);
-    });
-  }
+  Widget _buildVerification(
+      BuildContext context, PaymentVerificationStatus status) {
+    final message = controller.paymentVerificationMessage.value;
 
-  // Método para actualizar el estado de la suscripción en el backend
-  Future<void> _updateSubscriptionStatus() async {
-    try {
-      // Intentar actualizar la suscripción
-      await controller.refreshSubscriptionStatus();
-      print('Estado de suscripción actualizado correctamente después del pago');
-    } catch (e) {
-      print('Error actualizando estado de suscripción después del pago: $e');
-      // Continuamos con la navegación aunque falle la actualización
+    switch (status) {
+      case PaymentVerificationStatus.error:
+        return ErrorState(
+          title: 'No se pudo verificar el pago',
+          message: message,
+          actionLabel: 'Reintentar verificación',
+          onRetry: _verifyPayment,
+        );
+      case PaymentVerificationStatus.pending:
+        return _VerificationMessage(
+          icon: Icons.access_time,
+          title: 'Pago en proceso',
+          message: message,
+          primaryLabel: 'Verificar de nuevo',
+          onPrimary: _verifyPayment,
+          secondaryLabel: 'Ir al inicio',
+          onSecondary: () => Get.offAllNamed(GetRoutes.home),
+        );
+      case PaymentVerificationStatus.failed:
+        return _VerificationMessage(
+          icon: Icons.cancel_outlined,
+          title: 'Pago no completado',
+          message: message,
+          primaryLabel: 'Volver a los planes',
+          onPrimary: () => Get.back(),
+          secondaryLabel: 'Verificar de nuevo',
+          onSecondary: _verifyPayment,
+        );
+      case PaymentVerificationStatus.verifying:
+      case PaymentVerificationStatus.approved:
+      case PaymentVerificationStatus.idle:
+        return const LoadingState(message: 'Verificando pago…');
     }
   }
 
-  // Método para mostrar diálogo de demostración (solo en desarrollo)
-  void _showPaymentDemoDialog(BuildContext context, String url) {
-    // Parsear la URL para obtener parámetros
-    final Uri uri = Uri.parse(url);
-    final String reference = uri.queryParameters['reference'] ?? '';
-    final String redirectUrl =
-        uri.queryParameters['redirect'] ?? 'myapp://payment-callback';
-
-    print('Mostrando diálogo de demostración de pago');
-    print('Referencia: $reference');
-    print('URL de redirección: $redirectUrl');
+  // Flujo de demostración (cuando el backend devuelve `myapp://payment-demo`).
+  // "Aprobar" ya no da el pago por hecho: consulta el estado en el backend.
+  void _showPaymentDemoDialog() {
+    final uri = Uri.parse(_url);
+    final reference = uri.queryParameters['reference'] ?? '';
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Demo de Pago',
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
@@ -183,169 +214,72 @@ class PaymentWebViewScreen extends GetView<SubscriptionController> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              // Simular pago rechazado
-              _showPaymentErrorDialog('declined');
+              Navigator.of(dialogContext).pop();
+              controller.markPaymentRejected();
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Rechazar'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              // Simular pago aprobado
-              _handlePaymentSuccess();
+              Navigator.of(dialogContext).pop();
+              _onCallbackDetected();
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.green),
             child: const Text('Aprobar'),
           ),
         ],
       ),
     );
   }
+}
 
-  void _showPaymentErrorDialog(String status) {
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.error,
-                  color: Colors.red[700],
-                  size: 48,
-                ),
+class _VerificationMessage extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+  final String secondaryLabel;
+  final VoidCallback onSecondary;
+
+  const _VerificationMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.primaryLabel,
+    required this.onPrimary,
+    required this.secondaryLabel,
+    required this.onSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 72, color: theme.colorScheme.primary),
+            const SizedBox(height: 16),
+            Text(title,
+                style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(message,
+                style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onPrimary,
+                child: Text(primaryLabel),
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Pago no completado',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tu pago no pudo ser procesado. Por favor, intenta nuevamente con otro método de pago.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.back(); // Cerrar diálogo
-                    Get.back(); // Volver a la pantalla de planes
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[700],
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Intentar de nuevo',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(onPressed: onSecondary, child: Text(secondaryLabel)),
+          ],
         ),
       ),
-      barrierDismissible: false,
-    );
-  }
-
-  void _showPaymentPendingDialog() {
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.access_time,
-                  color: Colors.orange[700],
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Pago en proceso',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tu pago está siendo procesado. Te notificaremos cuando se confirme.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.back(); // Cerrar diálogo
-                    Get.offAllNamed(
-                        GetRoutes.home); // Regresar a la pantalla principal
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[700],
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Entendido',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      barrierDismissible: false,
     );
   }
 }

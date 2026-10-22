@@ -8,6 +8,7 @@ import 'package:login_signup/features/subscriptions/domain/repositories/subscrip
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/create_paid_subscription_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_all_plans_usecase.dart';
+import 'package:login_signup/features/subscriptions/domain/usecases/get_current_subscription_usecase.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
@@ -76,6 +77,14 @@ class SubscriptionBinding extends Bindings {
         print('CreatePaidSubscriptionUseCase ya está registrado');
       }
 
+      if (!Get.isRegistered<GetCurrentSubscriptionUseCase>()) {
+        Get.put<GetCurrentSubscriptionUseCase>(
+          GetCurrentSubscriptionUseCase(
+            Get.find<SubscriptionRepository>(),
+          ),
+        );
+      }
+
       // Controller
       if (!Get.isRegistered<SubscriptionController>()) {
         print('Registrando SubscriptionController');
@@ -86,6 +95,8 @@ class SubscriptionBinding extends Bindings {
             getAllPlansUseCase: Get.find<GetAllPlansUseCase>(),
             createPaidSubscriptionUseCase:
                 Get.find<CreatePaidSubscriptionUseCase>(),
+            getCurrentSubscriptionUseCase:
+                Get.find<GetCurrentSubscriptionUseCase>(),
           ),
         );
       } else {
@@ -110,7 +121,8 @@ class SubscriptionBinding extends Bindings {
         if (!Get.isRegistered<SubscriptionController>() &&
             Get.isRegistered<CheckSubscriptionStatusUseCase>() &&
             Get.isRegistered<GetAllPlansUseCase>() &&
-            Get.isRegistered<CreatePaidSubscriptionUseCase>()) {
+            Get.isRegistered<CreatePaidSubscriptionUseCase>() &&
+            Get.isRegistered<GetCurrentSubscriptionUseCase>()) {
           print('Intentando registrar SubscriptionController después de error');
           Get.put<SubscriptionController>(
             SubscriptionController(
@@ -119,6 +131,8 @@ class SubscriptionBinding extends Bindings {
               getAllPlansUseCase: Get.find<GetAllPlansUseCase>(),
               createPaidSubscriptionUseCase:
                   Get.find<CreatePaidSubscriptionUseCase>(),
+              getCurrentSubscriptionUseCase:
+                  Get.find<GetCurrentSubscriptionUseCase>(),
             ),
           );
         }

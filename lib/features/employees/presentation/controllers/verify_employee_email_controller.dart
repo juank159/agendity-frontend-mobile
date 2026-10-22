@@ -183,63 +183,20 @@ class VerifyEmployeeEmailController extends GetxController {
       } catch (apiError) {
         print('Error en la API al solicitar código: $apiError');
 
-        // Si hay error, intentar con otra ruta alternativa
-        try {
-          final dio = Get.find<Dio>();
-          final localStorage = Get.find<LocalStorage>();
-          final token = await localStorage.getToken();
+        // Nunca se envía un código inventado: se muestra el error y el
+        // usuario puede reintentar con el botón de reenvío.
+        errorMessage.value =
+            'No se pudo enviar el código de verificación. Intenta reenviarlo.';
+        canResendCode.value = true;
 
-          // Intento con otra ruta posible de verificación
-          final response = await dio.post(
-            '${dio.options.baseUrl}/auth/verify/employee-email',
-            options: Options(
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': 'Bearer $token',
-              },
-            ),
-            data: {
-              'employee_id': employeeId,
-              'code': '123456', // Código de prueba
-            },
-          );
-
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            print('Código enviado exitosamente con ruta alternativa');
-
-            // Iniciar temporizador para código
-            _startTimer();
-
-            // Deshabilitar el reenvío temporal
-            canResendCode.value = false;
-            _startResendCountdown();
-
-            Get.snackbar(
-              'Código enviado',
-              'Se ha enviado un código de verificación a ${email.value}',
-              snackPosition: SnackPosition.TOP,
-              backgroundColor: Colors.green[100],
-              colorText: Colors.green[900],
-            );
-          } else {
-            throw Exception(
-                'Error en la solicitud alternativa: ${response.statusCode}');
-          }
-        } catch (secondApiError) {
-          print('Error en segundo intento: $secondApiError');
-          errorMessage.value =
-              'No se pudo enviar el código de verificación. Contacte con soporte.';
-
-          Get.snackbar(
-            'Error',
-            'No se pudo enviar el código de verificación. Por favor, contacte con soporte técnico.',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.red[100],
-            colorText: Colors.red[900],
-            duration: Duration(seconds: 5),
-          );
-        }
+        Get.snackbar(
+          'Error',
+          'No se pudo enviar el código de verificación. Pulsa "Reenviar código" para intentarlo de nuevo.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[900],
+          duration: Duration(seconds: 5),
+        );
       }
     } catch (e) {
       print('Error general al solicitar código: $e');

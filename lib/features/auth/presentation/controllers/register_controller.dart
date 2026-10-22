@@ -210,55 +210,19 @@ class RegisterController extends GetxController {
             color: Colors.green,
           );
 
-          // Solicitar código de verificación automáticamente
+          // El código lo pide una sola vez la pantalla de verificación
+          // (EmailVerificationController.onInit), que también gestiona el
+          // temporizador y el reenvío. Pedirlo aquí también anulaba el primero.
           final email = emailController.text.trim();
-          print('📧 Solicitando código de verificación para: $email');
 
-          final codeResult = await requestVerificationCodeUseCase(
-            email: email,
-            isNewUser: true,
-          );
+          clearInputs();
 
-          await codeResult.fold(
-            (codeFailure) {
-              print('❌ Error solicitando código: ${codeFailure.message}');
-
-              _showSnackbar(
-                title: 'Advertencia',
-                message:
-                    'Cuenta creada exitosamente, pero hubo un problema enviando el código de verificación.',
-                color: Colors.orange,
-              );
-
-              clearInputs();
-
-              Future.delayed(const Duration(milliseconds: 1000), () {
-                Get.offAllNamed(GetRoutes.verifyEmail, arguments: {
-                  'email': email,
-                  'isNewUser': true,
-                });
-              });
-            },
-            (success) {
-              print('✅ Código de verificación enviado exitosamente');
-
-              _showSnackbar(
-                title: '¡Código enviado!',
-                message:
-                    'Revisa tu correo electrónico para verificar tu cuenta.',
-                color: Colors.green,
-              );
-
-              clearInputs();
-
-              Future.delayed(const Duration(milliseconds: 1000), () {
-                Get.offAllNamed(GetRoutes.verifyEmail, arguments: {
-                  'email': email,
-                  'isNewUser': true,
-                });
-              });
-            },
-          );
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            Get.offAllNamed(GetRoutes.verifyEmail, arguments: {
+              'email': email,
+              'isNewUser': true,
+            });
+          });
         },
       );
     } catch (e) {

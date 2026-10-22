@@ -431,44 +431,6 @@ class VerifyEmployeeEmailController extends GetxController {
     }
   }
 
-  // Método sencillo para usar en el botón "Usar código de prueba"
-  Future<void> simulateVerificationAndNavigate() async {
-    if (_isDisposed.value) return;
-
-    try {
-      isLoading.value = true;
-
-      // Activar el empleado de todos modos
-      if (employeeId.isNotEmpty) {
-        try {
-          print('Activando empleado con ID: $employeeId (método alternativo)');
-          await toggleEmployeeStatusUseCase(employeeId, true);
-          print('Empleado activado con éxito (método alternativo)');
-        } catch (e) {
-          print('Error al activar empleado (método alternativo): $e');
-        }
-      }
-
-      // Mostrar feedback visual
-      Get.snackbar(
-        'Éxito',
-        'Verificación simulada con éxito',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.green[100],
-        colorText: Colors.green[900],
-        duration: const Duration(seconds: 1),
-      );
-
-      // Navegar de forma segura
-      safeNavigateToEmployeesList();
-    } catch (e) {
-      print('Error en simulación: $e');
-      errorMessage.value = 'Error: ${e.toString()}';
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
   // Método para iniciar el temporizador del código
   void _startTimer() {
     if (_isDisposed.value) return;

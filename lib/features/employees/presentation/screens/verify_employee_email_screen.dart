@@ -242,53 +242,6 @@ class VerifyEmployeeEmailScreen extends GetView<VerifyEmployeeEmailController> {
                                 foregroundColor: AppColors.cardIndicator,
                               ),
                             )),
-                        const SizedBox(height: 20),
-
-                        // Botón para método alternativo
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10.0),
-                          child: OutlinedButton.icon(
-                            onPressed: controller.isLoading.value
-                                ? null
-                                : controller.simulateVerificationAndNavigate,
-                            icon: const Icon(Icons.verified_user),
-                            label: const Text(
-                              'Verificar y continuar (Método alternativo)',
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
-                              foregroundColor: AppColors.cardIndicator,
-                              side: BorderSide(color: AppColors.cardIndicator),
-                            ),
-                          ),
-                        ),
-
-                        // Botón para desarrollo - modo fácil
-                        Padding(
-                          padding: const EdgeInsets.only(top: 20.0),
-                          child: OutlinedButton(
-                            onPressed: controller.isLoading.value
-                                ? null
-                                : () {
-                                    // Configurar código de prueba
-                                    if (controller.codeController != null) {
-                                      controller.codeController!.text =
-                                          '123456';
-                                      controller.verifyEmail();
-                                    }
-                                  },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              side: BorderSide(color: Colors.grey[400]!),
-                            ),
-                            child: Text(
-                              'Usar código de prueba (solo desarrollo)',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),

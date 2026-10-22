@@ -85,14 +85,16 @@ class ApiConfig {
     return dio;
   }
 
+  static const _idempotentMethods = {'GET', 'HEAD', 'OPTIONS'};
+
+  /// Solo se reintentan peticiones idempotentes que no llegaron al servidor
+  /// (error de conexión o timeout al conectar). Nunca POST/PUT/PATCH/DELETE,
+  /// ni timeouts de envío/recepción (el servidor pudo procesarla), ni 401/5xx.
   static bool _shouldRetry(DioException error) {
+    final method = error.requestOptions.method.toUpperCase();
+    if (!_idempotentMethods.contains(method)) return false;
     return error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.sendTimeout ||
-        error.type == DioExceptionType.receiveTimeout ||
-        error.type == DioExceptionType.connectionError ||
-        (error.response?.statusCode == 401) ||
-        (error.response?.statusCode ==
-            500); // Agregado para reintentar en error 500
+        error.type == DioExceptionType.connectionError;
   }
 
   static String _getErrorMessage(DioException error) {

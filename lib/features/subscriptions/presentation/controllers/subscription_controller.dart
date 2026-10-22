@@ -1,14 +1,13 @@
 import 'package:login_signup/core/routes/routes.dart';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/errors/failures.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/create_paid_subscription_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_all_plans_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_current_subscription_usecase.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 /// Estado de la verificación de un pago contra el backend.
 enum PaymentVerificationStatus {
@@ -116,64 +115,18 @@ class SubscriptionController extends GetxController {
     }
   }
 
-  // Crea una suscripción pagada y obtiene el link de pago
-  // Crea una suscripción pagada y obtiene el link de pago
+  /// Crea una suscripción pagada y devuelve el link de pago del backend.
+  /// Devuelve '' si el backend no entrega link y lanza la [Failure] si falla:
+  /// nunca inventa un link de demostración.
   Future<String> createSubscription(String planId) async {
     try {
       isLoading.value = true;
-      error.value = null;
 
-      print('SubscriptionController - Creando suscripción para plan: $planId');
-
-      // URL para redirección (usando formato que aceptará el backend)
-      // Nota: En desarrollo, es importante usar myapp:// ya que será aceptado por el DTO
-      final redirectUrl = 'myapp://payment-callback';
-
-      // Obtener el tenant_id del token almacenado
-      final token = await Get.find<LocalStorage>().getToken();
-      final tenantId = _extractTenantIdFromToken(token ?? '');
-
-      print(
-          'SubscriptionController - Enviando datos: {plan_id: $planId, redirect_url: $redirectUrl, tenant_id: $tenantId}');
-
+      // El backend acepta myapp:// y lo reemplaza para Wompi.
+      const redirectUrl = 'myapp://payment-callback';
       final result = await createPaidSubscriptionUseCase(planId, redirectUrl);
 
-      print('SubscriptionController - Respuesta de API: $result');
-
-      // Extraer la URL del link de pago de la respuesta
-      paymentUrl.value = result['payment_link'] ?? '';
-
-      if (paymentUrl.value.isEmpty) {
-        print('SubscriptionController - URL de pago vacía');
-
-        // Crear una URL de pago de demostración como último recurso
-        final String fallbackReference =
-            'sub_fallback_${DateTime.now().millisecondsSinceEpoch}';
-        paymentUrl.value =
-            'myapp://payment-demo?reference=$fallbackReference&redirect=myapp%3A%2F%2Fpayment-callback';
-
-        print(
-            'SubscriptionController - Generada URL de pago de respaldo: ${paymentUrl.value}');
-      } else {
-        print(
-            'SubscriptionController - URL de pago generada: ${paymentUrl.value}');
-      }
-
-      return paymentUrl.value;
-    } catch (e) {
-      print('SubscriptionController - Error en createSubscription: $e');
-      error.value = e.toString();
-
-      // Crear una URL de pago de demostración como último recurso
-      final String fallbackReference =
-          'sub_fallback_${DateTime.now().millisecondsSinceEpoch}';
-      paymentUrl.value =
-          'myapp://payment-demo?reference=$fallbackReference&redirect=myapp%3A%2F%2Fpayment-callback';
-
-      print(
-          'SubscriptionController - Generada URL de pago de respaldo después de error: ${paymentUrl.value}');
-
-      // No mostrar snackbar con error porque seguiremos con el flujo de demostración
+      paymentUrl.value = (result['payment_link'] as String?) ?? '';
       return paymentUrl.value;
     } finally {
       isLoading.value = false;
@@ -196,7 +149,7 @@ class SubscriptionController extends GetxController {
         print('SubscriptionController - URL vacía, no se puede abrir WebView');
         Get.snackbar(
           'Error',
-          'No se pudo generar el link de pago',
+          'El servidor no devolvió un link de pago. Inténtalo de nuevo más tarde.',
           backgroundColor: Colors.red[100],
           colorText: Colors.red[800],
           duration: const Duration(seconds: 3),
@@ -206,30 +159,14 @@ class SubscriptionController extends GetxController {
       print('SubscriptionController - Error al abrir WebView: $e');
       Get.snackbar(
         'Error',
-        'No se pudo abrir la página de pago: ${e.toString()}',
+        e is Failure
+            ? 'No se pudo iniciar el pago: ${e.message}'
+            : 'No se pudo iniciar el pago: ${e.toString()}',
         backgroundColor: Colors.red[100],
         colorText: Colors.red[800],
         duration: const Duration(seconds: 3),
       );
     }
-  }
-
-  // Método para extraer el tenant_id
-  String _extractTenantIdFromToken(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length > 1) {
-        final payload = base64Url.normalize(parts[1]);
-        final decoded = utf8.decode(base64Url.decode(payload));
-        final Map<String, dynamic> data = jsonDecode(decoded);
-        final tenantId = data['tenant_id'] ?? '';
-        print('Tenant ID extraído del token: $tenantId');
-        return tenantId;
-      }
-    } catch (e) {
-      print('Error extrayendo tenant_id del token: $e');
-    }
-    return '';
   }
 
   /// Consulta en el backend si el pago quedó confirmado.

@@ -29,43 +29,6 @@ class UpcomingAppointmentsScreen
             onPressed: () => controller.cleanExpiredAppointments(),
             tooltip: 'Limpiar citas pasadas',
           ),
-          // ✅ Botón de debug para desarrolladores (opcional)
-          if (true) // Cambiar a false en producción
-            PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert),
-              onSelected: (value) {
-                switch (value) {
-                  case 'debug':
-                    controller.debugNotifications();
-                    break;
-                  case 'cancel_all':
-                    controller.cancelAllAppointmentNotifications();
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'debug',
-                  child: Row(
-                    children: [
-                      Icon(Icons.bug_report, size: 20),
-                      SizedBox(width: 8),
-                      Text('Debug Notificaciones'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'cancel_all',
-                  child: Row(
-                    children: [
-                      Icon(Icons.cancel, size: 20),
-                      SizedBox(width: 8),
-                      Text('Cancelar Todas'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
         ],
       ),
       body: Obx(() {

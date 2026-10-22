@@ -316,46 +316,6 @@ class AppointmentReminderController extends GetxController {
     _cleanExpiredAppointments();
   }
 
-  // ✅ MÉTODO PÚBLICO: Obtener información de notificaciones pendientes
-  Future<void> debugNotifications() async {
-    try {
-      final pendingNotifications = await notificationService.getPendingNotifications();
-      print('📱 NOTIFICACIONES PENDIENTES:');
-      print('   Total: ${pendingNotifications.length}');
-      
-      for (final notification in pendingNotifications) {
-        print('   ID: ${notification.id} - ${notification.title}');
-        print('      Body: ${notification.body}');
-        print('      Payload: ${notification.payload}');
-      }
-
-      // Verificar cuáles de nuestras citas tienen notificaciones pendientes
-      print('\n🔍 VERIFICACIÓN POR CITA:');
-      for (final appointment in upcomingAppointments) {
-        final notificationId = appointment.id.hashCode;
-        final isPending = await notificationService.isNotificationPending(notificationId);
-        print('   ${appointment.clientName}: ${isPending ? '✅ Programada' : '❌ No programada'}');
-      }
-    } catch (e) {
-      print('❌ Error al obtener información de notificaciones: $e');
-    }
-  }
-
-  // ✅ MÉTODO PÚBLICO: Cancelar todas las notificaciones de citas
-  Future<void> cancelAllAppointmentNotifications() async {
-    try {
-      final notificationIds = upcomingAppointments.map((appointment) => appointment.id.hashCode).toList();
-      
-      for (final notificationId in notificationIds) {
-        await notificationService.cancelNotification(notificationId);
-      }
-      
-      print('🔔 Canceladas ${notificationIds.length} notificaciones de citas');
-    } catch (e) {
-      print('❌ Error cancelando notificaciones: $e');
-    }
-  }
-
   @override
   void onClose() {
     // ✅ Limpiar timer al cerrar el controlador

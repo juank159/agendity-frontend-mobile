@@ -37,9 +37,10 @@ class PaymentModel extends PaymentEntity {
       id: json['id'] ?? '',
       appointmentId: json['appointment_id'] ?? '',
       amount: double.parse(json['amount'].toString()),
-      paymentMethod: _parsePaymentMethod(json['payment_method']),
+      paymentMethod: _parsePaymentMethod(
+          json['payment_method'], json['custom_payment_method_id']),
       customPaymentMethodId: json['custom_payment_method_id'],
-      status: PaymentStatus.COMPLETED,
+      status: PaymentStatus.fromApi(json['status']) ?? PaymentStatus.COMPLETED,
       transactionId: json['transaction_id'],
       paymentDetails: json['payment_details'],
       createdAt: json['created_at'] != null
@@ -55,7 +56,8 @@ class PaymentModel extends PaymentEntity {
     return {
       'appointment_id': appointmentId,
       'amount': amount,
-      'payment_method': paymentMethod.toString().split('.').last,
+      // CUSTOM no existe en el backend: viaja solo como custom_payment_method_id.
+      if (paymentMethod.toApi() != null) 'payment_method': paymentMethod.toApi(),
       'custom_payment_method_id': customPaymentMethodId,
       'transaction_id': transactionId,
       'payment_details': paymentDetails,
@@ -70,22 +72,14 @@ class PaymentModel extends PaymentEntity {
     return '${localDate.day}/${localDate.month}/${localDate.year} - ${localDate.hour}:${localDate.minute.toString().padLeft(2, '0')}';
   }
 
-  static PaymentMethod _parsePaymentMethod(String? method) {
-    if (method == null) return PaymentMethod.CASH;
-
-    switch (method) {
-      case 'CASH':
-        return PaymentMethod.CASH;
-      case 'CREDIT_CARD':
-        return PaymentMethod.CREDIT_CARD;
-      case 'DEBIT_CARD':
-        return PaymentMethod.DEBIT_CARD;
-      case 'TRANSFER':
-        return PaymentMethod.TRANSFER;
-      case 'ONLINE':
-        return PaymentMethod.ONLINE;
-      default:
-        return PaymentMethod.CUSTOM;
-    }
+  /// Estándar → su valor; con método propio del negocio (o un valor que no
+  /// se reconoce) → CUSTOM; sin nada → CASH, como antes.
+  static PaymentMethod _parsePaymentMethod(Object? method, Object? customId) {
+    final standard = PaymentMethod.fromApi(method);
+    if (standard != null) return standard;
+    return method == null && customId == null
+        ? PaymentMethod.CASH
+        : PaymentMethod.CUSTOM;
   }
+
 }

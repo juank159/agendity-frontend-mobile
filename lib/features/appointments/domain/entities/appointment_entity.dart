@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/common/enums/appointment_status_enum.dart';
 
 class AppointmentEntity {
   final String id;
@@ -22,10 +23,10 @@ class AppointmentEntity {
   static const String PAYMENT_REFUNDED = 'REFUNDED';
   static const String PAYMENT_CANCELLED = 'CANCELLED';
 
-  // Estados de la cita
-  static const String STATUS_PENDING = 'pending';
-  static const String STATUS_COMPLETED = 'completed';
-  static const String STATUS_CANCELLED = 'cancelled';
+  // Estados de la cita (valores del backend; ver AppointmentStatus)
+  static const String STATUS_PENDING = 'PENDING';
+  static const String STATUS_COMPLETED = 'COMPLETED';
+  static const String STATUS_CANCELLED = 'CANCELLED';
 
   const AppointmentEntity({
     required this.id,
@@ -44,7 +45,11 @@ class AppointmentEntity {
   });
 
   // Métodos de utilidad
-  bool get isCompleted => status == STATUS_COMPLETED;
+  /// Estado tipado; un valor desconocido cuenta como PENDING.
+  AppointmentStatus get statusValue =>
+      AppointmentStatus.fromApi(status) ?? AppointmentStatus.PENDING;
+
+  bool get isCompleted => statusValue == AppointmentStatus.COMPLETED;
   bool get isPaymentCompleted => paymentStatus == PAYMENT_COMPLETED;
 
   // Obtener el primer color o un color por defecto
@@ -61,25 +66,27 @@ class AppointmentEntity {
   }
 
   Color getStatusColor() {
-    switch (status) {
-      case STATUS_COMPLETED:
+    switch (statusValue) {
+      case AppointmentStatus.COMPLETED:
         return Colors.green;
-      case STATUS_CANCELLED:
+      case AppointmentStatus.CANCELLED:
         return Colors.red;
-      case STATUS_PENDING:
-      default:
+      case AppointmentStatus.CONFIRMED:
+        return Colors.blue;
+      case AppointmentStatus.PENDING:
         return Colors.orange;
     }
   }
 
   String getStatusText() {
-    switch (status) {
-      case STATUS_COMPLETED:
+    switch (statusValue) {
+      case AppointmentStatus.COMPLETED:
         return 'Completado';
-      case STATUS_CANCELLED:
+      case AppointmentStatus.CANCELLED:
         return 'Cancelado';
-      case STATUS_PENDING:
-      default:
+      case AppointmentStatus.CONFIRMED:
+        return 'Confirmado';
+      case AppointmentStatus.PENDING:
         return 'Pendiente';
     }
   }

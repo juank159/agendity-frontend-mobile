@@ -1,4 +1,5 @@
 import 'package:login_signup/features/auth/domain/entities/register_entity.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class RegisterModel extends RegisterEntity {
   RegisterModel({
@@ -37,8 +38,8 @@ class RegisterModel extends RegisterEntity {
           .toList(),
       image: json['image'],
       notificationToken: json['notification_token'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: DateCodec.decode(json['created_at']),
+      updatedAt: DateCodec.decode(json['updated_at']),
     );
   }
 }

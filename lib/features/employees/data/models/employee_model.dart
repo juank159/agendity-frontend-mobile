@@ -1,6 +1,7 @@
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/role_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class EmployeeModel extends EmployeeEntity {
   EmployeeModel({
@@ -135,9 +136,7 @@ class EmployeeModel extends EmployeeEntity {
 
       // 🆕 NUEVOS CAMPOS de Soft Delete
       isDeleted: json['isDeleted'] as bool? ?? false,
-      deletedAt: json['deletedAt'] != null
-          ? DateTime.tryParse(json['deletedAt'].toString())
-          : null,
+      deletedAt: DateCodec.tryDecode(json['deletedAt']),
       deletionReason: json['deletionReason']?.toString(),
       deletedBy: json['deletedBy']?.toString(),
     );
@@ -163,7 +162,7 @@ class EmployeeModel extends EmployeeEntity {
 
       // 🆕 NUEVOS CAMPOS
       'isDeleted': isDeleted,
-      'deletedAt': deletedAt?.toIso8601String(),
+      'deletedAt': DateCodec.encodeOrNull(deletedAt),
       'deletionReason': deletionReason,
       'deletedBy': deletedBy,
     };

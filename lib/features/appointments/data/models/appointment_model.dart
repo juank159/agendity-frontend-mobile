@@ -1,5 +1,6 @@
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:intl/intl.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class AppointmentModel extends AppointmentEntity {
   final List<String> serviceIds;
@@ -76,7 +77,7 @@ class AppointmentModel extends AppointmentEntity {
     final clientId = json['clientId'] ?? client['id'];
 
     // Parsear la fecha manteniendo la hora local
-    final dateTime = DateTime.parse(json['date']).toLocal();
+    final dateTime = DateCodec.decode(json['date']);
 
     print('DEBUG - Fecha del servidor: ${json['date']}');
     print('DEBUG - Fecha parseada local: ${dateTime.toString()}');
@@ -166,8 +167,8 @@ class AppointmentModel extends AppointmentEntity {
   }
 
   Map<String, dynamic> toJson() {
-    // La fecha ya está en local, solo necesitamos agregarle el offset
-    final dateString = startTime.toLocal().toIso8601String();
+    // Instante en UTC: el backend respeta el offset (sin él leería hora de Bogotá).
+    final dateString = DateCodec.encode(startTime);
 
     print('DEBUG - Fecha original (local): ${startTime.toString()}');
     print('DEBUG - Fecha a enviar: $dateString');

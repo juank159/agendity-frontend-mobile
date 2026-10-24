@@ -132,6 +132,7 @@
 // lib/features/clients/data/models/client_model.dart
 
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 // ✅ MODELO DE PAGINACIÓN PARA RESPUESTAS DEL BACKEND
 class PaginatedResponse<T> {
@@ -220,17 +221,13 @@ class ClientModel extends ClientEntity {
       isFromDevice: json['isFromDevice'] ?? false,
       deviceContactId: json['deviceContactId'],
       lastVisit:
-          json['lastVisit'] != null ? DateTime.parse(json['lastVisit']) : null,
+          DateCodec.tryDecode(json['lastVisit']),
       isActive: json['isActive'] ?? true,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
+      createdAt: DateCodec.tryDecode(json['created_at']),
+      updatedAt: DateCodec.tryDecode(json['updated_at']),
       notes: json['notes'],
       birthday:
-          json['birthday'] != null ? DateTime.parse(json['birthday']) : null,
+          DateCodec.tryDecode(json['birthday']),
       showNotes: json['showNotes'] ?? false,
     );
   }
@@ -244,7 +241,7 @@ class ClientModel extends ClientEntity {
       'image': image,
       'address': address?.trim(),
       'notes': notes?.trim(),
-      'birthday': birthday?.toIso8601String(),
+      'birthday': DateCodec.encodeOrNull(birthday),
       'showNotes': showNotes,
     };
 

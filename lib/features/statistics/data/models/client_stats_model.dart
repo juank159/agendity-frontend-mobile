@@ -1,4 +1,5 @@
 import '../../domain/entities/client_stats_entity.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class ClientStatsModel extends ClientStatsEntity {
   ClientStatsModel({
@@ -17,8 +18,8 @@ class ClientStatsModel extends ClientStatsEntity {
     return ClientStatsModel(
       clientId: json['client_id'] as String,
       clientName: json['client_name'] as String,
-      firstVisitDate: DateTime.parse(json['first_visit_date']),
-      lastVisitDate: DateTime.parse(json['last_visit_date']),
+      firstVisitDate: DateCodec.decode(json['first_visit_date']),
+      lastVisitDate: DateCodec.decode(json['last_visit_date']),
       visitCount: json['visit_count'] as int,
       paymentCount: json['payment_count'] as int,
       totalSpent: (json['total_spent'] as num).toDouble(),

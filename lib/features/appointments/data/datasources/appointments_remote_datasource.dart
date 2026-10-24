@@ -5,6 +5,7 @@ import 'package:login_signup/core/errors/exceptions.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class AppointmentsRemoteDataSource {
   final Dio dio;
@@ -25,10 +26,10 @@ class AppointmentsRemoteDataSource {
 
       final queryParams = <String, dynamic>{};
       if (startDate != null) {
-        queryParams['startDate'] = startDate.toLocal().toIso8601String();
+        queryParams['startDate'] = DateCodec.encode(startDate);
       }
       if (endDate != null) {
-        queryParams['endDate'] = endDate.toLocal().toIso8601String();
+        queryParams['endDate'] = DateCodec.encode(endDate);
       }
       if (status != null) {
         queryParams['status'] = status;
@@ -99,7 +100,7 @@ class AppointmentsRemoteDataSource {
         'professional_id': appointment.professionalId,
         'service_ids': appointment.serviceIds,
         'owner_id': appointment.ownerId,
-        'date': appointment.startTime.toIso8601String(),
+        'date': DateCodec.encode(appointment.startTime),
         'notes': appointment.notes ?? ''
       };
 
@@ -164,7 +165,7 @@ class AppointmentsRemoteDataSource {
             appointment.clientId, // Asegúrate de que esto no esté vacío
         'professional_id': appointment.professionalId,
         'service_ids': appointment.serviceIds, // Esto es una lista
-        'date': appointment.startTime.toIso8601String(),
+        'date': DateCodec.encode(appointment.startTime),
         'notes': appointment.notes ?? ''
       };
 
@@ -396,8 +397,8 @@ class AppointmentsRemoteDataSource {
       final nextWeek = now.add(Duration(days: 7));
 
       // Formatear las fechas como cadenas ISO8601
-      final startDateStr = now.toIso8601String();
-      final endDateStr = nextWeek.toIso8601String();
+      final startDateStr = DateCodec.encode(now);
+      final endDateStr = DateCodec.encode(nextWeek);
 
       print('🔍 Solicitando citas próximas:');
       print('   Desde: $startDateStr');
@@ -423,7 +424,7 @@ class AppointmentsRemoteDataSource {
         // ✅ FILTRO ADICIONAL: Solo citas futuras que no han enviado recordatorio
         final filteredAppointments = appointmentsJson.where((json) {
           // ✅ CORRECCIÓN: Convertir a hora local para comparación correcta
-          final appointmentDate = DateTime.parse(json['date']).toLocal();
+          final appointmentDate = DateCodec.decode(json['date']);
           final nowLocal = now.toLocal();
           final isFuture = appointmentDate.isAfter(nowLocal);
           
@@ -444,8 +445,8 @@ class AppointmentsRemoteDataSource {
         }).map((json) => AppointmentEntity(
               id: json['id'],
               title: json['title'] ?? 'Cita',
-              startTime: DateTime.parse(json['date']),
-              endTime: DateTime.parse(json['date'])
+              startTime: DateCodec.decode(json['date']),
+              endTime: DateCodec.decode(json['date'])
                   .add(Duration(hours: 1)), // Estimar hora de fin
               clientName: json['client']?['name'] ?? 'Cliente',
               serviceTypes: _extractServiceNames(json),

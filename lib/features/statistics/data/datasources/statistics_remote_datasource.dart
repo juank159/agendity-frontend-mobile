@@ -1,7 +1,6 @@
 // lib/features/statistics/data/datasources/statistics_remote_datasource.dart
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import '../../../../shared/local_storage/local_storage.dart';
 import '../models/payment_stats_model.dart';
@@ -11,11 +10,11 @@ import '../models/professional_stats_model.dart';
 import '../models/service_stats_model.dart';
 import '../models/client_stats_model.dart';
 import '../models/top_client_model.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class StatisticsRemoteDataSource {
   final Dio dio;
   final LocalStorage localStorage;
-  final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
   StatisticsRemoteDataSource({
     required this.dio,
@@ -31,8 +30,8 @@ class StatisticsRemoteDataSource {
         '/payments/stats',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
         },
       );
 
@@ -57,8 +56,8 @@ class StatisticsRemoteDataSource {
         '/payments/stats/comparison',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
         },
       );
 
@@ -83,8 +82,8 @@ class StatisticsRemoteDataSource {
         '/payments/stats/by-method',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
         },
       );
 
@@ -112,8 +111,8 @@ class StatisticsRemoteDataSource {
         '/payments/stats/by-professional',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
         },
       );
 
@@ -141,8 +140,8 @@ class StatisticsRemoteDataSource {
         '/payments/stats/by-service',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
         },
       );
 
@@ -169,8 +168,8 @@ class StatisticsRemoteDataSource {
         '/payments/stats/by-client',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
           'limit': limit.toString(),
         },
       );
@@ -198,8 +197,8 @@ class StatisticsRemoteDataSource {
         '/payments/stats/top-clients',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
           'limit': limit.toString(),
         },
       );
@@ -222,14 +221,14 @@ class StatisticsRemoteDataSource {
     try {
       final token = await localStorage.getToken();
       print(
-          "Obteniendo estadísticas de empleado para el rango: ${_dateFormat.format(startDate)} a ${_dateFormat.format(endDate)}");
+          "Obteniendo estadísticas de empleado para el rango: ${DateCodec.encodeDay(startDate)} a ${DateCodec.encodeDay(endDate)}");
 
       final response = await dio.get(
         '/payments/employee-stats', // ¡Usa la ruta correcta para empleados!
         options: Options(headers: {'Authorization': 'Bearer $token'}),
         queryParameters: {
-          'startDate': _dateFormat.format(startDate),
-          'endDate': _dateFormat.format(endDate),
+          'startDate': DateCodec.encodeDay(startDate),
+          'endDate': DateCodec.encodeDay(endDate),
         },
       );
 

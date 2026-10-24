@@ -36,6 +36,7 @@ import 'package:login_signup/features/services/data/datasources/services_remote_
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
 import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
 import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class AppointmentsController extends GetxController {
   final AppointmentsRepository appointmentsRepository;
@@ -1387,7 +1388,7 @@ class AppointmentsController extends GetxController {
       final Map<String, dynamic> updateData = {
         'professional_id': professionalId,
         'service_ids': serviceIds,
-        'date': startTime.toIso8601String(),
+        'date': DateCodec.encode(startTime),
         'notes': notes ?? '',
       };
 

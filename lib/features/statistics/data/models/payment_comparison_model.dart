@@ -1,4 +1,5 @@
 import '../../domain/entities/payment_comparison_entity.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class PaymentComparisonModel extends PaymentComparisonEntity {
   PaymentComparisonModel({
@@ -27,8 +28,8 @@ class PeriodStatsModel extends PeriodStatsEntity {
 
   factory PeriodStatsModel.fromJson(Map<String, dynamic> json) {
     return PeriodStatsModel(
-      startDate: DateTime.parse(json['start_date']),
-      endDate: DateTime.parse(json['end_date']),
+      startDate: DateCodec.decode(json['start_date']),
+      endDate: DateCodec.decode(json['end_date']),
       totalAmount: (json['total_amount'] as num).toDouble(),
       paymentCount: json['payment_count'] as int,
       averageAmount: (json['average_amount'] as num).toDouble(),

@@ -1,6 +1,7 @@
 // lib/features/subscriptions/data/models/subscription_model.dart
 
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class SubscriptionModel extends SubscriptionEntity {
   SubscriptionModel({
@@ -33,12 +34,8 @@ class SubscriptionModel extends SubscriptionEntity {
       trialAppointmentsUsed: json['trial_appointments_used'] ?? 0,
       trialAppointmentsLimit: json['trial_appointments_limit'] ?? 20,
       isTrialUsed: json['is_trial_used'] ?? false,
-      subscriptionStartDate: json['subscription_start_date'] != null
-          ? DateTime.parse(json['subscription_start_date'])
-          : null,
-      subscriptionEndDate: json['subscription_end_date'] != null
-          ? DateTime.parse(json['subscription_end_date'])
-          : null,
+      subscriptionStartDate: DateCodec.tryDecode(json['subscription_start_date']),
+      subscriptionEndDate: DateCodec.tryDecode(json['subscription_end_date']),
       plan: json['plan'] != null
           ? SubscriptionPlanModel.fromJson(json['plan'])
           : null,
@@ -53,8 +50,8 @@ class SubscriptionModel extends SubscriptionEntity {
       'trial_appointments_used': trialAppointmentsUsed,
       'trial_appointments_limit': trialAppointmentsLimit,
       'is_trial_used': isTrialUsed,
-      'subscription_start_date': subscriptionStartDate?.toIso8601String(),
-      'subscription_end_date': subscriptionEndDate?.toIso8601String(),
+      'subscription_start_date': DateCodec.encodeOrNull(subscriptionStartDate),
+      'subscription_end_date': DateCodec.encodeOrNull(subscriptionEndDate),
       'plan': plan != null ? (plan as SubscriptionPlanModel).toJson() : null,
     };
   }

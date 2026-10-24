@@ -1,6 +1,7 @@
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/common/enums/payment_status_enum.dart';
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class PaymentModel extends PaymentEntity {
   PaymentModel({
@@ -42,10 +43,10 @@ class PaymentModel extends PaymentEntity {
       transactionId: json['transaction_id'],
       paymentDetails: json['payment_details'],
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at']).toLocal()
+          ? DateCodec.decode(json['created_at'])
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at']).toLocal()
+          ? DateCodec.decode(json['updated_at'])
           : null,
     );
   }

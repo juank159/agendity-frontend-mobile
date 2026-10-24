@@ -347,6 +347,7 @@ import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:image/image.dart' as img;
+import 'package:login_signup/core/utils/date_codec.dart';
 
 class ClientsRemoteDataSource {
   final Dio dio;
@@ -558,7 +559,7 @@ class ClientsRemoteDataSource {
         'email': client.email,
         'phone': client.phone,
         'notes': client.notes,
-        'birthday': client.birthday?.toIso8601String(),
+        'birthday': DateCodec.encodeOrNull(client.birthday),
         'showNotes': client.showNotes,
         'image': client.image,
         'address': client.address,

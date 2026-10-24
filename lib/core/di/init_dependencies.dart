@@ -11,7 +11,9 @@ import 'package:login_signup/core/di/modules/statistics_module.dart';
 import 'package:login_signup/core/di/modules/subscriptions_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
 import 'package:login_signup/core/di/modules/whatsapp_module.dart';
+import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/network/network_info.dart';
+import 'package:login_signup/core/session/token_store.dart';
 import 'package:login_signup/shared/controller/theme_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
@@ -68,6 +70,20 @@ class DependencyInjection {
       final localStorage = LocalStorage(Get.find<FlutterSecureStorage>());
       await localStorage.init();
       Get.put<LocalStorage>(localStorage, permanent: true);
+
+      // Dio nuevo (D-04): convive con el de ApiConfig hasta terminar la Fase 4.
+      // Solo lo usan las features ya migradas: Get.find<Dio>(tag: apiClientTag).
+      // La 3.02 sustituye el TokenStore y pasa aquí `onSessionExpired`.
+      Get.put<TokenStore>(LocalStorageTokenStore(localStorage),
+          permanent: true);
+      Get.put<Dio>(
+        buildApiClient(
+          baseUrl: EnvConfig.apiUrl,
+          tokenStore: Get.find<TokenStore>(),
+        ),
+        tag: apiClientTag,
+        permanent: true,
+      );
 
       // Inicializar NetworkInfo
       Get.put<NetworkInfo>(

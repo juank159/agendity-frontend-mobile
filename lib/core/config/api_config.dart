@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:login_signup/core/network/interceptors/retry_interceptor.dart';
 
 class ApiConfig {
   static Dio createDio(String baseUrl) {
@@ -48,7 +49,7 @@ class ApiConfig {
 
         var retryCount = error.requestOptions.extra['retryCount'] ?? 0;
 
-        if (_shouldRetry(error) && retryCount < 3) {
+        if (RetryInterceptor.shouldRetry(error) && retryCount < 3) {
           print('Reintentando petición - Intento ${retryCount + 1}');
           retryCount++;
           await Future.delayed(Duration(seconds: retryCount));
@@ -83,18 +84,6 @@ class ApiConfig {
     ));
 
     return dio;
-  }
-
-  static const _idempotentMethods = {'GET', 'HEAD', 'OPTIONS'};
-
-  /// Solo se reintentan peticiones idempotentes que no llegaron al servidor
-  /// (error de conexión o timeout al conectar). Nunca POST/PUT/PATCH/DELETE,
-  /// ni timeouts de envío/recepción (el servidor pudo procesarla), ni 401/5xx.
-  static bool _shouldRetry(DioException error) {
-    final method = error.requestOptions.method.toUpperCase();
-    if (!_idempotentMethods.contains(method)) return false;
-    return error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.connectionError;
   }
 
   static String _getErrorMessage(DioException error) {

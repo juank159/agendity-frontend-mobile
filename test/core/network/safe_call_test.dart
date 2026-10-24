@@ -4,14 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/network/safe_call.dart';
-import 'package:login_signup/core/session/token_store.dart';
 
+import '../session/memory_token_store.dart';
 import 'fake_http_client_adapter.dart';
-
-class _NoToken implements TokenStore {
-  @override
-  Future<String?> readToken() async => null;
-}
 
 class _SlotUnavailable extends ConflictFailure {
   const _SlotUnavailable() : super(message: 'slot');
@@ -25,7 +20,7 @@ void main() {
     adapter = FakeHttpClientAdapter((_) => jsonBody(200, {'id': '1'}));
     dio = buildApiClient(
       baseUrl: 'http://api.test/api',
-      tokenStore: _NoToken(),
+      tokenStore: MemoryTokenStore(),
       httpClientAdapter: adapter,
       retryDelay: (_) => Duration.zero,
       enableLogs: false,

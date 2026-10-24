@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:login_signup/core/session/token_store.dart';
 
-/// Se llama cuando el backend responde 401 a una petición que llevaba token.
-/// Lo provee la capa de sesión (3.02); core nunca navega.
-typedef SessionExpiredCallback = FutureOr<void> Function();
+/// Se llama cuando el backend responde 401 a una petición que llevaba token,
+/// con ese token. Lo provee `SessionService.handleSessionExpired`; core nunca navega.
+typedef SessionExpiredCallback = FutureOr<void> Function(String expiredToken);
 
 /// Pone `Authorization: Bearer <token>` en cada petición y avisa de la sesión
 /// expirada ante un 401.
@@ -73,7 +73,7 @@ class AuthInterceptor extends Interceptor {
         sentToken != _expiredToken) {
       _expiredToken = sentToken;
       try {
-        await _onSessionExpired?.call();
+        await _onSessionExpired?.call(sentToken);
       } catch (_) {
         // El aviso no debe cambiar el error que recibe quien hizo la petición.
       }

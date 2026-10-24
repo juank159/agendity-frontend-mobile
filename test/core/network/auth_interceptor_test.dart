@@ -2,32 +2,24 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/network/interceptors/auth_interceptor.dart';
-import 'package:login_signup/core/session/token_store.dart';
 
+import '../session/memory_token_store.dart';
 import 'fake_http_client_adapter.dart';
 
-class FakeTokenStore implements TokenStore {
-  FakeTokenStore(this.token);
-  String? token;
-
-  @override
-  Future<String?> readToken() async => token;
-}
-
 void main() {
-  late FakeTokenStore tokens;
+  late MemoryTokenStore tokens;
   late FakeHttpClientAdapter adapter;
   late int expiredCalls;
   late Dio dio;
 
   setUp(() {
-    tokens = FakeTokenStore('jwt-1');
+    tokens = MemoryTokenStore('jwt-1');
     adapter = FakeHttpClientAdapter((_) => jsonBody(200, {'ok': true}));
     expiredCalls = 0;
     dio = buildApiClient(
       baseUrl: 'http://api.test/api',
       tokenStore: tokens,
-      onSessionExpired: () => expiredCalls++,
+      onSessionExpired: (_) => expiredCalls++,
       httpClientAdapter: adapter,
       enableLogs: false,
     );
@@ -126,7 +118,7 @@ void main() {
     dio = buildApiClient(
       baseUrl: 'http://api.test/api',
       tokenStore: tokens,
-      onSessionExpired: () => throw StateError('boom'),
+      onSessionExpired: (_) => throw StateError('boom'),
       httpClientAdapter: adapter,
       enableLogs: false,
     );

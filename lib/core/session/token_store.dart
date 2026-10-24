@@ -1,21 +1,51 @@
-import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Acceso al token de sesión (ARQUITECTURA.md §2.2).
+/// Único dueño del token de sesión (ARQUITECTURA.md §2.2).
 ///
-/// 3.01 solo necesita leerlo (lo usa el `AuthInterceptor`). La 3.02 completa
-/// esta interfaz (guardar y borrar) y sustituye la implementación.
+/// Lo usan el `AuthInterceptor`, el `SessionRepository` y, mientras duren las
+/// features sin migrar, `LocalStorage` (que delega aquí sus métodos de token).
 abstract interface class TokenStore {
   /// Token JWT actual, o `null` si no hay sesión.
   Future<String?> readToken();
+
+  /// Un token vacío equivale a `clearToken()`.
+  Future<void> saveToken(String token);
+
+  /// Borra solo el token (no el resto de preferencias).
+  Future<void> clearToken();
 }
 
-/// Implementación temporal: lee el token que ya guarda `LocalStorage`
-/// (clave `token`). La retira la 3.02.
-class LocalStorageTokenStore implements TokenStore {
-  final LocalStorage _storage;
+/// `TokenStore` sobre `flutter_secure_storage`.
+///
+/// Usa la misma entrada que la app ya escribía con `LocalStorage` (`token`):
+/// tras actualizar, la sesión guardada se sigue leyendo sin mover datos y los
+/// lectores antiguos que leen `token` directamente (Fase 4) no se rompen.
+/// Un valor vacío o solo con espacios cuenta como "sin sesión" y se borra.
+class SecureTokenStore implements TokenStore {
+  static const tokenKey = 'token';
 
-  const LocalStorageTokenStore(this._storage);
+  final FlutterSecureStorage _storage;
+
+  const SecureTokenStore(this._storage);
 
   @override
-  Future<String?> readToken() => _storage.getToken();
+  Future<String?> readToken() async {
+    final token = await _storage.read(key: tokenKey);
+    if (token == null) return null;
+    if (token.trim().isEmpty) {
+      await _storage.delete(key: tokenKey);
+      return null;
+    }
+    return token;
+  }
+
+  @override
+  Future<void> saveToken(String token) {
+    final value = token.trim();
+    if (value.isEmpty) return clearToken();
+    return _storage.write(key: tokenKey, value: value);
+  }
+
+  @override
+  Future<void> clearToken() => _storage.delete(key: tokenKey);
 }

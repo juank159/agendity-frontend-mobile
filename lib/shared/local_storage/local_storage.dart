@@ -1,12 +1,18 @@
 // lib/shared/local_storage/local_storage.dart
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:login_signup/core/session/token_store.dart';
 import 'dart:convert';
 
 class LocalStorage {
   final FlutterSecureStorage _storage;
 
-  LocalStorage(this._storage);
+  /// El token lo guarda solo `TokenStore` (3.02); estos métodos delegan en él
+  /// mientras queden features sin migrar.
+  final TokenStore _tokens;
+
+  LocalStorage(this._storage, {TokenStore? tokenStore})
+      : _tokens = tokenStore ?? SecureTokenStore(_storage);
 
   Future<void> init() async {
     try {
@@ -97,7 +103,7 @@ class LocalStorage {
   }
 
   Future<void> saveToken(String token) async {
-    await _storage.write(key: 'token', value: token);
+    await _tokens.saveToken(token);
 
     // Extraer y guardar el ID del usuario del token JWT
     try {
@@ -117,14 +123,9 @@ class LocalStorage {
     }
   }
 
-  Future<String?> getToken() async {
-    final token = await _storage.read(key: 'token');
-    return token;
-  }
+  Future<String?> getToken() => _tokens.readToken();
 
-  Future<void> deleteToken() async {
-    await _storage.delete(key: 'token');
-  }
+  Future<void> deleteToken() => _tokens.clearToken();
 
   Future<void> clearAllData() async {
     print('Limpiando todos los datos almacenados...');

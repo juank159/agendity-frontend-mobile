@@ -13,6 +13,8 @@ import 'package:login_signup/core/di/modules/user_module.dart';
 import 'package:login_signup/core/di/modules/whatsapp_module.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/network/network_info.dart';
+import 'package:login_signup/core/session/session_repository.dart';
+import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/core/session/token_store.dart';
 import 'package:login_signup/shared/controller/theme_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
@@ -67,19 +69,34 @@ class DependencyInjection {
       Get.put<InternetConnectionChecker>(InternetConnectionChecker(),
           permanent: true);
 
-      final localStorage = LocalStorage(Get.find<FlutterSecureStorage>());
+      // Sesión (3.02): TokenStore es el único dueño del token; LocalStorage
+      // delega en él. SessionService es la entrada de presentation.
+      final tokenStore = SecureTokenStore(Get.find<FlutterSecureStorage>());
+      Get.put<TokenStore>(tokenStore, permanent: true);
+      Get.put<SessionRepository>(SessionRepository(tokenStore),
+          permanent: true);
+      Get.put<SessionService>(
+        SessionService(
+          tokenStore: tokenStore,
+          repository: Get.find<SessionRepository>(),
+        ),
+        permanent: true,
+      );
+
+      final localStorage = LocalStorage(Get.find<FlutterSecureStorage>(),
+          tokenStore: tokenStore);
       await localStorage.init();
       Get.put<LocalStorage>(localStorage, permanent: true);
 
       // Dio nuevo (D-04): convive con el de ApiConfig hasta terminar la Fase 4.
       // Solo lo usan las features ya migradas: Get.find<Dio>(tag: apiClientTag).
-      // La 3.02 sustituye el TokenStore y pasa aquí `onSessionExpired`.
-      Get.put<TokenStore>(LocalStorageTokenStore(localStorage),
-          permanent: true);
+      // Un 401 con token → SessionService.handleSessionExpired, que borra el
+      // token y llama a `SessionService.onSessionExpired` (lo asigna presentation).
       Get.put<Dio>(
         buildApiClient(
           baseUrl: EnvConfig.apiUrl,
-          tokenStore: Get.find<TokenStore>(),
+          tokenStore: tokenStore,
+          onSessionExpired: Get.find<SessionService>().handleSessionExpired,
         ),
         tag: apiClientTag,
         permanent: true,

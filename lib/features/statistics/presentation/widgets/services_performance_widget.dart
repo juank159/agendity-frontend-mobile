@@ -258,7 +258,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import '../controllers/statistics_controller.dart';
 
 class ServicesPerformanceWidget extends StatelessWidget {
@@ -409,7 +409,7 @@ class ServicesPerformanceWidget extends StatelessWidget {
                                                 horizontal: 8),
                                             alignment: Alignment.centerRight,
                                             child: Text(
-                                              '\$ ${NumberFormat('#,###', 'es_CO').format(stat.totalAmount)}',
+                                              formatCop(stat.totalAmount),
                                               style: TextStyle(
                                                 color: percentage > 0.7
                                                     ? Colors.white
@@ -540,7 +540,7 @@ class ServicesPerformanceWidget extends StatelessWidget {
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: Text(
-                                  '\$ ${NumberFormat('#,###', 'es_CO').format(stat.totalAmount)}',
+                                  formatCop(stat.totalAmount),
                                   textAlign: TextAlign.right,
                                 ),
                               ),

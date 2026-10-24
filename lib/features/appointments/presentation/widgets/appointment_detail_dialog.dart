@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
@@ -392,7 +393,7 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    '\$${appointment.totalPrice}',
+                                    formatCop(appointment.totalPrice),
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,

@@ -1,0 +1,56 @@
+import 'package:intl/intl.dart';
+
+/// Formatos de presentación de Agendity (moneda COP, fechas y horas en
+/// español). **Único** sitio con `NumberFormat`/`DateFormat` para la UI.
+///
+/// Las fechas del contrato HTTP no van aquí: son de `DateCodec`.
+/// Los formatos de fecha usan el locale `es`, que `main.dart` inicializa con
+/// `initializeDateFormatting('es')`.
+
+final NumberFormat _copGrouping = NumberFormat('#,##0', 'es_CO');
+
+/// `45000` → `$ 45.000`. Sin decimales (el peso no los usa).
+///
+/// Acepta `num` o texto numérico (`"45000.00"`, como llega `totalPrice` en
+/// las citas). `null` o un texto no numérico → `$ 0`.
+String formatCop(Object? value) {
+  final amount = _toNum(value).round();
+  final formatted = '\$ ${_copGrouping.format(amount.abs())}';
+  return amount < 0 ? '-$formatted' : formatted;
+}
+
+/// Importe en cualquier moneda: COP con [formatCop]; el resto con su código
+/// y dos decimales (`USD 12.50`).
+String formatMoney(Object? value, {String currency = 'COP'}) {
+  final code = currency.trim().toUpperCase();
+  if (code.isEmpty || code == 'COP') return formatCop(value);
+  return '$code ${_toNum(value).toStringAsFixed(2)}';
+}
+
+/// `03/11/2026`
+String formatDate(DateTime date) => DateFormat('dd/MM/yyyy', 'es').format(date);
+
+/// `03/11/26`
+String formatShortDate(DateTime date) =>
+    DateFormat('dd/MM/yy', 'es').format(date);
+
+/// `martes 3 noviembre`
+String formatWeekdayDayMonth(DateTime date) =>
+    DateFormat('EEEE d MMMM', 'es').format(date);
+
+/// `martes, 03 noviembre 2026`
+String formatLongDate(DateTime date) =>
+    DateFormat('EEEE, dd MMMM yyyy', 'es').format(date);
+
+/// `3:30 p. m.` (12 horas, como fuerza `main.dart`).
+String formatTime(DateTime time) => DateFormat('h:mm a', 'es').format(time);
+
+/// `3:30 p. m. - 4:15 p. m.`
+String formatTimeRange(DateTime start, DateTime end) =>
+    '${formatTime(start)} - ${formatTime(end)}';
+
+num _toNum(Object? value) {
+  if (value is num) return value.isFinite ? value : 0;
+  if (value is String) return num.tryParse(value.trim()) ?? 0;
+  return 0;
+}

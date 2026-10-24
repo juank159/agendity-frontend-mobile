@@ -27,9 +27,6 @@ Future<void> main() async {
     await initializeDateFormatting('es', null);
     await DependencyInjection.init();
 
-    // Registrar el ThemeController
-    Get.put(ThemeController());
-
     debugPrint('Rutas registradas:');
     GetRoutes.routes.forEach((route) {
       debugPrint('Ruta: ${route.name}, Page: ${route.page}');
@@ -50,70 +47,17 @@ class MyApp extends StatelessWidget {
     return GetX<ThemeController>(
       builder: (controller) {
         return GetMaterialApp(
-          title: 'Tu App',
+          title: 'Agendity',
           debugShowCheckedModeBanner: false,
           initialRoute: GetRoutes.splas,
           getPages: GetRoutes.routes,
           unknownRoute: GetRoutes.unknownRoute,
 
-          // Definir los temas
-          theme: ThemeConfig.lightTheme.copyWith(
-            useMaterial3: true,
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: Colors.white,
-              hourMinuteShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              dayPeriodShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-              dayPeriodBorderSide: const BorderSide(color: Colors.black12),
-              dayPeriodTextStyle: const TextStyle(
-                fontSize: 16,
-              ),
-              hourMinuteTextStyle: const TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-              ),
-              helpTextStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-
-          // Tema oscuro
-          darkTheme: ThemeConfig.darkTheme.copyWith(
-            useMaterial3: true,
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: Colors.grey[900],
-              hourMinuteShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              dayPeriodShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-              dayPeriodBorderSide: const BorderSide(color: Colors.white24),
-              dayPeriodTextStyle: const TextStyle(
-                fontSize: 16,
-              ),
-              hourMinuteTextStyle: const TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-              ),
-              helpTextStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-
-          // Modo de tema (claro, oscuro o sistema)
-          themeMode: controller.themeType == ThemeType.system
-              ? ThemeMode.system
-              : controller.isDarkMode
-                  ? ThemeMode.dark
-                  : ThemeMode.light,
+          // Temas (tokens en core/config/theme_config.dart). El alto
+          // contraste llega como darkTheme con ThemeMode.dark.
+          theme: ThemeConfig.lightTheme,
+          darkTheme: controller.darkTheme,
+          themeMode: controller.themeMode,
 
           // Configuración de localización
           localizationsDelegates: const [

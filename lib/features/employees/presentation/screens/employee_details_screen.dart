@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/constants/app_colors.dart';
 import 'package:login_signup/features/employees/data/models/employee_model.dart';
@@ -344,7 +345,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Precio: \$${service.price}',
+                    'Precio: ${formatCop(service.price)}',
                     style: TextStyle(
                       color: Colors.green[700],
                       fontWeight: FontWeight.bold,

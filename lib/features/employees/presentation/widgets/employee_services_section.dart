@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/constants/app_colors.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
@@ -124,7 +125,7 @@ class EmployeeServicesSection extends StatelessWidget {
                       CheckboxListTile(
                         title: Text(serviceEntity.name),
                         subtitle: Text(
-                          '\$${serviceEntity.price}',
+                          formatCop(serviceEntity.price),
                           style: TextStyle(
                             color: Colors.green[700],
                             fontWeight: FontWeight.bold,

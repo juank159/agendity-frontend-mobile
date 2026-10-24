@@ -1,6 +1,7 @@
 // lib/features/appointments/presentation/widgets/edit_appointment_dialog.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
@@ -555,9 +556,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                       ),
                     ),
                     Text(
-                      NumberFormat.currency(
-                              locale: 'es', symbol: '\$', decimalDigits: 0)
-                          .format(totalPrice.value),
+                      formatCop(totalPrice.value),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -698,12 +697,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                           },
                           title: Text(service['name']),
                           subtitle: Text(
-                            NumberFormat.currency(
-                                    locale: 'es',
-                                    symbol: '\$',
-                                    decimalDigits: 0)
-                                .format(
-                                    double.parse(service['price'].toString())),
+                            formatCop(service['price']?.toString()),
                             style: TextStyle(
                               color: Theme.of(context).primaryColor,
                               fontWeight: FontWeight.w500,
@@ -987,7 +981,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
 
         print('🔄 Precio total calculado: $totalPrice');
 
-        await widget.controller.updateAppointment(
+        final updated = await widget.controller.updateAppointment(
           appointmentId: widget.appointment.id!,
           professionalId: widget.controller.selectedEmployee.value!.id,
           serviceIds: selectedServiceIds.toList(),
@@ -996,43 +990,19 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
           clientId: clientId,
           // No enviamos totalPrice ya que el backend no lo acepta
         );
+        // Bloqueada por la suscripción: el diálogo ya se mostró.
+        if (!updated) return;
 
         // Recargar las citas
         await widget.controller.fetchAppointments();
 
-        // Cerrar el diálogo y mostrar mensaje de éxito
-        Navigator.pop(context, true); // Devolver true para indicar éxito
-
-        Get.snackbar(
-          'Éxito',
-          'Cita actualizada correctamente',
-          backgroundColor: Colors.green[100],
-          colorText: Colors.green[800],
-          duration: const Duration(seconds: 3),
-        );
+        // El controller ya mostró el aviso de éxito.
+        if (mounted) Navigator.pop(context, true);
       } catch (e) {
+        // El controller ya informó del error (diálogo o snackbar); el
+        // formulario sigue abierto para corregir.
         print('=== ERROR AL ACTUALIZAR CITA ===');
         print('Error: $e');
-
-        // Verificar si es un error de horario no disponible
-        if (e.toString().toLowerCase().contains('horario no disponible')) {
-          Get.snackbar(
-            'Error',
-            'El horario seleccionado no está disponible',
-            backgroundColor: Colors.red[100],
-            colorText: Colors.red[800],
-            duration: const Duration(seconds: 4),
-          );
-        } else {
-          // Mostrar error genérico
-          Get.snackbar(
-            'Error',
-            'No se pudo actualizar la cita: ${e.toString()}',
-            backgroundColor: Colors.red[100],
-            colorText: Colors.red[800],
-            duration: const Duration(seconds: 4),
-          );
-        }
       } finally {
         isLoading.value = false;
       }

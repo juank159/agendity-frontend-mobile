@@ -267,7 +267,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import '../controllers/statistics_controller.dart';
 
 class ProfessionalsPerformanceWidget extends StatelessWidget {
@@ -383,7 +383,7 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: Text(
-                                '\$ ${NumberFormat('#,###', 'es_CO').format(value)}',
+                                formatCop(value),
                                 style: const TextStyle(fontSize: 10),
                               ),
                             );
@@ -527,7 +527,7 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: Text(
-                                  '\$ ${NumberFormat('#,###', 'es_CO').format(stat.totalAmount)}',
+                                  formatCop(stat.totalAmount),
                                   textAlign: TextAlign.right,
                                 ),
                               ),
@@ -537,7 +537,7 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: Text(
-                                  '\$ ${NumberFormat('#,###', 'es_CO').format(stat.averagePerPayment)}',
+                                  formatCop(stat.averagePerPayment),
                                   textAlign: TextAlign.right,
                                 ),
                               ),

@@ -1,6 +1,7 @@
 // lib/features/subscriptions/presentation/widgets/plan_card.dart
 
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
 
 class PlanCard extends StatelessWidget {
@@ -240,18 +241,6 @@ class PlanCard extends StatelessWidget {
     );
   }
 
-  String _formatCurrency(double price, String currency) {
-    String symbol = currency == 'COP' ? '\$' : currency;
-
-    if (currency == 'COP') {
-      // Formato para peso colombiano
-      return '$symbol ${price.toInt().toString().replaceAllMapped(
-            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-            (Match m) => '${m[1]}.',
-          )}';
-    } else {
-      // Formato general
-      return '$symbol ${price.toStringAsFixed(2)}';
-    }
-  }
+  String _formatCurrency(double price, String currency) =>
+      formatMoney(price, currency: currency);
 }

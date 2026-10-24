@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
@@ -34,13 +35,6 @@ class StatisticsController extends GetxController {
   final UserInfoController userInfoController = Get.find<UserInfoController>();
 
   // Para formatear valores monetarios
-  final currencyFormat = NumberFormat.currency(
-    locale: 'es_CO',
-    symbol: '\$',
-    decimalDigits: 0,
-    customPattern:
-        '\$ #,###', // Define un patrón personalizado con el $ a la izquierda
-  );
 
   // Para formatear porcentajes
   final percentFormat = NumberFormat.percentPattern('es_CO');
@@ -311,17 +305,7 @@ class StatisticsController extends GetxController {
   }
 
   // Métodos de utilidad para formatear datos
-  String formatCurrency(dynamic value) {
-    // Convertir el valor a double independientemente de si es int, double o null
-    final doubleValue =
-        value is int ? value.toDouble() : (value is double ? value : 0.0);
-
-    // Crear un formato sin el símbolo '$'
-    final formatWithoutSymbol = NumberFormat('#,###', 'es_CO');
-
-    // Retornar el formato con el símbolo $ a la izquierda usando interpolación
-    return '\$ ${formatWithoutSymbol.format(doubleValue)}';
-  }
+  String formatCurrency(dynamic value) => formatCop(value);
 
   String formatPercent(double value) {
     // Convertir a decimal para el formateador (ej. 15% -> 0.15)

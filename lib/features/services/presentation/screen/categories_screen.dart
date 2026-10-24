@@ -1,13 +1,21 @@
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/list_state_view.dart';
+import 'package:login_signup/features/services/domain/entities/category.dart';
 import '../controller/categories_controller.dart';
 
 class CategoriesScreen extends GetView<CategoriesController> {
   const CategoriesScreen({super.key});
 
+  Future<void> _openNewCategory() async {
+    final result = await Get.toNamed(GetRoutes.addCategory);
+    if (result == true) controller.loadCategories();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return WillPopScope(
       onWillPop: () async {
         // Permitir retroceder sin mostrar un cuadro de diálogo
@@ -27,125 +35,81 @@ class CategoriesScreen extends GetView<CategoriesController> {
             },
           ),
         ),
-        body: Obx(() {
-          if (controller.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (controller.categories.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.category_outlined,
-                      size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No hay categorías',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    // Modificado para manejar el resultado
-                    onPressed: () =>
-                        Get.toNamed(GetRoutes.addCategory)?.then((result) {
-                      if (result == true) {
-                        controller.loadCategories();
-                      }
-                    }),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Crear categoría'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
+        body: Obx(() => ListStateView<CategoryEntity>(
+              isLoading: controller.isLoading.value,
+              items: controller.categories,
+              emptyIcon: Icons.category_outlined,
+              emptyMessage: 'No hay categorías',
+              emptyActionLabel: 'Crear categoría',
+              emptyActionIcon: Icons.add,
+              onEmptyAction: _openNewCategory,
+              builder: (context, categories) => RefreshIndicator(
+                onRefresh: controller.loadCategories,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    return Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.only(bottom: 12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                  ),
-                ],
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: CircleAvatar(
+                          backgroundColor: scheme.primary,
+                          child: Text(
+                            category.name.substring(0, 1).toUpperCase(),
+                            style: TextStyle(
+                              color: scheme.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          category.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: category.description.isNotEmpty
+                            ? Text(
+                                category.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : null,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: scheme.primary),
+                              onPressed: () =>
+                                  controller.editCategory(category),
+                            ),
+                            Switch(
+                              value: category.isActive,
+                              onChanged: (value) =>
+                                  controller.toggleCategoryStatus(category.id,
+                                      value // Pasar el nuevo valor al método
+                                      ),
+                            ),
+                          ],
+                        ),
+                        onTap: () => controller.editCategory(category),
+                      ),
+                    );
+                  },
+                ),
               ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: controller.loadCategories,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: controller.categories.length,
-              itemBuilder: (context, index) {
-                final category = controller.categories[index];
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.blue,
-                      child: Text(
-                        category.name.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      category.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    subtitle: category.description.isNotEmpty
-                        ? Text(
-                            category.description,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : null,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => controller.editCategory(category),
-                        ),
-                        Switch(
-                          value: category.isActive,
-                          onChanged: (value) => controller.toggleCategoryStatus(
-                              category.id,
-                              value // Pasar el nuevo valor al método
-                              ),
-                          activeColor: Colors.green,
-                          inactiveThumbColor: Colors.red.shade300,
-                          inactiveTrackColor: Colors.red.shade100,
-                        ),
-                      ],
-                    ),
-                    onTap: () => controller.editCategory(category),
-                  ),
-                );
-              },
-            ),
-          );
-        }),
+            )),
         floatingActionButton: Obx(() => controller.categories.isNotEmpty
             ? FloatingActionButton(
                 // Modificado para manejar el resultado
-                onPressed: () => Get.toNamed(GetRoutes.addCategory)?.then((result) {
-                  if (result == true) {
-                    controller.loadCategories();
-                  }
-                }),
+                onPressed: _openNewCategory,
                 child: const Icon(Icons.add),
               )
             : const SizedBox.shrink()),

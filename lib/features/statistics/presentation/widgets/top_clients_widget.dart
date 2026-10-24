@@ -175,7 +175,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import '../controllers/statistics_controller.dart';
 
 class TopClientsWidget extends StatelessWidget {
@@ -324,7 +324,7 @@ class TopClientsWidget extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                '\$ ${NumberFormat('#,###', 'es_CO').format(client.totalSpent)}',
+                                formatCop(client.totalSpent),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,

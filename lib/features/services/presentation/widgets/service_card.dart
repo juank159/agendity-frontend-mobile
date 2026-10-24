@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import '../../../../core/constants/app_styles.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -98,14 +98,7 @@ class ServiceCard extends StatelessWidget {
     return '$minutes min';
   }
 
-  String _formatPrice(double price) {
-    return NumberFormat.currency(
-      locale: 'es_CO',
-      symbol: '\$ ',
-      decimalDigits: 0,
-      customPattern: '\u00A4#,##0',
-    ).format(price);
-  }
+  String _formatPrice(double price) => formatCop(price);
 
   Color _parseColor(String colorString) {
     return Color(int.parse(colorString.substring(1), radix: 16) + 0xFF000000);

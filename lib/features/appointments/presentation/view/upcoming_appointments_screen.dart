@@ -1,11 +1,9 @@
-// lib/features/appointments/presentation/screens/upcoming_appointments_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/appointment_reminder_controller.dart';
 import '../widgets/appointment_card.dart';
-import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/error_state.dart';
-import '../../../../core/widgets/loading_state.dart';
+import 'package:login_signup/core/widgets/list_state_view.dart';
+import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 
 class UpcomingAppointmentsScreen
     extends GetView<AppointmentReminderController> {
@@ -31,41 +29,32 @@ class UpcomingAppointmentsScreen
           ),
         ],
       ),
-      body: Obx(() {
-        if (controller.isLoading.value) {
-          return LoadingState(message: 'Cargando citas...');
-        }
-
-        if (controller.errorMessage.value.isNotEmpty) {
-          return ErrorState(
-            message: controller.errorMessage.value,
-            onRetry: () => controller.fetchUpcomingAppointments(),
-          );
-        }
-
-        if (controller.upcomingAppointments.isEmpty) {
-          return EmptyState(
-            icon: Icons.event_available,
-            message: 'No hay citas próximas',
-            subMessage: 'Solo se muestran citas futuras que requieren recordatorios.\nLas citas pasadas se limpian automáticamente.',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () => controller.fetchUpcomingAppointments(),
-          child: ListView.builder(
-            itemCount: controller.upcomingAppointments.length,
-            itemBuilder: (context, index) {
-              final appointment = controller.upcomingAppointments[index];
-              return AppointmentCard(
-                appointment: appointment,
-                onSendReminder: () =>
-                    controller.sendAppointmentReminder(appointment),
-              );
-            },
-          ),
-        );
-      }),
+      body: Obx(() => ListStateView<AppointmentEntity>(
+            isLoading: controller.isLoading.value,
+            error: controller.errorMessage.value,
+            items: controller.upcomingAppointments,
+            onRetry: controller.fetchUpcomingAppointments,
+            loadingMessage: 'Cargando citas...',
+            emptyIcon: Icons.event_available,
+            emptyMessage: 'No hay citas próximas',
+            emptySubMessage:
+                'Solo se muestran citas futuras que requieren recordatorios.\n'
+                'Las citas pasadas se limpian automáticamente.',
+            builder: (context, appointments) => RefreshIndicator(
+              onRefresh: () => controller.fetchUpcomingAppointments(),
+              child: ListView.builder(
+                itemCount: appointments.length,
+                itemBuilder: (context, index) {
+                  final appointment = appointments[index];
+                  return AppointmentCard(
+                    appointment: appointment,
+                    onSendReminder: () =>
+                        controller.sendAppointmentReminder(appointment),
+                  );
+                },
+              ),
+            ),
+          )),
     );
   }
 }

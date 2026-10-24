@@ -1,29 +1,27 @@
-// lib/core/widgets/loading_state.dart
 import 'package:flutter/material.dart';
 
+/// Estado de carga de una pantalla o lista. Ver también [ListStateView].
 class LoadingState extends StatelessWidget {
-  final String message;
+  final String? message;
 
-  const LoadingState({
-    Key? key,
-    required this.message,
-  }) : super(key: key);
+  const LoadingState({super.key, this.message});
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[700],
+          const CircularProgressIndicator(),
+          if (message != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
             ),
-          ),
+          ],
         ],
       ),
     );

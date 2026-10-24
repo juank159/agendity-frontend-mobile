@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
-import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
 
 import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
@@ -34,9 +33,10 @@ import 'package:login_signup/features/services/data/datasources/services_remote_
 
 // Nuevas importaciones para la funcionalidad de suscripción
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
-import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
-import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
+import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 class AppointmentsController extends GetxController {
   final AppointmentsRepository appointmentsRepository;
@@ -229,96 +229,6 @@ class AppointmentsController extends GetxController {
     }
   }
 
-  void _showSubscriptionRequiredDialog() {
-    print('Mostrando diálogo de suscripción requerida');
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.workspace_premium,
-                  color: Colors.orange[700],
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Plan de prueba finalizado',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                subscriptionMessage.value.isNotEmpty
-                    ? subscriptionMessage.value
-                    : 'Has alcanzado el límite de citas de tu plan de prueba. Adquiere un plan para continuar.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.back(); // Cerrar diálogo
-
-                    // Navegación directa a la pantalla de planes
-                    Get.toNamed(GetRoutes.subscriptionPlans);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(Get.context!).primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Ver planes disponibles',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Get.back(); // Solo cerrar el diálogo
-                },
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      barrierDismissible: true,
-    );
-  }
 
   /// Rol e id del usuario desde la sesión de la UI (sin decodificar el JWT).
   /// Se mantiene sincronizado si la sesión cambia (login con otro usuario).
@@ -971,9 +881,9 @@ class AppointmentsController extends GetxController {
         if (message.contains('límite de citas') ||
             message.contains('plan de prueba') ||
             message.contains('trial')) {
-          _showTrialEndedDialog();
+          _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
         } else {
-          _showInactiveSubscriptionDialog();
+          _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
         }
         return;
       }
@@ -1045,13 +955,7 @@ class AppointmentsController extends GetxController {
         // Recargar citas para el día actual
         await _reloadAppointmentsForDay(startTime);
 
-        Get.snackbar(
-          'Éxito',
-          'Cita creada correctamente',
-          backgroundColor: Colors.green[100],
-          colorText: Colors.green[800],
-          duration: const Duration(seconds: 3),
-        );
+        AppSnackbar.success('Cita creada correctamente');
 
         update(['calendar-view']);
       } catch (apiError) {
@@ -1118,11 +1022,11 @@ class AppointmentsController extends GetxController {
         // Mostrar el diálogo correspondiente
         if (isTrialEnded) {
           print('ERROR DETECTADO: Fin de plan de prueba - Mostrando diálogo');
-          _showTrialEndedDialog();
+          _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
           return;
         } else if (isSubscriptionInactive) {
           print('ERROR DETECTADO: Suscripción inactiva - Mostrando diálogo');
-          _showInactiveSubscriptionDialog();
+          _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
           return;
         }
 
@@ -1145,7 +1049,7 @@ class AppointmentsController extends GetxController {
         // Mostrar el diálogo si es un error de horario no disponible
         if (isHorarioNoDisponible) {
           print('ERROR DETECTADO: Horario no disponible - Mostrando diálogo');
-          _showHorarioNoDisponibleDialog();
+          _showScheduleUnavailable();
           return;
         }
 
@@ -1188,25 +1092,19 @@ class AppointmentsController extends GetxController {
       // Mostrar el diálogo correspondiente
       if (isTrialEnded) {
         print('ERROR DETECTADO: Fin de plan de prueba - Mostrando diálogo');
-        _showTrialEndedDialog();
+        _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
         return;
       } else if (isSubscriptionInactive) {
         print('ERROR DETECTADO: Suscripción inactiva - Mostrando diálogo');
-        _showInactiveSubscriptionDialog();
+        _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
         return;
       }
 
       if (errorMessage.contains('horario no disponible')) {
-        _showHorarioNoDisponibleDialog();
+        _showScheduleUnavailable();
       } else {
         // Mostrar error genérico
-        Get.snackbar(
-          'Error',
-          'No se pudo crear la cita: ${_formatErrorMessage(e)}',
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[800],
-          duration: const Duration(seconds: 4),
-        );
+        AppSnackbar.error('No se pudo crear la cita: ${_formatErrorMessage(e)}');
       }
     } finally {
       isLoading.value = false;
@@ -1243,94 +1141,6 @@ class AppointmentsController extends GetxController {
     );
   }
 
-  // Función para mostrar el diálogo personalizado
-  void _showHorarioNoDisponibleDialog() {
-    print('Mostrando diálogo de horario no disponible');
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Icono de horario
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.schedule,
-                  color: Colors.orange[700],
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Título
-              Text(
-                'Horario no disponible',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Mensaje
-              Text(
-                'El profesional ${selectedEmployee.value?.name} ${selectedEmployee.value?.lastname} no está disponible en este horario.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Por favor, selecciona otra hora o elige otro profesional.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Solo un botón para cerrar el diálogo
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.back(); // Cerrar solo el diálogo, no el formulario
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(Get.context!).primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                  ),
-                  child: const Text(
-                    'Entendido',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      barrierDismissible: false,
-    );
-  }
 
   Future<void> selectEmployee(EmployeeEntity employee) async {
     if (employeesController != null) {
@@ -1345,7 +1155,9 @@ class AppointmentsController extends GetxController {
     }
   }
 
-  Future<void> updateAppointment({
+  /// `true` si se actualizó; `false` si la suscripción lo bloqueó (ya se
+  /// mostró el diálogo). Ante otro error informa al usuario y relanza.
+  Future<bool> updateAppointment({
     required String appointmentId,
     required String professionalId,
     required List<String> serviceIds,
@@ -1358,8 +1170,8 @@ class AppointmentsController extends GetxController {
       // Verificar estado de suscripción primero
       final canContinue = await checkSubscriptionStatus();
       if (!canContinue) {
-        _showSubscriptionRequiredDialog();
-        return;
+        showSubscriptionDialog();
+        return false;
       }
 
       isLoading.value = true;
@@ -1428,15 +1240,10 @@ class AppointmentsController extends GetxController {
       // Recargar citas
       await _reloadAppointmentsForDay(startTime);
 
-      Get.snackbar(
-        'Éxito',
-        'Cita actualizada correctamente',
-        backgroundColor: Colors.green[100],
-        colorText: Colors.green[800],
-        duration: const Duration(seconds: 3),
-      );
+      AppSnackbar.success('Cita actualizada correctamente');
 
       update(['calendar-view']);
+      return true;
     } catch (e) {
       print('\n❌ ERROR GENERAL:');
       print('Tipo: ${e.runtimeType}');
@@ -1445,15 +1252,9 @@ class AppointmentsController extends GetxController {
       error.value = e.toString();
 
       if (e.toString().toLowerCase().contains('horario no disponible')) {
-        _showHorarioNoDisponibleDialog();
+        _showScheduleUnavailable();
       } else {
-        Get.snackbar(
-          'Error',
-          'No se pudo actualizar la cita: ${_formatErrorMessage(e)}',
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[800],
-          duration: const Duration(seconds: 4),
-        );
+        AppSnackbar.error('No se pudo actualizar la cita: ${_formatErrorMessage(e)}');
       }
       throw e;
     } finally {
@@ -1514,181 +1315,26 @@ class AppointmentsController extends GetxController {
     }
   }
 
-  // Diálogo para cuando se acaba el plan de prueba
-  void _showTrialEndedDialog() {
-    print('Mostrando diálogo de fin de plan de prueba');
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.star,
-                  color: Colors.orange[700],
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Plan de prueba finalizado',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Has alcanzado el límite de citas de tu plan de prueba. Actualiza a un plan premium para continuar gestionando tus citas.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.back(); // Cerrar diálogo
-                    Get.toNamed(GetRoutes.subscriptionPlans);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Ver planes disponibles',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Get.back(); // Solo cerrar el diálogo
-                },
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      barrierDismissible: true,
-    );
+
+  // Diálogos comunes (shared/widgets/app_dialogs.dart). La clasificación por
+  // texto del error se sustituye por `code` en la 4.09.
+  void _showSubscriptionBlocked(SubscriptionBlockReason reason) {
+    AppDialogs.subscriptionRequired(reason: reason);
   }
 
-// Diálogo para cuando la suscripción no está activa
-  void _showInactiveSubscriptionDialog() {
-    print('Mostrando diálogo de suscripción inactiva');
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.assignment_late_rounded,
-                  color: Colors.red[400],
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Suscripción inactiva',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tu suscripción no está activa actualmente. Por favor, actualiza tu plan para seguir gestionando tus citas.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Get.back(); // Cerrar diálogo
-                    Get.toNamed(GetRoutes.subscriptionPlans);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Ver planes disponibles',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Get.back(); // Solo cerrar el diálogo
-                },
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      barrierDismissible: true,
+  void _showScheduleUnavailable() {
+    final employee = selectedEmployee.value;
+    final who = employee == null
+        ? 'El profesional'
+        : 'El profesional ${employee.name} ${employee.lastname}'.trim();
+    AppDialogs.info(
+      title: 'Horario no disponible',
+      message: '$who no está disponible en este horario.',
+      detail: 'Selecciona otra hora o elige otro profesional.',
+      tone: AppTone.warning,
+      icon: Icons.schedule,
+      barrierDismissible: false,
     );
   }
 
@@ -1699,9 +1345,9 @@ class AppointmentsController extends GetxController {
     if (message.contains('límite de citas') ||
         message.contains('plan de prueba') ||
         message.contains('trial')) {
-      _showTrialEndedDialog();
+      _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
     } else {
-      _showInactiveSubscriptionDialog();
+      _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
     }
   }
 

@@ -1,7 +1,7 @@
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
 
 class PaymentSuccessScreen extends StatelessWidget {
@@ -146,22 +146,8 @@ class PaymentSuccessScreen extends StatelessWidget {
     );
   }
 
-  String _formatCurrency(double price, String currency) {
-    String symbol = currency == 'COP' ? '\$' : currency;
+  String _formatCurrency(double price, String currency) =>
+      formatMoney(price, currency: currency);
 
-    if (currency == 'COP') {
-      return '$symbol ${price.toInt().toString().replaceAllMapped(
-            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-            (Match m) => '${m[1]}.',
-          )}';
-    } else {
-      return '$symbol ${price.toStringAsFixed(2)}';
-    }
-  }
-
-  String _getCurrentDate() {
-    final now = DateTime.now();
-    final formatter = DateFormat('dd/MM/yyyy');
-    return formatter.format(now);
-  }
+  String _getCurrentDate() => formatDate(DateTime.now());
 }

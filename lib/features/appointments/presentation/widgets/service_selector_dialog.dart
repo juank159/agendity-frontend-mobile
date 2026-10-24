@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import '../controllers/appointments_controller.dart';
 
 class ServiceSelectorDialog extends StatelessWidget {
@@ -56,11 +56,6 @@ class ServiceSelectorDialog extends StatelessWidget {
     final searchQuery = ''.obs;
 
     // Personalizar el formato para mostrar el símbolo de peso a la izquierda
-    final currencyFormat = NumberFormat.currency(
-      locale: 'es',
-      symbol: '\$',
-      decimalDigits: 0,
-    );
 
     return Column(
       children: [
@@ -284,7 +279,7 @@ class ServiceSelectorDialog extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          currencyFormat.format(controller.totalPrice.value),
+                          formatCop(controller.totalPrice.value),
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,

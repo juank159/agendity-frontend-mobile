@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/google_sign_in_usecase.dart';
+import 'package:login_signup/shared/controller/session_controller.dart';
 
 class GoogleAuthController extends GetxController {
   final GoogleSignInUseCase googleSignInUseCase;
@@ -30,10 +31,7 @@ class GoogleAuthController extends GetxController {
             color: Colors.red,
           );
         },
-        (user) {
-          // Navegamos a la pantalla principal después del inicio de sesión exitoso
-          Get.offAllNamed(GetRoutes.home);
-        },
+        (user) => _enterHome(),
       );
     } catch (e) {
       errorMessage.value = e.toString();
@@ -45,6 +43,21 @@ class GoogleAuthController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// La capa de datos ya guardó el token: se carga la sesión de la UI antes
+  /// de navegar (AuthMiddleware la exige en la home).
+  Future<void> _enterHome() async {
+    final session = await Get.find<SessionController>().reload();
+    if (session == null) {
+      _showSnackbar(
+        title: 'Error',
+        message: 'No se pudo iniciar la sesión. Inténtalo de nuevo.',
+        color: Colors.red,
+      );
+      return;
+    }
+    Get.offAllNamed(GetRoutes.home);
   }
 
   void _showSnackbar({

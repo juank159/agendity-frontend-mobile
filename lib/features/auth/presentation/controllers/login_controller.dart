@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
-import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/shared/controller/session_controller.dart';
 
 class LoginController extends GetxController {
   final LoginUseCase loginUseCase;
@@ -162,8 +162,6 @@ class LoginController extends GetxController {
           print('✅ Login exitoso para usuario: ${user.name}');
           isLoading.value = false;
 
-          // IMPORTANTE: Actualizar UserInfoController ANTES de mostrar mensajes
-          _updateUserInfoAfterLogin();
 
           // Mensaje de bienvenida mejorado
           _showSnackbar(
@@ -176,10 +174,9 @@ class LoginController extends GetxController {
           // Limpiar campos después del login exitoso
           _clearFields();
 
-          // Navegar al dashboard con un pequeño delay para mostrar el mensaje
-          Future.delayed(const Duration(milliseconds: 800), () {
-            Get.offAllNamed(GetRoutes.home);
-          });
+          // La capa de datos ya guardó el token: se carga la sesión de la UI
+          // antes de navegar (AuthMiddleware la exige en la home).
+          _enterHome();
         },
       );
     } catch (e) {
@@ -249,30 +246,17 @@ class LoginController extends GetxController {
   bool get hasErrors =>
       emailError.value.isNotEmpty || passwordError.value.isNotEmpty;
 
-  // Método para actualizar UserInfoController después del login
-  void _updateUserInfoAfterLogin() {
-    try {
-      // Buscar o crear UserInfoController
-      UserInfoController userController;
-
-      if (Get.isRegistered<UserInfoController>()) {
-        userController = Get.find<UserInfoController>();
-        print('📱 UserInfoController encontrado, recargando datos...');
-      } else {
-        userController = UserInfoController();
-        Get.put(userController, permanent: true);
-        print('📱 UserInfoController creado después del login');
-      }
-
-      // Forzar la recarga INMEDIATA de la información del usuario
-      userController.refreshUserInfo().then((_) {
-        print(
-            '✅ Información del usuario actualizada: ${userController.userName.value} - Roles: ${userController.userRoles}');
-      }).catchError((e) {
-        print('❌ Error al actualizar información del usuario: $e');
-      });
-    } catch (e) {
-      print('❌ Error al inicializar UserInfoController después del login: $e');
+  Future<void> _enterHome() async {
+    final sessionFuture = Get.find<SessionController>().reload();
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (await sessionFuture == null) {
+      _showSnackbar(
+        title: 'Error de inicio de sesión',
+        message: 'No se pudo iniciar la sesión. Inténtalo de nuevo.',
+        color: Colors.red,
+      );
+      return;
     }
+    Get.offAllNamed(GetRoutes.home);
   }
 }

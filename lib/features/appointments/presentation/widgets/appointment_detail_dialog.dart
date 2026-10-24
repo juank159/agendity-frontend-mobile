@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/edit_appointment_dialog.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
-import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:login_signup/shared/controller/session_controller.dart';
 
 class AppointmentDetailsDialog extends StatelessWidget {
   final AppointmentEntity appointment;
@@ -17,52 +15,8 @@ class AppointmentDetailsDialog extends StatelessWidget {
   const AppointmentDetailsDialog({Key? key, required this.appointment})
       : super(key: key);
 
-  // Método para verificar si el usuario es Owner
-  Future<bool> _isOwner() async {
-    try {
-      // Usamos FlutterSecureStorage directamente o a través del UserInfoController
-      // dependiendo de cómo prefieras implementarlo
-      final storage = const FlutterSecureStorage();
-      final token = await storage.read(key: 'token');
-
-      if (token != null) {
-        final parts = token.split('.');
-        if (parts.length == 3) {
-          final payload = json.decode(
-            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-          );
-          final roles = payload['roles'];
-          return roles is List ? roles.contains('Owner') : roles == 'Owner';
-        }
-      }
-      return false;
-    } catch (e) {
-      print('Error al verificar el rol de Owner: $e');
-      return false;
-    }
-  }
-
-  // Método para obtener el ID del usuario actual desde el token
-  Future<String?> _getCurrentUserId() async {
-    try {
-      final storage = const FlutterSecureStorage();
-      final token = await storage.read(key: 'token');
-
-      if (token != null) {
-        final parts = token.split('.');
-        if (parts.length == 3) {
-          final payload = json.decode(
-            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-          );
-          return payload['id'] as String?;
-        }
-      }
-      return null;
-    } catch (e) {
-      print('Error al obtener el ID del usuario: $e');
-      return null;
-    }
-  }
+  /// Rol del usuario desde la sesión de la UI (sin decodificar el JWT).
+  bool get _isOwner => Get.find<SessionController>().isOwner;
 
   @override
   Widget build(BuildContext context) {
@@ -211,10 +165,9 @@ class AppointmentDetailsDialog extends StatelessWidget {
                     const Divider(height: 32),
 
                     // Sección del Profesional - Solo se muestra para Owner
-                    FutureBuilder<bool>(
-                      future: _isOwner(),
-                      builder: (context, ownerSnapshot) {
-                        final bool isOwner = ownerSnapshot.data ?? false;
+                    Builder(
+                      builder: (context) {
+                        final bool isOwner = _isOwner;
 
                         // Solo mostramos la información del profesional si el usuario es Owner
                         if (isOwner &&
@@ -525,10 +478,9 @@ class AppointmentDetailsDialog extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Botones de acción basados en el rol del usuario
-                    FutureBuilder<bool>(
-                      future: _isOwner(),
-                      builder: (context, snapshot) {
-                        final bool isOwner = snapshot.data ?? false;
+                    Builder(
+                      builder: (context) {
+                        final bool isOwner = _isOwner;
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,

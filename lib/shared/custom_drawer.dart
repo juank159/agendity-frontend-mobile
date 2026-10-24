@@ -1,6 +1,5 @@
 // lib/widgets/custom_drawer.dart
 
-import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -14,19 +13,9 @@ import 'package:login_signup/features/services/presentation/controller/services_
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
-  // Método para inicializar UserInfoController si no existe
-  UserInfoController _ensureUserInfoController() {
-    try {
-      return Get.find<UserInfoController>();
-    } catch (e) {
-      print('UserInfoController no encontrado, inicializando uno nuevo: $e');
-      final controller = UserInfoController();
-      Get.put(controller, permanent: true);
-      // Asegurar que se cargue la información del usuario inmediatamente
-      controller.loadUserInfo();
-      return controller;
-    }
-  }
+  // UserInfoController se registra una sola vez en UserModule.
+  UserInfoController _ensureUserInfoController() =>
+      Get.find<UserInfoController>();
 
   void _showLogoutDialog() {
     try {
@@ -431,22 +420,26 @@ class CustomDrawer extends GetView<UserInfoController> {
                             const SizedBox(height: 16),
                             _buildSectionTitle('CONFIGURACIÓN'),
 
-                            _buildDrawerItem(
-                              icon: Icons.settings,
-                              title: 'Ajustes',
-                              onTap: () {
-                                Get.back();
-                                Get.toNamed(GetRoutes.configWhatsapp);
-                              },
-                            ),
-                            _buildDrawerItem(
-                              icon: Icons.help,
-                              title: 'Centro de ayuda',
-                              onTap: () {
-                                Get.back();
-                                Get.toNamed(GetRoutes.subscriptionPlans);
-                              },
-                            ),
+                            // Solo Owner: el backend responde 403 al Employee
+                            // en la configuración de WhatsApp y al suscribirse.
+                            if (isOwner) ...[
+                              _buildDrawerItem(
+                                icon: Icons.settings,
+                                title: 'Ajustes',
+                                onTap: () {
+                                  Get.back();
+                                  Get.toNamed(GetRoutes.configWhatsapp);
+                                },
+                              ),
+                              _buildDrawerItem(
+                                icon: Icons.help,
+                                title: 'Centro de ayuda',
+                                onTap: () {
+                                  Get.back();
+                                  Get.toNamed(GetRoutes.subscriptionPlans);
+                                },
+                              ),
+                            ],
                             _buildDrawerItem(
                               icon: Icons.send,
                               title: 'Enviar opiniones',

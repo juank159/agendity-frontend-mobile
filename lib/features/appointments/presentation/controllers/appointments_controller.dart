@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/session/session_repository.dart';
+import 'package:login_signup/shared/controller/session_controller.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
 
@@ -85,6 +87,7 @@ class AppointmentsController extends GetxController {
 
   // Nuevo estado para guardar el rol del usuario
   final RxString userRole = ''.obs;
+  Worker? _sessionWorker;
   final RxString userId = ''.obs;
 
   // Servicio de suscripciones
@@ -316,39 +319,23 @@ class AppointmentsController extends GetxController {
     );
   }
 
-  // Nuevo método para obtener la info del usuario
-  Future<void> _getUserInfo() async {
-    try {
-      final token = await localStorage.getToken();
-      if (token != null) {
-        // Extraer la información del token
-        final parts = token.split('.');
-        if (parts.length == 3) {
-          final payload = json.decode(
-            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-          );
-
-          // Extraer roles y ID del usuario
-          final roles = payload['roles'];
-          userId.value = payload['id'] ?? '';
-
-          if (roles is List) {
-            if (roles.contains('Owner')) {
-              userRole.value = 'Owner';
-            } else if (roles.contains('Employee')) {
-              userRole.value = 'Employee';
-            }
-          } else if (roles is String) {
-            userRole.value = roles;
-          }
-
-          print('Rol de usuario detectado: ${userRole.value}');
-          print('ID de usuario: ${userId.value}');
-        }
-      }
-    } catch (e) {
-      print('Error al obtener información del usuario: $e');
+  /// Rol e id del usuario desde la sesión de la UI (sin decodificar el JWT).
+  /// Se mantiene sincronizado si la sesión cambia (login con otro usuario).
+  void _getUserInfo() {
+    final session = Get.find<SessionController>();
+    void apply(Session? current) {
+      userId.value = current?.userId ?? '';
+      userRole.value = current == null
+          ? ''
+          : current.isOwner
+              ? 'Owner'
+              : current.hasRole(SessionRole.employee)
+                  ? 'Employee'
+                  : '';
     }
+
+    apply(session.session.value);
+    _sessionWorker = ever<Session?>(session.session, apply);
   }
 
   void _initializeControllers() {
@@ -1488,23 +1475,6 @@ class AppointmentsController extends GetxController {
     return '';
   }
 
-  // Método auxiliar para extraer el Tenant ID del token JWT
-  String _extractTenantId(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length > 1) {
-        final payload = base64Url.normalize(parts[1]);
-        final decoded = utf8.decode(base64Url.decode(payload));
-        final Map<String, dynamic> data = jsonDecode(decoded);
-        final tenantId = data['tenant_id'] ?? '';
-        return tenantId;
-      }
-    } catch (e) {
-      print('Error extrayendo tenant_id: $e');
-    }
-    return '';
-  }
-
   CalendarDataSource getCalendarDataSource() {
     print('Creando calendar data source con ${appointments.length} citas');
     return AppointmentDataSource(appointments);
@@ -1517,6 +1487,7 @@ class AppointmentsController extends GetxController {
 
   @override
   void onClose() {
+    _sessionWorker?.dispose();
     _employeesController = null;
     selectedServiceIds.clear();
     totalPrice.value = 0;

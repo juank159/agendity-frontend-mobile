@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/routes/middlewares/auth_middleware.dart';
+import 'package:login_signup/core/routes/middlewares/role_middleware.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/appointments/presentation/bindings/appointment_reminder_binding.dart';
 
@@ -174,113 +175,104 @@ class GetRoutes {
     // Main Pages
     GetPage(
       name: home,
+      middlewares: [AuthMiddleware()],
       page: () => AppointmentsView(),
       binding: AppointmentsBinding(),
       transition: Transition.fadeIn,
-      middlewares: [AuthMiddleware()],
     ),
 
     // Service Pages
     GetPage(
       name: services,
+      middlewares: [AuthMiddleware()],
       page: () => const ServicesScreen(),
       binding: ServicesBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: addService,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const NewServiceScreen(),
       binding: NewServiceBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: editService,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const EditServiceScreen(),
       binding: EditServiceBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
 
     // Categories Pages
     GetPage(
       name: categories,
+      middlewares: [AuthMiddleware()],
       page: () => const CategoriesScreen(),
       binding: CategoriesBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
       fullscreenDialog: true,
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: addCategory,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const NewCategoryScreen(),
       binding: NewCategoryBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
 
     // Client Pages
     GetPage(
       name: clients,
+      middlewares: [AuthMiddleware()],
       page: () => ClientsScreen(), // Removido el const
       binding: ClientsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: editClient,
+      middlewares: [AuthMiddleware()],
       page: () => const EditClientScreen(),
       binding: ClientsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true, // Asegúrate de tener esto en true
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: addClient,
+      middlewares: [AuthMiddleware()],
       page: () => const NewClientScreen(),
       binding: ClientsBinding(),
     ),
 
     // employees Pages
-    // GetPage(
-    //   name: employees,
-    //   page: () => const EmployeesListScreen(),
-    //   binding: EmployeesBinding(),
-    //   transition: Transition.fadeIn,
-    //   transitionDuration: const Duration(milliseconds: 300),
-    //   preventDuplicates: true,
-    //   middlewares: [AuthMiddleware()],
-    //   // Agrega esta opción para eliminar rutas previas
-    //   popGesture: false,
-    // ),
 
     GetPage(
       name: employees,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const EmployeesListScreen(),
       binding: EmployeesBinding(),
       transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 300),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
       // Agrega esta opción para eliminar rutas previas
       popGesture: false,
     ),
     GetPage(
       name: addEmployee,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const CreateEmployeeScreen(),
       binding: BindingsBuilder(() {
         if (!Get.isRegistered<ServicesController>()) {
@@ -304,6 +296,7 @@ class GetRoutes {
 
     GetPage(
       name: verifyEmployeeEmail,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const VerifyEmployeeEmailScreen(),
       binding: VerifyEmployeeEmailBinding(),
       transition: Transition.rightToLeft,
@@ -311,6 +304,7 @@ class GetRoutes {
 
     GetPage(
       name: employeeDetails,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => EmployeeDetailsScreen(
         employee: Get.arguments as EmployeeEntity,
       ),
@@ -318,6 +312,7 @@ class GetRoutes {
     ),
     GetPage(
       name: employeeEdit,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => EditEmployeeScreen(
         employeeId: Get.parameters['id'] ?? '',
       ),
@@ -327,87 +322,70 @@ class GetRoutes {
     // statistics Pages
     GetPage(
       name: statistics,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const StatisticsDashboardScreen(),
       binding: StatisticsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: employeeStats,
+      middlewares: [AuthMiddleware()],
       page: () => const EmployeeStatsScreen(),
       binding: StatisticsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
 
     // Config Whatsapp Pages
     GetPage(
       name: configWhatsapp,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const WhatsappConfigScreen(),
       binding: WhatsappBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
 
     // Notifications Pages
     GetPage(
       name: notifications,
+      middlewares: [AuthMiddleware()],
       page: () => const UpcomingAppointmentsScreen(),
       binding: AppointmentReminderBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
 
     // Subscription Pages
     GetPage(
       name: subscriptionPlans,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const SubscriptionPlansScreen(),
       binding: SubscriptionBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: paymentWebview,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const PaymentWebViewScreen(),
       binding: SubscriptionBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: paymentSuccess,
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const PaymentSuccessScreen(),
       binding: SubscriptionBinding(),
       transition: Transition.fadeIn,
     ),
   ];
-}
-
-class AuthMiddleware extends GetMiddleware {
-  @override
-  RouteSettings? redirect(String? route) {
-    // Nota: eliminamos async/await y manejamos la promesa diferente
-    try {
-      final storage = Get.find<FlutterSecureStorage>();
-      final token = storage.read(key: 'token');
-      if (token == null) {
-        return const RouteSettings(name: GetRoutes.login);
-      }
-      return null;
-    } catch (e) {
-      print('Error en middleware de autenticación: $e');
-      return const RouteSettings(name: GetRoutes.login);
-    }
-  }
 }

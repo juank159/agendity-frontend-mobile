@@ -1206,12 +1206,10 @@ import 'package:login_signup/core/routes/routes.dart';
 //   }
 // }
 
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/constants/app_colors.dart';
-import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/features/employees/data/models/employee_model.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
@@ -1585,29 +1583,6 @@ class EmployeesListScreen extends StatelessWidget {
       return false;
     } catch (e) {
       print('Error al verificar si el empleado es Owner: $e');
-      return false;
-    }
-  }
-
-// Método adicional para verificar el rol del usuario actual logueado
-  Future<bool> _isCurrentUserOwner() async {
-    try {
-      final userController = Get.find<UserInfoController>();
-      final token = await userController.storage.read(key: 'token');
-
-      if (token != null) {
-        final parts = token.split('.');
-        if (parts.length == 3) {
-          final payload = json.decode(
-            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-          );
-          final roles = payload['roles'];
-          return roles is List ? roles.contains('Owner') : roles == 'Owner';
-        }
-      }
-      return false;
-    } catch (e) {
-      print('Error al verificar el rol del usuario actual: $e');
       return false;
     }
   }

@@ -1,229 +1,83 @@
-import 'package:login_signup/core/routes/routes.dart';
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
-// import '../../domain/usecases/logout_usecase.dart';
-// import '../../../../core/di/init_dependencies.dart';
-// import '../../../../core/di/modules/services_module.dart';
-// import '../../../../shared/controller/custom_bottom_navigation_controller.dart';
-
-// class LogoutController extends GetxController {
-//   final LogoutUseCase _logoutUseCase;
-//   final RxBool isLoading = false.obs;
-
-//   LogoutController({required LogoutUseCase logoutUseCase})
-//       : _logoutUseCase = logoutUseCase;
-
-//   Future<void> logout() async {
-//     try {
-//       isLoading.value = true;
-
-//       if (Get.isRegistered<CustomBottomNavigationController>()) {
-//         Get.find<CustomBottomNavigationController>().reset();
-//       }
-
-//       final result = await _logoutUseCase.execute();
-
-//       result.fold(
-//         (failure) {
-//           _showErrorMessage(failure.message);
-//         },
-//         (_) async {
-//           try {
-//             await _cleanupModules();
-//             Get.deleteAll(force: true);
-//             await Get.offAllNamed('/login');
-//             await DependencyInjection.initAuthDependencies();
-//             _showSuccessMessage();
-//           } catch (e) {
-//             _showErrorMessage('Error al reiniciar la aplicación');
-//           }
-//         },
-//       );
-//     } catch (e) {
-//       _showErrorMessage('Error al cerrar sesión');
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-
-//   Future<void> _cleanupModules() async {
-//     if (Get.isRegistered<ServicesController>()) {
-//       Get.find<ServicesController>().clearServices();
-//     }
-//     ServicesModule.reset();
-//   }
-
-//   void _showSuccessMessage() {
-//     Get.snackbar(
-//       'Éxito',
-//       'Sesión cerrada correctamente',
-//       backgroundColor: Colors.green,
-//       colorText: Colors.white,
-//       snackPosition: SnackPosition.TOP,
-//       duration: const Duration(seconds: 2),
-//       borderRadius: 8,
-//       margin: const EdgeInsets.all(8),
-//     );
-//   }
-
-//   void _showErrorMessage(String error) {
-//     Get.snackbar(
-//       'Error',
-//       error,
-//       backgroundColor: Colors.red,
-//       colorText: Colors.white,
-//       snackPosition: SnackPosition.TOP,
-//       duration: const Duration(seconds: 3),
-//       borderRadius: 8,
-//       margin: const EdgeInsets.all(8),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/di/modules/clients_module.dart';
 import 'package:login_signup/core/di/modules/employees_module.dart';
-
+import 'package:login_signup/core/di/modules/services_module.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
-import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
-import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/shared/controller/session_controller.dart';
 import '../../domain/usecases/logout_usecase.dart';
-import '../../../../core/di/init_dependencies.dart';
-import '../../../../core/di/modules/services_module.dart';
 
+/// Cierre de sesión: manual (drawer) o por sesión vencida (401 del Dio 'api').
 class LogoutController extends GetxController {
   final LogoutUseCase _logoutUseCase;
   final RxBool isLoading = false.obs;
+  bool _ending = false;
 
   LogoutController({required LogoutUseCase logoutUseCase})
       : _logoutUseCase = logoutUseCase;
 
-  Future<void> logout() async {
+  /// Logout pedido por el usuario.
+  Future<void> logout() => endSession();
+
+  /// Cierra la sesión, limpia los datos de las features y lleva al login.
+  /// Con [expired] muestra "Tu sesión expiró" en vez del mensaje de logout.
+  Future<void> endSession({bool expired = false}) async {
+    if (_ending) return;
+    _ending = true;
     try {
       isLoading.value = true;
 
-      final result = await _logoutUseCase.execute();
-
-      result.fold(
-        (failure) {
-          _showErrorMessage(failure.message);
-        },
-        (_) async {
-          try {
-            // Limpieza ordenada y completa
-            await _cleanupDependencies();
-
-            // Navegación (SIN reinicializar dependencias de auth)
-            await Get.offAllNamed(GetRoutes.login);
-            _showSuccessMessage();
-          } catch (e) {
-            print('Error durante la limpieza: $e');
-            _showErrorMessage('Error al cerrar sesión');
-          }
-        },
-      );
-    } catch (e) {
-      print('Error en logout: $e');
-      _showErrorMessage('Error al cerrar sesión');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> _cleanupDependencies() async {
-    try {
-      // Limpiar información del usuario
-      if (Get.isRegistered<UserInfoController>()) {
-        Get.find<UserInfoController>().clearUserInfo();
+      // 1. Sesión (token + estado en memoria) por SessionService.
+      if (Get.isRegistered<SessionController>()) {
+        await Get.find<SessionController>().end();
       }
 
-      // Limpiar módulos de funcionalidades (mantener auth)
-      await _cleanupFeatureModules();
+      // 2. Resto de datos locales (LocalStorage.clearAllData).
+      final result = await _logoutUseCase.execute();
+      result.fold(
+        (failure) => debugPrint('Logout: limpieza local con error: '
+            '${failure.message}'),
+        (_) {},
+      );
 
-      print('✅ Limpieza de dependencias completada - auth preservado');
+      // 3. Datos de las features (se preserva auth).
+      _cleanupFeatureModules();
+
+      await Get.offAllNamed(GetRoutes.login);
+      if (expired) {
+        _showMessage('Sesión expirada',
+            'Tu sesión expiró. Inicia sesión de nuevo.', Colors.orange);
+      } else {
+        _showMessage('Éxito', 'Sesión cerrada correctamente', Colors.green);
+      }
     } catch (e) {
-      print('Error durante la limpieza de dependencias: $e');
+      debugPrint('Error en logout: $e');
+      _showMessage('Error', 'Error al cerrar sesión', Colors.red);
+    } finally {
+      isLoading.value = false;
+      _ending = false;
     }
   }
 
-  Future<void> _cleanupFeatureModules() async {
+  void _cleanupFeatureModules() {
     try {
-      // Limpiar solo los módulos de funcionalidades, NO los de auth
       if (Get.isRegistered<ServicesController>()) {
         Get.find<ServicesController>().clearServices();
       }
-      
-      // Reset de módulos de funcionalidades (preservar auth)
       ServicesModule.reset();
       ClientsModule.reset();
       EmployeesModule.reset();
-      
-      print('Módulos de funcionalidades limpiados (auth preservado)');
     } catch (e) {
-      print('Error al limpiar módulos de funcionalidades: $e');
+      debugPrint('Error al limpiar módulos de funcionalidades: $e');
     }
   }
 
-  Future<void> _cleanupControllers() async {
-    // 1. Eliminar controladores dependientes primero
-    if (Get.isRegistered<AppointmentsController>()) {
-      try {
-        Get.delete<AppointmentsController>(force: true);
-      } catch (e) {
-        print('Error al eliminar AppointmentsController: $e');
-      }
-    }
-
-    // 2. Luego eliminar controladores de servicios
-    if (Get.isRegistered<ServicesController>()) {
-      try {
-        Get.find<ServicesController>().clearServices();
-        Get.delete<ServicesController>(force: true);
-      } catch (e) {
-        print('Error al eliminar ServicesController: $e');
-      }
-    }
-
-    // 3. Finalmente eliminar controladores base
-    if (Get.isRegistered<EmployeesController>()) {
-      try {
-        Get.delete<EmployeesController>(force: true);
-      } catch (e) {
-        print('Error al eliminar EmployeesController: $e');
-      }
-    }
-  }
-
-  Future<void> _cleanupModules() async {
-    try {
-      ServicesModule.reset();
-      // Aquí puedes agregar la limpieza de otros módulos
-    } catch (e) {
-      print('Error al limpiar módulos: $e');
-    }
-  }
-
-  void _showSuccessMessage() {
+  void _showMessage(String title, String message, Color color) {
     Get.snackbar(
-      'Éxito',
-      'Sesión cerrada correctamente',
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 2),
-      borderRadius: 8,
-      margin: const EdgeInsets.all(8),
-    );
-  }
-
-  void _showErrorMessage(String error) {
-    Get.snackbar(
-      'Error',
-      error,
-      backgroundColor: Colors.red,
+      title,
+      message,
+      backgroundColor: color,
       colorText: Colors.white,
       snackPosition: SnackPosition.TOP,
       duration: const Duration(seconds: 3),

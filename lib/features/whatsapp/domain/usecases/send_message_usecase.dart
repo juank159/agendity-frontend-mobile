@@ -14,7 +14,7 @@ class SendMessageParams {
   });
 }
 
-class SendMessageUseCase implements UseCase<bool, SendMessageParams> {
+class SendMessageUseCase extends UseCase<bool, SendMessageParams> {
   final WhatsappRepository repository;
 
   SendMessageUseCase(this.repository);

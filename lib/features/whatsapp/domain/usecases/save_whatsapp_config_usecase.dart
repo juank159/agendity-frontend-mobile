@@ -18,7 +18,7 @@ class SaveWhatsappConfigParams {
 }
 
 class SaveWhatsappConfigUseCase
-    implements UseCase<WhatsappConfig, SaveWhatsappConfigParams> {
+    extends UseCase<WhatsappConfig, SaveWhatsappConfigParams> {
   final WhatsappRepository repository;
 
   SaveWhatsappConfigUseCase(this.repository);
@@ -27,8 +27,8 @@ class SaveWhatsappConfigUseCase
   Future<Either<Failure, WhatsappConfig>> call(
       SaveWhatsappConfigParams params) {
     final config = WhatsappConfig(
-      phoneNumber: params.phoneNumber,
-      apiKey: params.apiKey,
+      phoneNumber: params.phoneNumber.trim(),
+      apiKey: params.apiKey.trim(),
       isEnabled: params.isEnabled,
     );
     return repository.saveConfig(config);

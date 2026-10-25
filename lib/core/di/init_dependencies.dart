@@ -10,7 +10,6 @@ import 'package:login_signup/core/di/modules/register_module.dart';
 import 'package:login_signup/core/di/modules/statistics_module.dart';
 import 'package:login_signup/core/di/modules/subscriptions_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
-import 'package:login_signup/core/di/modules/whatsapp_module.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/network/network_info.dart';
 import 'package:login_signup/core/session/session_repository.dart';
@@ -24,6 +23,7 @@ import 'modules/auth_module.dart';
 import 'modules/services_module.dart';
 import 'modules/categories_module.dart';
 import 'modules/clients_module.dart';
+import 'package:login_signup/features/whatsapp/whatsapp_dependencies.dart';
 
 class DependencyInjection {
   static Future<void> init() async {
@@ -132,7 +132,7 @@ class DependencyInjection {
       await PaymentModule.init();
       await StatisticsModule.init();
       await SubscriptionsModule.init();
-      await WhatsappModule.init();
+      WhatsappDependencies.init();
 
       print('Features initialized successfully');
     } catch (e) {

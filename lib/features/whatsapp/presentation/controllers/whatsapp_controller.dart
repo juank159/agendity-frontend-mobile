@@ -233,7 +233,8 @@ class WhatsappController extends GetxController {
           hasExistingConfig.value = false;
         },
         (config) {
-          if (config.id != null && config.id!.isNotEmpty) {
+          // null = el negocio aún no tiene configuración (404 del backend).
+          if (config != null && config.id != null && config.id!.isNotEmpty) {
             // Configuración existente
             hasExistingConfig.value = true;
             configId.value = config.id!;

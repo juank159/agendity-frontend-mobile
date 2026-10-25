@@ -34,5 +34,5 @@ class RequestPasswordResetUseCase {
 
 /// Excepción específica para errores de validación
 class ValidationFailure extends Failure {
-  ValidationFailure({required String message}) : super(message: message);
+  ValidationFailure({required super.message});
 }

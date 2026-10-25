@@ -1215,7 +1215,7 @@ class EmployeesController extends GetxController {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
+                        color: Colors.orange.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(50),
                       ),
                       child: const Icon(
@@ -1267,10 +1267,10 @@ class EmployeesController extends GetxController {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border:
-                              Border.all(color: Colors.blue.withOpacity(0.3)),
+                              Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1471,7 +1471,7 @@ class EmployeesController extends GetxController {
       '🚫 Acción no permitida',
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.orange.withOpacity(0.95),
+      backgroundColor: Colors.orange.withValues(alpha: 0.95),
       colorText: Colors.white,
       duration: const Duration(seconds: 5),
       margin: const EdgeInsets.all(16),
@@ -1502,7 +1502,7 @@ class EmployeesController extends GetxController {
       '⚠️ Ya eliminado',
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.amber.withOpacity(0.95),
+      backgroundColor: Colors.amber.withValues(alpha: 0.95),
       colorText: Colors.white,
       duration: const Duration(seconds: 4),
       margin: const EdgeInsets.all(16),
@@ -1541,7 +1541,7 @@ class EmployeesController extends GetxController {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.1),
+                color: Colors.teal.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(50),
               ),
               child: const Icon(
@@ -1578,9 +1578,9 @@ class EmployeesController extends GetxController {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.1),
+                color: Colors.teal.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                border: Border.all(color: Colors.teal.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
@@ -1704,7 +1704,7 @@ class EmployeesController extends GetxController {
       'Éxito',
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.green.withOpacity(0.9),
+      backgroundColor: Colors.green.withValues(alpha: 0.9),
       colorText: Colors.white,
       duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(16),
@@ -1719,7 +1719,7 @@ class EmployeesController extends GetxController {
       title,
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.red.withOpacity(0.9),
+      backgroundColor: Colors.red.withValues(alpha: 0.9),
       colorText: Colors.white,
       duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(16),
@@ -1733,7 +1733,7 @@ class EmployeesController extends GetxController {
       '♻️ Restaurado',
       '$employeeName ha sido restaurado correctamente',
       snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.teal.withOpacity(0.9),
+      backgroundColor: Colors.teal.withValues(alpha: 0.9),
       colorText: Colors.white,
       duration: const Duration(seconds: 3),
       margin: const EdgeInsets.all(16),

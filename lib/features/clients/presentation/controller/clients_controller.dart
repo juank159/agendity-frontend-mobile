@@ -265,7 +265,7 @@ class ClientsController extends GetxController {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (scrollController.hasClients) {
           // Mantener aproximadamente la misma posición relativa
-          final double itemHeight = 90; // Altura aproximada de cada card
+          const double itemHeight = 90; // Altura aproximada de cada card
           final double newPosition = currentPosition + (itemHeight * 0.5); // Ajuste suave
           
           scrollController.animateTo(

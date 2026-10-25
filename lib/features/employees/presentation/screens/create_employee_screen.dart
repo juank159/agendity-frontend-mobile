@@ -175,7 +175,7 @@ class CreateEmployeeScreen extends StatelessWidget {
                   backgroundColor: Colors.white,
                   child: Text(
                     nameInitial,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 40,
                       color: customPrimaryColor,
                       fontWeight: FontWeight.bold,
@@ -395,7 +395,7 @@ class CreateEmployeeScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               side: BorderSide(
                 color: isDayEnabled
-                    ? customPrimaryColor.withOpacity(0.7)
+                    ? customPrimaryColor.withValues(alpha: 0.7)
                     : Colors.grey[300]!,
                 width: 1,
               ),
@@ -548,9 +548,9 @@ class CreateEmployeeScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: customPrimaryColor.withOpacity(0.1),
+          color: customPrimaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: customPrimaryColor.withOpacity(0.3)),
+          border: Border.all(color: customPrimaryColor.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -634,7 +634,7 @@ class CreateEmployeeScreen extends StatelessWidget {
         width: double.infinity,
         child: ElevatedButton.icon(
           icon: controller.isLoading.value
-              ? SizedBox(
+              ? const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(

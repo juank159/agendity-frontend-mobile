@@ -1,6 +1,5 @@
 // lib/core/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_init;
 
@@ -77,7 +76,7 @@ class NotificationService {
       );
     }
 
-    final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
       'appointment_reminders',
       'Recordatorios de Citas',
       channelDescription: 'Notificaciones para recordatorios de citas',
@@ -85,9 +84,9 @@ class NotificationService {
       priority: Priority.high,
     );
 
-    final iOSPlatformChannelSpecifics = DarwinNotificationDetails();
+    const iOSPlatformChannelSpecifics = DarwinNotificationDetails();
 
-    final platformChannelSpecifics = NotificationDetails(
+    const platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
       iOS: iOSPlatformChannelSpecifics,
     );
@@ -142,7 +141,7 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
       'appointment_reminders',
       'Recordatorios de Citas',
       channelDescription: 'Notificaciones para recordatorios de citas',
@@ -150,9 +149,9 @@ class NotificationService {
       priority: Priority.high,
     );
 
-    final iOSPlatformChannelSpecifics = DarwinNotificationDetails();
+    const iOSPlatformChannelSpecifics = DarwinNotificationDetails();
 
-    final platformChannelSpecifics = NotificationDetails(
+    const platformChannelSpecifics = NotificationDetails(
       android: androidPlatformChannelSpecifics,
       iOS: iOSPlatformChannelSpecifics,
     );
@@ -183,27 +182,6 @@ class NotificationService {
       print('All notifications cancelled successfully');
     } catch (e) {
       print('Error cancelling all notifications: $e');
-    }
-  }
-
-  // ✅ NUEVO MÉTODO: Obtener notificaciones pendientes
-  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
-    try {
-      return await flutterLocalNotificationsPlugin.pendingNotificationRequests();
-    } catch (e) {
-      print('Error getting pending notifications: $e');
-      return [];
-    }
-  }
-
-  // ✅ NUEVO MÉTODO: Verificar si una notificación específica está pendiente
-  Future<bool> isNotificationPending(int id) async {
-    try {
-      final pendingNotifications = await getPendingNotifications();
-      return pendingNotifications.any((notification) => notification.id == id);
-    } catch (e) {
-      print('Error checking if notification is pending: $e');
-      return false;
     }
   }
 }

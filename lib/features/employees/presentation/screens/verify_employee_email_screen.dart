@@ -5,7 +5,7 @@ import 'package:login_signup/features/employees/presentation/controllers/verify_
 import 'package:pin_code_fields/pin_code_fields.dart';
 
 class VerifyEmployeeEmailScreen extends GetView<VerifyEmployeeEmailController> {
-  const VerifyEmployeeEmailScreen({Key? key}) : super(key: key);
+  const VerifyEmployeeEmailScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +47,7 @@ class VerifyEmployeeEmailScreen extends GetView<VerifyEmployeeEmailController> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: AppColors.cardIndicator.withOpacity(0.1),
+                            color: AppColors.cardIndicator.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -205,10 +205,10 @@ class VerifyEmployeeEmailScreen extends GetView<VerifyEmployeeEmailController> {
                                       controller.verifyEmail();
                                     },
                               child: controller.isLoading.value
-                                  ? Row(
+                                  ? const Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
-                                      children: const [
+                                      children: [
                                         SizedBox(
                                           height: 20,
                                           width: 20,

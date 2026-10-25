@@ -150,7 +150,7 @@ class ClientsRepositoryImpl implements ClientsRepository {
       if (result['errors'] != null && (result['errors'] as List).isNotEmpty) {
         print('❌ Errores en backend:');
         for (var error in result['errors']) {
-          print('   • ${error}');
+          print('   • $error');
         }
       }
       

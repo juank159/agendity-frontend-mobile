@@ -7,9 +7,9 @@ class OverviewStatsCard extends StatelessWidget {
   final PaymentStatsEntity stats;
 
   const OverviewStatsCard({
-    Key? key,
+    super.key,
     required this.stats,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +80,7 @@ class OverviewStatsCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(

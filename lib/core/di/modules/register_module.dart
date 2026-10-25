@@ -1,9 +1,6 @@
 // lib/core/di/modules/register_module.dart
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
-import 'package:internet_connection_checker/internet_connection_checker.dart';
-import '../../../core/network/network_info.dart';
 import '../../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../../features/auth/data/repositories/register_repository_impl.dart';
 import '../../../features/auth/domain/repositories/register_repository.dart';

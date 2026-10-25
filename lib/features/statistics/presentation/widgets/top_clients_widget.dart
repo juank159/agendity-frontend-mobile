@@ -179,7 +179,7 @@ import 'package:login_signup/core/utils/formatters.dart';
 import '../controllers/statistics_controller.dart';
 
 class TopClientsWidget extends StatelessWidget {
-  const TopClientsWidget({Key? key}) : super(key: key);
+  const TopClientsWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +225,7 @@ class TopClientsWidget extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.people_outline, size: 48, color: Colors.grey),
+              const Icon(Icons.people_outline, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
                 'No hay datos de clientes para el período seleccionado',
@@ -270,7 +270,7 @@ class TopClientsWidget extends StatelessWidget {
                                 radius: 28,
                                 backgroundColor: Theme.of(context)
                                     .primaryColor
-                                    .withOpacity(0.2),
+                                    .withValues(alpha: 0.2),
                                 child: Text(
                                   client.clientName
                                       .substring(0, 1)
@@ -344,7 +344,7 @@ class TopClientsWidget extends StatelessWidget {
                       ),
                     ),
                   ))
-              .toList(),
+              ,
 
           // Botón para ver más clientes
           TextButton.icon(

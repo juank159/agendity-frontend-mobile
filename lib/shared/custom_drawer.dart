@@ -1,6 +1,5 @@
 // lib/widgets/custom_drawer.dart
 
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -37,14 +36,14 @@ class CustomDrawer extends GetView<UserInfoController> {
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.85,
       child: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFF1A237E), // Azul oscuro
-              const Color(0xFF0D47A1), // Azul profundo
-              const Color(0xFF01579B), // Azul oscuro
+              Color(0xFF1A237E), // Azul oscuro
+              Color(0xFF0D47A1), // Azul profundo
+              Color(0xFF01579B), // Azul oscuro
             ],
           ),
         ),
@@ -76,13 +75,13 @@ class CustomDrawer extends GetView<UserInfoController> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
+                                    color: Colors.black.withValues(alpha: 0.2),
                                     blurRadius: 10,
                                     spreadRadius: 2,
                                   ),
                                 ],
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.7),
+                                  color: Colors.white.withValues(alpha: 0.7),
                                   width: 4,
                                 ),
                               ),
@@ -117,7 +116,7 @@ class CustomDrawer extends GetView<UserInfoController> {
                                 userController.userEmail.value,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 14,
                                   letterSpacing: 0.3,
                                 ),
@@ -131,13 +130,13 @@ class CustomDrawer extends GetView<UserInfoController> {
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: isOwner
-                                ? Colors.amber.withOpacity(0.2)
-                                : Colors.blue.withOpacity(0.2),
+                                ? Colors.amber.withValues(alpha: 0.2)
+                                : Colors.blue.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: isOwner
-                                  ? Colors.amber.withOpacity(0.5)
-                                  : Colors.blue.withOpacity(0.5),
+                                  ? Colors.amber.withValues(alpha: 0.5)
+                                  : Colors.blue.withValues(alpha: 0.5),
                               width: 1,
                             ),
                           ),
@@ -163,7 +162,7 @@ class CustomDrawer extends GetView<UserInfoController> {
                       gradient: LinearGradient(
                         colors: [
                           Colors.transparent,
-                          Colors.white.withOpacity(0.5),
+                          Colors.white.withValues(alpha: 0.5),
                           Colors.transparent,
                         ],
                       ),
@@ -179,7 +178,7 @@ class CustomDrawer extends GetView<UserInfoController> {
                       ),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.03),
+                          color: Colors.white.withValues(alpha: 0.03),
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(30),
                             topRight: Radius.circular(30),
@@ -399,11 +398,11 @@ class CustomDrawer extends GetView<UserInfoController> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           splashColor: isDestructive
-              ? Colors.red.withOpacity(0.1)
-              : Colors.white.withOpacity(0.1),
+              ? Colors.red.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.1),
           highlightColor: isDestructive
-              ? Colors.red.withOpacity(0.05)
-              : Colors.white.withOpacity(0.05),
+              ? Colors.red.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.05),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -412,8 +411,8 @@ class CustomDrawer extends GetView<UserInfoController> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: isDestructive
-                        ? Colors.red.withOpacity(0.2)
-                        : Colors.white.withOpacity(0.1),
+                        ? Colors.red.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(

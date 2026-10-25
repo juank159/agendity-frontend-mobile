@@ -15,18 +15,18 @@ class ClientSearchBar extends GetView<ClientsController> {
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 spreadRadius: 1,
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
             ],
             border: Border.all(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               width: 1,
             ),
           ),
@@ -161,8 +161,8 @@ class ClientSearchBar extends GetView<ClientsController> {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Chip(
-        backgroundColor: color.withOpacity(0.2),
-        side: BorderSide(color: color.withOpacity(0.5)),
+        backgroundColor: color.withValues(alpha: 0.2),
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
         label: Text(
           label,
           style: TextStyle(

@@ -9,10 +9,10 @@ class ProfessionalSelectorDialog extends StatelessWidget {
   final EmployeesController employeesController;
 
   const ProfessionalSelectorDialog({
-    Key? key,
+    super.key,
     required this.appointmentsController,
     required this.employeesController,
-  }) : super(key: key);
+  });
 
   static Future<EmployeeEntity?> show(
     BuildContext context,
@@ -185,7 +185,7 @@ class ProfessionalSelectorDialog extends StatelessWidget {
                                   color: isSelected
                                       ? Theme.of(context)
                                           .primaryColor
-                                          .withOpacity(0.2)
+                                          .withValues(alpha: 0.2)
                                       : Colors.grey[200],
                                   shape: BoxShape.circle,
                                   border: Border.all(

@@ -17,10 +17,10 @@ class EditAppointmentDialog extends StatefulWidget {
   final AppointmentsController controller;
 
   const EditAppointmentDialog({
-    Key? key,
+    super.key,
     required this.appointment,
     required this.controller,
-  }) : super(key: key);
+  });
 
   static Future<bool?> show(
     BuildContext context,
@@ -252,7 +252,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                 // Botón de guardar, deshabilitado si no hay servicios o profesional
                 Obx(() => ElevatedButton.icon(
                       icon: isLoading.value
-                          ? SizedBox(
+                          ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
@@ -354,7 +354,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                   ),
                 ),
                 padding:
@@ -399,10 +399,10 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
@@ -453,7 +453,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -543,7 +543,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -617,7 +617,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3)),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.3)),
                 ),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -982,7 +982,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
         print('🔄 Precio total calculado: $totalPrice');
 
         final updated = await widget.controller.updateAppointment(
-          appointmentId: widget.appointment.id!,
+          appointmentId: widget.appointment.id,
           professionalId: widget.controller.selectedEmployee.value!.id,
           serviceIds: selectedServiceIds.toList(),
           startTime: localDateTime,
@@ -1092,7 +1092,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor:
-                          Theme.of(context).primaryColor.withOpacity(0.1),
+                          Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       child: Text(
                         _getClientInitials(client),
                         style: TextStyle(
@@ -1157,10 +1157,10 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
               border: Border.all(
-                color: Theme.of(context).primaryColor.withOpacity(0.3),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),

@@ -197,7 +197,7 @@ class AppointmentCalendar extends StatelessWidget {
                 ),
                 selectionDecoration: BoxDecoration(
                   border: Border.all(
-                    color: Theme.of(context).primaryColor.withOpacity(0.5),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
                     width: 2,
                   ),
                   borderRadius: BorderRadius.circular(8),
@@ -331,7 +331,7 @@ class AppointmentCalendar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isToday
-            ? Theme.of(context).primaryColor.withOpacity(0.15)
+            ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
             : isCurrentMonth
                 ? Colors.white
                 : Colors.grey[100],
@@ -385,11 +385,11 @@ class AppointmentCalendar extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.8),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 2,
                         offset: const Offset(0, 1),
                       ),
@@ -479,7 +479,7 @@ class AppointmentCalendar extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
@@ -590,7 +590,7 @@ class AppointmentCalendar extends StatelessWidget {
                 : BorderRadius.circular(6), // Reducido de 8 a 6
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isSubAppointment ? 0.05 : 0.1),
+                color: Colors.black.withValues(alpha: isSubAppointment ? 0.05 : 0.1),
                 blurRadius: isSubAppointment ? 1 : 2,
                 offset: Offset(0, isSubAppointment ? 0.5 : 1),
               ),
@@ -729,7 +729,7 @@ class AppointmentCalendar extends StatelessWidget {
               : BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isSubAppointment ? 0.08 : 0.15),
+              color: Colors.black.withValues(alpha: isSubAppointment ? 0.08 : 0.15),
               blurRadius: isSubAppointment ? 2 : 4,
               offset: Offset(0, isSubAppointment ? 1 : 2),
             ),
@@ -765,7 +765,7 @@ class AppointmentCalendar extends StatelessWidget {
                           Text(
                             clientName,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                               fontSize: 10,
                             ),
                             maxLines: 1,
@@ -782,7 +782,7 @@ class AppointmentCalendar extends StatelessWidget {
                           horizontal: 4, vertical: 2),
                       margin: const EdgeInsets.only(left: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -818,7 +818,7 @@ class AppointmentCalendar extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: statusColor.withOpacity(0.4),
+                        color: statusColor.withValues(alpha: 0.4),
                         blurRadius: 2,
                         spreadRadius: 0.5,
                       ),
@@ -858,7 +858,7 @@ class AppointmentCalendar extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   margin: const EdgeInsets.only(right: 4, bottom: 2),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.8),
+                    color: Colors.green.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: Colors.white,

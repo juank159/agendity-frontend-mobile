@@ -14,10 +14,6 @@ class ServicesController extends GetxController {
     required GetServicesUseCase getServicesUseCase,
   }) : _getServicesUseCase = getServicesUseCase;
 
-  @override
-  void onInit() {
-    super.onInit();
-  }
 
   Future<bool> initializeServices() async {
     if (!isInitialized.value) {

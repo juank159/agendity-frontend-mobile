@@ -10,11 +10,11 @@ class PlanCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const PlanCard({
-    Key? key,
+    super.key,
     required this.plan,
     required this.isRecommended,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,7 @@ class PlanCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Seleccionar Plan',
                         style: TextStyle(
                           fontSize: 16,
@@ -141,7 +141,7 @@ class PlanCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.1),
+        color: iconColor.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -222,7 +222,7 @@ class PlanCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle,
                       color: Colors.green,
                       size: 18,

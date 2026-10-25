@@ -6,15 +6,14 @@ import 'package:login_signup/features/employees/data/models/employee_model.dart'
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
-import 'package:login_signup/features/employees/presentation/widgets/toggle_status_dialog.dart';
 
 class EmployeeDetailsScreen extends StatelessWidget {
   final EmployeeEntity employee;
 
   const EmployeeDetailsScreen({
-    Key? key,
+    super.key,
     required this.employee,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +93,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [
             AppColors.cardIndicator,
-            AppColors.cardIndicator.withOpacity(0.8),
+            AppColors.cardIndicator.withValues(alpha: 0.8),
           ],
         ),
       ),
@@ -121,7 +120,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
                                 employee.name.isNotEmpty
                                     ? employee.name[0].toUpperCase()
                                     : '?',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 40,
                                   color: AppColors.cardIndicator,
                                   fontWeight: FontWeight.bold,
@@ -134,7 +133,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
                           employee.name.isNotEmpty
                               ? employee.name[0].toUpperCase()
                               : '?',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 40,
                             color: AppColors.cardIndicator,
                             fontWeight: FontWeight.bold,
@@ -160,7 +159,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -364,7 +363,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
               dense: true,
               contentPadding: EdgeInsets.zero,
             );
-          }).toList(),
+          }),
         ],
       );
     });
@@ -472,7 +471,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

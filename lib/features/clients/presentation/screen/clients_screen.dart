@@ -81,7 +81,7 @@ class ClientsScreen extends GetView<ClientsController> {
           borderRadius: BorderRadius.circular(50),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.shade300.withOpacity(0.5),
+              color: Colors.blue.shade300.withValues(alpha: 0.5),
               spreadRadius: 2,
               blurRadius: 8,
               offset: const Offset(0, 4),

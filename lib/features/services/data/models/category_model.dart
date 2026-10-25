@@ -2,16 +2,11 @@ import 'package:login_signup/features/services/domain/entities/category.dart';
 
 class CategoryModel extends CategoryEntity {
   CategoryModel({
-    required String id,
-    required String name,
-    required String description,
-    bool isActive = true,
-  }) : super(
-          id: id,
-          name: name,
-          description: description,
-          isActive: isActive,
-        );
+    required super.id,
+    required super.name,
+    required super.description,
+    super.isActive,
+  });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(

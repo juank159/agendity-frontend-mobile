@@ -1,5 +1,4 @@
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
-import 'package:intl/intl.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
 
 class AppointmentModel extends AppointmentEntity {

@@ -15,7 +15,6 @@ import 'package:login_signup/features/employees/presentation/controllers/employe
 import '../controllers/appointments_controller.dart';
 import 'client_search_selector.dart';
 import 'service_selector_dialog.dart';
-import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
 class AppointmentFormDialog extends StatefulWidget {
   final AppointmentsController controller;
@@ -309,10 +308,10 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Theme.of(context).primaryColor.withOpacity(0.3),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -364,7 +363,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -412,7 +411,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                   ),
                 ),
                 padding:
@@ -601,7 +600,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -675,7 +674,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3)),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.3)),
                 ),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -955,7 +954,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),

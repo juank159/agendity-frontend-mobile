@@ -260,7 +260,7 @@ class EmailVerificationController extends GetxController {
       title,
       message,
       snackPosition: SnackPosition.TOP,
-      backgroundColor: color.withOpacity(0.9),
+      backgroundColor: color.withValues(alpha: 0.9),
       colorText: Colors.white,
       margin: const EdgeInsets.all(15),
       borderRadius: 8,

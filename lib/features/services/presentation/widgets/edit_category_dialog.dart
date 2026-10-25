@@ -8,10 +8,10 @@ class EditCategoryDialog extends StatefulWidget {
   final Function onSuccess;
 
   const EditCategoryDialog({
-    Key? key,
+    super.key,
     required this.category,
     required this.onSuccess,
-  }) : super(key: key);
+  });
 
   @override
   State<EditCategoryDialog> createState() => _EditCategoryDialogState();
@@ -127,7 +127,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             spreadRadius: 2,
             blurRadius: 10,
             offset: const Offset(0, 5),

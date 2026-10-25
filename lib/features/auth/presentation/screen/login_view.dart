@@ -53,7 +53,7 @@ class LoginView extends GetView<LoginController> {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          GlobalColors.mainColor.withOpacity(0.1),
+          GlobalColors.mainColor.withValues(alpha: 0.1),
           Colors.white,
           Colors.white,
         ],
@@ -108,7 +108,7 @@ class LoginView extends GetView<LoginController> {
         Text(
           'Inicia sesión para continuar',
           style: TextStyle(
-            color: GlobalColors.textColor.withOpacity(0.6),
+            color: GlobalColors.textColor.withValues(alpha: 0.6),
             fontSize: 16,
           ),
         ),
@@ -197,7 +197,7 @@ class LoginView extends GetView<LoginController> {
     return InputDecoration(
       hintText: hintText,
       hintStyle: TextStyle(
-        color: GlobalColors.textColor.withOpacity(0.5),
+        color: GlobalColors.textColor.withValues(alpha: 0.5),
       ),
       prefixIcon: Icon(
         prefixIcon,
@@ -206,10 +206,10 @@ class LoginView extends GetView<LoginController> {
       ),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: GlobalColors.mainColor.withOpacity(0.05),
-      border: _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+      fillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
+      border: _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
       enabledBorder:
-          _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+          _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
       focusedBorder: _buildInputBorder(GlobalColors.mainColor, 2),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
@@ -274,12 +274,12 @@ class LoginView extends GetView<LoginController> {
             gradient: LinearGradient(
               colors: [
                 GlobalColors.mainColor,
-                GlobalColors.mainColor.withOpacity(0.8),
+                GlobalColors.mainColor.withValues(alpha: 0.8),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: GlobalColors.mainColor.withOpacity(0.3),
+                color: GlobalColors.mainColor.withValues(alpha: 0.3),
                 spreadRadius: 0,
                 blurRadius: 20,
                 offset: const Offset(0, 10),
@@ -324,7 +324,7 @@ class LoginView extends GetView<LoginController> {
         Text(
           '¿No tienes cuenta? ',
           style: TextStyle(
-            color: GlobalColors.textColor.withOpacity(0.7),
+            color: GlobalColors.textColor.withValues(alpha: 0.7),
             fontSize: 16,
           ),
         ),

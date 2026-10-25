@@ -24,6 +24,6 @@ class PaymentEntity {
     this.paymentDetails,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : this.createdAt = createdAt ?? DateTime.now().toLocal(),
-        this.updatedAt = updatedAt ?? DateTime.now().toLocal();
+  })  : createdAt = createdAt ?? DateTime.now().toLocal(),
+        updatedAt = updatedAt ?? DateTime.now().toLocal();
 }

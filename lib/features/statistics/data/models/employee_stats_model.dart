@@ -3,14 +3,10 @@ import '../../domain/entities/employee_stats_entity.dart';
 
 class EmployeeStatsModel extends EmployeeStatsEntity {
   EmployeeStatsModel({
-    required Map<String, dynamic> summary,
-    required List<Map<String, dynamic>> byService,
-    required List<Map<String, dynamic>> dailyEvolution,
-  }) : super(
-          summary: summary,
-          byService: byService,
-          dailyEvolution: dailyEvolution,
-        );
+    required super.summary,
+    required super.byService,
+    required super.dailyEvolution,
+  });
 
   factory EmployeeStatsModel.fromJson(Map<String, dynamic> json) {
     return EmployeeStatsModel(

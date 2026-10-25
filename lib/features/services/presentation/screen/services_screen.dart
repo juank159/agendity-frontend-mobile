@@ -171,7 +171,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
         child: GestureDetector(
           onTap: _toggleMenu,
           child: Container(
-            color: AppColors.overlay.withOpacity(AppStyles.overlayOpacity),
+            color: AppColors.overlay.withValues(alpha: AppStyles.overlayOpacity),
           ),
         ),
       );

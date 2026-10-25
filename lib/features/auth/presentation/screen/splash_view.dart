@@ -72,9 +72,9 @@ class _SplashState extends State<SplashView>
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    Colors.white.withOpacity(0.1),
+                    Colors.white.withValues(alpha: 0.1),
                     Colors.white,
-                    Colors.white.withOpacity(0.1),
+                    Colors.white.withValues(alpha: 0.1),
                   ],
                   stops: [
                     (_animation.value - 0.2).clamp(0.0, 1.0),

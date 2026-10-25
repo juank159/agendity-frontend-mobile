@@ -1,37 +1,22 @@
 import 'package:login_signup/features/services/data/models/category_model.dart';
-import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 
 class ServiceModel extends ServiceEntity {
   ServiceModel({
-    String? id,
-    required String name,
-    required String description,
-    required double price,
-    required String priceType,
-    required int duration,
-    required String categoryId,
-    required String color,
-    CategoryEntity? category,
-    String? image,
-    bool onlineBooking = false,
-    int deposit = 0,
-    bool isActive = true,
-  }) : super(
-          id: id,
-          name: name,
-          description: description,
-          price: price,
-          priceType: priceType,
-          duration: duration,
-          categoryId: categoryId,
-          category: category,
-          color: color,
-          image: image,
-          onlineBooking: onlineBooking,
-          deposit: deposit,
-          isActive: isActive,
-        );
+    super.id,
+    required super.name,
+    required super.description,
+    required super.price,
+    required super.priceType,
+    required super.duration,
+    required super.categoryId,
+    required super.color,
+    super.category,
+    super.image,
+    super.onlineBooking,
+    super.deposit,
+    super.isActive,
+  });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
     return ServiceModel(

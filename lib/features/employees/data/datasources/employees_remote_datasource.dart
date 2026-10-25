@@ -54,7 +54,7 @@ class EmployeesRemoteDataSource {
 
         return employeesList;
       }
-      throw ServerFailure(message: 'Failed to load employees');
+      throw const ServerFailure(message: 'Failed to load employees');
     } catch (e) {
       print('Error al cargar empleados: $e');
 
@@ -93,14 +93,14 @@ class EmployeesRemoteDataSource {
         print('Horario del empleado obtenido: ${employee.schedule}');
         return employee;
       }
-      throw ServerFailure(message: 'Employee not found');
+      throw const ServerFailure(message: 'Employee not found');
     } catch (e) {
       print('Error al obtener empleado con ID $id: $e');
 
       if (e is DioException) {
         if (e.response != null) {
           if (e.response!.statusCode == 404) {
-            throw ServerFailure(message: 'Empleado no encontrado');
+            throw const ServerFailure(message: 'Empleado no encontrado');
           }
           throw ServerFailure(
               message: 'Error del servidor: ${e.response!.statusCode}');
@@ -121,7 +121,7 @@ class EmployeesRemoteDataSource {
   Future<List<EmployeeModel>> getActiveEmployees() async {
     try {
       final token = await localStorage.getToken();
-      final url = '$endpointPlural/active';
+      const url = '$endpointPlural/active';
 
       print('📋 Obteniendo empleados activos desde: $url');
 
@@ -139,7 +139,7 @@ class EmployeesRemoteDataSource {
         return employeesList;
       }
 
-      throw ServerFailure(message: 'Error al cargar empleados activos');
+      throw const ServerFailure(message: 'Error al cargar empleados activos');
     } catch (e) {
       print('❌ Error cargando empleados activos: $e');
 
@@ -155,7 +155,7 @@ class EmployeesRemoteDataSource {
         rethrow;
       }
 
-      throw ServerFailure(message: 'Error al cargar empleados activos');
+      throw const ServerFailure(message: 'Error al cargar empleados activos');
     }
   }
 
@@ -217,7 +217,7 @@ class EmployeesRemoteDataSource {
   Future<List<EmployeeModel>> getDeletedEmployees() async {
     try {
       final token = await localStorage.getToken();
-      final url = '$endpointPlural/deleted';
+      const url = '$endpointPlural/deleted';
 
       print('🗑️ Obteniendo empleados eliminados desde: $url');
 
@@ -235,7 +235,7 @@ class EmployeesRemoteDataSource {
         return employeesList;
       }
 
-      throw ServerFailure(message: 'Error al cargar empleados eliminados');
+      throw const ServerFailure(message: 'Error al cargar empleados eliminados');
     } catch (e) {
       print('❌ Error cargando empleados eliminados: $e');
 
@@ -251,7 +251,7 @@ class EmployeesRemoteDataSource {
         rethrow;
       }
 
-      throw ServerFailure(message: 'Error al cargar empleados eliminados');
+      throw const ServerFailure(message: 'Error al cargar empleados eliminados');
     }
   }
 
@@ -369,7 +369,7 @@ class EmployeesRemoteDataSource {
           }
 
           return Future.error(
-              ServerFailure(message: 'Error del servidor: ${statusCode}'));
+              ServerFailure(message: 'Error del servidor: $statusCode'));
         }
 
         return Future.error(
@@ -455,7 +455,7 @@ class EmployeesRemoteDataSource {
       if (e is DioException) {
         if (e.response != null) {
           if (e.response!.statusCode == 400) {
-            throw ServerFailure(message: 'Código de verificación inválido');
+            throw const ServerFailure(message: 'Código de verificación inválido');
           }
           throw ServerFailure(
               message: 'Error del servidor: ${e.response!.statusCode}');
@@ -498,7 +498,7 @@ class EmployeesRemoteDataSource {
         return true;
       }
 
-      throw ServerFailure(message: 'Error al eliminar empleado');
+      throw const ServerFailure(message: 'Error al eliminar empleado');
     } on DioException catch (e) {
       print('❌ DioException capturado');
       print('📊 Status Code: ${e.response?.statusCode}');
@@ -530,7 +530,7 @@ class EmployeesRemoteDataSource {
 
       if (e.response != null && e.response!.statusCode == 404) {
         print('🔍 Error 404 - Empleado no encontrado');
-        throw NotFoundFailure(message: 'Empleado no encontrado');
+        throw const NotFoundFailure(message: 'Empleado no encontrado');
       }
 
       if (e.response != null) {
@@ -543,7 +543,7 @@ class EmployeesRemoteDataSource {
         throw ServerFailure(message: errorMessage);
       }
 
-      throw NetworkFailure(message: 'Sin conexión a internet');
+      throw const NetworkFailure(message: 'Sin conexión a internet');
     } catch (e) {
       if (e is OwnerDeletionFailure ||
           e is AlreadyDeletedFailure ||
@@ -554,7 +554,7 @@ class EmployeesRemoteDataSource {
       }
 
       print('💥 Error inesperado: $e');
-      throw ServerFailure(message: 'Error inesperado al eliminar empleado');
+      throw const ServerFailure(message: 'Error inesperado al eliminar empleado');
     }
   }
 
@@ -575,7 +575,7 @@ class EmployeesRemoteDataSource {
         return true;
       }
 
-      throw ServerFailure(message: 'Error al restaurar empleado');
+      throw const ServerFailure(message: 'Error al restaurar empleado');
     } on DioException catch (e) {
       print('❌ Error restaurando empleado');
       print('📊 Status Code: ${e.response?.statusCode}');
@@ -587,7 +587,7 @@ class EmployeesRemoteDataSource {
 
         if (statusCode == 404) {
           print('🔍 Empleado eliminado no encontrado');
-          throw NotFoundFailure(message: 'Empleado eliminado no encontrado');
+          throw const NotFoundFailure(message: 'Empleado eliminado no encontrado');
         }
 
         if (statusCode == 409) {

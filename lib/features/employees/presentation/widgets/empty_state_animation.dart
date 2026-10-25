@@ -11,13 +11,13 @@ class EmptyStateAnimation extends StatelessWidget {
   final String? animationAsset;
 
   const EmptyStateAnimation({
-    Key? key,
+    super.key,
     required this.title,
     required this.subtitle,
     required this.onActionPressed,
     required this.actionText,
     this.animationAsset = 'assets/animations/empty_state.json',
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

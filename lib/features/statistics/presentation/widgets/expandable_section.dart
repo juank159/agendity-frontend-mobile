@@ -9,13 +9,13 @@ class ExpandableSection extends StatelessWidget {
   final VoidCallback onToggle;
 
   const ExpandableSection({
-    Key? key,
+    super.key,
     required this.title,
     required this.icon,
     required this.child,
     required this.isExpanded,
     required this.onToggle,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

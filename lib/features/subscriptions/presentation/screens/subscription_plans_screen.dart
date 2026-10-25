@@ -7,7 +7,7 @@ import 'package:login_signup/features/subscriptions/presentation/controllers/sub
 import 'package:login_signup/features/subscriptions/presentation/widgets/plan_card.dart';
 
 class SubscriptionPlansScreen extends GetView<SubscriptionController> {
-  const SubscriptionPlansScreen({Key? key}) : super(key: key);
+  const SubscriptionPlansScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

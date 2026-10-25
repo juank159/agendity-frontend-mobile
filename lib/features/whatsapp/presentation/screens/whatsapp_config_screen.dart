@@ -6,7 +6,7 @@ import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/loading_overlay.dart';
 
 class WhatsappConfigScreen extends GetView<WhatsappController> {
-  const WhatsappConfigScreen({Key? key}) : super(key: key);
+  const WhatsappConfigScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

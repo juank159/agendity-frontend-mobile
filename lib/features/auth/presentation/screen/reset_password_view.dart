@@ -6,7 +6,7 @@ import 'package:login_signup/utils/global_colors.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 
 class ResetPasswordView extends GetView<ResetPasswordController> {
-  const ResetPasswordView({Key? key}) : super(key: key);
+  const ResetPasswordView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +53,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          GlobalColors.mainColor.withOpacity(0.1),
+          GlobalColors.mainColor.withValues(alpha: 0.1),
           Colors.white,
           Colors.white,
         ],
@@ -118,7 +118,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
         Text(
           'Hemos enviado un código de recuperación a:',
           style: TextStyle(
-            color: GlobalColors.textColor.withOpacity(0.6),
+            color: GlobalColors.textColor.withValues(alpha: 0.6),
             fontSize: 16,
           ),
         ),
@@ -149,11 +149,11 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
               borderRadius: BorderRadius.circular(12),
               fieldHeight: 56,
               fieldWidth: 45,
-              activeFillColor: GlobalColors.mainColor.withOpacity(0.05),
-              inactiveFillColor: GlobalColors.mainColor.withOpacity(0.05),
-              selectedFillColor: GlobalColors.mainColor.withOpacity(0.1),
+              activeFillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
+              inactiveFillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
+              selectedFillColor: GlobalColors.mainColor.withValues(alpha: 0.1),
               activeColor: GlobalColors.mainColor,
-              inactiveColor: GlobalColors.mainColor.withOpacity(0.2),
+              inactiveColor: GlobalColors.mainColor.withValues(alpha: 0.2),
               selectedColor: GlobalColors.mainColor,
               borderWidth: 2,
             ),
@@ -177,10 +177,10 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
         ? Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.orange.withOpacity(0.2),
+                color: Colors.orange.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -223,7 +223,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                 decoration: InputDecoration(
                   labelText: 'Nueva contraseña',
                   labelStyle: TextStyle(
-                    color: GlobalColors.textColor.withOpacity(0.7),
+                    color: GlobalColors.textColor.withValues(alpha: 0.7),
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -234,7 +234,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                   ),
                   hintText: 'Mínimo 8 caracteres',
                   hintStyle: TextStyle(
-                    color: GlobalColors.textColor.withOpacity(0.5),
+                    color: GlobalColors.textColor.withValues(alpha: 0.5),
                     fontSize: 16,
                   ),
                   prefixIcon: Icon(
@@ -253,16 +253,16 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                     onPressed: controller.togglePasswordVisibility,
                   ),
                   filled: true,
-                  fillColor: GlobalColors.mainColor.withOpacity(0.05),
+                  fillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
                   border: _buildInputBorder(
-                      GlobalColors.mainColor.withOpacity(0.2), 1),
+                      GlobalColors.mainColor.withValues(alpha: 0.2), 1),
                   enabledBorder: _buildInputBorder(
-                      GlobalColors.mainColor.withOpacity(0.2), 1),
+                      GlobalColors.mainColor.withValues(alpha: 0.2), 1),
                   focusedBorder: _buildInputBorder(GlobalColors.mainColor, 2),
                   disabledBorder:
-                      _buildInputBorder(Colors.grey.withOpacity(0.3), 1),
+                      _buildInputBorder(Colors.grey.withValues(alpha: 0.3), 1),
                   errorBorder:
-                      _buildInputBorder(Colors.red.withOpacity(0.5), 1),
+                      _buildInputBorder(Colors.red.withValues(alpha: 0.5), 1),
                   focusedErrorBorder: _buildInputBorder(Colors.red, 2),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -294,7 +294,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                 decoration: InputDecoration(
                   labelText: 'Confirmar contraseña',
                   labelStyle: TextStyle(
-                    color: GlobalColors.textColor.withOpacity(0.7),
+                    color: GlobalColors.textColor.withValues(alpha: 0.7),
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -305,7 +305,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                   ),
                   hintText: 'Confirma tu nueva contraseña',
                   hintStyle: TextStyle(
-                    color: GlobalColors.textColor.withOpacity(0.5),
+                    color: GlobalColors.textColor.withValues(alpha: 0.5),
                     fontSize: 16,
                   ),
                   prefixIcon: Icon(
@@ -324,16 +324,16 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                     onPressed: controller.toggleConfirmPasswordVisibility,
                   ),
                   filled: true,
-                  fillColor: GlobalColors.mainColor.withOpacity(0.05),
+                  fillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
                   border: _buildInputBorder(
-                      GlobalColors.mainColor.withOpacity(0.2), 1),
+                      GlobalColors.mainColor.withValues(alpha: 0.2), 1),
                   enabledBorder: _buildInputBorder(
-                      GlobalColors.mainColor.withOpacity(0.2), 1),
+                      GlobalColors.mainColor.withValues(alpha: 0.2), 1),
                   focusedBorder: _buildInputBorder(GlobalColors.mainColor, 2),
                   disabledBorder:
-                      _buildInputBorder(Colors.grey.withOpacity(0.3), 1),
+                      _buildInputBorder(Colors.grey.withValues(alpha: 0.3), 1),
                   errorBorder:
-                      _buildInputBorder(Colors.red.withOpacity(0.5), 1),
+                      _buildInputBorder(Colors.red.withValues(alpha: 0.5), 1),
                   focusedErrorBorder: _buildInputBorder(Colors.red, 2),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -375,12 +375,12 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
             gradient: LinearGradient(
               colors: [
                 GlobalColors.mainColor,
-                GlobalColors.mainColor.withOpacity(0.8),
+                GlobalColors.mainColor.withValues(alpha: 0.8),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: GlobalColors.mainColor.withOpacity(0.3),
+                color: GlobalColors.mainColor.withValues(alpha: 0.3),
                 spreadRadius: 0,
                 blurRadius: 20,
                 offset: const Offset(0, 10),
@@ -433,7 +433,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
               Text(
                 '¿No recibiste el código? ',
                 style: TextStyle(
-                  color: GlobalColors.textColor.withOpacity(0.7),
+                  color: GlobalColors.textColor.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
               ),
@@ -513,10 +513,10 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
         margin: const EdgeInsets.only(top: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: GlobalColors.mainColor.withOpacity(0.03),
+          color: GlobalColors.mainColor.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: GlobalColors.mainColor.withOpacity(0.1),
+            color: GlobalColors.mainColor.withValues(alpha: 0.1),
             width: 1,
           ),
         ),

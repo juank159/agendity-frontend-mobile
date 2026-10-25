@@ -8,7 +8,6 @@ import '../../domain/entities/appointment_entity.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../whatsapp/data/datasources/whatsapp_launcher.dart';
 import '../../../clients/data/datasources/clients_remote_datasource.dart';
-import '../../data/repositories/appointments_repository_impl.dart';
 import '../../data/datasources/appointments_remote_datasource.dart';
 
 class AppointmentReminderController extends GetxController {
@@ -69,7 +68,7 @@ class AppointmentReminderController extends GetxController {
       final isPast = appointmentTime.isBefore(now);
       
       if (isPast) {
-        print('🗑️ Removiendo cita pasada: ${appointment.clientName} - ${appointmentTime}');
+        print('🗑️ Removiendo cita pasada: ${appointment.clientName} - $appointmentTime');
         notificationsToCancel.add(appointment.id.hashCode);
       }
       
@@ -106,7 +105,7 @@ class AppointmentReminderController extends GetxController {
           final isFuture = appointmentTime.isAfter(now);
           
           if (!isFuture) {
-            print('🕐 Cita filtrada (ya pasó): ${appointment.clientName} - ${appointmentTime}');
+            print('🕐 Cita filtrada (ya pasó): ${appointment.clientName} - $appointmentTime');
           }
           return isFuture;
         }).toList();
@@ -133,7 +132,7 @@ class AppointmentReminderController extends GetxController {
     
     // ✅ VERIFICACIÓN ADICIONAL: Solo procesar citas futuras
     if (appointmentTime.isBefore(now)) {
-      print('⏰ Omitiendo cita pasada: ${appointment.clientName} - ${appointmentTime}');
+      print('⏰ Omitiendo cita pasada: ${appointment.clientName} - $appointmentTime');
       return;
     }
 
@@ -141,8 +140,8 @@ class AppointmentReminderController extends GetxController {
     final reminderTime = appointmentTime.subtract(const Duration(minutes: 30));
 
     print('📅 Programando notificación:');
-    print('   Cita: ${appointment.clientName} - ${appointmentTime}');
-    print('   Recordatorio: ${reminderTime}');
+    print('   Cita: ${appointment.clientName} - $appointmentTime');
+    print('   Recordatorio: $reminderTime');
 
     // Verificar si el tiempo del recordatorio ya pasó
     if (reminderTime.isBefore(now)) {
@@ -162,7 +161,7 @@ class AppointmentReminderController extends GetxController {
     }
 
     // Solo programar si el recordatorio es en el futuro
-    print('⏰ Programando notificación para: ${reminderTime}');
+    print('⏰ Programando notificación para: $reminderTime');
     notificationService.scheduleAppointmentReminder(
       id: appointment.id.hashCode,
       title: 'Recordatorio de cita próxima',
@@ -271,7 +270,7 @@ class AppointmentReminderController extends GetxController {
         final finalCount = upcomingAppointments.length;
         
         print('🔔 Notificación cancelada');
-        print('📋 Cita removida de la lista local (${initialCount} -> ${finalCount})');
+        print('📋 Cita removida de la lista local ($initialCount -> $finalCount)');
         print('🎯 Cita ${appointment.id} procesada completamente');
       } else {
         print('❌ WhatsApp no se pudo abrir');

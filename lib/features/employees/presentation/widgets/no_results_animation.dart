@@ -9,11 +9,11 @@ class NoResultsAnimation extends StatelessWidget {
   final String buttonText;
 
   const NoResultsAnimation({
-    Key? key,
+    super.key,
     required this.message,
     this.onButtonPressed,
     this.buttonText = 'Limpiar búsqueda',
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

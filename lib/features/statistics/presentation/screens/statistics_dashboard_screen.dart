@@ -13,7 +13,7 @@ import '../widgets/professionals_performance_widget.dart';
 import '../widgets/services_performance_widget.dart';
 
 class StatisticsDashboardScreen extends StatelessWidget {
-  const StatisticsDashboardScreen({Key? key}) : super(key: key);
+  const StatisticsDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +115,7 @@ class StatisticsDashboardScreen extends StatelessWidget {
                   icon: Icons.person,
                   isExpanded: controller.isProfessionalsExpanded,
                   onToggle: controller.toggleProfessionals,
-                  child: ProfessionalsPerformanceWidget(),
+                  child: const ProfessionalsPerformanceWidget(),
                 ),
 
                 const SizedBox(height: 8),
@@ -126,7 +126,7 @@ class StatisticsDashboardScreen extends StatelessWidget {
                   icon: Icons.spa,
                   isExpanded: controller.isServicesExpanded,
                   onToggle: controller.toggleServices,
-                  child: ServicesPerformanceWidget(),
+                  child: const ServicesPerformanceWidget(),
                 ),
 
                 const SizedBox(height: 8),
@@ -137,7 +137,7 @@ class StatisticsDashboardScreen extends StatelessWidget {
                   icon: Icons.people,
                   isExpanded: controller.isTopClientsExpanded,
                   onToggle: controller.toggleTopClients,
-                  child: TopClientsWidget(),
+                  child: const TopClientsWidget(),
                 ),
 
                 const SizedBox(height: 32),

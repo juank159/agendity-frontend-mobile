@@ -10,9 +10,9 @@ class PaymentDialog extends StatelessWidget {
   final AppointmentEntity appointment;
 
   const PaymentDialog({
-    Key? key,
+    super.key,
     required this.appointment,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +103,7 @@ class PaymentDialog extends StatelessWidget {
                           dense: true,
                           activeColor: Theme.of(context).primaryColor,
                         );
-                      }).toList(),
+                      }),
                     ],
                   )),
 

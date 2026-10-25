@@ -15,9 +15,9 @@ class EditEmployeeScreen extends StatelessWidget {
   final String employeeId;
 
   const EditEmployeeScreen({
-    Key? key,
+    super.key,
     required this.employeeId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -545,7 +545,7 @@ class EditEmployeeScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               side: BorderSide(
                 color: isDayEnabled
-                    ? AppColors.cardIndicator.withOpacity(0.7)
+                    ? AppColors.cardIndicator.withValues(alpha: 0.7)
                     : Colors.grey[300]!,
                 width: 1,
               ),
@@ -699,9 +699,9 @@ class EditEmployeeScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.cardIndicator.withOpacity(0.1),
+          color: AppColors.cardIndicator.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppColors.cardIndicator.withOpacity(0.3)),
+          border: Border.all(color: AppColors.cardIndicator.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

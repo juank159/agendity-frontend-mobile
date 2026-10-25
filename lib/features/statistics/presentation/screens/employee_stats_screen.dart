@@ -6,7 +6,7 @@ import '../widgets/date_range_selector.dart';
 import '../widgets/employee_stats_widget.dart';
 
 class EmployeeStatsScreen extends StatelessWidget {
-  const EmployeeStatsScreen({Key? key}) : super(key: key);
+  const EmployeeStatsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

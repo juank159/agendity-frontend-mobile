@@ -111,7 +111,7 @@ import 'package:login_signup/features/auth/presentation/controllers/forgot_passw
 import 'package:login_signup/utils/global_colors.dart';
 
 class ForgotPasswordView extends GetView<ForgotPasswordController> {
-  const ForgotPasswordView({Key? key}) : super(key: key);
+  const ForgotPasswordView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +152,7 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          GlobalColors.mainColor.withOpacity(0.1),
+          GlobalColors.mainColor.withValues(alpha: 0.1),
           Colors.white,
           Colors.white,
         ],
@@ -239,7 +239,7 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
         Text(
           'Ingresa tu correo electrónico y te enviaremos un código para recuperar tu contraseña',
           style: TextStyle(
-            color: GlobalColors.textColor.withOpacity(0.6),
+            color: GlobalColors.textColor.withValues(alpha: 0.6),
             fontSize: 16,
             height: 1.4,
           ),
@@ -260,7 +260,7 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
           decoration: InputDecoration(
             labelText: 'Correo electrónico',
             labelStyle: TextStyle(
-              color: GlobalColors.textColor.withOpacity(0.7),
+              color: GlobalColors.textColor.withValues(alpha: 0.7),
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -271,7 +271,7 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
             ),
             hintText: 'tu@email.com',
             hintStyle: TextStyle(
-              color: GlobalColors.textColor.withOpacity(0.5),
+              color: GlobalColors.textColor.withValues(alpha: 0.5),
               fontSize: 16,
             ),
             prefixIcon: Icon(
@@ -280,13 +280,13 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
               size: 22,
             ),
             filled: true,
-            fillColor: GlobalColors.mainColor.withOpacity(0.05),
+            fillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
             border:
-                _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+                _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
             enabledBorder:
-                _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+                _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
             focusedBorder: _buildInputBorder(GlobalColors.mainColor, 2),
-            errorBorder: _buildInputBorder(Colors.red.withOpacity(0.5), 1),
+            errorBorder: _buildInputBorder(Colors.red.withValues(alpha: 0.5), 1),
             focusedErrorBorder: _buildInputBorder(Colors.red, 2),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -326,12 +326,12 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
             gradient: LinearGradient(
               colors: [
                 GlobalColors.mainColor,
-                GlobalColors.mainColor.withOpacity(0.8),
+                GlobalColors.mainColor.withValues(alpha: 0.8),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: GlobalColors.mainColor.withOpacity(0.3),
+                color: GlobalColors.mainColor.withValues(alpha: 0.3),
                 spreadRadius: 0,
                 blurRadius: 20,
                 offset: const Offset(0, 10),
@@ -381,7 +381,7 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
         Text(
           '¿Recordaste tu contraseña? ',
           style: TextStyle(
-            color: GlobalColors.textColor.withOpacity(0.7),
+            color: GlobalColors.textColor.withValues(alpha: 0.7),
             fontSize: 16,
           ),
         ),

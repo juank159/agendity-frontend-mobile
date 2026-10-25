@@ -174,7 +174,7 @@ class EmployeeServicesSection extends StatelessWidget {
                   );
                 },
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

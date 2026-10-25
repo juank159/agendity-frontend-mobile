@@ -66,8 +66,6 @@ class PaymentModel extends PaymentEntity {
   }
 
   String getFormattedDate(DateTime date) {
-    if (date == null) return 'N/A';
-    // Convertir a local y formatear
     final localDate = date.toLocal();
     return '${localDate.day}/${localDate.month}/${localDate.year} - ${localDate.hour}:${localDate.minute.toString().padLeft(2, '0')}';
   }

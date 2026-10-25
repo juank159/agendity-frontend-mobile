@@ -5,26 +5,16 @@ import 'package:login_signup/core/utils/date_codec.dart';
 
 class SubscriptionModel extends SubscriptionEntity {
   SubscriptionModel({
-    required String id,
-    required String tenantId,
-    required String status,
-    required int trialAppointmentsUsed,
-    required int trialAppointmentsLimit,
-    required bool isTrialUsed,
-    DateTime? subscriptionStartDate,
-    DateTime? subscriptionEndDate,
-    SubscriptionPlanModel? plan,
-  }) : super(
-          id: id,
-          tenantId: tenantId,
-          status: status,
-          trialAppointmentsUsed: trialAppointmentsUsed,
-          trialAppointmentsLimit: trialAppointmentsLimit,
-          isTrialUsed: isTrialUsed,
-          subscriptionStartDate: subscriptionStartDate,
-          subscriptionEndDate: subscriptionEndDate,
-          plan: plan,
-        );
+    required super.id,
+    required super.tenantId,
+    required super.status,
+    required super.trialAppointmentsUsed,
+    required super.trialAppointmentsLimit,
+    required super.isTrialUsed,
+    super.subscriptionStartDate,
+    super.subscriptionEndDate,
+    SubscriptionPlanModel? super.plan,
+  });
 
   factory SubscriptionModel.fromJson(Map<String, dynamic> json) {
     return SubscriptionModel(
@@ -59,28 +49,17 @@ class SubscriptionModel extends SubscriptionEntity {
 
 class SubscriptionPlanModel extends SubscriptionPlanEntity {
   SubscriptionPlanModel({
-    required String id,
-    required String name,
-    required String description,
-    required double price,
-    required String currency,
-    required String billingInterval,
-    required int appointmentLimit,
-    required String wompiPriceId,
-    required bool isActive,
-    List<String>? features,
-  }) : super(
-          id: id,
-          name: name,
-          description: description,
-          price: price,
-          currency: currency,
-          billingInterval: billingInterval,
-          appointmentLimit: appointmentLimit,
-          wompiPriceId: wompiPriceId,
-          isActive: isActive,
-          features: features,
-        );
+    required super.id,
+    required super.name,
+    required super.description,
+    required super.price,
+    required super.currency,
+    required super.billingInterval,
+    required super.appointmentLimit,
+    required super.wompiPriceId,
+    required super.isActive,
+    super.features,
+  });
 
   factory SubscriptionPlanModel.fromJson(Map<String, dynamic> json) {
     return SubscriptionPlanModel(

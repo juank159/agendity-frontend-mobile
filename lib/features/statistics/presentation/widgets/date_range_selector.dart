@@ -8,10 +8,10 @@ class DateRangeSelector extends StatefulWidget {
   final Function(DateTimeRange) onDateRangeSelected;
 
   const DateRangeSelector({
-    Key? key,
+    super.key,
     required this.selectedDateRange,
     required this.onDateRangeSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<DateRangeSelector> createState() => _DateRangeSelectorState();
@@ -210,7 +210,7 @@ class _DateRangeSelectorState extends State<DateRangeSelector> {
               borderRadius: BorderRadius.circular(20),
             ),
             backgroundColor: isSelected
-                ? Theme.of(context).primaryColor.withOpacity(0.2)
+                ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
                 : null,
             side: BorderSide(
               color: isSelected

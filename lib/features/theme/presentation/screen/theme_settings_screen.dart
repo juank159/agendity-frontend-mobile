@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/shared/controller/theme_controller.dart';
 
 class ThemeSettingsScreen extends StatelessWidget {
-  const ThemeSettingsScreen({Key? key}) : super(key: key);
+  const ThemeSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +66,7 @@ class ThemeSettingsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Theme.of(context).shadowColor.withOpacity(0.2),
+                      color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -132,7 +132,7 @@ class ThemeSettingsScreen extends StatelessWidget {
   }) {
     return Material(
       color: isSelected
-          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
           : Theme.of(context).cardColor,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(

@@ -284,17 +284,17 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(Icons.info_outline, color: Colors.blue.shade700),
                       const SizedBox(width: 12),
-                      Expanded(
+                      const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               'Información',
                               style: TextStyle(
@@ -356,7 +356,7 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
                           border: Border.all(color: Colors.grey.shade300),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 5,
                               offset: const Offset(0, 2),
                             ),
@@ -405,7 +405,7 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
                           border: Border.all(color: Colors.grey.shade300),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 5,
                               offset: const Offset(0, 2),
                             ),
@@ -455,7 +455,7 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
                         color: Colors.blue,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blue.withOpacity(0.3),
+                            color: Colors.blue.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -484,9 +484,9 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
                           elevation: 0,
                         ),
                         child: controller.isLoading.value
-                            ? Row(
+                            ? const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
+                                children: [
                                   SizedBox(
                                     height: 20,
                                     width: 20,
@@ -506,9 +506,9 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
                                   ),
                                 ],
                               )
-                            : Row(
+                            : const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
+                                children: [
                                   Icon(Icons.add_circle_outline),
                                   SizedBox(width: 8),
                                   Text(

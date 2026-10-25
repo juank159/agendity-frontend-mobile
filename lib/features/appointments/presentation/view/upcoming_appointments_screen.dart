@@ -7,23 +7,23 @@ import 'package:login_signup/features/appointments/domain/entities/appointment_e
 
 class UpcomingAppointmentsScreen
     extends GetView<AppointmentReminderController> {
-  const UpcomingAppointmentsScreen({Key? key}) : super(key: key);
+  const UpcomingAppointmentsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Recordatorio de Citas'),
+        title: const Text('Recordatorio de Citas'),
         actions: [
           // ✅ Botón para refrescar y limpiar automáticamente
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             onPressed: () => controller.refreshAndClean(),
             tooltip: 'Refrescar y limpiar',
           ),
           // ✅ Botón para limpiar citas pasadas manualmente
           IconButton(
-            icon: Icon(Icons.cleaning_services),
+            icon: const Icon(Icons.cleaning_services),
             onPressed: () => controller.cleanExpiredAppointments(),
             tooltip: 'Limpiar citas pasadas',
           ),

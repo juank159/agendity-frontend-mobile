@@ -6,9 +6,9 @@ class ViewSelectorBottomSheet extends StatelessWidget {
   final AppointmentsController controller;
 
   const ViewSelectorBottomSheet({
-    Key? key,
+    super.key,
     required this.controller,
-  }) : super(key: key);
+  });
 
   static Future<void> show(
       BuildContext context, AppointmentsController controller) {

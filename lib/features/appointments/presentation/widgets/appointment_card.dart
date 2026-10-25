@@ -8,10 +8,10 @@ class AppointmentCard extends StatelessWidget {
   final VoidCallback onSendReminder;
 
   const AppointmentCard({
-    Key? key,
+    super.key,
     required this.appointment,
     required this.onSendReminder,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +54,10 @@ class AppointmentCard extends StatelessWidget {
                     appointment.clientName.isNotEmpty
                         ? appointment.clientName[0].toUpperCase()
                         : '?',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                    style: const TextStyle(fontSize: 18, color: Colors.white),
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
 
                 // Información de la cita
                 Expanded(
@@ -66,54 +66,54 @@ class AppointmentCard extends StatelessWidget {
                     children: [
                       Text(
                         appointment.clientName,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         serviceName,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black87,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.calendar_today,
+                          const Icon(Icons.calendar_today,
                               size: 16, color: Colors.blue),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
                             dateStr,
-                            style: TextStyle(color: Colors.black54),
+                            style: const TextStyle(color: Colors.black54),
                           ),
                         ],
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.access_time, size: 16, color: Colors.blue),
-                          SizedBox(width: 4),
+                          const Icon(Icons.access_time, size: 16, color: Colors.blue),
+                          const SizedBox(width: 4),
                           Text(
                             timeStr, // Ahora usando la hora correcta
-                            style: TextStyle(color: Colors.black54),
+                            style: const TextStyle(color: Colors.black54),
                           ),
                         ],
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.payment, size: 16, color: Colors.blue),
-                          SizedBox(width: 4),
+                          const Icon(Icons.payment, size: 16, color: Colors.blue),
+                          const SizedBox(width: 4),
                           Container(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: appointment
                                   .getPaymentStatusColor()
-                                  .withOpacity(0.2),
+                                  .withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -131,21 +131,21 @@ class AppointmentCard extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Botón para enviar recordatorio
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: onSendReminder,
-                icon: WhatsappIcon(
+                icon: const WhatsappIcon(
                   color: Colors.white,
                   size: 18,
                 ),
-                label: Text('Enviar recordatorio'),
+                label: const Text('Enviar recordatorio'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF25D366), // Color de WhatsApp
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: const Color(0xFF25D366), // Color de WhatsApp
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),

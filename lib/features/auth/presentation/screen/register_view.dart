@@ -1430,7 +1430,7 @@ class RegisterView extends GetView<RegisterController> {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          GlobalColors.mainColor.withOpacity(0.1),
+          GlobalColors.mainColor.withValues(alpha: 0.1),
           Colors.white,
           Colors.white,
         ],
@@ -1472,7 +1472,7 @@ class RegisterView extends GetView<RegisterController> {
         Text(
           'Completa tus datos para registrarte',
           style: TextStyle(
-            color: GlobalColors.textColor.withOpacity(0.6),
+            color: GlobalColors.textColor.withValues(alpha: 0.6),
             fontSize: 14,
           ),
         ),
@@ -1499,7 +1499,7 @@ class RegisterView extends GetView<RegisterController> {
           decoration: InputDecoration(
             labelText: label,
             labelStyle: TextStyle(
-              color: GlobalColors.textColor.withOpacity(0.7),
+              color: GlobalColors.textColor.withValues(alpha: 0.7),
               fontSize: 15,
               fontWeight: FontWeight.w500,
             ),
@@ -1510,7 +1510,7 @@ class RegisterView extends GetView<RegisterController> {
             ),
             hintText: hintText,
             hintStyle: TextStyle(
-              color: GlobalColors.textColor.withOpacity(0.5),
+              color: GlobalColors.textColor.withValues(alpha: 0.5),
               fontSize: 16,
             ),
             prefixIcon: Icon(
@@ -1519,13 +1519,13 @@ class RegisterView extends GetView<RegisterController> {
               size: 22,
             ),
             filled: true,
-            fillColor: GlobalColors.mainColor.withOpacity(0.05),
+            fillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
             border:
-                _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+                _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
             enabledBorder:
-                _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+                _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
             focusedBorder: _buildInputBorder(GlobalColors.mainColor, 2),
-            errorBorder: _buildInputBorder(Colors.red.withOpacity(0.5), 1),
+            errorBorder: _buildInputBorder(Colors.red.withValues(alpha: 0.5), 1),
             focusedErrorBorder: _buildInputBorder(Colors.red, 2),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -1547,7 +1547,7 @@ class RegisterView extends GetView<RegisterController> {
           decoration: InputDecoration(
             labelText: 'Contraseña',
             labelStyle: TextStyle(
-              color: GlobalColors.textColor.withOpacity(0.7),
+              color: GlobalColors.textColor.withValues(alpha: 0.7),
               fontSize: 15,
               fontWeight: FontWeight.w500,
             ),
@@ -1558,7 +1558,7 @@ class RegisterView extends GetView<RegisterController> {
             ),
             hintText: 'Mínimo 8 caracteres',
             hintStyle: TextStyle(
-              color: GlobalColors.textColor.withOpacity(0.5),
+              color: GlobalColors.textColor.withValues(alpha: 0.5),
               fontSize: 16,
             ),
             prefixIcon: Icon(
@@ -1577,13 +1577,13 @@ class RegisterView extends GetView<RegisterController> {
               onPressed: controller.togglePasswordVisibility,
             ),
             filled: true,
-            fillColor: GlobalColors.mainColor.withOpacity(0.05),
+            fillColor: GlobalColors.mainColor.withValues(alpha: 0.05),
             border:
-                _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+                _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
             enabledBorder:
-                _buildInputBorder(GlobalColors.mainColor.withOpacity(0.2), 1),
+                _buildInputBorder(GlobalColors.mainColor.withValues(alpha: 0.2), 1),
             focusedBorder: _buildInputBorder(GlobalColors.mainColor, 2),
-            errorBorder: _buildInputBorder(Colors.red.withOpacity(0.5), 1),
+            errorBorder: _buildInputBorder(Colors.red.withValues(alpha: 0.5), 1),
             focusedErrorBorder: _buildInputBorder(Colors.red, 2),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -1685,10 +1685,10 @@ class RegisterView extends GetView<RegisterController> {
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: GlobalColors.mainColor.withOpacity(0.03),
+          color: GlobalColors.mainColor.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: GlobalColors.mainColor.withOpacity(0.1),
+            color: GlobalColors.mainColor.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -1755,12 +1755,12 @@ class RegisterView extends GetView<RegisterController> {
             gradient: LinearGradient(
               colors: [
                 GlobalColors.mainColor,
-                GlobalColors.mainColor.withOpacity(0.8),
+                GlobalColors.mainColor.withValues(alpha: 0.8),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: GlobalColors.mainColor.withOpacity(0.3),
+                color: GlobalColors.mainColor.withValues(alpha: 0.3),
                 spreadRadius: 0,
                 blurRadius: 20,
                 offset: const Offset(0, 10),
@@ -1810,7 +1810,7 @@ class RegisterView extends GetView<RegisterController> {
         Text(
           '¿Ya tienes una cuenta? ',
           style: TextStyle(
-            color: GlobalColors.textColor.withOpacity(0.6),
+            color: GlobalColors.textColor.withValues(alpha: 0.6),
             fontSize: 14,
           ),
         ),

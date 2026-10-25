@@ -279,7 +279,7 @@ import '../controllers/statistics_controller.dart';
 import '../../domain/entities/payment_method_stats_entity.dart';
 
 class PaymentMethodsChart extends StatelessWidget {
-  PaymentMethodsChart({Key? key}) : super(key: key);
+  PaymentMethodsChart({super.key});
 
   final List<Color> chartColors = [
     Colors.blue,
@@ -515,7 +515,7 @@ class PaymentMethodsChart extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
                   headingRowColor: MaterialStateProperty.all(
-                    Theme.of(context).primaryColor.withOpacity(0.1),
+                    Theme.of(context).primaryColor.withValues(alpha: 0.1),
                   ),
                   columnSpacing: 16,
                   headingRowHeight: 40,
@@ -627,7 +627,7 @@ class _Badge extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 2,
             spreadRadius: 1,
             offset: const Offset(0, 1),

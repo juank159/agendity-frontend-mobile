@@ -74,8 +74,8 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
             boxShadow: [
               BoxShadow(
                 color: _isFocused
-                    ? AppColors.cardIndicator.withOpacity(0.3)
-                    : Colors.grey.withOpacity(0.1),
+                    ? AppColors.cardIndicator.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.1),
                 spreadRadius: 1,
                 blurRadius: 6,
                 offset: const Offset(0, 3),
@@ -83,7 +83,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
             ],
             border: Border.all(
               color: _isFocused
-                  ? AppColors.cardIndicator.withOpacity(0.5)
+                  ? AppColors.cardIndicator.withValues(alpha: 0.5)
                   : Colors.transparent,
               width: 1.5,
             ),

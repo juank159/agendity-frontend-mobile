@@ -1278,8 +1278,8 @@ class EmployeesListScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: controller.showDeletedEmployees.value
-                            ? Colors.red.withOpacity(0.1)
-                            : Colors.green.withOpacity(0.1),
+                            ? Colors.red.withValues(alpha: 0.1)
+                            : Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -1687,10 +1687,10 @@ class EmployeesListScreen extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: employee.statusColor.withOpacity(0.1),
+                      color: employee.statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                          color: employee.statusColor.withOpacity(0.4)),
+                          color: employee.statusColor.withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1995,14 +1995,14 @@ class EmployeesListScreen extends StatelessWidget {
 
                 // CASO 3: Owner eliminado (caso especial, no debería pasar pero por seguridad)
                 else if (_isEmployeeOwner(employee) && employee.isDeleted) ...[
-                  ListTile(
-                    leading: const CircleAvatar(
+                  const ListTile(
+                    leading: CircleAvatar(
                       backgroundColor: Colors.red,
                       child: Icon(Icons.error_outline, color: Colors.white),
                     ),
-                    title: const Text('Error del Sistema'),
+                    title: Text('Error del Sistema'),
                     subtitle:
-                        const Text('Un propietario no debería estar eliminado'),
+                        Text('Un propietario no debería estar eliminado'),
                     enabled: false,
                   ),
                   const Divider(height: 0.5),
@@ -2211,8 +2211,8 @@ class EmployeesListScreen extends StatelessWidget {
       'Procesando cambio de estado',
       snackPosition: SnackPosition.TOP,
       backgroundColor: newStatus
-          ? Colors.green.withOpacity(0.8)
-          : Colors.orange.withOpacity(0.8),
+          ? Colors.green.withValues(alpha: 0.8)
+          : Colors.orange.withValues(alpha: 0.8),
       colorText: Colors.white,
       duration: const Duration(seconds: 2),
       showProgressIndicator: true,
@@ -2240,7 +2240,7 @@ class EmployeesListScreen extends StatelessWidget {
         if (employeeIndex >= 0) {
           // Crear una copia actualizada del empleado
           final updatedEmployee = employee is EmployeeModel
-              ? (employee as EmployeeModel).copyWith(isActive: newStatus)
+              ? (employee).copyWith(isActive: newStatus)
               : employee; // Si no es EmployeeModel, usar el original
 
           // Actualizar en la lista
@@ -2259,8 +2259,8 @@ class EmployeesListScreen extends StatelessWidget {
               : 'El profesional ha sido desactivado correctamente',
           snackPosition: SnackPosition.TOP,
           backgroundColor: newStatus
-              ? Colors.green.withOpacity(0.8)
-              : Colors.orange.withOpacity(0.8),
+              ? Colors.green.withValues(alpha: 0.8)
+              : Colors.orange.withValues(alpha: 0.8),
           colorText: Colors.white,
           duration: const Duration(seconds: 2),
           margin: const EdgeInsets.all(10),
@@ -2276,7 +2276,7 @@ class EmployeesListScreen extends StatelessWidget {
           'Error',
           'No se pudo cambiar el estado del profesional',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withValues(alpha: 0.8),
           colorText: Colors.white,
           duration: const Duration(seconds: 3),
           margin: const EdgeInsets.all(10),
@@ -2293,7 +2293,7 @@ class EmployeesListScreen extends StatelessWidget {
         'Error',
         'No se pudo ${newStatus ? "activar" : "desactivar"} al profesional: ${error.toString()}',
         snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withValues(alpha: 0.8),
         colorText: Colors.white,
         duration: const Duration(seconds: 3),
         margin: const EdgeInsets.all(10),

@@ -23,7 +23,7 @@ class ClientList extends GetView<ClientsController> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               spreadRadius: 1,
               blurRadius: 10,
               offset: const Offset(0, -5),
@@ -117,7 +117,7 @@ class ClientList extends GetView<ClientsController> {
                       // Determinar el color de fondo según el índice para alternar colores
                       final backgroundColor = index % 2 == 0
                           ? Colors.white
-                          : Colors.blue.shade50.withOpacity(0.3);
+                          : Colors.blue.shade50.withValues(alpha: 0.3);
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8), // ✅ Reducir margen
@@ -126,7 +126,7 @@ class ClientList extends GetView<ClientsController> {
                           borderRadius: BorderRadius.circular(12), // ✅ Menos redondeado
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
+                              color: Colors.black.withValues(alpha: 0.02),
                               spreadRadius: 0,
                               blurRadius: 6, // ✅ Menos sombra
                               offset: const Offset(0, 1),
@@ -148,8 +148,8 @@ class ClientList extends GetView<ClientsController> {
                                 preventDuplicates: true,
                               );
                             },
-                            splashColor: Colors.blue.withOpacity(0.1),
-                            highlightColor: Colors.blue.withOpacity(0.05),
+                            splashColor: Colors.blue.withValues(alpha: 0.1),
+                            highlightColor: Colors.blue.withValues(alpha: 0.05),
                             child: Padding(
                               padding: const EdgeInsets.all(12.0), // ✅ Menos padding
                               child: Row(
@@ -179,7 +179,7 @@ class ClientList extends GetView<ClientsController> {
                                         boxShadow: [
                                           BoxShadow(
                                             color:
-                                                Colors.black.withOpacity(0.1),
+                                                Colors.black.withValues(alpha: 0.1),
                                             spreadRadius: 1,
                                             blurRadius: 3,
                                             offset: const Offset(0, 1),
@@ -380,8 +380,8 @@ class ClientList extends GetView<ClientsController> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.white.withOpacity(0),
-                              Colors.white.withOpacity(0.8),
+                              Colors.white.withValues(alpha: 0),
+                              Colors.white.withValues(alpha: 0.8),
                               Colors.white,
                             ],
                           ),

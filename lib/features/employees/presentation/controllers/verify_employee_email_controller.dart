@@ -195,7 +195,7 @@ class VerifyEmployeeEmailController extends GetxController {
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.red[100],
           colorText: Colors.red[900],
-          duration: Duration(seconds: 5),
+          duration: const Duration(seconds: 5),
         );
       }
     } catch (e) {

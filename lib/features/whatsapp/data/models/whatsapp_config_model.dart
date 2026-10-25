@@ -3,16 +3,11 @@ import '../../domain/entities/whatsapp_config.dart';
 
 class WhatsappConfigModel extends WhatsappConfig {
   WhatsappConfigModel({
-    String? id,
-    required String phoneNumber,
-    required String apiKey,
-    bool isEnabled = true,
-  }) : super(
-          id: id,
-          phoneNumber: phoneNumber,
-          apiKey: apiKey,
-          isEnabled: isEnabled,
-        );
+    super.id,
+    required super.phoneNumber,
+    required super.apiKey,
+    super.isEnabled,
+  });
 
   factory WhatsappConfigModel.fromJson(Map<String, dynamic> json) {
     return WhatsappConfigModel(

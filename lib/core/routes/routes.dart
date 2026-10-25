@@ -168,7 +168,7 @@ class GetRoutes {
     // Theme Settings Page
     GetPage(
       name: themeSettings,
-      page: () => ThemeSettingsScreen(),
+      page: () => const ThemeSettingsScreen(),
       transition: Transition.rightToLeft,
     ),
 
@@ -176,7 +176,7 @@ class GetRoutes {
     GetPage(
       name: home,
       middlewares: [AuthMiddleware()],
-      page: () => AppointmentsView(),
+      page: () => const AppointmentsView(),
       binding: AppointmentsBinding(),
       transition: Transition.fadeIn,
     ),
@@ -235,7 +235,7 @@ class GetRoutes {
     GetPage(
       name: clients,
       middlewares: [AuthMiddleware()],
-      page: () => ClientsScreen(), // Removido el const
+      page: () => const ClientsScreen(), // Removido el const
       binding: ClientsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),

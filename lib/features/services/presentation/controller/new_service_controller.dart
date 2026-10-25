@@ -147,7 +147,7 @@ class NewServiceController extends GetxController {
         duration: duration,
         onChanged: (newDuration) => duration.value = newDuration,
       ),
-      barrierColor: Colors.black.withOpacity(0.3),
+      barrierColor: Colors.black.withValues(alpha: 0.3),
     );
   }
 
@@ -190,7 +190,7 @@ class NewServiceController extends GetxController {
           ),
         ),
       ),
-      barrierColor: Colors.black.withOpacity(0.3),
+      barrierColor: Colors.black.withValues(alpha: 0.3),
     );
   }
 
@@ -208,7 +208,7 @@ class NewServiceController extends GetxController {
           selectedCategory.value = category;
         },
       ),
-      barrierColor: Colors.black.withOpacity(0.3),
+      barrierColor: Colors.black.withValues(alpha: 0.3),
     );
   }
 

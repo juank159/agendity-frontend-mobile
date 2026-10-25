@@ -5,40 +5,23 @@ import 'package:login_signup/core/utils/date_codec.dart';
 
 class EmployeeModel extends EmployeeEntity {
   EmployeeModel({
-    required String id,
-    required String name,
-    required String lastname,
-    required String email,
-    required String phone,
-    String? image,
-    required bool isActive,
-    required List<RoleEntity> roles,
-    Map<String, ServiceAssignment>? serviceAssignments,
-    Map<String, Map<String, String>>? schedule,
+    required super.id,
+    required super.name,
+    required super.lastname,
+    required super.email,
+    required super.phone,
+    super.image,
+    required super.isActive,
+    required super.roles,
+    super.serviceAssignments,
+    super.schedule,
 
     // 🆕 NUEVOS PARÁMETROS para Soft Delete
-    bool isDeleted = false,
-    DateTime? deletedAt,
-    String? deletionReason,
-    String? deletedBy,
-  }) : super(
-          id: id,
-          name: name,
-          lastname: lastname,
-          email: email,
-          phone: phone,
-          image: image,
-          isActive: isActive,
-          roles: roles,
-          serviceAssignments: serviceAssignments,
-          schedule: schedule,
-
-          // 🆕 NUEVOS CAMPOS
-          isDeleted: isDeleted,
-          deletedAt: deletedAt,
-          deletionReason: deletionReason,
-          deletedBy: deletedBy,
-        );
+    super.isDeleted,
+    super.deletedAt,
+    super.deletionReason,
+    super.deletedBy,
+  });
 
   factory EmployeeModel.fromJson(Map<String, dynamic> json) {
     // Procesamos el horario si existe (tu lógica existente)

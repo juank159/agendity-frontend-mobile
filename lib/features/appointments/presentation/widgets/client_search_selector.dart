@@ -151,7 +151,7 @@ class ClientSearchSelector extends GetView<AppointmentsController> {
                           ? Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                SizedBox(
+                                const SizedBox(
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2),
@@ -194,7 +194,7 @@ class ClientSearchSelector extends GetView<AppointmentsController> {
                                 colors: [
                                   Theme.of(context)
                                       .primaryColor
-                                      .withOpacity(0.7),
+                                      .withValues(alpha: 0.7),
                                   Theme.of(context).primaryColor,
                                 ],
                                 begin: Alignment.topLeft,
@@ -205,7 +205,7 @@ class ClientSearchSelector extends GetView<AppointmentsController> {
                                 BoxShadow(
                                   color: Theme.of(context)
                                       .primaryColor
-                                      .withOpacity(0.3),
+                                      .withValues(alpha: 0.3),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),

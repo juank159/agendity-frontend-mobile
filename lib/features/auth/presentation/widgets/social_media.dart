@@ -43,7 +43,7 @@ class SocialMedia extends StatelessWidget {
           child: Text(
             text,
             style: TextStyle(
-              color: GlobalColors.textColor.withOpacity(0.6),
+              color: GlobalColors.textColor.withValues(alpha: 0.6),
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -127,7 +127,7 @@ class SocialMedia extends StatelessWidget {
       'Próximamente',
       'Inicio de sesión con $platform estará disponible pronto',
       snackPosition: SnackPosition.TOP,
-      backgroundColor: color.withOpacity(0.1),
+      backgroundColor: color.withValues(alpha: 0.1),
       colorText: color,
       icon: Icon(Icons.info_outline, color: color),
       duration: const Duration(seconds: 2),

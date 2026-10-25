@@ -7,9 +7,9 @@ class PaymentComparisonCard extends StatelessWidget {
   final PaymentComparisonEntity comparison;
 
   const PaymentComparisonCard({
-    Key? key,
+    super.key,
     required this.comparison,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +138,7 @@ class PaymentComparisonCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             decoration: BoxDecoration(
-              color: changeColor.withOpacity(0.1),
+              color: changeColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(

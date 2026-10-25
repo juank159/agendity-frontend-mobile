@@ -7,10 +7,10 @@ class WhatsappIcon extends StatelessWidget {
   final Color color;
 
   const WhatsappIcon({
-    Key? key,
+    super.key,
     this.size = 24.0,
     this.color = Colors.white,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -7,9 +7,9 @@ class ServiceSelectorDialog extends StatelessWidget {
   final AppointmentsController controller;
 
   const ServiceSelectorDialog({
-    Key? key,
+    super.key,
     required this.controller,
-  }) : super(key: key);
+  });
 
   static Future<List<String>?> show(
     BuildContext context,
@@ -145,7 +145,7 @@ class ServiceSelectorDialog extends StatelessWidget {
                   // Define el color de fondo basado en la selección
                   // Alternando colores para una visualización más agradable
                   final backgroundColor = isSelected
-                      ? Theme.of(context).primaryColor.withOpacity(0.1)
+                      ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
                       : (index % 2 == 0 ? Colors.grey[50] : Colors.white);
 
                   return Material(
@@ -179,7 +179,7 @@ class ServiceSelectorDialog extends StatelessWidget {
                                         BoxShadow(
                                           color: Theme.of(context)
                                               .primaryColor
-                                              .withOpacity(0.3),
+                                              .withValues(alpha: 0.3),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         )
@@ -261,7 +261,7 @@ class ServiceSelectorDialog extends StatelessWidget {
                         horizontal: 20, vertical: 16),
                     decoration: BoxDecoration(
                       color: controller.totalPrice.value > 0
-                          ? Theme.of(context).primaryColor.withOpacity(0.1)
+                          ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                     ),

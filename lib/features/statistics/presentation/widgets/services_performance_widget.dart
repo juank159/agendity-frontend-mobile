@@ -257,12 +257,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import '../controllers/statistics_controller.dart';
 
 class ServicesPerformanceWidget extends StatelessWidget {
-  const ServicesPerformanceWidget({Key? key}) : super(key: key);
+  const ServicesPerformanceWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -307,7 +306,7 @@ class ServicesPerformanceWidget extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.info_outline, size: 48, color: Colors.grey),
+              const Icon(Icons.info_outline, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
                 'No hay datos de servicios para el período seleccionado',
@@ -459,15 +458,15 @@ class ServicesPerformanceWidget extends StatelessWidget {
                   children: [
                     // Encabezado de la tabla
                     Container(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Expanded(
                             flex: 4,
                             child: Padding(
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 8.0),
+                                  EdgeInsets.symmetric(horizontal: 8.0),
                               child: Text(
                                 'Servicio',
                                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -486,7 +485,7 @@ class ServicesPerformanceWidget extends StatelessWidget {
                           Expanded(
                             flex: 2,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
+                              padding: EdgeInsets.only(right: 8.0),
                               child: Text(
                                 'Total',
                                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -497,7 +496,7 @@ class ServicesPerformanceWidget extends StatelessWidget {
                           Expanded(
                             flex: 1,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
+                              padding: EdgeInsets.only(right: 8.0),
                               child: Text(
                                 '%',
                                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -558,7 +557,7 @@ class ServicesPerformanceWidget extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),

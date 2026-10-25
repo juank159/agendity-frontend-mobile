@@ -398,7 +398,7 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
         return Left(ServerFailure(message: e.toString()));
       }
     } else {
-      return Left(NetworkFailure());
+      return const Left(NetworkFailure());
     }
   }
 

@@ -271,7 +271,7 @@ import 'package:login_signup/core/utils/formatters.dart';
 import '../controllers/statistics_controller.dart';
 
 class ProfessionalsPerformanceWidget extends StatelessWidget {
-  const ProfessionalsPerformanceWidget({Key? key}) : super(key: key);
+  const ProfessionalsPerformanceWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +316,7 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.info_outline, size: 48, color: Colors.grey),
+              const Icon(Icons.info_outline, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
                 'No hay datos de profesionales para el período seleccionado',
@@ -446,15 +446,15 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                   children: [
                     // Encabezado de la tabla
                     Container(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Expanded(
                             flex: 3,
                             child: Padding(
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 8.0),
+                                  EdgeInsets.symmetric(horizontal: 8.0),
                               child: Text(
                                 'Profesional',
                                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -473,7 +473,7 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                           Expanded(
                             flex: 2,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
+                              padding: EdgeInsets.only(right: 8.0),
                               child: Text(
                                 'Total',
                                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -484,7 +484,7 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                           Expanded(
                             flex: 2,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
+                              padding: EdgeInsets.only(right: 8.0),
                               child: Text(
                                 'Promedio',
                                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -545,7 +545,7 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),

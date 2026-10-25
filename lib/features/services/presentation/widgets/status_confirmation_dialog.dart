@@ -7,11 +7,11 @@ class StatusConfirmationDialog extends StatelessWidget {
   final Function onConfirm;
 
   const StatusConfirmationDialog({
-    Key? key,
+    super.key,
     required this.categoryName,
     required this.newStatus,
     required this.onConfirm,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class StatusConfirmationDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               spreadRadius: 2,
               blurRadius: 10,
               offset: const Offset(0, 5),

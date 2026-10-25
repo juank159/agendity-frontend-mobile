@@ -7,12 +7,12 @@ class MonthCalendarView extends StatelessWidget {
   final Function() onNextMonth;
 
   const MonthCalendarView({
-    Key? key,
+    super.key,
     required this.onDaySelected,
     required this.selectedDate,
     required this.onPreviousMonth,
     required this.onNextMonth,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +25,9 @@ class MonthCalendarView extends StatelessWidget {
           Container(
             height: 30,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: const [
+              children: [
                 Text('L'),
                 Text('M'),
                 Text('M'),

@@ -83,21 +83,21 @@ class ClientHeader extends GetView<ClientsController> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(0.8),
-                  Colors.white.withOpacity(0.6),
+                  Colors.white.withValues(alpha: 0.8),
+                  Colors.white.withValues(alpha: 0.6),
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
               ],
               border: Border.all(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 width: 1.5,
               ),
             ),
@@ -167,7 +167,7 @@ class ClientHeader extends GetView<ClientsController> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.shade800.withOpacity(0.4),
+                        color: Colors.blue.shade800.withValues(alpha: 0.4),
                         spreadRadius: 1,
                         blurRadius: 8,
                         offset: const Offset(0, 4),
@@ -211,7 +211,7 @@ class ClientHeader extends GetView<ClientsController> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.4),
+                    color: Colors.green.withValues(alpha: 0.4),
                     spreadRadius: 1,
                     blurRadius: 4,
                     offset: const Offset(0, 2),

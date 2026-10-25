@@ -24,7 +24,7 @@ class CustomDialog {
             color: Colors.white,
             shape: BoxShape.rectangle,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
                 color: Colors.black26,
                 blurRadius: 10.0,
@@ -36,7 +36,7 @@ class CustomDialog {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildIcon(type),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text(
                 title,
                 style: TextStyle(
@@ -45,7 +45,7 @@ class CustomDialog {
                   color: Colors.grey.shade800,
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 message,
                 textAlign: TextAlign.center,
@@ -54,7 +54,7 @@ class CustomDialog {
                   color: Colors.grey.shade600,
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               _buildButton(type, onConfirm),
             ],
           ),
@@ -84,9 +84,9 @@ class CustomDialog {
     }
 
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -122,8 +122,8 @@ class CustomDialog {
         if (onConfirm != null) onConfirm();
       },
       style: TextButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
-        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        backgroundColor: color.withValues(alpha: 0.1),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),

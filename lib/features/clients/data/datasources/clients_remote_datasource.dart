@@ -383,7 +383,7 @@ class ClientsRemoteDataSource {
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
         final responseData = error.response?.data;
-        return 'Error del servidor (${statusCode}): ${responseData?['message'] ?? 'Error desconocido'}';
+        return 'Error del servidor ($statusCode): ${responseData?['message'] ?? 'Error desconocido'}';
       case DioExceptionType.cancel:
         return 'Solicitud cancelada';
       default:

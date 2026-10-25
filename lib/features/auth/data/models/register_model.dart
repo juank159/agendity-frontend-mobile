@@ -3,28 +3,17 @@ import 'package:login_signup/core/utils/date_codec.dart';
 
 class RegisterModel extends RegisterEntity {
   RegisterModel({
-    required String id,
-    required String name,
-    required String lastname,
-    required String email,
-    required String phone,
-    required List<String> roles,
-    String? image,
-    String? notificationToken,
-    required DateTime createdAt,
-    required DateTime updatedAt,
-  }) : super(
-          id: id,
-          name: name,
-          lastname: lastname,
-          email: email,
-          phone: phone,
-          roles: roles,
-          image: image,
-          notificationToken: notificationToken,
-          createdAt: createdAt,
-          updatedAt: updatedAt,
-        );
+    required super.id,
+    required super.name,
+    required super.lastname,
+    required super.email,
+    required super.phone,
+    required super.roles,
+    super.image,
+    super.notificationToken,
+    required super.createdAt,
+    required super.updatedAt,
+  });
 
   factory RegisterModel.fromJson(Map<String, dynamic> json) {
     return RegisterModel(

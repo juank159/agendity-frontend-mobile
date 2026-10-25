@@ -7,9 +7,9 @@ class EmployeeScheduleSection extends StatelessWidget {
   final EmployeesController controller;
 
   const EmployeeScheduleSection({
-    Key? key,
+    super.key,
     required this.controller,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +39,7 @@ class EmployeeScheduleSection extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 side: BorderSide(
                   color: isDayEnabled
-                      ? AppColors.primary.withOpacity(0.7)
+                      ? AppColors.primary.withValues(alpha: 0.7)
                       : Colors.grey[300]!,
                   width: 1,
                 ),
@@ -160,7 +160,7 @@ class EmployeeScheduleSection extends StatelessWidget {
               builder: (context, child) {
                 return Theme(
                   data: Theme.of(context).copyWith(
-                    colorScheme: ColorScheme.light(
+                    colorScheme: const ColorScheme.light(
                       primary: AppColors.primary,
                     ),
                   ),
@@ -175,21 +175,21 @@ class EmployeeScheduleSection extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   value,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                Icon(Icons.access_time, size: 16, color: AppColors.primary),
+                const Icon(Icons.access_time, size: 16, color: AppColors.primary),
               ],
             ),
           ),

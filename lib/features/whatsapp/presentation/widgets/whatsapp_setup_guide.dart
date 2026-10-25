@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class WhatsappSetupGuide extends StatelessWidget {
-  const WhatsappSetupGuide({Key? key}) : super(key: key);
+  const WhatsappSetupGuide({super.key});
 
   @override
   Widget build(BuildContext context) {

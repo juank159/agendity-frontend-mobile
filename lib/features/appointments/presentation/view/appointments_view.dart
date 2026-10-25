@@ -11,7 +11,7 @@ import 'package:login_signup/shared/custom_drawer.dart';
 import '../../../auth/presentation/controllers/user_info_controller.dart';
 
 class AppointmentsView extends GetView<AppointmentsController> {
-  const AppointmentsView({Key? key}) : super(key: key);
+  const AppointmentsView({super.key});
 
   @override
   Widget build(BuildContext context) {

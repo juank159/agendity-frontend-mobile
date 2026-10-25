@@ -13,8 +13,7 @@ import 'package:login_signup/shared/controller/session_controller.dart';
 class AppointmentDetailsDialog extends StatelessWidget {
   final AppointmentEntity appointment;
 
-  const AppointmentDetailsDialog({Key? key, required this.appointment})
-      : super(key: key);
+  const AppointmentDetailsDialog({super.key, required this.appointment});
 
   /// Rol del usuario desde la sesión de la UI (sin decodificar el JWT).
   bool get _isOwner => Get.find<SessionController>().isOwner;
@@ -355,7 +354,7 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                           ],
                                         ),
                                       ))
-                                  .toList(),
+                                  ,
                             ],
                           ),
                         ),
@@ -414,12 +413,12 @@ class AppointmentDetailsDialog extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: appointment
                                 .getPaymentStatusColor()
-                                .withOpacity(0.1),
+                                .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: appointment
                                   .getPaymentStatusColor()
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                               width: 1,
                             ),
                           ),

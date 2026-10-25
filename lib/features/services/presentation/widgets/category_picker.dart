@@ -45,17 +45,17 @@ class _CategoryPickerState extends State<CategoryPicker> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.category_outlined,
                   size: 24,
                   color: Colors.grey,
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   "Seleccionar Categoría",
                   style: TextStyle(
                     fontSize: 20,

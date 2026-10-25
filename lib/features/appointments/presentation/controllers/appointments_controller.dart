@@ -599,7 +599,7 @@ class AppointmentsController extends GetxController {
     final end = endDate?.toIso8601String() ?? 'null';
     final role = userRole.value.isNotEmpty ? userRole.value : 'unknown';
     final user = userId.value.isNotEmpty ? userId.value : 'unknown';
-    return '${start}_${end}_${role}_${user}';
+    return '${start}_${end}_${role}_$user';
   }
 
   // Método para verificar si el caché es válido
@@ -1377,7 +1377,7 @@ class AppointmentsController extends GetxController {
       // Verificar si el empleado trabaja ese día
       final daySchedule = employee.schedule[dayName];
       if (daySchedule == null) {
-        print('⚠️ Empleado ${employee.name} no trabaja los ${dayName}');
+        print('⚠️ Empleado ${employee.name} no trabaja los $dayName');
         return false;
       }
 
@@ -1386,7 +1386,7 @@ class AppointmentsController extends GetxController {
       final endTimeStr = daySchedule['end']?.toString();
       
       if (startTimeStr == null || endTimeStr == null) {
-        print('⚠️ Horarios no definidos para ${employee.name} el ${dayName}');
+        print('⚠️ Horarios no definidos para ${employee.name} el $dayName');
         return false;
       }
 
@@ -1425,7 +1425,7 @@ class AppointmentsController extends GetxController {
 
       print('🕐 Validación de horario para ${employee.name}:');
       print('   Día: $dayName');
-      print('   Horario laboral: ${startTimeStr} - ${endTimeStr}');
+      print('   Horario laboral: $startTimeStr - $endTimeStr');
       print('   Cita: ${appointmentTime.hour}:${appointmentTime.minute.toString().padLeft(2, '0')} - ${appointmentEndTime.hour}:${appointmentEndTime.minute.toString().padLeft(2, '0')}');
       print('   Duración total: $totalDurationMinutes min');
       print('   ✅ Válido: $isValid');

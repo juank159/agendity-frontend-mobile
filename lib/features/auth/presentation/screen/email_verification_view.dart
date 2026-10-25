@@ -264,9 +264,9 @@ class EmailVerificationView extends GetView<EmailVerificationController> {
                         selectedColor: GlobalColors.mainColor,
                       ),
                       keyboardType: TextInputType.number,
-                      boxShadows: [
+                      boxShadows: const [
                         BoxShadow(
-                          offset: const Offset(0, 1),
+                          offset: Offset(0, 1),
                           color: Colors.black12,
                           blurRadius: 10,
                         )

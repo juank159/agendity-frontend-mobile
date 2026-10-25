@@ -317,23 +317,6 @@ class AppointmentsRemoteDataSource {
     }
   }
 
-// Función auxiliar para sanitizar datos
-  Map<String, dynamic> _sanitizeData(Map<String, dynamic> data) {
-    final sanitizedData = Map<String, dynamic>.from(data);
-
-    // Sanitizar client_id y professional_id
-    if (sanitizedData.containsKey('client_id')) {
-      sanitizedData['client_id'] = sanitizedData['client_id'].toString();
-    }
-
-    if (sanitizedData.containsKey('professional_id')) {
-      sanitizedData['professional_id'] =
-          sanitizedData['professional_id'].toString();
-    }
-
-    return sanitizedData;
-  }
-
   Future<void> deleteAppointment(String id) async {
     try {
       final token = await localStorage.getToken();
@@ -394,7 +377,7 @@ class AppointmentsRemoteDataSource {
 
       // ✅ MEJORADO: Obtener citas futuras para los próximos 7 días
       final now = DateTime.now();
-      final nextWeek = now.add(Duration(days: 7));
+      final nextWeek = now.add(const Duration(days: 7));
 
       // Formatear las fechas como cadenas ISO8601
       final startDateStr = DateCodec.encode(now);
@@ -447,7 +430,7 @@ class AppointmentsRemoteDataSource {
               title: json['title'] ?? 'Cita',
               startTime: DateCodec.decode(json['date']),
               endTime: DateCodec.decode(json['date'])
-                  .add(Duration(hours: 1)), // Estimar hora de fin
+                  .add(const Duration(hours: 1)), // Estimar hora de fin
               clientName: json['client']?['name'] ?? 'Cliente',
               serviceTypes: _extractServiceNames(json),
               status: json['status'] ?? 'PENDING',

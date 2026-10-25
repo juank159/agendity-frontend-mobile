@@ -272,9 +272,9 @@ class NewClientScreen extends GetView<NewClientController> {
                             child: controller.isLoading.value
                                 ? const CircularProgressIndicator(
                                     color: Colors.white)
-                                : Row(
+                                : const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
+                                    children: [
                                       Icon(Icons.add_circle),
                                       SizedBox(width: 10),
                                       Text(

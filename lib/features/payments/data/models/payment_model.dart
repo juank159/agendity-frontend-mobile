@@ -1,78 +1,103 @@
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/common/enums/payment_status_enum.dart';
-import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 
-class PaymentModel extends PaymentEntity {
-  PaymentModel({
-    super.id,
-    required super.appointmentId,
-    required super.amount,
-    required super.paymentMethod,
-    super.customPaymentMethodId,
-    super.status = PaymentStatus.COMPLETED,
-    super.transactionId,
-    super.paymentDetails,
-    super.createdAt,
-    super.updatedAt,
+/// DTO de `/payments` (backend: `Payment`, snake_case). Los importes llegan
+/// como texto (`decimal` de Postgres) y la cita como relación `appointment`.
+class PaymentModel {
+  final String? id;
+  final String appointmentId;
+  final double amount;
+  final PaymentMethod paymentMethod;
+  final String? customPaymentMethodId;
+  final PaymentStatus status;
+  final String? transactionId;
+  final double refundAmount;
+  final String? refundReason;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const PaymentModel({
+    this.id,
+    required this.appointmentId,
+    required this.amount,
+    required this.paymentMethod,
+    this.customPaymentMethodId,
+    this.status = PaymentStatus.PENDING,
+    this.transactionId,
+    this.refundAmount = 0,
+    this.refundReason,
+    this.createdAt,
+    this.updatedAt,
   });
 
-  factory PaymentModel.fromEntity(PaymentEntity entity) {
-    return PaymentModel(
-      id: entity.id,
-      appointmentId: entity.appointmentId,
-      amount: entity.amount,
-      paymentMethod: entity.paymentMethod,
-      customPaymentMethodId: entity.customPaymentMethodId,
-      status: entity.status,
-      transactionId: entity.transactionId,
-      paymentDetails: entity.paymentDetails,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-    );
-  }
-
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
+    final customId = _string(json['custom_payment_method_id']);
     return PaymentModel(
-      id: json['id'] ?? '',
-      appointmentId: json['appointment_id'] ?? '',
-      amount: double.parse(json['amount'].toString()),
-      paymentMethod: _parsePaymentMethod(
-          json['payment_method'], json['custom_payment_method_id']),
-      customPaymentMethodId: json['custom_payment_method_id'],
-      status: PaymentStatus.fromApi(json['status']) ?? PaymentStatus.COMPLETED,
-      transactionId: json['transaction_id'],
-      paymentDetails: json['payment_details'],
-      createdAt: json['created_at'] != null
-          ? DateCodec.decode(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateCodec.decode(json['updated_at'])
-          : null,
+      id: _string(json['id']),
+      appointmentId: _string(json['appointment_id']) ??
+          _string(_map(json['appointment'])?['id']) ??
+          '',
+      amount: _double(json['amount']),
+      paymentMethod: _parsePaymentMethod(json['payment_method'], customId),
+      customPaymentMethodId: customId,
+      // El backend siempre lo envía; sin él, el default de la columna.
+      status: PaymentStatus.fromApi(json['status']) ?? PaymentStatus.PENDING,
+      transactionId: _string(json['transaction_id']),
+      refundAmount: _double(json['refund_amount']),
+      refundReason: _string(json['refund_reason']),
+      createdAt: DateCodec.tryDecode(json['created_at']),
+      updatedAt: DateCodec.tryDecode(json['updated_at']),
     );
   }
 
+  /// Cuerpo de `POST /payments` (`CreatePaymentDto`, con
+  /// `forbidNonWhitelisted`): sin id, estado, reembolsos ni fechas.
+  /// `CUSTOM` no existe en el backend: viaja solo `custom_payment_method_id`.
   Map<String, dynamic> toJson() {
+    final method = paymentMethod.toApi();
     return {
       'appointment_id': appointmentId,
       'amount': amount,
-      // CUSTOM no existe en el backend: viaja solo como custom_payment_method_id.
-      if (paymentMethod.toApi() != null) 'payment_method': paymentMethod.toApi(),
-      'custom_payment_method_id': customPaymentMethodId,
-      'transaction_id': transactionId,
-      'payment_details': paymentDetails,
-      // No incluyas created_at ni updated_at
+      if (method != null) 'payment_method': method,
+      if (method == null && customPaymentMethodId != null)
+        'custom_payment_method_id': customPaymentMethodId,
+      if (transactionId != null) 'transaction_id': transactionId,
     };
   }
 
-  String getFormattedDate(DateTime date) {
-    final localDate = date.toLocal();
-    return '${localDate.day}/${localDate.month}/${localDate.year} - ${localDate.hour}:${localDate.minute.toString().padLeft(2, '0')}';
-  }
+  factory PaymentModel.fromEntity(PaymentEntity entity) => PaymentModel(
+        id: entity.id,
+        appointmentId: entity.appointmentId,
+        amount: entity.amount,
+        paymentMethod: entity.paymentMethod,
+        customPaymentMethodId: entity.customPaymentMethodId,
+        status: entity.status,
+        transactionId: entity.transactionId,
+        refundAmount: entity.refundAmount,
+        refundReason: entity.refundReason,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+      );
+
+  PaymentEntity toEntity() => PaymentEntity(
+        id: id,
+        appointmentId: appointmentId,
+        amount: amount,
+        paymentMethod: paymentMethod,
+        customPaymentMethodId: customPaymentMethodId,
+        status: status,
+        transactionId: transactionId,
+        refundAmount: refundAmount,
+        refundReason: refundReason,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
 
   /// Estándar → su valor; con método propio del negocio (o un valor que no
   /// se reconoce) → CUSTOM; sin nada → CASH, como antes.
-  static PaymentMethod _parsePaymentMethod(Object? method, Object? customId) {
+  static PaymentMethod _parsePaymentMethod(Object? method, String? customId) {
     final standard = PaymentMethod.fromApi(method);
     if (standard != null) return standard;
     return method == null && customId == null
@@ -80,4 +105,18 @@ class PaymentModel extends PaymentEntity {
         : PaymentMethod.CUSTOM;
   }
 
+  static String? _string(Object? value) {
+    if (value == null) return null;
+    final text = value.toString();
+    return text.isEmpty ? null : text;
+  }
+
+  static Map<String, dynamic>? _map(Object? value) =>
+      value is Map<String, dynamic> ? value : null;
+
+  static double _double(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value.trim()) ?? 0;
+    return 0;
+  }
 }

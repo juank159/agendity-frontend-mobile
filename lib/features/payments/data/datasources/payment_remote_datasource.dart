@@ -1,51 +1,25 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:login_signup/features/payments/data/models/payment_model.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
 
-class PaymentRemoteDataSource {
-  final Dio dio;
-  final LocalStorage localStorage;
+/// Rutas `/payments` que usa la app. Los errores (400/403/404/409, red) salen
+/// como `DioException` y los traduce `safeCall` en el repositorio.
+abstract class PaymentRemoteDataSource {
+  /// `POST /payments` (solo Owner). Responde 201 con el pago y su `appointment`.
+  Future<PaymentModel> createPayment(PaymentModel payment);
+}
 
-  PaymentRemoteDataSource({
-    required this.dio,
-    required this.localStorage,
-  });
+class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
+  final Dio _dio;
 
+  /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
+  PaymentRemoteDataSourceImpl(this._dio);
+
+  @override
   Future<PaymentModel> createPayment(PaymentModel payment) async {
-    try {
-      final token = await localStorage.getToken();
-      debugPrint('Creando pago: ${payment.toJson()}');
-
-      final response = await dio.post(
-        '/payments',
-        data: payment.toJson(),
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      debugPrint(
-          'Respuesta del servidor (createPayment): ${response.statusCode}');
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        debugPrint('Pago creado exitosamente');
-        return PaymentModel.fromJson(response.data);
-      }
-
-      throw Exception(
-          'El servidor respondió con código ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en createPayment: $e');
-      if (e is DioException) {
-        debugPrint('DioError tipo: ${e.type}');
-        debugPrint('DioError mensaje: ${e.message}');
-        debugPrint(
-            'DioError respuesta: ${e.response?.statusCode}, ${e.response?.data}');
-      }
-      throw Exception('Error creating payment: $e');
-    }
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/payments',
+      data: payment.toJson(),
+    );
+    return PaymentModel.fromJson(response.data!);
   }
 }

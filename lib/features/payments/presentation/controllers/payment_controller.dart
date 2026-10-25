@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
-import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
 
 class PaymentController extends GetxController {
@@ -22,50 +21,47 @@ class PaymentController extends GetxController {
   });
 
   Future<bool> createPayment(AppointmentEntity appointment) async {
-    try {
-      isLoading.value = true;
-      error.value = '';
+    isLoading.value = true;
+    error.value = '';
+    paymentDate.value = DateTime.now().toLocal();
 
-      paymentDate.value = DateTime.now().toLocal();
+    final total = double.tryParse(appointment.totalPrice) ?? 0;
+    final result = await createPaymentUseCase(CreatePaymentParams(
+      appointmentId: appointment.id,
+      amount: total,
+      method: selectedPaymentMethod.value,
+      transactionId: transactionId.value,
+      appointmentTotal: total,
+    ));
+    isLoading.value = false;
 
-      final payment = PaymentEntity(
-        appointmentId: appointment.id,
-        amount: double.parse(appointment.totalPrice),
-        paymentMethod: selectedPaymentMethod.value,
-        transactionId:
-            transactionId.value.isNotEmpty ? transactionId.value : null,
-      );
-
-      await createPaymentUseCase(payment);
-
-      // Actualizar la vista de citas después de crear el pago
-      if (Get.isRegistered<AppointmentsController>()) {
-        final appointmentsController = Get.find<AppointmentsController>();
-        appointmentsController.fetchAppointments();
-      }
-
-      Get.snackbar(
-        'Éxito',
-        'Pago registrado correctamente',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.green[100],
-        colorText: Colors.green[800],
-      );
-
-      return true;
-    } catch (e) {
-      error.value = e.toString();
-      Get.snackbar(
-        'Error',
-        'Error al registrar el pago: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[800],
-      );
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
+    return result.fold(
+      (failure) {
+        error.value = failure.message;
+        Get.snackbar(
+          'Error',
+          'Error al registrar el pago: ${failure.message}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+        );
+        return false;
+      },
+      (_) {
+        // Actualizar la vista de citas después de crear el pago
+        if (Get.isRegistered<AppointmentsController>()) {
+          Get.find<AppointmentsController>().fetchAppointments();
+        }
+        Get.snackbar(
+          'Éxito',
+          'Pago registrado correctamente',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.green[100],
+          colorText: Colors.green[800],
+        );
+        return true;
+      },
+    );
   }
 
   void setPaymentMethod(PaymentMethod method) {

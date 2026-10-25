@@ -7,10 +7,14 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/features/payments/data/datasources/payment_remote_datasource.dart';
 import 'package:login_signup/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:login_signup/features/payments/data/models/custom_payment_method_model.dart';
+import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 import 'package:login_signup/features/payments/domain/failures/payment_failures.dart';
 import 'package:login_signup/features/payments/domain/repositories/payment_repository.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 
 import '../../core/network/fake_http_client_adapter.dart';
 import '../../core/session/memory_token_store.dart';
@@ -35,7 +39,24 @@ class _RecordingRepository implements PaymentRepository {
     received.add(payment);
     return Right(payment.copyWith(id: 'p1', status: PaymentStatus.COMPLETED));
   }
+
+  @override
+  Future<Either<Failure, List<CustomPaymentMethod>>>
+      getActiveCustomPaymentMethods() async =>
+          const Right([CustomPaymentMethod(id: 'cm-1', name: 'Nequi')]);
 }
+
+/// Respuesta real de `GET /custom-payment-methods/active`.
+const backendCustomMethod = {
+  'id': 'cm-1',
+  'ownerId': 'owner-1',
+  'name': 'Nequi',
+  'description': null,
+  'icon': 'phone',
+  'isActive': true,
+  'created_at': '2026-10-21T08:00:00.000-05:00',
+  'updated_at': '2026-10-21T08:00:00.000-05:00',
+};
 
 void main() {
   group('PaymentRepositoryImpl (Dio api + adaptador falso)', () {
@@ -227,6 +248,83 @@ void main() {
               .isRight(),
           true);
       expect(repository.received.single.customPaymentMethodId, 'c1');
+    });
+  });
+
+  group('CustomPaymentMethodModel', () {
+    test('fromJson con la respuesta real del backend', () {
+      expect(
+          CustomPaymentMethodModel.fromJson(backendCustomMethod).toEntity(),
+          const CustomPaymentMethod(id: 'cm-1', name: 'Nequi', icon: 'phone'));
+    });
+
+    test('tolerante: nulls, vacíos e isActive como texto', () {
+      final model = CustomPaymentMethodModel.fromJson(
+          {'id': 7, 'name': ' Daviplata ', 'description': '', 'isActive': 'false'});
+      expect(model.id, '7');
+      expect(model.name, 'Daviplata');
+      expect(model.description, isNull);
+      expect(model.isActive, false);
+      expect(CustomPaymentMethodModel.fromJson({}).isActive, true);
+    });
+
+    test('fromEntity/toEntity ida y vuelta', () {
+      const entity = CustomPaymentMethod(
+          id: 'cm-1', name: 'Nequi', description: 'd', isActive: false);
+      expect(CustomPaymentMethodModel.fromEntity(entity).toEntity(), entity);
+    });
+  });
+
+  group('getActiveCustomPaymentMethods (repositorio)', () {
+    late FakeHttpClientAdapter adapter;
+    late PaymentRepositoryImpl repository;
+
+    setUp(() {
+      adapter =
+          FakeHttpClientAdapter((_) => jsonBody(200, [backendCustomMethod]));
+      repository = PaymentRepositoryImpl(PaymentRemoteDataSourceImpl(
+          buildApiClient(
+        baseUrl: 'http://api.test/api',
+        tokenStore: MemoryTokenStore('jwt'),
+        httpClientAdapter: adapter,
+        retryDelay: (_) => Duration.zero,
+        enableLogs: false,
+      )));
+    });
+
+    test('éxito: GET /custom-payment-methods/active → entidades', () async {
+      final result = await repository.getActiveCustomPaymentMethods();
+      expect(result.getOrElse(() => []),
+          const [CustomPaymentMethod(id: 'cm-1', name: 'Nequi', icon: 'phone')]);
+      final request = adapter.requests.single;
+      expect(request.method, 'GET');
+      expect(request.uri.path, '/api/custom-payment-methods/active');
+      expect(request.headers['Authorization'], 'Bearer jwt');
+    });
+
+    test('lista vacía → Right([])', () async {
+      adapter.handler = (_) => jsonBody(200, []);
+      final result = await repository.getActiveCustomPaymentMethods();
+      expect(result.isRight(), true);
+      expect(result.getOrElse(() => [const CustomPaymentMethod(id: 'x', name: 'x')]),
+          isEmpty);
+    });
+
+    test('403 (Employee) → ForbiddenFailure', () async {
+      adapter.handler = (_) => jsonBody(403, {
+            'statusCode': 403,
+            'code': 'FORBIDDEN',
+            'message': 'No tienes permiso'
+          });
+      expect(leftOf(await repository.getActiveCustomPaymentMethods()),
+          isA<ForbiddenFailure>());
+    });
+
+    test('use case delega en el repositorio', () async {
+      final result = await GetActiveCustomPaymentMethodsUseCase(
+              _RecordingRepository())
+          .call(NoParams());
+      expect(result.getOrElse(() => []).single.name, 'Nequi');
     });
   });
 }

@@ -6,10 +6,12 @@ import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 import 'package:login_signup/features/payments/domain/failures/payment_failures.dart';
 import 'package:login_signup/features/payments/domain/repositories/payment_repository.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
 
@@ -24,6 +26,12 @@ class FakePaymentRepository implements PaymentRepository {
     sent.add(payment);
     return result ?? Right(payment.copyWith(id: 'pay-1'));
   }
+
+  Either<Failure, List<CustomPaymentMethod>> customMethods = const Right([]);
+
+  @override
+  Future<Either<Failure, List<CustomPaymentMethod>>>
+      getActiveCustomPaymentMethods() async => customMethods;
 }
 
 final appointment = AppointmentEntity(
@@ -46,12 +54,14 @@ void main() {
     repo = FakePaymentRepository();
     dialogResult = null;
     Get.put(PaymentController(
-        createPaymentUseCase: CreatePaymentUseCase(repo)));
+        createPaymentUseCase: CreatePaymentUseCase(repo),
+        getActiveCustomPaymentMethodsUseCase:
+            GetActiveCustomPaymentMethodsUseCase(repo)));
   });
   tearDown(Get.reset);
 
   Future<void> openDialog(WidgetTester tester,
-      {List<CustomPaymentMethodOption> customMethods = const []}) async {
+      {List<CustomPaymentMethod> customMethods = const []}) async {
     await tester.pumpWidget(GetMaterialApp(
       theme: ThemeConfig.lightTheme,
       home: Scaffold(
@@ -141,7 +151,7 @@ void main() {
   testWidgets('método propio sin elegir → error en el selector, sin enviar',
       (tester) async {
     await openDialog(tester, customMethods: const [
-      CustomPaymentMethodOption(id: 'cm-1', name: 'Nequi'),
+      CustomPaymentMethod(id: 'cm-1', name: 'Nequi'),
     ]);
     await tapText(tester, 'Otro método');
     await tapText(tester, 'Confirmar pago');
@@ -189,5 +199,38 @@ void main() {
     expect(PaymentController.parseAmount('45000,5'), 45000.5);
     expect(PaymentController.parseAmount(''), isNull);
     expect(PaymentController.parseAmount('abc'), isNull);
+  });
+
+  group('métodos propios (GET /custom-payment-methods/active)', () {
+    testWidgets('con métodos activos se ofrece "Otro método" y sus nombres',
+        (tester) async {
+      repo.customMethods =
+          const Right([CustomPaymentMethod(id: 'cm-1', name: 'Nequi')]);
+      final methods = await Get.find<PaymentController>().loadCustomMethods();
+      await openDialog(tester, customMethods: methods);
+      await tapText(tester, 'Otro método');
+      await tester.tap(find.byKey(const Key('payment-custom-method')));
+      await tester.pumpAndSettle();
+      expect(find.text('Nequi'), findsWidgets);
+    });
+
+    testWidgets('lista vacía → "Otro método" oculto', (tester) async {
+      final methods = await Get.find<PaymentController>().loadCustomMethods();
+      expect(methods, isEmpty);
+      await openDialog(tester, customMethods: methods);
+      expect(find.text('Otro método'), findsNothing);
+      expect(find.text('Efectivo'), findsOneWidget);
+    });
+
+    testWidgets('403 (Employee) → sin "Otro método" y sin error',
+        (tester) async {
+      repo.customMethods = const Left(ForbiddenFailure(statusCode: 403));
+      final methods = await Get.find<PaymentController>().loadCustomMethods();
+      expect(methods, isEmpty);
+      await openDialog(tester, customMethods: methods);
+      expect(find.text('Otro método'), findsNothing);
+      expect(find.text(ForbiddenFailure.defaultMessage), findsNothing);
+      expect(find.text('Confirmar pago'), findsOneWidget);
+    });
   });
 }

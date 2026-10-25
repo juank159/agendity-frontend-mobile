@@ -4,6 +4,7 @@ import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 
 /// Diálogo "Registrar pago". No registra su controller: lo hace
@@ -13,7 +14,7 @@ class PaymentDialog extends GetView<PaymentController> {
   final AppointmentEntity appointment;
 
   /// Métodos propios del negocio. Sin ellos no se ofrece "Otro método".
-  final List<CustomPaymentMethodOption> customMethods;
+  final List<CustomPaymentMethod> customMethods;
 
   const PaymentDialog({
     super.key,
@@ -25,7 +26,7 @@ class PaymentDialog extends GetView<PaymentController> {
   /// diálogo, y su `context` ya no sirve para abrir otro.
   static Future<bool> show(
     AppointmentEntity appointment, {
-    List<CustomPaymentMethodOption> customMethods = const [],
+    List<CustomPaymentMethod> customMethods = const [],
   }) async {
     Get.find<PaymentController>().start(appointment);
     final result = await Get.dialog<bool>(

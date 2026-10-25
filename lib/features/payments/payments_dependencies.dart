@@ -5,9 +5,10 @@ import 'package:login_signup/features/payments/data/datasources/payment_remote_d
 import 'package:login_signup/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:login_signup/features/payments/domain/repositories/payment_repository.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
 
 /// Datasource, repositorio y use cases de pagos (ARQUITECTURA §4).
-/// El controller lo registra la pantalla que abre el diálogo de pago.
+/// El controller lo registra `AppointmentsBinding` (abre el diálogo de pago).
 abstract final class PaymentsDependencies {
   static void init() {
     Get.lazyPut<PaymentRemoteDataSource>(
@@ -19,6 +20,10 @@ abstract final class PaymentsDependencies {
       fenix: true,
     );
     Get.lazyPut(() => CreatePaymentUseCase(Get.find<PaymentRepository>()),
+        fenix: true);
+    Get.lazyPut(
+        () => GetActiveCustomPaymentMethodsUseCase(
+            Get.find<PaymentRepository>()),
         fenix: true);
   }
 }

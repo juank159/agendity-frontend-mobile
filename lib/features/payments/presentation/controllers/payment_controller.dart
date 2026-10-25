@@ -2,30 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
 import 'package:login_signup/features/payments/domain/failures/payment_failures.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
-
-/// Método propio del negocio que se ofrece en el diálogo
-/// (`GET /custom-payment-methods/active`; aún sin use case: ver PLAN 4.02).
-class CustomPaymentMethodOption {
-  final String id;
-  final String name;
-
-  const CustomPaymentMethodOption({required this.id, required this.name});
-}
 
 /// Formulario de "Registrar pago" de una cita. Lo registra
 /// `AppointmentsBinding` (ruta home, `fenix`) y lo borra el logout
 /// (`SessionScope`); cada apertura del diálogo llama a [start].
 class PaymentController extends GetxController {
   final CreatePaymentUseCase _createPayment;
+  final GetActiveCustomPaymentMethodsUseCase _getCustomMethods;
 
-  PaymentController({required CreatePaymentUseCase createPaymentUseCase})
-      : _createPayment = createPaymentUseCase;
+  PaymentController({
+    required CreatePaymentUseCase createPaymentUseCase,
+    required GetActiveCustomPaymentMethodsUseCase
+        getActiveCustomPaymentMethodsUseCase,
+  })  : _createPayment = createPaymentUseCase,
+        _getCustomMethods = getActiveCustomPaymentMethodsUseCase;
 
   final amountController = TextEditingController();
   final transactionController = TextEditingController();
@@ -57,6 +56,14 @@ class PaymentController extends GetxController {
     amountError.value = null;
     methodError.value = null;
     isSaving.value = false;
+  }
+
+  /// Métodos propios activos para ofrecer "Otro método". Si la carga falla
+  /// (sin red, o 403 del Employee) devuelve `[]`: el pago no se bloquea y no
+  /// se muestra ningún error.
+  Future<List<CustomPaymentMethod>> loadCustomMethods() async {
+    final result = await _getCustomMethods(NoParams());
+    return result.fold((_) => const [], (methods) => methods);
   }
 
   void selectMethod(PaymentMethod value) {

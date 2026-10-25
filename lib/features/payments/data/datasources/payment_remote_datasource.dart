@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:login_signup/features/payments/data/models/custom_payment_method_model.dart';
 import 'package:login_signup/features/payments/data/models/payment_model.dart';
 
 /// Rutas `/payments` que usa la app. Los errores (400/403/404/409, red) salen
@@ -6,6 +7,9 @@ import 'package:login_signup/features/payments/data/models/payment_model.dart';
 abstract class PaymentRemoteDataSource {
   /// `POST /payments` (solo Owner). Responde 201 con el pago y su `appointment`.
   Future<PaymentModel> createPayment(PaymentModel payment);
+
+  /// `GET /custom-payment-methods/active` (solo Owner): lista, puede ir vacía.
+  Future<List<CustomPaymentMethodModel>> getActiveCustomPaymentMethods();
 }
 
 class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
@@ -21,5 +25,15 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
       data: payment.toJson(),
     );
     return PaymentModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<List<CustomPaymentMethodModel>> getActiveCustomPaymentMethods() async {
+    final response =
+        await _dio.get<List<dynamic>>('/custom-payment-methods/active');
+    return response.data!
+        .cast<Map<String, dynamic>>()
+        .map(CustomPaymentMethodModel.fromJson)
+        .toList();
   }
 }

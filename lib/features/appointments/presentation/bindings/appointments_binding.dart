@@ -19,6 +19,7 @@ import 'package:login_signup/features/employees/presentation/controllers/employe
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 
 class AppointmentsBinding implements Bindings {
@@ -90,6 +91,8 @@ class AppointmentsBinding implements Bindings {
     Get.lazyPut<PaymentController>(
       () => PaymentController(
         createPaymentUseCase: Get.find<CreatePaymentUseCase>(),
+        getActiveCustomPaymentMethodsUseCase:
+            Get.find<GetActiveCustomPaymentMethodsUseCase>(),
       ),
       fenix: true,
     );

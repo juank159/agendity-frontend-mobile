@@ -7,6 +7,7 @@ import 'package:login_signup/features/appointments/presentation/controllers/appo
 import 'package:login_signup/features/appointments/presentation/widgets/edit_appointment_dialog.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
 
@@ -505,8 +506,12 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                   // Cerrar el diálogo actual
                                   Navigator.pop(context);
 
-                                  final paid =
-                                      await PaymentDialog.show(appointment);
+                                  final customMethods = await Get.find<
+                                          PaymentController>()
+                                      .loadCustomMethods();
+                                  final paid = await PaymentDialog.show(
+                                      appointment,
+                                      customMethods: customMethods);
                                   if (paid &&
                                       Get.isRegistered<
                                           AppointmentsController>()) {

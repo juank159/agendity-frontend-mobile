@@ -342,11 +342,7 @@ import 'package:login_signup/features/auth/domain/usecases/request_password_rese
 import 'package:login_signup/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/verify_email_usecase.dart';
 
-import 'package:login_signup/features/auth/presentation/controllers/forgot_password_controller.dart';
-import 'package:login_signup/features/auth/presentation/controllers/google_auth_controller.dart';
-import 'package:login_signup/features/auth/presentation/controllers/login_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
-import 'package:login_signup/features/auth/presentation/controllers/register_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/reset_password_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
@@ -555,76 +551,17 @@ class AuthModule {
   }
 
   // PASO 6: CONTROLLERS (DESPUÉS DE TODOS LOS USECASES)
+  /// Solo el `LogoutController`, de alcance de app (lo usan el drawer y la
+  /// sesión expirada). Los formularios de auth (`Login`, `Register`,
+  /// `ForgotPassword`, `GoogleAuth`) los registran sus bindings de ruta y se
+  /// borran al salir de ella: así el formulario no guarda datos de otra sesión.
   static void _initControllers() {
-    print('🎮 Registrando Controllers...');
-
-    // Login Controller
-    if (!Get.isRegistered<LoginController>()) {
-      Get.put<LoginController>(
-        LoginController(loginUseCase: Get.find<LoginUseCase>()),
-        permanent: true,
-      );
-      print('  ✅ LoginController');
-    }
-
-    // Logout Controller
     if (!Get.isRegistered<LogoutController>()) {
       Get.put<LogoutController>(
         LogoutController(logoutUseCase: Get.find<LogoutUseCase>()),
         permanent: true,
       );
-      print('  ✅ LogoutController');
     }
-
-    // Register Controller - CON REQUESTVERIFICATIONCODEUSECASE
-    if (!Get.isRegistered<RegisterController>()) {
-      Get.put<RegisterController>(
-        RegisterController(
-          registerUseCase: Get.find<RegisterUseCase>(),
-          requestVerificationCodeUseCase:
-              Get.find<RequestVerificationCodeUseCase>(),
-        ),
-        permanent: true,
-      );
-      print('  ✅ RegisterController (con RequestVerificationCodeUseCase)');
-    }
-
-    // ← NUEVO: Forgot Password Controller
-    if (!Get.isRegistered<ForgotPasswordController>()) {
-      Get.put<ForgotPasswordController>(
-        ForgotPasswordController(
-          requestPasswordResetUseCase: Get.find<RequestPasswordResetUseCase>(),
-        ),
-        permanent: true,
-      );
-      print('  ✅ ForgotPasswordController');
-    }
-
-    // Google Auth Controller
-    if (!Get.isRegistered<GoogleAuthController>()) {
-      Get.put<GoogleAuthController>(
-        GoogleAuthController(
-            googleSignInUseCase: Get.find<GoogleSignInUseCase>()),
-        permanent: true,
-      );
-      print('  ✅ GoogleAuthController');
-    }
-
-    // Email Verification Controller
-    // if (!Get.isRegistered<EmailVerificationController>()) {
-    //   Get.put<EmailVerificationController>(
-    //     EmailVerificationController(
-    //       requestCodeUseCase: Get.find<RequestVerificationCodeUseCase>(),
-    //       verifyEmailUseCase: Get.find<VerifyEmailUseCase>(),
-    //     ),
-    //     permanent: true,
-    //   );
-    //   print('  ✅ EmailVerificationController');
-    // }
-
-    // ⚠️ NOTA: ResetPasswordController NO se registra aquí
-    // Se registra dinámicamente en el binding para evitar conflictos
-    print('  ℹ️ ResetPasswordController se registra dinámicamente');
   }
 
   // MÉTODO DE LIMPIEZA PARA RESET PASSWORD

@@ -74,19 +74,4 @@ class ServicesModule {
     }
   }
 
-  static void reset() {
-    // Método para limpiar las dependencias cuando sea necesario
-    if (Get.isRegistered<CreateServiceUseCase>()) {
-      Get.delete<CreateServiceUseCase>();
-    }
-    if (Get.isRegistered<GetServicesUseCase>()) {
-      Get.delete<GetServicesUseCase>();
-    }
-    if (Get.isRegistered<ServicesRepository>()) {
-      Get.delete<ServicesRepository>();
-    }
-    if (Get.isRegistered<ServicesRemoteDataSource>()) {
-      Get.delete<ServicesRemoteDataSource>();
-    }
-  }
 }

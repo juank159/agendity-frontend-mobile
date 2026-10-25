@@ -1,12 +1,21 @@
 // lib/features/auth/presentation/bindings/login_binding.dart
 
 import 'package:get/get.dart';
+import '../controllers/google_auth_controller.dart';
+import '../../domain/usecases/google_sign_in_usecase.dart';
 import '../controllers/login_controller.dart';
 import '../../domain/usecases/login_usecase.dart';
 
 class LoginBinding extends Bindings {
   @override
   void dependencies() {
+    if (!Get.isRegistered<GoogleAuthController>()) {
+      Get.lazyPut<GoogleAuthController>(
+        () => GoogleAuthController(
+          googleSignInUseCase: Get.find<GoogleSignInUseCase>(),
+        ),
+      );
+    }
     print('🔗 LoginBinding: Verificando dependencias...');
 
     // Las dependencias de auth deben permanecer después del logout

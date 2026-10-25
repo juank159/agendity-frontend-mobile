@@ -87,38 +87,4 @@ class ClientsModule {
     }
   }
 
-  static void reset() {
-    // Existing use cases
-    if (Get.isRegistered<CreateClientUseCase>()) {
-      Get.delete<CreateClientUseCase>();
-    }
-    if (Get.isRegistered<GetClientsPaginatedUseCase>()) {
-      Get.delete<GetClientsPaginatedUseCase>();
-    }
-    if (Get.isRegistered<GetClientsUseCase>()) {
-      Get.delete<GetClientsUseCase>();
-    }
-    if (Get.isRegistered<ImportContactsUseCase>()) {
-      Get.delete<ImportContactsUseCase>();
-    }
-
-    // New use cases
-    if (Get.isRegistered<GetClientByIdUseCase>()) {
-      Get.delete<GetClientByIdUseCase>();
-    }
-    if (Get.isRegistered<UpdateClientUseCase>()) {
-      Get.delete<UpdateClientUseCase>();
-    }
-    if (Get.isRegistered<DeleteClientUseCase>()) {
-      Get.delete<DeleteClientUseCase>();
-    }
-
-    // Repository and DataSource
-    if (Get.isRegistered<ClientsRepository>()) {
-      Get.delete<ClientsRepository>();
-    }
-    if (Get.isRegistered<ClientsRemoteDataSource>()) {
-      Get.delete<ClientsRemoteDataSource>();
-    }
-  }
 }

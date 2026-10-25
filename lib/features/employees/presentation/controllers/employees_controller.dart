@@ -146,12 +146,13 @@ class EmployeesController extends GetxController {
   @override
   void onClose() {
     // Liberar los controladores cuando se cierra el controlador
+    // clearForm escribe en los TextEditingController: antes de liberarlos.
+    clearForm();
     nameController.dispose();
     lastnameController.dispose();
     emailController.dispose();
     phoneController.dispose();
     passwordController.dispose();
-    clearForm();
     super.onClose();
   }
 

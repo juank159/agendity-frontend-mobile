@@ -1,39 +1,45 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/di/modules/clients_module.dart';
-import 'package:login_signup/core/di/modules/employees_module.dart';
-import 'package:login_signup/core/di/modules/services_module.dart';
+import 'package:login_signup/core/di/session_scope.dart';
 import 'package:login_signup/core/routes/routes.dart';
-import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import '../../domain/usecases/logout_usecase.dart';
 
-/// Cierre de sesión: manual (drawer) o por sesión vencida (401 del Dio 'api').
+/// Único punto de cierre de sesión: el botón del drawer ([logout]) y la
+/// sesión expirada ([endSession] con `expired: true`, conectado en
+/// `UserModule`). Alcance de app (permanente).
+///
+/// Orden: borra la sesión → limpieza local del repositorio → navega a login
+/// → cuando las pantallas de la sesión ya no están montadas, borra los
+/// controllers de las features (`SessionScope.reset`) → avisa.
 class LogoutController extends GetxController {
   final LogoutUseCase _logoutUseCase;
+  final Future<void> Function() _resetScope;
+  final Future<void> Function() _afterNavigation;
+
   final RxBool isLoading = false.obs;
   bool _ending = false;
 
-  LogoutController({required LogoutUseCase logoutUseCase})
-      : _logoutUseCase = logoutUseCase;
+  LogoutController({
+    required LogoutUseCase logoutUseCase,
+    Future<void> Function()? resetScope,
+    Future<void> Function()? afterNavigation,
+  })  : _logoutUseCase = logoutUseCase,
+        _resetScope = resetScope ?? SessionScope.reset,
+        _afterNavigation = afterNavigation ?? _nextFrames;
 
-  /// Logout pedido por el usuario.
   Future<void> logout() => endSession();
 
-  /// Cierra la sesión, limpia los datos de las features y lleva al login.
-  /// Con [expired] muestra "Tu sesión expiró" en vez del mensaje de logout.
   Future<void> endSession({bool expired = false}) async {
     if (_ending) return;
     _ending = true;
+    isLoading.value = true;
     try {
-      isLoading.value = true;
-
-      // 1. Sesión (token + estado en memoria) por SessionService.
       if (Get.isRegistered<SessionController>()) {
         await Get.find<SessionController>().end();
       }
-
-      // 2. Resto de datos locales (LocalStorage.clearAllData).
       final result = await _logoutUseCase.execute();
       result.fold(
         (failure) => debugPrint('Logout: limpieza local con error: '
@@ -41,48 +47,31 @@ class LogoutController extends GetxController {
         (_) {},
       );
 
-      // 3. Datos de las features (se preserva auth).
-      _cleanupFeatureModules();
+      // Sin await: el Future de offAllNamed solo termina cuando la ruta de
+      // login se cierra (en el próximo login), y bloquearía este método.
+      Get.offAllNamed(GetRoutes.login);
+      await _afterNavigation();
+      await _resetScope();
 
-      await Get.offAllNamed(GetRoutes.login);
       if (expired) {
-        _showMessage('Sesión expirada',
-            'Tu sesión expiró. Inicia sesión de nuevo.', Colors.orange);
+        AppSnackbar.warning('Tu sesión expiró. Inicia sesión de nuevo.',
+            title: 'Sesión expirada');
       } else {
-        _showMessage('Éxito', 'Sesión cerrada correctamente', Colors.green);
+        AppSnackbar.success('Sesión cerrada correctamente');
       }
     } catch (e) {
       debugPrint('Error en logout: $e');
-      _showMessage('Error', 'Error al cerrar sesión', Colors.red);
+      AppSnackbar.error('Error al cerrar sesión');
     } finally {
       isLoading.value = false;
       _ending = false;
     }
   }
 
-  void _cleanupFeatureModules() {
-    try {
-      if (Get.isRegistered<ServicesController>()) {
-        Get.find<ServicesController>().clearServices();
-      }
-      ServicesModule.reset();
-      ClientsModule.reset();
-      EmployeesModule.reset();
-    } catch (e) {
-      debugPrint('Error al limpiar módulos de funcionalidades: $e');
-    }
-  }
-
-  void _showMessage(String title, String message, Color color) {
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: color,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 3),
-      borderRadius: 8,
-      margin: const EdgeInsets.all(8),
-    );
+  /// Deja que la navegación quite las pantallas de la sesión antes de borrar
+  /// sus controllers (si no, un `Obx` montado podría leer uno ya cerrado).
+  static Future<void> _nextFrames() async {
+    await SchedulerBinding.instance.endOfFrame;
+    await SchedulerBinding.instance.endOfFrame;
   }
 }

@@ -73,6 +73,8 @@
 // }
 
 import 'package:get/get.dart';
+import '../controllers/google_auth_controller.dart';
+import '../../domain/usecases/google_sign_in_usecase.dart';
 import '../controllers/register_controller.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/request_verification_code_usecase.dart';
@@ -80,6 +82,13 @@ import '../../domain/usecases/request_verification_code_usecase.dart';
 class RegisterBinding extends Bindings {
   @override
   void dependencies() {
+    if (!Get.isRegistered<GoogleAuthController>()) {
+      Get.lazyPut<GoogleAuthController>(
+        () => GoogleAuthController(
+          googleSignInUseCase: Get.find<GoogleSignInUseCase>(),
+        ),
+      );
+    }
     print('🔗 RegisterBinding: Verificando dependencias...');
 
     // Solo verificar que las dependencias existan

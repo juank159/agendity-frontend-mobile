@@ -34,7 +34,7 @@ class EmployeesModule {
       // Inicializar dependencias en orden
       await _initDataLayer();
       await _initDomainLayer();
-      await _initPresentationLayer();
+      await registerController();
 
       print('✅ EmployeesModule inicializado exitosamente');
     } catch (e) {
@@ -160,7 +160,10 @@ class EmployeesModule {
   }
 
   // 🔧 DRY: Método para inicializar capa de presentación
-  static Future<void> _initPresentationLayer() async {
+  /// Registra el `EmployeesController` si falta. Lo llaman el arranque y
+  /// `SessionScope.reset()` (logout). Permanente hasta la 4.07: la feature
+  /// navega con `offAllNamed` y un controller ligado a la ruta se perdería.
+  static Future<void> registerController() async {
     try {
       print('🎨 Inicializando capa de presentación...');
 
@@ -189,50 +192,6 @@ class EmployeesModule {
     }
   }
 
-  static void reset() {
-    try {
-      print('🧹 Reseteando EmployeesModule...');
-
-      // Lista de tipos a eliminar en orden inverso (SIN TAGS)
-      final typesToDelete = [
-        EmployeesController,
-        GetDeletedEmployeesUseCase, // 🆕 NUEVO
-        RestoreEmployeeUseCase, // 🆕 NUEVO
-        VerifyEmployeeEmailUseCase,
-        ToggleEmployeeStatusUseCase,
-        DeleteEmployeeUseCase,
-        UpdateEmployeeUseCase,
-        CreateEmployeeUseCase,
-        GetEmployeeByIdUseCase,
-        GetEmployeesUseCase,
-        EmployeesRepository,
-        EmployeesRemoteDataSource,
-      ];
-
-      // 🔧 CORRECCIÓN: Eliminar sin usar tags
-      for (final type in typesToDelete) {
-        try {
-          Get.delete<dynamic>(force: true);
-          print('🗑️ Limpiado: ${type.toString()}');
-        } catch (e) {
-          // Continuar aunque falle la eliminación de un tipo específico
-          print('⚠️ No se pudo eliminar: ${type.toString()}');
-        }
-      }
-
-      // Limpiar referencias internas
-      _useCases.clear();
-      _repository = null;
-      _remoteDataSource = null;
-
-      print('✅ EmployeesModule reseteado correctamente');
-    } catch (e) {
-      print('❌ Error al resetear EmployeesModule: $e');
-      rethrow;
-    }
-  }
-
-  // 🆕 NUEVO: Método para verificar estado del módulo
   static bool get isInitialized => Get.isRegistered<EmployeesController>();
 
   // 🆕 NUEVO: Método para obtener estadísticas del módulo
@@ -244,13 +203,5 @@ class EmployeesModule {
       'hasRemoteDataSource': _remoteDataSource != null,
       'registeredTypes': _useCases.keys.map((e) => e.toString()).toList(),
     };
-  }
-
-  // 🆕 NUEVO: Método para forzar reinicialización
-  static Future<void> reinitialize() async {
-    print('🔄 Reinicializando EmployeesModule...');
-    reset();
-    await init();
-    print('✅ EmployeesModule reinicializado');
   }
 }

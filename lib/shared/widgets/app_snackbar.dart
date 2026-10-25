@@ -36,6 +36,23 @@ abstract final class AppSnackbar {
     if (messenger == null) return;
     final colors = messenger.context.tokens.tone(tone);
 
+    // Sin un Scaffold montado (p. ej. en plena navegación) Flutter lanza una
+    // aserción; un aviso perdido no debe romper el flujo que lo pide.
+    try {
+      _present(messenger, tone, colors, title, message, duration);
+    } catch (e) {
+      debugPrint('AppSnackbar: no se pudo mostrar "$title": $e');
+    }
+  }
+
+  static void _present(
+    ScaffoldMessengerState messenger,
+    AppTone tone,
+    ToneColors colors,
+    String title,
+    String message,
+    Duration duration,
+  ) {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(

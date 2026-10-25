@@ -12,7 +12,4 @@ abstract class WhatsappRepository {
 
   /// `Right(false)` si CallMeBot no lo aceptó o no hay configuración activa.
   Future<Either<Failure, bool>> sendTestMessage();
-
-  /// CallMeBot entrega siempre al número del Owner, no a [phoneNumber].
-  Future<Either<Failure, bool>> sendMessage(String phoneNumber, String message);
 }

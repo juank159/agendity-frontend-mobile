@@ -1,9 +1,7 @@
-// lib/features/whatsapp/presentation/bindings/whatsapp_binding.dart
 import 'package:get/get.dart';
 import '../../domain/usecases/get_whatsapp_config_usecase.dart';
 import '../../domain/usecases/save_whatsapp_config_usecase.dart';
 import '../../domain/usecases/send_test_message_usecase.dart';
-import '../../domain/usecases/send_message_usecase.dart';
 import '../controllers/whatsapp_controller.dart';
 
 /// Solo el controller: datasource, repositorio y use cases los registra
@@ -16,7 +14,6 @@ class WhatsappBinding implements Bindings {
         getWhatsappConfigUseCase: Get.find<GetWhatsappConfigUseCase>(),
         saveWhatsappConfigUseCase: Get.find<SaveWhatsappConfigUseCase>(),
         sendTestMessageUseCase: Get.find<SendTestMessageUseCase>(),
-        sendMessageUseCase: Get.find<SendMessageUseCase>(),
       ),
       fenix: true,
     );

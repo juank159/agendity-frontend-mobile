@@ -157,19 +157,10 @@ void main() {
           const Right<Failure, bool>(false));
     });
 
-    test(
-        'sendMessage: POST /whatsapp/send; sin red → NetworkFailure (sin reintentar POST)',
+    test('sendTestMessage sin red → NetworkFailure (sin reintentar POST)',
         () async {
-      adapter.handler = (_) => jsonBody(201, {'success': true});
-      expect(await repository.sendMessage('573001', 'hola'),
-          const Right<Failure, bool>(true));
-      expect(adapter.requests.single.data,
-          {'phoneNumber': '573001', 'message': 'hola'});
-
       adapter.handler = connectionError;
-      adapter.requests.clear();
-      expect(leftOf(await repository.sendMessage('573001', 'hola')),
-          isA<NetworkFailure>());
+      expect(leftOf(await repository.sendTestMessage()), isA<NetworkFailure>());
       expect(adapter.requests, hasLength(1));
     });
 

@@ -32,9 +32,4 @@ class WhatsappRepositoryImpl implements WhatsappRepository {
   @override
   Future<Either<Failure, bool>> sendTestMessage() =>
       safeCall(_remote.sendTestMessage);
-
-  @override
-  Future<Either<Failure, bool>> sendMessage(
-          String phoneNumber, String message) =>
-      safeCall(() => _remote.sendMessage(phoneNumber, message));
 }

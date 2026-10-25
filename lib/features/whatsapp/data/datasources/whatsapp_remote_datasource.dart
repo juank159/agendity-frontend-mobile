@@ -11,7 +11,6 @@ abstract class WhatsappRemoteDataSource {
   /// El backend responde 200/201 con `{success, message}`; no lanza si
   /// CallMeBot falla.
   Future<bool> sendTestMessage();
-  Future<bool> sendMessage(String phoneNumber, String message);
 }
 
 class WhatsappRemoteDataSourceImpl implements WhatsappRemoteDataSource {
@@ -38,15 +37,6 @@ class WhatsappRemoteDataSourceImpl implements WhatsappRemoteDataSource {
   @override
   Future<bool> sendTestMessage() async {
     final response = await _dio.post<dynamic>('/whatsapp/test');
-    return _succeeded(response.data);
-  }
-
-  @override
-  Future<bool> sendMessage(String phoneNumber, String message) async {
-    final response = await _dio.post<dynamic>(
-      '/whatsapp/send',
-      data: {'phoneNumber': phoneNumber, 'message': message},
-    );
     return _succeeded(response.data);
   }
 

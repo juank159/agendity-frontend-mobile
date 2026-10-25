@@ -1,197 +1,187 @@
 import 'package:flutter/material.dart';
-import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
-import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 
-class PaymentDialog extends StatelessWidget {
+/// Diálogo "Registrar pago". No registra su controller: lo hace
+/// `AppointmentsBinding`. Usar [PaymentDialog.show], que prepara el
+/// formulario; devuelve `true` si se registró el pago.
+class PaymentDialog extends GetView<PaymentController> {
   final AppointmentEntity appointment;
+
+  /// Métodos propios del negocio. Sin ellos no se ofrece "Otro método".
+  final List<CustomPaymentMethodOption> customMethods;
 
   const PaymentDialog({
     super.key,
     required this.appointment,
+    this.customMethods = const [],
   });
+
+  /// Usa el navigator de GetX: quien lo llama suele cerrar antes su propio
+  /// diálogo, y su `context` ya no sirve para abrir otro.
+  static Future<bool> show(
+    AppointmentEntity appointment, {
+    List<CustomPaymentMethodOption> customMethods = const [],
+  }) async {
+    Get.find<PaymentController>().start(appointment);
+    final result = await Get.dialog<bool>(
+      PaymentDialog(appointment: appointment, customMethods: customMethods),
+    );
+    return result ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Inicializar el controlador solo si no está registrado
-    if (!Get.isRegistered<PaymentController>()) {
-      Get.put(PaymentController(
-        createPaymentUseCase: Get.find<CreatePaymentUseCase>(),
-      ));
-    }
-
-    final controller = Get.find<PaymentController>();
+    final scheme = Theme.of(context).colorScheme;
+    final methods = PaymentMethod.values
+        .where((m) => m != PaymentMethod.CUSTOM || customMethods.isNotEmpty);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Registrar pago',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        padding: const EdgeInsets.all(20),
+        child: Obx(() => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Registrar pago',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                _TotalBox(total: controller.total),
+                const SizedBox(height: 16),
+                TextField(
+                  key: const Key('payment-amount'),
+                  controller: controller.amountController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Monto recibido',
+                    prefixText: '\$ ',
+                    helperText: 'Puede ser un anticipo; no más del total.',
+                    errorText: controller.amountError.value,
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Detalles del monto
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 16),
+                Text('Método de pago',
+                    style: Theme.of(context).textTheme.titleSmall),
+                RadioGroup<PaymentMethod>(
+                  groupValue: controller.method.value,
+                  onChanged: (value) {
+                    if (value != null) controller.selectMethod(value);
+                  },
+                  child: Column(
+                    children: [
+                      for (final m in methods)
+                        RadioListTile<PaymentMethod>(
+                          title: Text(m.displayName),
+                          value: m,
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Monto a pagar:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+                if (controller.method.value == PaymentMethod.CUSTOM)
+                  DropdownButtonFormField<String>(
+                    key: const Key('payment-custom-method'),
+                    initialValue: controller.customMethodId.value,
+                    decoration: InputDecoration(
+                      labelText: 'Método propio',
+                      errorText: controller.methodError.value,
+                      border: const OutlineInputBorder(),
                     ),
-                    Text(
-                      formatCop(appointment.totalPrice),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[700],
-                      ),
+                    items: [
+                      for (final option in customMethods)
+                        DropdownMenuItem(
+                            value: option.id, child: Text(option.name)),
+                    ],
+                    onChanged: controller.selectCustomMethod,
+                  ),
+                if (controller.needsTransactionId) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const Key('payment-transaction'),
+                    controller: controller.transactionController,
+                    decoration: const InputDecoration(
+                      labelText: 'ID de transacción (opcional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: controller.isSaving.value
+                          ? null
+                          : () => Navigator.of(context).pop(false),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: controller.isSaving.value
+                          ? null
+                          : () async {
+                              final navigator = Navigator.of(context);
+                              if (await controller.submit()) {
+                                navigator.pop(true);
+                              }
+                            },
+                      icon: controller.isSaving.value
+                          ? SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: scheme.onPrimary),
+                            )
+                          : const Icon(Icons.check),
+                      label: const Text('Confirmar pago'),
                     ),
                   ],
                 ),
-              ),
+              ],
+            )),
+      ),
+    );
+  }
+}
 
-              const SizedBox(height: 24),
-              const Text(
-                'Método de pago',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
+class _TotalBox extends StatelessWidget {
+  final double total;
 
-              // Lista de métodos de pago
-              Obx(() => Column(
-                    children: [
-                      ...PaymentMethod.values.map((method) {
-                        if (method == PaymentMethod.CUSTOM)
-                          return const SizedBox.shrink();
+  const _TotalBox({required this.total});
 
-                        return RadioListTile<PaymentMethod>(
-                          title: Text(method.displayName),
-                          value: method,
-                          groupValue: controller.selectedPaymentMethod.value,
-                          onChanged: (value) {
-                            if (value != null) {
-                              controller.setPaymentMethod(value);
-                            }
-                          },
-                          dense: true,
-                          activeColor: Theme.of(context).primaryColor,
-                        );
-                      }),
-                    ],
-                  )),
-
-              // Campo para ID de transacción (visible solo para algunos métodos)
-              Obx(() {
-                final needsTransactionId =
-                    controller.selectedPaymentMethod.value ==
-                            PaymentMethod.TRANSFER ||
-                        controller.selectedPaymentMethod.value ==
-                            PaymentMethod.ONLINE;
-
-                if (!needsTransactionId) return const SizedBox.shrink();
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 8.0, horizontal: 16.0),
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      labelText: 'ID de transacción',
-                      hintText: 'Ingrese el ID o referencia',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: controller.setTransactionId,
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 24),
-
-              // Botones de acción
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancelar'),
-                  ),
-                  const SizedBox(width: 8),
-                  // En el botón de Confirmar pago dentro de PaymentDialog
-                  Obx(() => ElevatedButton(
-                        onPressed: controller.isLoading.value
-                            ? null
-                            : () async {
-                                final success =
-                                    await controller.createPayment(appointment);
-                                if (success) {
-                                  // Asegúrate de cerrar el diálogo usando Navigator en lugar de Get.back()
-                                  Navigator.of(context).pop(true);
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: controller.isLoading.value
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Confirmar pago'),
-                      )),
-                ],
-              ),
-
-              // Mensaje de error
-              Obx(() {
-                if (controller.error.value.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Text(
-                    controller.error.value,
-                    style: TextStyle(
-                      color: Colors.red[700],
-                      fontSize: 12,
-                    ),
-                  ),
-                );
-              }),
-            ],
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.tokens.success;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.container,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('Total de la cita',
+              style: TextStyle(
+                  color: colors.onContainer, fontWeight: FontWeight.w500)),
+          Text(
+            formatCop(total),
+            style: TextStyle(
+              color: colors.onContainer,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

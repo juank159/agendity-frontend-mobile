@@ -505,22 +505,13 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                   // Cerrar el diálogo actual
                                   Navigator.pop(context);
 
-                                  // Mostrar el diálogo de pago
-                                  final result = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => PaymentDialog(
-                                      appointment: appointment,
-                                    ),
-                                  );
-
-                                  // Si el pago se realizó correctamente
-                                  if (result == true) {
-                                    // Aquí puedes notificar a otros widgets o controladores que necesiten actualizarse
-                                    if (Get.isRegistered<
-                                        AppointmentsController>()) {
-                                      Get.find<AppointmentsController>()
-                                          .fetchAppointments();
-                                    }
+                                  final paid =
+                                      await PaymentDialog.show(appointment);
+                                  if (paid &&
+                                      Get.isRegistered<
+                                          AppointmentsController>()) {
+                                    Get.find<AppointmentsController>()
+                                        .fetchAppointments();
                                   }
                                 },
                                 icon: const Icon(Icons.payment, size: 18),

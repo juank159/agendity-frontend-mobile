@@ -18,6 +18,8 @@ import 'package:login_signup/features/clients/domain/usecases/clients_usecases.d
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
+import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 
 class AppointmentsBinding implements Bindings {
   @override
@@ -84,6 +86,13 @@ class AppointmentsBinding implements Bindings {
     // No necesitamos registrarlo aquí
 
     // Controller principal
+    // Diálogo "Registrar pago" (se abre desde el detalle de la cita).
+    Get.lazyPut<PaymentController>(
+      () => PaymentController(
+        createPaymentUseCase: Get.find<CreatePaymentUseCase>(),
+      ),
+      fenix: true,
+    );
     Get.lazyPut<AppointmentsController>(
       () => AppointmentsController(
         Get.find<GetAppointmentsUseCase>(),

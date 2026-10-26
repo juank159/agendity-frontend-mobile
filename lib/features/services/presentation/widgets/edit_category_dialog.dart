@@ -59,11 +59,16 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
     });
 
     try {
-      await updateCategoryUseCase.execute(
-        widget.category.id,
-        name,
-        descriptionController.text.trim(),
-      );
+      final failure = (await updateCategoryUseCase(UpdateCategoryParams(
+        id: widget.category.id,
+        name: name,
+        description: descriptionController.text.trim(),
+      )))
+          .fold((f) => f, (_) => null);
+      if (failure != null) {
+        _showError(failure.message);
+        return;
+      }
 
       // Llamar al callback de éxito
       widget.onSuccess();

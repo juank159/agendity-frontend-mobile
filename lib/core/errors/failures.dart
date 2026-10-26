@@ -120,7 +120,8 @@ class NotFoundFailure extends Failure {
 
 /// 409 y conflictos de negocio: `CONFLICT`, `SLOT_UNAVAILABLE`,
 /// `PROFESSIONAL_INACTIVE`, `INVALID_STATE_TRANSITION`, `APPOINTMENT_PAID`,
-/// `EMAIL_NOT_VERIFIED`, `OWNER_NOT_DELETABLE`. Mirar `code` para distinguirlos.
+/// `EMAIL_NOT_VERIFIED`, `OWNER_NOT_DELETABLE`, `CATEGORY_HAS_SERVICES`. Mirar
+/// `code` para distinguirlos.
 class ConflictFailure extends Failure {
   static const defaultMessage =
       'La operación entra en conflicto con el estado actual';

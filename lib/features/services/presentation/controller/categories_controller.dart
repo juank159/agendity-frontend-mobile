@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/presentation/widgets/edit_category_dialog.dart';
 import 'package:login_signup/features/services/presentation/widgets/status_confirmation_dialog.dart';
 import '../../domain/entities/category.dart';
@@ -33,20 +34,13 @@ class CategoriesController extends GetxController {
   }
 
   Future<void> loadCategories() async {
-    try {
-      isLoading.value = true;
-      debugPrint('Cargando categorías...');
-
-      final result = await getCategoriesUseCase.execute();
-      categories.assignAll(result);
-
-      debugPrint('Categorías cargadas: ${categories.length}');
-    } catch (e) {
-      debugPrint('Error cargando categorías: $e');
-      _showError('No se pudieron cargar las categorías');
-    } finally {
-      isLoading.value = false;
-    }
+    isLoading.value = true;
+    final result = await getCategoriesUseCase(NoParams());
+    result.fold(
+      (failure) => _showError(failure.message),
+      categories.assignAll,
+    );
+    isLoading.value = false;
   }
 
   void editCategory(CategoryEntity category) {
@@ -128,11 +122,18 @@ class CategoriesController extends GetxController {
               );
 
               debugPrint('Cambiando estado de categoría $id a $newStatus');
-              await updateCategoryStatusUseCase.execute(id, newStatus);
+              final result = await updateCategoryStatusUseCase(
+                  UpdateCategoryStatusParams(id: id, isActive: newStatus));
 
               // Cerrar el diálogo de carga
               if (Get.isDialogOpen ?? false) {
                 Get.back();
+              }
+
+              final failure = result.fold((f) => f, (_) => null);
+              if (failure != null) {
+                _showError(failure.message);
+                return;
               }
 
               // Mostrar mensaje de éxito

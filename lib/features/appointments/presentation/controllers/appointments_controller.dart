@@ -29,7 +29,9 @@ import 'package:login_signup/features/clients/domain/entities/client_entity.dart
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 
-import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 
 // Nuevas importaciones para la funcionalidad de suscripción
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
@@ -44,7 +46,7 @@ class AppointmentsController extends GetxController {
   final CreateAppointmentUseCase createAppointmentUseCase;
   final UpdateAppointmentUseCase updateAppointmentUseCase;
   final DeleteAppointmentUseCase deleteAppointmentUseCase;
-  final ServicesRemoteDataSource servicesDataSource;
+  final GetServicesUseCase getServicesUseCase;
   final GetClientsUseCase getClientsUseCase;
   final GetClientsPaginatedUseCase getClientsPaginatedUseCase;
   final LocalStorage localStorage;
@@ -129,7 +131,7 @@ class AppointmentsController extends GetxController {
       this.createAppointmentUseCase,
       this.updateAppointmentUseCase,
       this.deleteAppointmentUseCase,
-      this.servicesDataSource,
+      this.getServicesUseCase,
       this.getClientsUseCase,
       this.getClientsPaginatedUseCase,
       this.localStorage,
@@ -329,14 +331,23 @@ class AppointmentsController extends GetxController {
   }
 
   Future<void> loadServices() async {
-    try {
-      final result = await servicesDataSource.getServices();
-      services.assignAll(result);
-    } catch (e) {
-      print('Error loading services: $e');
-      error.value = e.toString();
-    }
+    final result = await getServicesUseCase(NoParams());
+    result.fold(
+      (failure) => error.value = failure.message,
+      (loaded) => services.assignAll(loaded.map(_serviceAsMap)),
+    );
   }
+
+  /// Puente hasta la 4.09: esta feature aún lee los servicios como mapas
+  /// (solo estas claves). Se quita al pasar `services` a `ServiceEntity`.
+  static Map<String, dynamic> _serviceAsMap(ServiceEntity s) => {
+        'id': s.id,
+        'name': s.name,
+        'description': s.description,
+        'price': s.price,
+        'duration': s.duration,
+        'color': s.color,
+      };
 
   // ✅ NUEVO MÉTODO: CARGAR CLIENTES CON PAGINACIÓN REAL DEL SERVIDOR
   Future<void> loadClients() async {

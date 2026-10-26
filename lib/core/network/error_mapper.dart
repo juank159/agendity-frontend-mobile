@@ -87,6 +87,8 @@ abstract final class ErrorMapper {
     ApiErrorCode.appointmentPaid: _conflict,
     ApiErrorCode.emailNotVerified: _conflict,
     ApiErrorCode.ownerNotDeletable: _conflict,
+    ApiErrorCode.categoryHasServices: _conflict,
+    ApiErrorCode.appointmentInPast: _validation,
     ApiErrorCode.trialLimitReached: _paymentRequired,
     ApiErrorCode.subscriptionInactive: _paymentRequired,
     ApiErrorCode.tooManyRequests: _tooManyRequests,

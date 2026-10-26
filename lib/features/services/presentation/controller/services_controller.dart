@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/categories_controller.dart';
 import '../../domain/entities/service_entity.dart';
 import '../../domain/usecases/get_services_usecase.dart';
@@ -69,16 +70,10 @@ class ServicesController extends GetxController {
   // }
 
   Future<void> loadServices() async {
-    try {
-      isLoading.value = true;
-      final result = await _getServicesUseCase.execute();
-      services.assignAll(result);
-    } catch (e) {
-      print('Error cargando servicios: $e');
-      services.clear();
-    } finally {
-      isLoading.value = false;
-    }
+    isLoading.value = true;
+    final result = await _getServicesUseCase(NoParams());
+    result.fold((_) => services.clear(), services.assignAll);
+    isLoading.value = false;
   }
 
   Future<void> refreshServices() async {

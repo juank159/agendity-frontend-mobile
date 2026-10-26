@@ -222,7 +222,6 @@
 // }
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/di/modules/services_module.dart';
 import 'package:login_signup/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:login_signup/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
@@ -244,7 +243,6 @@ import 'package:login_signup/features/employees/domain/usecases/verify_employee_
 // 🆕 NUEVOS IMPORTS
 
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
-import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
@@ -274,12 +272,7 @@ class EmployeesBinding implements Bindings {
 
   void _initServicesModule() {
     try {
-      // Inicializar ServicesModule si es necesario
-      if (!Get.isRegistered<GetServicesUseCase>()) {
-        print('Inicializando ServicesModule...');
-        ServicesModule.init();
-      }
-
+      // Los use cases de servicios los registra ServicesDependencies (arranque).
       // Asegurarse de que el ServicesController esté disponible
       if (!Get.isRegistered<ServicesController>()) {
         print('Registrando ServicesController...');

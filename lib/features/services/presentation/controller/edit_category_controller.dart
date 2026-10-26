@@ -40,11 +40,16 @@ class EditCategoryController extends GetxController {
     try {
       isLoading.value = true;
 
-      await updateCategoryUseCase.execute(
-        categoryId,
-        nameController.text.trim(),
-        descriptionController.text.trim(),
-      );
+      final failure = (await updateCategoryUseCase(UpdateCategoryParams(
+        id: categoryId,
+        name: nameController.text.trim(),
+        description: descriptionController.text.trim(),
+      )))
+          .fold((f) => f, (_) => null);
+      if (failure != null) {
+        _showError(failure.message);
+        return;
+      }
 
       _showSuccess('Categoría actualizada correctamente');
 

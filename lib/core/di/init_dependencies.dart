@@ -19,10 +19,9 @@ import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
 import '../config/api_config.dart';
 import 'modules/auth_module.dart';
-import 'modules/services_module.dart';
-import 'modules/categories_module.dart';
 import 'modules/clients_module.dart';
 import 'package:login_signup/features/payments/payments_dependencies.dart';
+import 'package:login_signup/features/services/services_dependencies.dart';
 import 'package:login_signup/features/whatsapp/whatsapp_dependencies.dart';
 
 class DependencyInjection {
@@ -124,8 +123,7 @@ class DependencyInjection {
       await AuthModule.init();
       await RegisterModule.init();
       await UserModule.init();
-      await ServicesModule.init();
-      await CategoriesModule.init();
+      ServicesDependencies.init();
       await ClientsModule.init();
       await AppointmentsModule.init();
       await EmployeesModule.init();

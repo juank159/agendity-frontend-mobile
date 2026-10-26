@@ -1,8 +1,10 @@
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
 import 'package:login_signup/features/services/domain/usecases/create_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
@@ -112,16 +114,14 @@ class NewServiceController extends GetxController {
   }
 
   Future<void> loadCategories() async {
-    try {
-      final result = await getCategoriesUseCase.execute();
-      categories.value = result;
+    final result = await getCategoriesUseCase(NoParams());
+    result.fold((failure) => _showError(failure.message), (loaded) {
+      categories.value = loaded;
       // Si solo hay una categoría, seleccionarla automáticamente
-      if (result.length == 1 && selectedCategory.value == null) {
-        selectedCategory.value = result.first;
+      if (loaded.length == 1 && selectedCategory.value == null) {
+        selectedCategory.value = loaded.first;
       }
-    } catch (e) {
-      _showError('Error al cargar las categorías');
-    }
+    });
   }
 
   void _updatePrice() {
@@ -236,7 +236,8 @@ class NewServiceController extends GetxController {
         name: nameController.text.trim(),
         description: descriptionController.text.trim(),
         price: price.value,
-        priceType: selectedPriceType.value,
+        priceType: ServicePriceType.fromApi(selectedPriceType.value) ??
+            ServicePriceType.fixed,
         duration: duration.value.inMinutes,
         categoryId: selectedCategory.value!.id,
         color:
@@ -245,7 +246,12 @@ class NewServiceController extends GetxController {
         deposit: minimumDeposit.value.round(),
       );
 
-      await createServiceUseCase.execute(service);
+      final failure =
+          (await createServiceUseCase(service)).fold((f) => f, (_) => null);
+      if (failure != null) {
+        _showError(failure.message);
+        return;
+      }
 
       // Obtener el controlador de servicios
       final servicesController = Get.find<ServicesController>();

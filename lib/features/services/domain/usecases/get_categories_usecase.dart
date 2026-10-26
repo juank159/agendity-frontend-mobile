@@ -1,12 +1,16 @@
-import '../entities/category.dart';
-import '../repositories/categories_repository.dart';
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/features/services/domain/entities/category.dart';
+import 'package:login_signup/features/services/domain/repositories/categories_repository.dart';
 
-class GetCategoriesUseCase {
+/// Categorías del negocio, activas o no (Owner y Employee).
+class GetCategoriesUseCase extends UseCase<List<CategoryEntity>, NoParams> {
   final CategoriesRepository repository;
 
   GetCategoriesUseCase(this.repository);
 
-  Future<List<CategoryEntity>> execute() async {
-    return await repository.getCategories();
-  }
+  @override
+  Future<Either<Failure, List<CategoryEntity>>> call(NoParams params) =>
+      repository.getCategories();
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
 import 'package:login_signup/features/services/domain/usecases/delete_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_service_usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/categories_controller.dart';
@@ -94,7 +95,7 @@ class EditServiceController extends GetxController {
     priceController.text = service.price.toString();
     descriptionController.text = service.description;
     duration.value = Duration(minutes: service.duration);
-    selectedPriceType.value = service.priceType;
+    selectedPriceType.value = service.priceType.toApi();
     isOnlineBooking.value = service.onlineBooking;
     selectedCategory.value = service.category;
     minimumDeposit.value = service.deposit.toDouble();
@@ -249,10 +250,12 @@ class EditServiceController extends GetxController {
       }
 
       final updatedService = ServiceEntity(
+        id: service.id,
         name: nameController.text.trim(),
         description: descriptionController.text.trim(),
         price: double.parse(priceController.text),
-        priceType: selectedPriceType.value,
+        priceType: ServicePriceType.fromApi(selectedPriceType.value) ??
+            ServicePriceType.fixed,
         duration: duration.value.inMinutes,
         categoryId:
             selectedCategory.value!.id, // Forzamos el uso de la nueva categoría
@@ -261,9 +264,12 @@ class EditServiceController extends GetxController {
         deposit: minimumDeposit.value.round(),
       );
 
-      print('Updated Service Data: ${updatedService.toJson()}');
-
-      await updateServiceUseCase.execute(service.id!, updatedService);
+      final failure = (await updateServiceUseCase(updatedService))
+          .fold((f) => f, (_) => null);
+      if (failure != null) {
+        _showError(failure.message);
+        return;
+      }
       await Get.find<ServicesController>().refreshServices();
       Get.back();
       _showSuccess('Servicio actualizado correctamente');
@@ -295,7 +301,12 @@ class EditServiceController extends GetxController {
 
     if (confirmed == true) {
       try {
-        await deleteServiceUseCase.execute(service.id!);
+        final failure = (await deleteServiceUseCase(service.id!))
+            .fold((f) => f, (_) => null);
+        if (failure != null) {
+          _showError(failure.message);
+          return;
+        }
         await Get.find<ServicesController>().refreshServices();
         Get.back();
         _showSuccess('Servicio eliminado correctamente');

@@ -16,7 +16,7 @@ import 'package:login_signup/features/appointments/presentation/controllers/appo
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
 import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
-import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
@@ -38,13 +38,6 @@ class AppointmentsBinding implements Bindings {
     // Data Sources
     Get.lazyPut<AppointmentsRemoteDataSource>(
       () => AppointmentsRemoteDataSource(
-        dio: Get.find(),
-        localStorage: Get.find(),
-      ),
-    );
-
-    Get.lazyPut<ServicesRemoteDataSource>(
-      () => ServicesRemoteDataSource(
         dio: Get.find(),
         localStorage: Get.find(),
       ),
@@ -102,7 +95,7 @@ class AppointmentsBinding implements Bindings {
         Get.find<CreateAppointmentUseCase>(),
         Get.find<UpdateAppointmentUseCase>(),
         Get.find<DeleteAppointmentUseCase>(),
-        Get.find<ServicesRemoteDataSource>(),
+        Get.find<GetServicesUseCase>(),
         Get.find<GetClientsUseCase>(),
         Get.find<GetClientsPaginatedUseCase>(),
         Get.find<LocalStorage>(),

@@ -1,11 +1,15 @@
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
 
-class DeleteServiceUseCase {
+/// Borra un servicio por id (solo Owner).
+class DeleteServiceUseCase extends UseCase<Unit, String> {
   final ServicesRepository repository;
 
   DeleteServiceUseCase(this.repository);
 
-  Future<void> execute(String id) {
-    return repository.deleteService(id);
-  }
+  @override
+  Future<Either<Failure, Unit>> call(String params) =>
+      repository.deleteService(params);
 }

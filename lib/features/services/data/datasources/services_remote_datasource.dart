@@ -1,81 +1,57 @@
 import 'package:dio/dio.dart';
-import '../../../../shared/local_storage/local_storage.dart';
-import '../../domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/data/models/service_model.dart';
 
-class ServicesRemoteDataSource {
-  final Dio dio;
-  final LocalStorage localStorage;
+/// Rutas `/services`. Los errores (400/403/404/409, red) salen como
+/// `DioException` y los traduce `safeCall` en el repositorio.
+abstract class ServicesRemoteDataSource {
+  /// `GET /services` (Owner y Employee): solo los activos, con `category`.
+  Future<List<ServiceModel>> getServices();
 
-  ServicesRemoteDataSource({
-    required this.dio,
-    required this.localStorage,
-  });
+  /// `POST /services` (solo Owner). Responde 201 con el servicio creado.
+  Future<ServiceModel> createService(ServiceModel service);
 
-  Future<List<Map<String, dynamic>>> getServices() async {
-    try {
-      final token = await localStorage.getToken();
+  /// `PATCH /services/:id` (solo Owner; cambios parciales). Responde 200.
+  Future<ServiceModel> updateService(String id, ServiceModel service);
 
-      final response = await dio.get(
-        '/services',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
+  /// `DELETE /services/:id` (solo Owner). Responde 200 sin cuerpo.
+  Future<void> deleteService(String id);
+}
 
-      if (response.statusCode == 200 && response.data != null) {
-        return List<Map<String, dynamic>>.from(response.data);
-      }
+class ServicesRemoteDataSourceImpl implements ServicesRemoteDataSource {
+  final Dio _dio;
 
-      throw Exception('Failed to load services');
-    } catch (e) {
-      throw Exception('Error loading services: $e');
-    }
+  /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
+  ServicesRemoteDataSourceImpl(this._dio);
+
+  @override
+  Future<List<ServiceModel>> getServices() async {
+    final response = await _dio.get<List<dynamic>>('/services');
+    return response.data!
+        .cast<Map<String, dynamic>>()
+        .map(ServiceModel.fromJson)
+        .toList();
   }
 
-  Future<void> createService(ServiceEntity service) async {
-    try {
-      final token = await localStorage.getToken();
-
-      await dio.post(
-        '/services',
-        data: service.toJson(),
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-    } catch (e) {
-      throw Exception('Error creating service: $e');
-    }
+  @override
+  Future<ServiceModel> createService(ServiceModel service) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/services',
+      data: service.toJson(),
+    );
+    return ServiceModel.fromJson(response.data!);
   }
 
-  // actualizar servicio
-
-  Future<void> updateService(String id, ServiceEntity service) async {
-    try {
-      final token = await localStorage.getToken();
-      await dio.patch(
-        '/services/$id',
-        data: service.toJson(),
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-    } catch (e) {
-      throw Exception('Error updating service: $e');
-    }
+  @override
+  Future<ServiceModel> updateService(String id, ServiceModel service) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/services/$id',
+      data: service.toJson(),
+    );
+    return ServiceModel.fromJson(response.data!);
   }
 
+  @override
   Future<void> deleteService(String id) async {
-    try {
-      final token = await localStorage.getToken();
-      await dio.delete(
-        '/services/$id',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-    } catch (e) {
-      throw Exception('Error deleting service: $e');
-    }
+    await _dio.delete<void>('/services/$id');
   }
 }

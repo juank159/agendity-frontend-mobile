@@ -1,179 +1,71 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import '../../../../shared/local_storage/local_storage.dart';
-import '../models/category_model.dart';
+import 'package:login_signup/features/services/data/models/category_model.dart';
 
-class CategoriesRemoteDataSource {
-  final Dio dio;
-  final LocalStorage localStorage;
+/// Rutas `/categories`. Los errores (400/403/404/409, red) salen como
+/// `DioException` y los traduce `safeCall` en el repositorio.
+abstract class CategoriesRemoteDataSource {
+  /// `GET /categories` (Owner y Employee): todas, con sus `services`.
+  Future<List<CategoryModel>> getCategories();
 
-  CategoriesRemoteDataSource({
-    required this.dio,
-    required this.localStorage,
-  });
+  /// `POST /categories` (solo Owner). Responde 201 con la categoría.
+  Future<CategoryModel> createCategory(CategoryModel category);
 
+  /// `PATCH /categories/:id` con nombre y descripción (solo Owner).
+  Future<CategoryModel> updateCategory(String id, CategoryModel category);
+
+  /// `PATCH /categories/:id` con solo `isActive` (cambio parcial).
+  Future<CategoryModel> updateCategoryStatus(String id, bool isActive);
+
+  /// `DELETE /categories/:id` (solo Owner). Con servicios: 409
+  /// `CATEGORY_HAS_SERVICES`.
+  Future<void> deleteCategory(String id);
+}
+
+class CategoriesRemoteDataSourceImpl implements CategoriesRemoteDataSource {
+  final Dio _dio;
+
+  /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
+  CategoriesRemoteDataSourceImpl(this._dio);
+
+  @override
   Future<List<CategoryModel>> getCategories() async {
-    try {
-      final token = await localStorage.getToken();
-      debugPrint(
-          'Obteniendo categorías');
-
-      final response = await dio.get(
-        '/categories',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      debugPrint(
-          'Respuesta del servidor (getCategories): ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final categoriesList = (response.data as List)
-            .map((json) => CategoryModel.fromJson(json))
-            .toList();
-
-        debugPrint('Categorías obtenidas: ${categoriesList.length}');
-        return categoriesList;
-      }
-
-      throw Exception(
-          'Failed to load categories: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getCategories: $e');
-      throw Exception('Error loading categories: $e');
-    }
+    final response = await _dio.get<List<dynamic>>('/categories');
+    return response.data!
+        .cast<Map<String, dynamic>>()
+        .map(CategoryModel.fromJson)
+        .toList();
   }
 
-  Future<void> createCategory(CategoryModel category) async {
-    try {
-      final token = await localStorage.getToken();
-      debugPrint(
-          'Creando categoría');
-
-      // Usamos toJson con isCreating = true para enviar solo name y description
-      final dataToSend = category.toJson(isCreating: true);
-      debugPrint('Datos a enviar: $dataToSend');
-
-      final response = await dio.post(
-        '/categories',
-        data: dataToSend, // Aquí está el cambio
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      debugPrint(
-          'Respuesta del servidor (createCategory): ${response.statusCode}');
-
-      if (response.statusCode! >= 200 && response.statusCode! < 300) {
-        debugPrint('Categoría creada exitosamente en el servidor');
-        debugPrint('Respuesta: ${response.data}');
-      } else {
-        throw Exception(
-            'El servidor respondió con código ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error detallado en createCategory: $e');
-      if (e is DioError) {
-        debugPrint('DioError tipo: ${e.type}');
-        debugPrint('DioError mensaje: ${e.message}');
-        debugPrint(
-            'DioError respuesta: ${e.response?.statusCode}, ${e.response?.data}');
-      }
-      throw Exception('Error creating category: $e');
-    }
+  @override
+  Future<CategoryModel> createCategory(CategoryModel category) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/categories',
+      data: category.toJson(),
+    );
+    return CategoryModel.fromJson(response.data!);
   }
 
-  Future<void> updateCategoryStatus(String id, bool isActive) async {
-    try {
-      final token = await localStorage.getToken();
-      debugPrint(
-          'Actualizando estado de categoría $id a $isActive');
-
-      // Primero obtenemos los datos actuales para mantener los valores
-      final getResponse = await dio.get(
-        '/categories/$id',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      if (getResponse.statusCode != 200) {
-        throw Exception(
-            'Error al obtener la categoría: ${getResponse.statusCode}');
-      }
-
-      final categoryData = getResponse.data;
-
-      // Importante: incluimos isActive en los datos a enviar
-      final updateData = {
-        'name': categoryData['name'],
-        'description': categoryData['description'],
-        'isActive': isActive // Agregamos esta línea para enviar el nuevo estado
-      };
-
-      debugPrint('Datos a enviar: $updateData');
-
-      final response = await dio.patch(
-        '/categories/$id',
-        data: updateData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      debugPrint(
-          'Respuesta del servidor (updateCategoryStatus): ${response.statusCode}');
-
-      if (response.statusCode! < 200 || response.statusCode! >= 300) {
-        throw Exception(
-            'El servidor respondió con código ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error en updateCategoryStatus: $e');
-      throw Exception('Error updating category status: $e');
-    }
+  @override
+  Future<CategoryModel> updateCategory(
+      String id, CategoryModel category) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/categories/$id',
+      data: category.toJson(),
+    );
+    return CategoryModel.fromJson(response.data!);
   }
 
-  Future<void> updateCategory(
-      String id, String name, String description) async {
-    try {
-      final token = await localStorage.getToken();
-      debugPrint(
-          'Actualizando categoría $id: nombre=$name, descripción=$description');
+  @override
+  Future<CategoryModel> updateCategoryStatus(String id, bool isActive) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/categories/$id',
+      data: {'isActive': isActive},
+    );
+    return CategoryModel.fromJson(response.data!);
+  }
 
-      final response = await dio.patch(
-        '/categories/$id',
-        data: {
-          'name': name,
-          'description': description,
-        },
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      debugPrint(
-          'Respuesta del servidor (updateCategory): ${response.statusCode}');
-
-      if (response.statusCode! < 200 || response.statusCode! >= 300) {
-        throw Exception(
-            'El servidor respondió con código ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error en updateCategory: $e');
-      throw Exception('Error updating category: $e');
-    }
+  @override
+  Future<void> deleteCategory(String id) async {
+    await _dio.delete<void>('/categories/$id');
   }
 }

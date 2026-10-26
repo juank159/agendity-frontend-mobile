@@ -1,52 +1,55 @@
-import '../../domain/entities/service_entity.dart';
-import '../../domain/repositories/services_repository.dart';
-import '../datasources/services_remote_datasource.dart';
-import '../models/service_model.dart' as model;
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/network/safe_call.dart';
+import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/features/services/data/models/service_model.dart';
+import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/domain/failures/services_failures.dart';
+import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
 
 class ServicesRepositoryImpl implements ServicesRepository {
-  final ServicesRemoteDataSource remoteDataSource;
+  final ServicesRemoteDataSource _remote;
 
-  ServicesRepositoryImpl({required this.remoteDataSource});
-
-  @override
-  Future<List<ServiceEntity>> getServices() async {
-    try {
-      final response = await remoteDataSource.getServices();
-      return response.map((json) => model.ServiceModel.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Error getting services: $e');
-    }
-  }
+  ServicesRepositoryImpl(this._remote);
 
   @override
-  Future<void> createService(ServiceEntity service) async {
-    try {
-      final serviceModel = model.ServiceModel(
-        name: service.name,
-        description: service.description,
-        price: service.price,
-        priceType: service.priceType,
-        duration: service.duration,
-        categoryId: service.categoryId,
-        color: service.color,
-        image: service.image,
-        onlineBooking: service.onlineBooking,
-        deposit: service.deposit,
-        isActive: service.isActive,
+  Future<Either<Failure, List<ServiceEntity>>> getServices() =>
+      safeCall(() async =>
+          (await _remote.getServices()).map((m) => m.toEntity()).toList());
+
+  @override
+  Future<Either<Failure, ServiceEntity>> createService(ServiceEntity service) =>
+      safeCall(
+        () async =>
+            (await _remote.createService(ServiceModel.fromEntity(service)))
+                .toEntity(),
+        refine: _refineSave,
       );
-      await remoteDataSource.createService(serviceModel);
-    } catch (e) {
-      throw Exception('Error creating service: $e');
-    }
-  }
 
   @override
-  Future<void> updateService(String id, ServiceEntity service) {
-    return remoteDataSource.updateService(id, service);
-  }
+  Future<Either<Failure, ServiceEntity>> updateService(ServiceEntity service) =>
+      safeCall(
+        () async => (await _remote.updateService(
+                service.id!, ServiceModel.fromEntity(service)))
+            .toEntity(),
+        refine: _refineSave,
+      );
 
   @override
-  Future<void> deleteService(String id) {
-    return remoteDataSource.deleteService(id);
-  }
+  Future<Either<Failure, Unit>> deleteService(String id) => safeCall(() async {
+        await _remote.deleteService(id);
+        return unit;
+      });
+
+  /// Al crear o editar, el único 409 posible es el nombre repetido en el
+  /// negocio (`ConflictException` del backend → `code: CONFLICT`).
+  static Failure _refineSave(Failure failure) =>
+      failure.code == ApiErrorCode.conflict
+          ? DuplicateServiceNameFailure(
+              message: failure.message,
+              code: failure.code,
+              statusCode: failure.statusCode,
+              details: failure.details,
+            )
+          : failure;
 }

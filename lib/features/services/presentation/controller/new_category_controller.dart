@@ -1,7 +1,6 @@
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/categories_controller.dart';
 
@@ -50,13 +49,13 @@ class NewCategoryController extends GetxController {
 
       debugPrint('Creando categoría con nombre: $name');
 
-      final category = CategoryEntity(
-        id: '', // El ID lo generará el backend
-        name: name,
-        description: description,
-      );
-
-      await createCategoryUseCase.execute(category);
+      final failure = (await createCategoryUseCase(
+              CategoryParams(name: name, description: description)))
+          .fold((f) => f, (_) => null);
+      if (failure != null) {
+        showError(failure.message);
+        return;
+      }
 
       debugPrint('Categoría creada exitosamente');
 

@@ -41,7 +41,6 @@ import 'package:login_signup/features/services/presentation/bindings/edit_servic
 import 'package:login_signup/features/services/presentation/bindings/new_category_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/services_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/new_service_binding.dart';
-import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 import 'package:login_signup/features/services/presentation/screen/categories_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/edit_service_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/new_category_screen.dart';
@@ -275,12 +274,7 @@ class GetRoutes {
       middlewares: RoleMiddleware.ownerOnly(),
       page: () => const CreateEmployeeScreen(),
       binding: BindingsBuilder(() {
-        if (!Get.isRegistered<ServicesController>()) {
-          Get.put(
-            ServicesController(getServicesUseCase: Get.find()),
-            permanent: true,
-          );
-        }
+        ServicesBinding.registerController();
         Get.lazyPut(() => EmployeesController(
               getEmployeesUseCase: Get.find(),
               getEmployeeByIdUseCase: Get.find(),

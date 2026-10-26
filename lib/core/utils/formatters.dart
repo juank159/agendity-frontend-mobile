@@ -49,6 +49,14 @@ String formatTime(DateTime time) => DateFormat('h:mm a', 'es').format(time);
 String formatTimeRange(DateTime start, DateTime end) =>
     '${formatTime(start)} - ${formatTime(end)}';
 
+/// Duración en minutos: `45 min`, `1 h`, `1 h 15 min`. Negativo → `0 min`.
+String formatDurationMinutes(int minutes) {
+  if (minutes < 60) return '${minutes < 0 ? 0 : minutes} min';
+  final hours = minutes ~/ 60;
+  final rest = minutes % 60;
+  return rest == 0 ? '$hours h' : '$hours h $rest min';
+}
+
 num _toNum(Object? value) {
   if (value is num) return value.isFinite ? value : 0;
   if (value is String) return num.tryParse(value.trim()) ?? 0;

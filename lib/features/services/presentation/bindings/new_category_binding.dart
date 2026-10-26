@@ -1,13 +1,14 @@
 import 'package:get/get.dart';
-import '../controller/new_category_controller.dart';
+import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
+import 'package:login_signup/features/services/presentation/controller/new_category_controller.dart';
 
-/// Use cases: `ServicesDependencies` (arranque de la app).
+/// Solo el controller: los use cases los registra `ServicesDependencies`.
 class NewCategoryBinding extends Bindings {
   @override
   void dependencies() {
     Get.lazyPut<NewCategoryController>(
       () => NewCategoryController(
-        createCategoryUseCase: Get.find(),
+        createCategoryUseCase: Get.find<CreateCategoryUseCase>(),
       ),
     );
   }

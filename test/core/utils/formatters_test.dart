@@ -35,4 +35,11 @@ void main() {
     expect(formatTimeRange(d, d.add(const Duration(minutes: 45))),
         '${formatTime(d)} - ${formatTime(DateTime(2026, 11, 3, 16, 15))}');
   });
+
+  test('formatDurationMinutes: minutos y horas', () {
+    expect(formatDurationMinutes(45), '45 min');
+    expect(formatDurationMinutes(60), '1 h');
+    expect(formatDurationMinutes(75), '1 h 15 min');
+    expect(formatDurationMinutes(-5), '0 min');
+  });
 }

@@ -44,7 +44,8 @@ void main() {
   });
 
   test('la lista de SessionScope no incluye los de alcance de app', () {
-    // 18 controllers de feature (inventario de la 3.05).
-    expect(SessionScope.featureControllers, hasLength(18));
+    // 18 controllers de feature (inventario de la 3.05) menos
+    // EditCategoryController, muerto (retirado en la 4.03).
+    expect(SessionScope.featureControllers, hasLength(17));
   });
 }

@@ -1408,15 +1408,6 @@ class EmployeesListScreen extends StatelessWidget {
                 // Asegurarnos de que los controladores estén disponibles
                 final employeesController = Get.find<EmployeesController>();
 
-                // Verificar si ServicesController está registrado
-                if (!Get.isRegistered<ServicesController>()) {
-                  print('ServicesController no encontrado, registrando...');
-                  Get.put(
-                    ServicesController(getServicesUseCase: Get.find()),
-                    permanent: true,
-                  );
-                }
-
                 // Pre-cargar servicios antes de navegar
                 final servicesController = Get.find<ServicesController>();
 
@@ -1488,12 +1479,6 @@ class EmployeesListScreen extends StatelessWidget {
             ),
             onPressed: () {
               try {
-                if (!Get.isRegistered<ServicesController>()) {
-                  Get.put(
-                    ServicesController(getServicesUseCase: Get.find()),
-                    permanent: true,
-                  );
-                }
                 Get.to(() => const CreateEmployeeScreen());
               } catch (e) {
                 print('Error navegando desde estado vacío: $e');

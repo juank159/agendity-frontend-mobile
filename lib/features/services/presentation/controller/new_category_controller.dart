@@ -1,26 +1,20 @@
-import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/features/services/domain/failures/services_failures.dart';
 import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
-import 'package:login_signup/features/services/presentation/controller/categories_controller.dart';
+import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
+import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
+/// Alta de una categoría (solo Owner). Al guardar vuelve con `result: true`.
 class NewCategoryController extends GetxController {
-  final CreateCategoryUseCase createCategoryUseCase;
+  final CreateCategoryUseCase _createCategory;
+
+  NewCategoryController({required CreateCategoryUseCase createCategoryUseCase})
+      : _createCategory = createCategoryUseCase;
 
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
-  final RxBool isLoading = false.obs;
-  final RxBool isFormValid = false.obs;
-
-  NewCategoryController({required this.createCategoryUseCase});
-
-  @override
-  void onInit() {
-    super.onInit();
-    debugPrint('NewCategoryController inicializado');
-    nameController.addListener(_validateForm);
-    descriptionController.addListener(_validateForm);
-  }
+  final isSaving = false.obs;
 
   @override
   void onClose() {
@@ -29,71 +23,29 @@ class NewCategoryController extends GetxController {
     super.onClose();
   }
 
-  void _validateForm() {
-    isFormValid.value = nameController.text.trim().isNotEmpty;
-  }
-
-  Future<void> saveCategory() async {
-    final name = nameController.text.trim();
-    final description = descriptionController.text.trim();
-
-    debugPrint('Intentando guardar categoría: "$name", "$description"');
-
-    if (name.isEmpty) {
-      showError('El nombre de la categoría es requerido');
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-
-      debugPrint('Creando categoría con nombre: $name');
-
-      final failure = (await createCategoryUseCase(
-              CategoryParams(name: name, description: description)))
-          .fold((f) => f, (_) => null);
-      if (failure != null) {
-        showError(failure.message);
-        return;
-      }
-
-      debugPrint('Categoría creada exitosamente');
-
-      showSuccess('Categoría creada correctamente');
-      if (Get.isRegistered<CategoriesController>()) {
-        final categoriesController = Get.find<CategoriesController>();
-        categoriesController.refreshAfterCreate();
-      }
-
-      // Clave del cambio: usar Get.back() con result para indicar éxito
-      Get.offAndToNamed(GetRoutes.categories);
-    } catch (e) {
-      debugPrint('Error al crear categoría: $e');
-      showError('No se pudo crear la categoría: ${e.toString()}');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  void showSuccess(String message) {
-    Get.snackbar(
-      'Éxito',
-      message,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 3),
-    );
-  }
-
-  void showError(String message) {
-    Get.snackbar(
-      'Error',
-      message,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 3),
+  /// `true` si se creó.
+  Future<bool> save() async {
+    if (isSaving.value) return false;
+    isSaving.value = true;
+    final result = await _createCategory(CategoryParams(
+      name: nameController.text,
+      description: descriptionController.text,
+    ));
+    isSaving.value = false;
+    return result.fold(
+      (failure) {
+        if (failure is InvalidCatalogDataFailure) {
+          AppSnackbar.warning(failure.message, title: 'Revisa el formulario');
+        } else {
+          AppSnackbar.error(CatalogAccess.messageFor(failure));
+        }
+        return false;
+      },
+      (_) {
+        Get.back(result: true);
+        AppSnackbar.success('Categoría creada');
+        return true;
+      },
     );
   }
 }

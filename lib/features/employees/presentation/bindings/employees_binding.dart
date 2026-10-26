@@ -243,7 +243,7 @@ import 'package:login_signup/features/employees/domain/usecases/verify_employee_
 // 🆕 NUEVOS IMPORTS
 
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
-import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
+import 'package:login_signup/features/services/presentation/bindings/services_binding.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class EmployeesBinding implements Bindings {
@@ -270,22 +270,8 @@ class EmployeesBinding implements Bindings {
     }
   }
 
-  void _initServicesModule() {
-    try {
-      // Los use cases de servicios los registra ServicesDependencies (arranque).
-      // Asegurarse de que el ServicesController esté disponible
-      if (!Get.isRegistered<ServicesController>()) {
-        print('Registrando ServicesController...');
-        Get.put(
-          ServicesController(getServicesUseCase: Get.find()),
-          permanent: true,
-        );
-      }
-    } catch (e) {
-      print('Error inicializando ServicesModule: $e');
-      rethrow;
-    }
-  }
+  /// Las pantallas de empleados listan los servicios del negocio.
+  void _initServicesModule() => ServicesBinding.registerController();
 
   void _initAuthModule() {
     try {

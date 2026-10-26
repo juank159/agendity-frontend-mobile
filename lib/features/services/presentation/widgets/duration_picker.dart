@@ -1,132 +1,92 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 
-class DurationPicker extends StatelessWidget {
-  final Rx<Duration> duration;
-  final Function(Duration) onChanged;
+/// Rueda de duraciones (de 15 en 15 minutos, hasta 6 horas). Devuelve la
+/// duración elegida o `null` si se cancela.
+class DurationPicker extends StatefulWidget {
+  static const stepMinutes = 15;
+  static const steps = 24;
 
-  const DurationPicker({
-    required this.duration,
-    required this.onChanged,
-    super.key,
-  });
+  final Duration initial;
+
+  const DurationPicker({super.key, required this.initial});
+
+  static Future<Duration?> show(Duration initial) =>
+      Get.dialog<Duration>(DurationPicker(initial: initial));
+
+  @override
+  State<DurationPicker> createState() => _DurationPickerState();
+}
+
+class _DurationPickerState extends State<DurationPicker> {
+  late int _index;
+  late final FixedExtentScrollController _scroll;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = ((widget.initial.inMinutes / DurationPicker.stepMinutes).round() -
+            1)
+        .clamp(0, DurationPicker.steps - 1);
+    _scroll = FixedExtentScrollController(initialItem: _index);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  int _minutesAt(int index) => (index + 1) * DurationPicker.stepMinutes;
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Duración',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 250,
-              child: Obx(() => ListWheelScrollView.useDelegate(
-                    itemExtent: 50,
-                    perspective: 0.006,
-                    diameterRatio: 1.6,
-                    physics: const FixedExtentScrollPhysics(),
-                    onSelectedItemChanged: (index) {
-                      onChanged(Duration(
-                          minutes: (index + 1) * 15)); // Cambiado de 5 a 15
-                    },
-                    controller: FixedExtentScrollController(
-                      initialItem: (duration.value.inMinutes / 15).round() -
-                          1, // Cambiado de 5 a 15
-                    ),
-                    childDelegate: ListWheelChildBuilderDelegate(
-                      childCount:
-                          24, // Ajustado para mantener el mismo rango total pero con intervalos de 15
-                      builder: (context, index) {
-                        final minutes = (index + 1) * 15; // Cambiado de 5 a 15
-                        final isSelected = duration.value.inMinutes == minutes;
-
-                        // Formatear el texto para mostrar horas cuando corresponda
-                        String durationText;
-                        if (minutes >= 60) {
-                          final hours = minutes ~/ 60;
-                          final remainingMinutes = minutes % 60;
-                          if (remainingMinutes == 0) {
-                            durationText =
-                                '$hours ${hours == 1 ? 'Hora' : 'Horas'}';
-                          } else {
-                            durationText =
-                                '$hours ${hours == 1 ? 'Hora' : 'Horas'} $remainingMinutes Minutos';
-                          }
-                        } else {
-                          durationText = '$minutes Minutos';
-                        }
-
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.grey.shade200
-                                : Colors.transparent,
-                          ),
-                          child: Center(
-                            child: Text(
-                              durationText,
-                              style: TextStyle(
-                                fontSize: isSelected ? 22 : 16,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? Colors.black
-                                    : Colors.grey[500],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  )),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Get.back(),
-                    child: const Text(
-                      'CANCELAR',
-                      style: TextStyle(
-                        color: Colors.deepPurple,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return AlertDialog(
+      title: const Text('Duración'),
+      content: SizedBox(
+        height: 250,
+        width: 280,
+        child: ListWheelScrollView.useDelegate(
+          controller: _scroll,
+          itemExtent: 50,
+          perspective: 0.006,
+          diameterRatio: 1.6,
+          physics: const FixedExtentScrollPhysics(),
+          onSelectedItemChanged: (index) => setState(() => _index = index),
+          childDelegate: ListWheelChildBuilderDelegate(
+            childCount: DurationPicker.steps,
+            builder: (context, index) {
+              final selected = index == _index;
+              return Container(
+                alignment: Alignment.center,
+                color: selected ? scheme.surfaceContainerHighest : null,
+                child: Text(
+                  formatDurationMinutes(_minutesAt(index)),
+                  style: (selected ? text.titleLarge : text.bodyLarge)
+                      ?.copyWith(
+                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                    color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () => Get.back(),
-                    child: const Text(
-                      'ACEPTAR',
-                      style: TextStyle(
-                        color: Colors.deepPurple,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              );
+            },
+          ),
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context)
+              .pop(Duration(minutes: _minutesAt(_index))),
+          child: const Text('Aceptar'),
+        ),
+      ],
     );
   }
 }

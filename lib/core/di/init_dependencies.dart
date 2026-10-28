@@ -17,7 +17,7 @@ import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
 import '../config/api_config.dart';
 import 'modules/auth_module.dart';
-import 'modules/clients_module.dart';
+import 'package:login_signup/features/clients/clients_dependencies.dart';
 import 'package:login_signup/features/payments/payments_dependencies.dart';
 import 'package:login_signup/features/statistics/statistics_dependencies.dart';
 import 'package:login_signup/features/subscriptions/subscriptions_dependencies.dart';
@@ -124,7 +124,7 @@ class DependencyInjection {
       await RegisterModule.init();
       await UserModule.init();
       ServicesDependencies.init();
-      await ClientsModule.init();
+      ClientsDependencies.init();
       await AppointmentsModule.init();
       await EmployeesModule.init();
       PaymentsDependencies.init();

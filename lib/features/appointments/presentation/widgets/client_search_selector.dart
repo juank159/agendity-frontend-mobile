@@ -261,8 +261,7 @@ class ClientSearchSelector extends GetView<AppointmentsController> {
                                       ],
                                     ),
                                   ),
-                                if (client.email.isNotEmpty && 
-                                    client.email != 'no-email@example.com')
+                                if (client.hasEmail)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 2),
                                     child: Row(
@@ -275,7 +274,7 @@ class ClientSearchSelector extends GetView<AppointmentsController> {
                                         const SizedBox(width: 4),
                                         Expanded(
                                           child: Text(
-                                            client.email,
+                                            client.email!,
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: Colors.grey[600],

@@ -7,12 +7,12 @@ import 'package:login_signup/features/appointments/domain/usescases/get_upcoming
 import '../../domain/entities/appointment_entity.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../whatsapp/data/datasources/whatsapp_launcher.dart';
-import '../../../clients/data/datasources/clients_remote_datasource.dart';
+import 'package:login_signup/features/clients/domain/usecases/get_all_clients_usecase.dart';
 import '../../data/datasources/appointments_remote_datasource.dart';
 
 class AppointmentReminderController extends GetxController {
   final GetUpcomingAppointmentsUseCase getUpcomingAppointmentsUseCase;
-  final ClientsRemoteDataSource clientsRemoteDataSource;
+  final GetAllClientsUseCase getAllClientsUseCase;
   final NotificationService notificationService = NotificationService();
 
   RxList<AppointmentEntity> upcomingAppointments = <AppointmentEntity>[].obs;
@@ -27,7 +27,7 @@ class AppointmentReminderController extends GetxController {
 
   AppointmentReminderController({
     required this.getUpcomingAppointmentsUseCase,
-    required this.clientsRemoteDataSource,
+    required this.getAllClientsUseCase,
   });
 
   @override
@@ -192,18 +192,17 @@ class AppointmentReminderController extends GetxController {
       String clientPhone = '';
 
       try {
-        // ✅ USAR MÉTODO LEGACY PARA OBTENER LISTA DE CLIENTES
-        // El nuevo método getClients() devuelve respuesta paginada, usamos el legacy
-        final clients = await clientsRemoteDataSource.getClientsLegacy();
+        // Puente hasta la 4.09: busca el teléfono por el nombre del cliente.
+        final clients = (await getAllClientsUseCase(NoParams())).fold(
+            (failure) => throw Exception(failure.message), (list) => list);
         final client = clients.firstWhere(
           (client) =>
-              client['name'] == appointment.clientName ||
-              '${client['name']} ${client['lastname']}' ==
-                  appointment.clientName,
+              client.name == appointment.clientName ||
+              '${client.name} ${client.lastname}' == appointment.clientName,
           orElse: () => throw Exception('Cliente no encontrado'),
         );
 
-        clientPhone = client['phone'];
+        clientPhone = client.phone;
       } catch (e) {
         errorMessage.value = 'No se pudo encontrar el teléfono del cliente: $e';
         isLoading.value = false;

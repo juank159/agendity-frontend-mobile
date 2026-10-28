@@ -119,17 +119,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
-import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:login_signup/features/clients/domain/entities/client_import_result.dart';
+import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
+import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
+import 'package:login_signup/features/clients/domain/usecases/import_clients_usecase.dart';
 
 class ClientsController extends GetxController {
-  final GetClientsUseCase getClientsUseCase;
-  final GetClientsPaginatedUseCase getClientsPaginatedUseCase;
-  final CreateClientUseCase createClientUseCase;
-  final ImportContactsUseCase importContactsUseCase;
-  final LocalStorage localStorage;
+  final GetClientsPageUseCase getClientsPageUseCase;
+  final ImportClientsUseCase importClientsUseCase;
 
   // ✅ NUEVAS VARIABLES PARA PAGINACIÓN REAL DEL SERVIDOR
   final RxList<ClientEntity> clients = <ClientEntity>[].obs;
@@ -154,11 +152,8 @@ class ClientsController extends GetxController {
   final ScrollController scrollController = ScrollController();
 
   ClientsController({
-    required this.getClientsUseCase,
-    required this.getClientsPaginatedUseCase,
-    required this.createClientUseCase,
-    required this.importContactsUseCase,
-    required this.localStorage,
+    required this.getClientsPageUseCase,
+    required this.importClientsUseCase,
   });
 
   @override
@@ -203,15 +198,18 @@ class ClientsController extends GetxController {
       isLoading.value = true;
       print('🔄 ClientsController: Cargando clientes con paginación del servidor...');
 
-      final result = await getClientsPaginatedUseCase.execute(
+      final result = (await getClientsPageUseCase(ClientsQuery(
         page: currentPage.value,
         limit: pageSize.value,
-        search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
-        sortBy: sortBy.value,
-        sortOrder: sortOrder.value,
-        status: statusFilter.value,
-        source: sourceFilter.value,
-      );
+        search: searchQuery.value,
+        sortBy: ClientSortField.fromApi(sortBy.value) ?? ClientSortField.name,
+        direction: SortDirection.fromApi(sortOrder.value) ?? SortDirection.asc,
+        status: ClientStatusFilter.fromApi(statusFilter.value) ??
+            ClientStatusFilter.all,
+        source: ClientSourceFilter.fromApi(sourceFilter.value) ??
+            ClientSourceFilter.all,
+      )))
+          .fold((failure) => throw Exception(failure.message), (page) => page);
 
       // ✅ ACTUALIZAR VARIABLES DE PAGINACIÓN CON DATOS DEL SERVIDOR
       totalRecords.value = result.total;
@@ -222,11 +220,11 @@ class ClientsController extends GetxController {
       // ✅ SI ES LA PRIMERA PÁGINA, REEMPLAZAR LOS CLIENTES
       // SI ES CARGA DE MÁS PÁGINAS, AÑADIR AL FINAL
       if (currentPage.value == 1) {
-        clients.assignAll(result.data);
-        print('✅ Primera página cargada: ${result.data.length} clientes');
+        clients.assignAll(result.items);
+        print('✅ Primera página cargada: ${result.items.length} clientes');
       } else {
-        clients.addAll(result.data);
-        print('✅ Página ${currentPage.value} agregada: ${result.data.length} clientes más');
+        clients.addAll(result.items);
+        print('✅ Página ${currentPage.value} agregada: ${result.items.length} clientes más');
       }
 
       print('📊 Total clientes en memoria: ${clients.length}');
@@ -345,28 +343,16 @@ class ClientsController extends GetxController {
         withPhoto: false,
       );
 
-      final userId = await localStorage.getUserId();
-      if (userId == null) {
-        throw Exception('Error de autenticación');
-      }
-
       final validContacts = contacts
-          .where((contact) =>
-              contact.name.first.trim().isNotEmpty &&
-              contact.phones.isNotEmpty &&
-              contact.phones.first.number
-                      .replaceAll(RegExp(r'[^\d+]'), '')
-                      .length >=
-                  10)
-          .map((contact) => ClientModel(
-                name: contact.name.first.trim(),
-                lastname: contact.name.last.trim(),
+          .where((contact) => contact.phones.isNotEmpty)
+          .map((contact) => ClientEntity(
+                name: contact.name.first,
+                lastname: contact.name.last,
                 email: contact.emails.isNotEmpty
                     ? contact.emails.first.address
-                    : 'no-email@example.com',
-                phone: contact.phones.first.number
-                    .replaceAll(RegExp(r'[^\d+]'), ''),
-                ownerId: userId,
+                    : null,
+                phone: contact.phones.first.number,
+                deviceContactId: contact.id,
               ))
           .toList();
 
@@ -376,9 +362,10 @@ class ClientsController extends GetxController {
 
       print('🔄 Iniciando importación de ${validContacts.length} contactos...');
       
-      Map<String, dynamic> importResult;
+      ClientImportResult importResult;
       try {
-        importResult = await importContactsUseCase.execute(validContacts);
+        importResult = (await importClientsUseCase(validContacts)).fold(
+            (failure) => throw Exception(failure.message), (r) => r);
         print('✅ Importación completada en UseCase');
       } catch (e) {
         print('❌ Error en importContactsUseCase: $e');
@@ -398,9 +385,9 @@ class ClientsController extends GetxController {
         print('🎉 Mostrando mensaje de éxito...');
         
         // ✅ MENSAJE DETALLADO CON ESTADÍSTICAS REALES
-        final int sent = validContacts.length;
-        final int success = importResult['totalSuccess'] as int;
-        final int failed = importResult['totalFailed'] as int;
+        final int sent = importResult.requested;
+        final int success = importResult.imported;
+        final int failed = importResult.failed;
         
         String message;
         if (failed > 0) {

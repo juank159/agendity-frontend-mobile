@@ -3,16 +3,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
-
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
-import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
+import 'package:login_signup/features/clients/domain/usecases/delete_client_usecase.dart';
+import 'package:login_signup/features/clients/domain/usecases/get_client_by_id_usecase.dart';
+import 'package:login_signup/features/clients/domain/usecases/update_client_usecase.dart';
+import 'package:login_signup/features/clients/domain/usecases/upload_client_image_usecase.dart';
 
 class EditClientController extends GetxController {
   final GetClientByIdUseCase getClientByIdUseCase;
   final UpdateClientUseCase updateClientUseCase;
   final DeleteClientUseCase deleteClientUseCase;
-  final ClientsRemoteDataSource remoteDataSource;
+  final UploadClientImageUseCase uploadClientImageUseCase;
 
   final RxString imageUrl = ''.obs;
   final Rxn<File> selectedImage = Rxn<File>();
@@ -36,7 +37,7 @@ class EditClientController extends GetxController {
     required this.getClientByIdUseCase,
     required this.updateClientUseCase,
     required this.deleteClientUseCase,
-    required this.remoteDataSource,
+    required this.uploadClientImageUseCase,
   });
 
   @override
@@ -97,7 +98,8 @@ class EditClientController extends GetxController {
       print('Path del archivo: ${selectedImage.value!.path}');
 
       final String url =
-          await remoteDataSource.uploadImage(selectedImage.value!);
+          (await uploadClientImageUseCase(selectedImage.value!.path)).fold(
+              (failure) => throw Exception(failure.message), (url) => url);
       imageUrl.value = url;
 
       print('Imagen cargada exitosamente');
@@ -147,7 +149,7 @@ class EditClientController extends GetxController {
         lastname: lastnameController.text,
         phone: phoneController.text,
         email: emailController.text,
-        ownerId: currentClient.value!.ownerId,
+        address: currentClient.value!.address,
         notes: notesController.text,
         birthday: birthday,
         showNotes: showNotes.value,
@@ -157,7 +159,8 @@ class EditClientController extends GetxController {
         isActive: currentClient.value!.isActive,
       );
 
-      await updateClientUseCase.execute(clientId, updatedClient);
+      (await updateClientUseCase(updatedClient))
+          .fold((failure) => throw Exception(failure.message), (_) => null);
       Get.back(result: true);
       Get.snackbar(
         'Éxito',
@@ -178,13 +181,14 @@ class EditClientController extends GetxController {
   Future<void> loadClient() async {
     try {
       isLoading(true);
-      final client = await getClientByIdUseCase.execute(clientId);
+      final client = (await getClientByIdUseCase(clientId))
+          .fold((failure) => throw Exception(failure.message), (c) => c);
       currentClient.value = client; // Añade esta línea
 
       nameController.text = client.name;
       lastnameController.text = client.lastname; // Añade esta línea
       phoneController.text = client.phone;
-      emailController.text = client.email;
+      emailController.text = client.email ?? '';
       notesController.text = client.notes ?? '';
       birthdayController.text = client.birthday != null
           ? "${client.birthday!.day}/${client.birthday!.month}/${client.birthday!.year}"
@@ -231,7 +235,8 @@ class EditClientController extends GetxController {
 
   Future<void> deleteClient() async {
     try {
-      await deleteClientUseCase.execute(clientId);
+      (await deleteClientUseCase(clientId))
+          .fold((failure) => throw Exception(failure.message), (_) => null);
       Get.back(result: true);
       Get.snackbar('Éxito', 'Cliente eliminado correctamente');
     } catch (e) {

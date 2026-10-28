@@ -4,16 +4,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
-import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
-import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:login_signup/features/clients/domain/usecases/create_client_usecase.dart';
+import 'package:login_signup/features/clients/domain/usecases/upload_client_image_usecase.dart';
 
 class NewClientController extends GetxController {
   final CreateClientUseCase createClientUseCase;
-  final ClientsRemoteDataSource remoteDataSource;
-  final LocalStorage localStorage;
+  final UploadClientImageUseCase uploadClientImageUseCase;
 
   // Controladores para los campos de texto
   late TextEditingController nameController;
@@ -33,8 +30,7 @@ class NewClientController extends GetxController {
 
   NewClientController({
     required this.createClientUseCase,
-    required this.remoteDataSource,
-    required this.localStorage,
+    required this.uploadClientImageUseCase,
   });
 
   @override
@@ -94,7 +90,8 @@ class NewClientController extends GetxController {
       print('Path del archivo: ${selectedImage.value!.path}');
 
       final String url =
-          await remoteDataSource.uploadImage(selectedImage.value!);
+          (await uploadClientImageUseCase(selectedImage.value!.path)).fold(
+              (failure) => throw Exception(failure.message), (url) => url);
       imageUrl.value = url;
 
       print('Imagen cargada exitosamente');
@@ -123,12 +120,6 @@ class NewClientController extends GetxController {
     try {
       isLoading(true);
 
-      // Obtener el ID del usuario actual
-      final userId = await localStorage.getUserId();
-      if (userId == null) {
-        throw Exception('Error de autenticación');
-      }
-
       // Convertir fecha de string a DateTime si existe
       DateTime? birthday;
       if (birthdayController.text.isNotEmpty) {
@@ -143,14 +134,11 @@ class NewClientController extends GetxController {
       }
 
       // Crear el modelo del cliente con los campos necesarios
-      final client = ClientModel(
+      final client = ClientEntity(
         name: nameController.text,
         lastname: lastnameController.text,
         phone: phoneController.text,
-        email: emailController.text.isEmpty
-            ? 'no-email@example.com'
-            : emailController.text,
-        ownerId: userId, // Necesario para validación local
+        email: emailController.text,
         notes: notesController.text.isEmpty ? null : notesController.text,
         birthday: birthday,
         showNotes: showNotes.value,
@@ -164,7 +152,8 @@ class NewClientController extends GetxController {
       }
 
       // Enviar el cliente al servidor
-      await createClientUseCase.execute(client);
+      (await createClientUseCase(client))
+          .fold((failure) => throw Exception(failure.message), (_) => null);
 
       // Mostrar mensaje de éxito y volver a la pantalla anterior
       Get.back(result: true);

@@ -8,7 +8,7 @@ import '../controllers/appointment_reminder_controller.dart';
 import '../../data/datasources/appointments_remote_datasource.dart';
 import '../../data/repositories/appointments_repository_impl.dart';
 import '../../../../core/network/network_info.dart';
-import '../../../clients/data/datasources/clients_remote_datasource.dart';
+import 'package:login_signup/features/clients/domain/usecases/get_all_clients_usecase.dart';
 
 class AppointmentReminderBinding implements Bindings {
   @override
@@ -48,7 +48,7 @@ class AppointmentReminderBinding implements Bindings {
       () => AppointmentReminderController(
         getUpcomingAppointmentsUseCase:
             Get.find<GetUpcomingAppointmentsUseCase>(),
-        clientsRemoteDataSource: Get.find<ClientsRemoteDataSource>(),
+        getAllClientsUseCase: Get.find<GetAllClientsUseCase>(),
       ),
     );
   }

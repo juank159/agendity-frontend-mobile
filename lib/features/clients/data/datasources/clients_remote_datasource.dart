@@ -1,732 +1,164 @@
-// import 'dart:io';
-// import 'package:dio/dio.dart';
-// import 'package:http_parser/http_parser.dart';
-// import 'package:login_signup/features/clients/data/models/client_model.dart';
-// import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
-// import 'package:login_signup/shared/local_storage/local_storage.dart';
-// import 'package:image/image.dart' as img;
-
-// class ClientsRemoteDataSource {
-//   final Dio dio;
-//   final LocalStorage localStorage;
-
-//   ClientsRemoteDataSource({
-//     required this.dio,
-//     required this.localStorage,
-//   }) {
-//     // Configurar timeouts más largos para subida de archivos
-//     dio.options.connectTimeout = const Duration(seconds: 60);
-//     dio.options.receiveTimeout = const Duration(seconds: 60);
-//     dio.options.sendTimeout = const Duration(seconds: 60);
-//   }
-
-//   Future<String> _getValidToken() async {
-//     final token = await localStorage.getToken();
-//     if (token == null || token.isEmpty) {
-//       throw Exception('Token no disponible');
-//     }
-//     print('Token actual: $token');
-//     return token;
-//   }
-
-//   String _handleDioError(DioException error) {
-//     switch (error.type) {
-//       case DioExceptionType.connectionTimeout:
-//         return 'Tiempo de conexión agotado';
-//       case DioExceptionType.sendTimeout:
-//         return 'Tiempo de envío agotado';
-//       case DioExceptionType.receiveTimeout:
-//         return 'Tiempo de respuesta agotado';
-//       case DioExceptionType.badResponse:
-//         final statusCode = error.response?.statusCode;
-//         final responseData = error.response?.data;
-//         return 'Error del servidor (${statusCode}): ${responseData?['message'] ?? 'Error desconocido'}';
-//       case DioExceptionType.cancel:
-//         return 'Solicitud cancelada';
-//       default:
-//         return 'Error de conexión: ${error.message}';
-//     }
-//   }
-
-//   Future<Map<String, dynamic>> getClientById(String id) async {
-//     try {
-//       final token = await localStorage.getToken();
-//       final response = await dio.get(
-//         '/clients/$id',
-//         options: Options(headers: {'Authorization': 'Bearer $token'}),
-//       );
-//       return response.data;
-//     } catch (e) {
-//       throw Exception('Error al obtener cliente por ID: $e');
-//     }
-//   }
-
-//   Future<List<Map<String, dynamic>>> getClients() async {
-//     try {
-//       final token = await _getValidToken();
-//       final response = await dio.get(
-//         '/clients',
-//         options: Options(
-//           headers: {'Authorization': 'Bearer $token'},
-//           validateStatus: (status) => status! < 500,
-//         ),
-//       );
-
-//       if (response.statusCode == 200) {
-//         return List<Map<String, dynamic>>.from(response.data);
-//       } else {
-//         throw Exception('Error al obtener clientes: ${response.statusCode}');
-//       }
-//     } on DioException catch (e) {
-//       throw Exception(_handleDioError(e));
-//     } catch (e) {
-//       throw Exception('Error al cargar clientes: $e');
-//     }
-//   }
-
-//   Future<void> createClient(ClientEntity client) async {
-//     try {
-//       final token = await _getValidToken();
-
-//       // Crear un mapa que solo incluya los campos permitidos por el DTO
-//       final clientData = {
-//         'name': client.name.trim(),
-//         'lastname': client.lastname.trim(),
-//         'email': client.email.trim(),
-//         'phone': client.phone.replaceAll(RegExp(r'[^\d+]'), ''),
-//         'image': client.image,
-//         'address': client.address?.trim(),
-//         'notes': client.notes?.trim(),
-//         'birthday': client.birthday?.toIso8601String(),
-//         'showNotes': client.showNotes,
-//         // No incluir id, ownerId, isFromDevice, isActive
-//       };
-
-//       print('Datos a enviar al servidor para crear cliente:');
-//       print(clientData);
-
-//       final response = await dio.post(
-//         '/clients',
-//         data: clientData,
-//         options: Options(
-//           headers: {'Authorization': 'Bearer $token'},
-//           validateStatus: (status) => status! < 500,
-//         ),
-//       );
-
-//       if (response.statusCode != 201 && response.statusCode != 200) {
-//         throw Exception('Error al crear cliente: ${response.statusCode}');
-//       }
-//     } on DioException catch (e) {
-//       throw Exception(_handleDioError(e));
-//     } catch (e) {
-//       throw Exception('Error al crear cliente: $e');
-//     }
-//   }
-
-//   Future<void> updateClient(String id, ClientEntity client) async {
-//     try {
-//       final token = await localStorage.getToken();
-
-//       final clientData = {
-//         'name': client.name,
-//         'lastname': client.lastname,
-//         'email': client.email,
-//         'phone': client.phone,
-//         'notes': client.notes,
-//         'birthday': client.birthday?.toIso8601String(),
-//         'showNotes': client.showNotes,
-//         'image': client.image, // Asegúrate de incluir la imagen
-//         'address': client.address,
-//       };
-
-//       print('Datos a enviar al servidor:');
-//       print(clientData);
-
-//       final response = await dio.patch(
-//         '/clients/$id',
-//         data: clientData,
-//         options: Options(headers: {'Authorization': 'Bearer $token'}),
-//       );
-
-//       print('Respuesta del servidor:');
-//       print('Status Code: ${response.statusCode}');
-//       print('Response Data: ${response.data}');
-//     } catch (e) {
-//       print('Error al actualizar cliente: $e');
-//       throw Exception('Error al actualizar cliente: $e');
-//     }
-//   }
-
-//   Future<void> deleteClient(String id) async {
-//     try {
-//       final token = await localStorage.getToken();
-//       await dio.delete(
-//         '/clients/$id',
-//         options: Options(headers: {'Authorization': 'Bearer $token'}),
-//       );
-//     } catch (e) {
-//       throw Exception('Error al eliminar cliente: $e');
-//     }
-//   }
-
-//   Future<void> importDeviceContacts(List<ClientEntity> clients) async {
-//     try {
-//       final token = await _getValidToken();
-//       final cleanClients = clients
-//           .map((client) => {
-//                 'name': client.name.trim(),
-//                 'lastname': client.lastname.trim(),
-//                 'email': client.email.trim().isEmpty
-//                     ? 'no-email@example.com'
-//                     : client.email.trim(),
-//                 'phone': client.phone.replaceAll(RegExp(r'[^\d+]'), ''),
-//               })
-//           .toList();
-
-//       final response = await dio.post(
-//         '/clients/batch',
-//         data: {'clients': cleanClients},
-//         options: Options(
-//           headers: {'Authorization': 'Bearer $token'},
-//           validateStatus: (status) => status! < 500,
-//         ),
-//       );
-
-//       if (response.statusCode != 201 && response.statusCode != 200) {
-//         throw Exception('Error: ${response.data['message']}');
-//       }
-//     } catch (e) {
-//       throw Exception('Error al importar contactos: $e');
-//     }
-//   }
-
-//   Future<String> uploadImage(File file) async {
-//     try {
-//       final token = await localStorage.getToken();
-
-//       if (!file.existsSync()) {
-//         throw Exception('El archivo no existe');
-//       }
-
-//       // Comprimir la imagen antes de enviarla
-//       final compressedFile = await compressImage(file);
-//       final fileName = compressedFile.path.split('/').last;
-
-//       print('Preparando archivo comprimido para subir:');
-//       print('Nombre del archivo: $fileName');
-//       print('Tamaño original: ${await file.length()} bytes');
-//       print('Tamaño comprimido: ${await compressedFile.length()} bytes');
-
-//       // Crear FormData con el archivo comprimido
-//       final formData = FormData.fromMap({
-//         'file': await MultipartFile.fromFile(
-//           compressedFile.path,
-//           filename: fileName,
-//           contentType: MediaType('image', 'jpeg'),
-//         ),
-//       });
-
-//       final response = await dio.post(
-//         '/upload/image',
-//         data: formData,
-//         queryParameters: {'folder': 'clients'},
-//         options: Options(
-//           headers: {
-//             'Authorization': 'Bearer $token',
-//             'Content-Type': 'multipart/form-data',
-//           },
-//         ),
-//       );
-
-//       if (response.statusCode == 201 || response.statusCode == 200) {
-//         return response.data['url'];
-//       }
-
-//       throw Exception('Error al subir imagen: ${response.data['message']}');
-//     } on DioException catch (e) {
-//       print('Error DioException detallado:');
-//       print('Type: ${e.type}');
-//       print('Message: ${e.message}');
-//       print('Response: ${e.response?.data}');
-//       throw Exception(
-//           'Error al subir imagen: ${e.message ?? "Error de conexión"}');
-//     } catch (e) {
-//       print('Error general al subir imagen:');
-//       print(e);
-//       throw Exception('Error al subir imagen: $e');
-//     }
-//   }
-
-// // Método para comprimir la imagen
-//   Future<File> compressImage(File file) async {
-//     try {
-//       final img.Image? image = img.decodeImage(await file.readAsBytes());
-//       if (image == null) throw Exception('No se pudo decodificar la imagen');
-
-//       // Reducir el tamaño si es necesario
-//       img.Image resized = image;
-//       if (image.width > 1024) {
-//         resized = img.copyResize(image, width: 1024);
-//       }
-
-//       // Comprimir y guardar
-//       final compressed = img.encodeJpg(resized, quality: 85);
-//       final tempDir = Directory.systemTemp;
-//       final tempFile = File(
-//           '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
-//       await tempFile.writeAsBytes(compressed);
-
-//       return tempFile;
-//     } catch (e) {
-//       print('Error al comprimir imagen: $e');
-//       return file; // Retornar archivo original si hay error
-//     }
-//   }
-
-//   Future<String> updateClientImage(String clientId, File file) async {
-//     try {
-//       final token = await localStorage.getToken();
-
-//       // Verificar que el archivo existe y es accesible
-//       if (!file.existsSync()) {
-//         throw Exception('El archivo no existe');
-//       }
-
-//       print('Preparando archivo para subir:');
-//       print('Path: ${file.path}');
-//       print('Tamaño: ${await file.length()} bytes');
-
-//       // Crear el FormData con el archivo
-//       final formData = FormData.fromMap({
-//         'file': await MultipartFile.fromFile(
-//           file.path,
-//           filename: file.path.split('/').last,
-//           contentType: MediaType('image', 'jpeg'),
-//         ),
-//       });
-
-//       print('Enviando petición al servidor...');
-//       final response = await dio.patch(
-//         '/upload/image', // Usamos el nuevo endpoint centralizado
-//         data: formData,
-//         options: Options(
-//           headers: {
-//             'Authorization': 'Bearer $token',
-//             'Content-Type': 'multipart/form-data',
-//           },
-//         ),
-//       );
-
-//       print('Respuesta del servidor:');
-//       print(response.data);
-
-//       if (response.statusCode != 200) {
-//         throw Exception('Error al subir imagen: ${response.data['message']}');
-//       }
-
-//       if (response.data['url'] == null) {
-//         throw Exception('No se recibió URL de imagen');
-//       }
-
-//       return response.data['url'];
-//     } catch (e) {
-//       print('Error detallado al actualizar imagen:');
-//       print(e);
-//       throw Exception('Error al actualizar imagen: $e');
-//     }
-//   }
-// }
-
-// lib/features/clients/data/datasources/clients_remote_datasource.dart
-
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:login_signup/features/clients/data/models/client_model.dart';
-import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:image/image.dart' as img;
-import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/features/clients/data/models/client_import_result_model.dart';
+import 'package:login_signup/features/clients/data/models/client_model.dart';
+import 'package:login_signup/features/clients/data/models/client_page_model.dart';
+import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
+import 'package:login_signup/features/clients/domain/failures/client_failures.dart';
 
-class ClientsRemoteDataSource {
-  final Dio dio;
-  final LocalStorage localStorage;
+/// Rutas `/clients` y `POST /upload/image`. Owner y Employee (los clientes son
+/// del negocio). Los errores (400/403/404/409, red) salen como `DioException`
+/// y los traduce `safeCall` en el repositorio.
+abstract class ClientsRemoteDataSource {
+  /// `GET /clients` con paginación, filtros y orden.
+  Future<ClientPageModel> getClients(ClientsQuery query);
 
-  /// Timeout largo solo para subidas de archivos e importación en lote.
-  /// Se pasa por petición: el Dio es compartido y no se deben mutar sus `options`.
-  static const Duration _longTimeout = Duration(seconds: 60);
+  /// `GET /clients/all`: todos, sin paginar (con sus citas y reseñas).
+  Future<List<ClientModel>> getAllClients();
 
-  ClientsRemoteDataSource({
-    required this.dio,
-    required this.localStorage,
-  });
+  /// `GET /clients/:id`.
+  Future<ClientModel> getClientById(String id);
 
-  Future<String> _getValidToken() async {
-    final token = await localStorage.getToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('Token no disponible');
-    }
-    // ✅ OPTIMIZACIÓN: Solo loggear en debug, no el token completo
-    print('🔑 Token obtenido para clientes');
-    return token;
+  /// `POST /clients`. Responde 201 con el cliente creado.
+  Future<ClientModel> createClient(ClientModel client);
+
+  /// `PATCH /clients/:id`. Responde 200 con el cliente.
+  Future<ClientModel> updateClient(String id, ClientModel client);
+
+  /// `DELETE /clients/:id`. Responde 200 sin cuerpo.
+  Future<void> deleteClient(String id);
+
+  /// `POST /clients/batch`. Responde 201 con el resultado parcial.
+  Future<ClientImportResultModel> importClients(List<ClientModel> clients);
+
+  /// `POST /upload/image?folder=clients` (multipart `file`, JPEG comprimido).
+  /// Responde `{url, message}`. Archivo inexistente →
+  /// `InvalidClientDataFailure` sin llamar al backend.
+  Future<String> uploadImage(String filePath);
+}
+
+class ClientsRemoteDataSourceImpl implements ClientsRemoteDataSource {
+  /// Subidas e importación en lote: timeout largo por petición (el Dio es
+  /// compartido y no se mutan sus `options`).
+  static const Duration longTimeout = Duration(seconds: 60);
+
+  /// Ancho máximo de la foto antes de subirla.
+  static const int maxImageWidth = 1024;
+
+  static const unreadableImage = 'No se pudo leer la imagen elegida';
+
+  final Dio _dio;
+
+  /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
+  ClientsRemoteDataSourceImpl(this._dio);
+
+  @override
+  Future<ClientPageModel> getClients(ClientsQuery query) async {
+    final search = query.normalizedSearch;
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/clients',
+      queryParameters: {
+        'page': query.page,
+        'limit': query.limit,
+        if (search != null) 'search': search,
+        'sortBy': query.sortBy.apiValue,
+        'sortOrder': query.direction.apiValue,
+        'status': query.status.apiValue,
+        'source': query.source.apiValue,
+      },
+    );
+    return ClientPageModel.fromJson(response.data!);
   }
 
-  String _handleDioError(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-        return 'Tiempo de conexión agotado';
-      case DioExceptionType.sendTimeout:
-        return 'Tiempo de envío agotado';
-      case DioExceptionType.receiveTimeout:
-        return 'Tiempo de respuesta agotado';
-      case DioExceptionType.badResponse:
-        final statusCode = error.response?.statusCode;
-        final responseData = error.response?.data;
-        return 'Error del servidor ($statusCode): ${responseData?['message'] ?? 'Error desconocido'}';
-      case DioExceptionType.cancel:
-        return 'Solicitud cancelada';
-      default:
-        return 'Error de conexión: ${error.message}';
-    }
+  @override
+  Future<List<ClientModel>> getAllClients() async {
+    final response = await _dio.get<List<dynamic>>('/clients/all');
+    return response.data!
+        .whereType<Map<String, dynamic>>()
+        .map(ClientModel.fromJson)
+        .toList();
   }
 
-  Future<Map<String, dynamic>> getClientById(String id) async {
-    try {
-      final token = await localStorage.getToken();
-      final response = await dio.get(
-        '/clients/$id',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      return response.data;
-    } catch (e) {
-      throw Exception('Error al obtener cliente por ID: $e');
-    }
+  @override
+  Future<ClientModel> getClientById(String id) async {
+    final response = await _dio.get<Map<String, dynamic>>('/clients/$id');
+    return ClientModel.fromJson(response.data!);
   }
 
-  Future<Map<String, dynamic>> getClients({
-    int page = 1,
-    int limit = 10,
-    String? search,
-    String sortBy = 'created_at',
-    String sortOrder = 'DESC',
-    String status = 'all',
-    String source = 'all',
-  }) async {
-    try {
-      print('🔄 ClientsRemoteDataSource: Iniciando getClients() PAGINADO');
-      final token = await _getValidToken();
-
-      // ✅ CONSTRUIR PARÁMETROS DE CONSULTA
-      final Map<String, dynamic> queryParams = {
-        'page': page.toString(),
-        'limit': limit.toString(),
-        'sortBy': sortBy,
-        'sortOrder': sortOrder,
-        'status': status,
-        'source': source,
-      };
-
-      if (search != null && search.isNotEmpty) {
-        queryParams['search'] = search;
-      }
-
-      print('=== REQUEST CLIENTES PAGINADO ===');
-      print('URL: ${dio.options.baseUrl}/clients');
-      print('Method: GET');
-      print('Query Parameters: $queryParams');
-      print('Headers: {Authorization: Bearer [hidden]}');
-      
-      final response = await dio.get(
-        '/clients',
-        queryParameters: queryParams,
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-          validateStatus: (status) => status! < 500,
-        ),
-      );
-
-      print('=== RESPONSE CLIENTES PAGINADO ===');
-      print('Status code: ${response.statusCode}');
-      print('Response type: ${response.data.runtimeType}');
-
-      if (response.statusCode == 200) {
-        final paginatedData = response.data as Map<String, dynamic>;
-        
-        print('📊 Datos de paginación recibidos:');
-        print('   Total: ${paginatedData['total']}');
-        print('   Página: ${paginatedData['page']}');
-        print('   Límite: ${paginatedData['limit']}');
-        print('   Total páginas: ${paginatedData['totalPages']}');
-        print('   Tiene siguiente: ${paginatedData['hasNextPage']}');
-        print('   Clientes en esta página: ${paginatedData['data']?.length ?? 0}');
-
-        return paginatedData;
-      } else {
-        throw Exception('Error al obtener clientes: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      print('❌ DioException en getClients: ${e.message}');
-      print('❌ Response: ${e.response?.data}');
-      throw Exception(_handleDioError(e));
-    } catch (e) {
-      print('❌ Exception general en getClientes: $e');
-      throw Exception('Error al cargar clientes: $e');
-    }
+  @override
+  Future<ClientModel> createClient(ClientModel client) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/clients',
+      data: client.toJson(),
+    );
+    return ClientModel.fromJson(response.data!);
   }
 
-  // ✅ MÉTODO LEGACY PARA RETROCOMPATIBILIDAD
-  Future<List<Map<String, dynamic>>> getClientsLegacy() async {
-    try {
-      print('🔄 ClientsRemoteDataSource: Usando endpoint LEGACY /clients/all');
-      final token = await _getValidToken();
-      
-      final response = await dio.get(
-        '/clients/all',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-          validateStatus: (status) => status! < 500,
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final clientsList = List<Map<String, dynamic>>.from(response.data);
-        print('✅ Clientes legacy parseados: ${clientsList.length}');
-        return clientsList;
-      } else {
-        throw Exception('Error al obtener clientes legacy: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error en getClientsLegacy: $e');
-      throw Exception('Error al cargar clientes: $e');
-    }
+  @override
+  Future<ClientModel> updateClient(String id, ClientModel client) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/clients/$id',
+      data: client.toJson(),
+    );
+    return ClientModel.fromJson(response.data!);
   }
 
-  Future<void> createClient(ClientEntity client) async {
-    try {
-      final token = await _getValidToken();
-
-      // Usar el parámetro forCreate para excluir campos que el backend no espera
-      final clientData = (client as ClientModel).toJson(forCreate: true);
-
-      print('Datos a enviar al servidor para crear cliente:');
-      print(clientData);
-
-      // Imprimir detalles de la petición para debugging
-      print('=== REQUEST ===');
-      print('URL: ${dio.options.baseUrl}/clients');
-      print('Method: POST');
-      print('Query Parameters: {}');
-      print('Data: $clientData');
-
-      final response = await dio.post(
-        '/clients',
-        data: clientData,
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-          validateStatus: (status) => status! < 500,
-        ),
-      );
-
-      // Imprimir detalles de la respuesta para debugging
-      print('=== RESPONSE ===');
-      print('Status code: ${response.statusCode}');
-      print('Data: ${response.data}');
-
-      if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error al crear cliente: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      print('Error DioException detallado:');
-      print('Type: ${e.type}');
-      print('Message: ${e.message}');
-      print('Response: ${e.response?.data}');
-      throw Exception(_handleDioError(e));
-    } catch (e) {
-      throw Exception('Error al crear cliente: $e');
-    }
-  }
-
-  Future<void> updateClient(String id, ClientEntity client) async {
-    try {
-      final token = await localStorage.getToken();
-
-      // Aquí usamos el método toJson normal (sin forCreate) pero podemos
-      // crear un map específico para la actualización
-      final clientData = {
-        'name': client.name,
-        'lastname': client.lastname,
-        'email': client.email,
-        'phone': client.phone,
-        'notes': client.notes,
-        'birthday': DateCodec.encodeOrNull(client.birthday),
-        'showNotes': client.showNotes,
-        'image': client.image,
-        'address': client.address,
-      };
-
-      print('Datos a enviar al servidor:');
-      print(clientData);
-
-      final response = await dio.patch(
-        '/clients/$id',
-        data: clientData,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      print('Respuesta del servidor:');
-      print('Status Code: ${response.statusCode}');
-      print('Response Data: ${response.data}');
-    } catch (e) {
-      print('Error al actualizar cliente: $e');
-      throw Exception('Error al actualizar cliente: $e');
-    }
-  }
-
+  @override
   Future<void> deleteClient(String id) async {
-    try {
-      final token = await localStorage.getToken();
-      await dio.delete(
-        '/clients/$id',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-    } catch (e) {
-      throw Exception('Error al eliminar cliente: $e');
-    }
+    await _dio.delete<void>('/clients/$id');
   }
 
-  Future<Map<String, dynamic>> importDeviceContacts(List<ClientEntity> clients) async {
-    try {
-      final token = await _getValidToken();
-
-      print('📤 Enviando ${clients.length} contactos al backend...');
-
-      // Convertir a formato esperado por el backend
-      final cleanClients = clients
-          .map((client) => {
-                'name': client.name.trim(),
-                'lastname': client.lastname.trim(),
-                'email': client.email.trim().isEmpty
-                    ? 'no-email@example.com'
-                    : client.email.trim(),
-                'phone': client.phone.replaceAll(RegExp(r'[^\d+]'), ''),
-              })
-          .toList();
-
-      final response = await dio.post(
-        '/clients/batch',
-        data: {'clients': cleanClients},
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-          sendTimeout: _longTimeout,
-          receiveTimeout: _longTimeout,
-          validateStatus: (status) => status! < 500,
-        ),
-      );
-
-      if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error: ${response.data['message']}');
-      }
-
-      // ✅ RETORNAR ESTADÍSTICAS DETALLADAS DEL BACKEND
-      final data = response.data as Map<String, dynamic>;
-      print('📊 Respuesta del backend: $data');
-      
-      return {
-        'total': data['total'] ?? clients.length,
-        'success': data['success'] ?? 0,
-        'failed': data['failed'] ?? 0,
-        'errors': data['errors'] ?? [],
-      };
-      
-    } catch (e) {
-      print('❌ Error en importDeviceContacts: $e');
-      throw Exception('Error al importar contactos: $e');
-    }
+  @override
+  Future<ClientImportResultModel> importClients(
+      List<ClientModel> clients) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/clients/batch',
+      data: {'clients': clients.map((c) => c.toImportJson()).toList()},
+      options: Options(sendTimeout: longTimeout, receiveTimeout: longTimeout),
+    );
+    return ClientImportResultModel.fromJson(response.data!);
   }
 
-  Future<String> uploadImage(File file) async {
-    try {
-      final token = await localStorage.getToken();
-
-      if (!file.existsSync()) {
-        throw Exception('El archivo no existe');
-      }
-
-      // Comprimir la imagen antes de enviarla
-      final compressedFile = await compressImage(file);
-      final fileName = compressedFile.path.split('/').last;
-
-      print('Preparando archivo comprimido para subir:');
-      print('Nombre del archivo: $fileName');
-      print('Tamaño original: ${await file.length()} bytes');
-      print('Tamaño comprimido: ${await compressedFile.length()} bytes');
-
-      // Crear FormData con el archivo comprimido
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          compressedFile.path,
-          filename: fileName,
-          contentType: MediaType('image', 'jpeg'),
-        ),
-      });
-
-      final response = await dio.post(
-        '/upload/image',
-        data: formData,
-        queryParameters: {'folder': 'clients'},
-        options: Options(
-          sendTimeout: _longTimeout,
-          receiveTimeout: _longTimeout,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'multipart/form-data',
-          },
-        ),
-      );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        return response.data['url'];
-      }
-
-      throw Exception('Error al subir imagen: ${response.data['message']}');
-    } on DioException catch (e) {
-      print('Error DioException detallado:');
-      print('Type: ${e.type}');
-      print('Message: ${e.message}');
-      print('Response: ${e.response?.data}');
-      throw Exception(
-          'Error al subir imagen: ${e.message ?? "Error de conexión"}');
-    } catch (e) {
-      print('Error general al subir imagen:');
-      print(e);
-      throw Exception('Error al subir imagen: $e');
+  @override
+  Future<String> uploadImage(String filePath) async {
+    final original = File(filePath);
+    if (!original.existsSync()) {
+      throw const InvalidClientDataFailure(message: unreadableImage);
     }
+    final file = await _compress(original);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        file.path,
+        filename: file.uri.pathSegments.last,
+        contentType: MediaType('image', 'jpeg'),
+      ),
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/upload/image',
+      data: formData,
+      queryParameters: {'folder': 'clients'},
+      options: Options(sendTimeout: longTimeout, receiveTimeout: longTimeout),
+    );
+    final url = response.data?['url'];
+    if (url is! String || url.isEmpty) {
+      throw const FormatException('La subida no devolvió la URL de la imagen');
+    }
+    return url;
   }
 
-  // Método para comprimir la imagen
-  Future<File> compressImage(File file) async {
-    try {
-      final img.Image? image = img.decodeImage(await file.readAsBytes());
-      if (image == null) throw Exception('No se pudo decodificar la imagen');
-
-      // Reducir el tamaño si es necesario
-      img.Image resized = image;
-      if (image.width > 1024) {
-        resized = img.copyResize(image, width: 1024);
-      }
-
-      // Comprimir y guardar
-      final compressed = img.encodeJpg(resized, quality: 85);
-      final tempDir = Directory.systemTemp;
-      final tempFile = File(
-          '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await tempFile.writeAsBytes(compressed);
-
-      return tempFile;
-    } catch (e) {
-      print('Error al comprimir imagen: $e');
-      return file; // Retornar archivo original si hay error
-    }
+  /// JPEG de calidad 85 y como mucho [maxImageWidth] px de ancho, en un
+  /// archivo temporal. Si no se puede decodificar, el original.
+  static Future<File> _compress(File file) async {
+    final image = img.decodeImage(await file.readAsBytes());
+    if (image == null) return file;
+    final resized = image.width > maxImageWidth
+        ? img.copyResize(image, width: maxImageWidth)
+        : image;
+    final compressed = File('${Directory.systemTemp.path}/client_'
+        '${DateTime.now().millisecondsSinceEpoch}.jpg');
+    return compressed.writeAsBytes(img.encodeJpg(resized, quality: 85));
   }
 }

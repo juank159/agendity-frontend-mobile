@@ -262,9 +262,7 @@ class ClientList extends GetView<ClientsController> {
                                             ),
                                           ],
                                         ),
-                                        if (client.email.isNotEmpty &&
-                                            client.email !=
-                                                'no-email@example.com')
+                                        if (client.hasEmail)
                                           Padding(
                                             padding:
                                                 const EdgeInsets.only(top: 2),
@@ -278,7 +276,7 @@ class ClientList extends GetView<ClientsController> {
                                                 const SizedBox(width: 4),
                                                 Expanded(
                                                   child: Text(
-                                                    client.email,
+                                                    client.email!,
                                                     style: const TextStyle(
                                                       fontSize: 13,
                                                       color: Colors.black54,

@@ -23,7 +23,8 @@ import 'package:login_signup/features/appointments/domain/usescases/delete_appoi
 import 'package:login_signup/features/appointments/domain/usescases/get_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usescases/update_appointment_usecase.dart';
 
-import 'package:login_signup/features/clients/domain/usecases/clients_usecases.dart';
+import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
+import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
@@ -48,8 +49,7 @@ class AppointmentsController extends GetxController {
   final UpdateAppointmentUseCase updateAppointmentUseCase;
   final DeleteAppointmentUseCase deleteAppointmentUseCase;
   final GetServicesUseCase getServicesUseCase;
-  final GetClientsUseCase getClientsUseCase;
-  final GetClientsPaginatedUseCase getClientsPaginatedUseCase;
+  final GetClientsPageUseCase getClientsPageUseCase;
   final LocalStorage localStorage;
 
   // Cambiar la referencia directa a una propiedad que se puede reinicializar
@@ -136,8 +136,7 @@ class AppointmentsController extends GetxController {
       this.updateAppointmentUseCase,
       this.deleteAppointmentUseCase,
       this.getServicesUseCase,
-      this.getClientsUseCase,
-      this.getClientsPaginatedUseCase,
+      this.getClientsPageUseCase,
       this.localStorage,
       this.appointmentsRepository,
       {this.checkSubscriptionStatusUseCase}) {
@@ -325,19 +324,20 @@ class AppointmentsController extends GetxController {
       isClientsLoading.value = true;
       clientsCurrentPage.value = 1;
 
-      final result = await getClientsPaginatedUseCase.execute(
+      final result = (await getClientsPageUseCase(ClientsQuery(
         page: clientsCurrentPage.value,
         limit: clientsPageSize.value,
-        search: clientSearchQuery.value.isNotEmpty ? clientSearchQuery.value : null,
-      );
+        search: clientSearchQuery.value,
+      )))
+          .fold((failure) => throw Exception(failure.message), (page) => page);
 
       // ✅ ACTUALIZAR VARIABLES DE PAGINACIÓN
       hasMoreClients.value = result.hasNextPage;
       
       // ✅ REEMPLAZAR LOS CLIENTES (PRIMERA PÁGINA)
-      clients.assignAll(result.data);
+      clients.assignAll(result.items);
       
-      print('✅ Clientes cargados: ${result.data.length}');
+      print('✅ Clientes cargados: ${result.items.length}');
       print('📊 Total en servidor: ${result.total}');
       print('📊 Página ${result.page}/${result.totalPages}');
       print('📊 Tiene más: ${result.hasNextPage}');
@@ -394,19 +394,20 @@ class AppointmentsController extends GetxController {
       isLoadingMoreClients.value = true;
       clientsCurrentPage.value++;
 
-      final result = await getClientsPaginatedUseCase.execute(
+      final result = (await getClientsPageUseCase(ClientsQuery(
         page: clientsCurrentPage.value,
         limit: clientsPageSize.value,
-        search: clientSearchQuery.value.isNotEmpty ? clientSearchQuery.value : null,
-      );
+        search: clientSearchQuery.value,
+      )))
+          .fold((failure) => throw Exception(failure.message), (page) => page);
 
       // ✅ ACTUALIZAR VARIABLES DE PAGINACIÓN
       hasMoreClients.value = result.hasNextPage;
       
       // ✅ AÑADIR MÁS CLIENTES A LA LISTA EXISTENTE
-      clients.addAll(result.data);
+      clients.addAll(result.items);
       
-      print('✅ Más clientes cargados: ${result.data.length}');
+      print('✅ Más clientes cargados: ${result.items.length}');
       print('📊 Total clientes en memoria: ${clients.length}');
 
     } catch (e) {

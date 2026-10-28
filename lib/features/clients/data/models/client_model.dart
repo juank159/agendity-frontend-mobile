@@ -1,283 +1,143 @@
-// import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
-
-// class ClientModel extends ClientEntity {
-//   ClientModel({
-//     String? id,
-//     required String name,
-//     required String lastname,
-//     required String email,
-//     required String phone,
-//     String? image,
-//     String? address,
-//     required String ownerId,
-//     bool isFromDevice = false,
-//     String? deviceContactId,
-//     DateTime? lastVisit,
-//     bool isActive = true,
-//     DateTime? createdAt,
-//     DateTime? updatedAt,
-//     String? notes,
-//     DateTime? birthday,
-//     bool showNotes = false,
-//   }) : super(
-//           id: id,
-//           name: name,
-//           lastname: lastname,
-//           email: email,
-//           phone: phone,
-//           image: image,
-//           address: address,
-//           ownerId: ownerId,
-//           isFromDevice: isFromDevice,
-//           deviceContactId: deviceContactId,
-//           lastVisit: lastVisit,
-//           isActive: isActive,
-//           createdAt: createdAt,
-//           updatedAt: updatedAt,
-//           notes: notes,
-//           birthday: birthday,
-//           showNotes: showNotes,
-//         );
-
-//   factory ClientModel.fromJson(Map<String, dynamic> json) {
-//     return ClientModel(
-//       id: json['id'],
-//       name: json['name'] ?? '',
-//       lastname: json['lastname'] ?? '',
-//       email: json['email'] ?? '',
-//       phone: json['phone'] ?? '',
-//       image: json['image'],
-//       address: json['address'],
-//       ownerId: json['ownerId'] ?? '',
-//       isFromDevice: json['isFromDevice'] ?? false,
-//       deviceContactId: json['deviceContactId'],
-//       lastVisit:
-//           json['lastVisit'] != null ? DateTime.parse(json['lastVisit']) : null,
-//       isActive: json['isActive'] ?? true,
-//       createdAt: json['created_at'] != null
-//           ? DateTime.parse(json['created_at'])
-//           : null,
-//       updatedAt: json['updated_at'] != null
-//           ? DateTime.parse(json['updated_at'])
-//           : null,
-//       notes: json['notes'],
-//       birthday:
-//           json['birthday'] != null ? DateTime.parse(json['birthday']) : null,
-//       showNotes: json['showNotes'] ?? false,
-//     );
-//   }
-
-//   Map<String, dynamic> toJson() {
-//     return {
-//       'id': id,
-//       'name': name.trim(),
-//       'lastname': lastname.trim(),
-//       'email': email.trim(),
-//       'phone': phone.replaceAll(RegExp(r'[^\d+]'), ''),
-//       'image': image,
-//       'address': address?.trim(),
-//       'ownerId': ownerId,
-//       'isFromDevice': isFromDevice,
-//       'deviceContactId': deviceContactId,
-//       'isActive': isActive,
-//       'notes': notes?.trim(),
-//       'birthday': birthday?.toIso8601String(),
-//       'showNotes': showNotes,
-//     };
-//   }
-
-//   bool isValid() {
-//     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-
-//     final isValidName = name.trim().isNotEmpty;
-//     final isValidPhone = cleanPhone.length >= 10;
-//     final isValidOwnerId = ownerId.trim().isNotEmpty;
-
-//     print('Validando cliente:');
-//     print('- Nombre: ${isValidName ? 'válido' : 'inválido'} ($name)');
-//     print('- Teléfono: ${isValidPhone ? 'válido' : 'inválido'} ($cleanPhone)');
-//     print('- OwnerId: ${isValidOwnerId ? 'válido' : 'inválido'} ($ownerId)');
-
-//     return isValidName && isValidPhone && isValidOwnerId;
-//   }
-
-//   ClientModel copyWithCleanData() {
-//     return ClientModel(
-//       id: id,
-//       name: name.trim(),
-//       lastname: lastname.trim(),
-//       email: email.trim(),
-//       phone: phone.replaceAll(RegExp(r'[^\d+]'), ''),
-//       image: image,
-//       address: address?.trim(),
-//       ownerId: ownerId.trim(),
-//       isFromDevice: isFromDevice,
-//       deviceContactId: deviceContactId,
-//       lastVisit: lastVisit,
-//       isActive: isActive,
-//       createdAt: createdAt,
-//       updatedAt: updatedAt,
-//       notes: notes?.trim(),
-//       birthday: birthday,
-//       showNotes: showNotes,
-//     );
-//   }
-
-//   @override
-//   String toString() {
-//     return 'ClientModel(id: $id, name: $name, lastname: $lastname, phone: $phone, email: $email)';
-//   }
-// }
-
-// lib/features/clients/data/models/client_model.dart
-
-import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/core/utils/json_read.dart';
+import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
-// ✅ MODELO DE PAGINACIÓN PARA RESPUESTAS DEL BACKEND
-class PaginatedResponse<T> {
-  final List<T> data;
-  final int total;
-  final int page;
-  final int limit;
-  final int totalPages;
-  final bool hasNextPage;
-  final bool hasPrevPage;
+/// DTO de `/clients` (backend: `Client`, en camelCase salvo `created_at` y
+/// `updated_at`).
+///
+/// - `email` puede llegar `null` (2.20). El marcador que la app ponía antes a
+///   los importados sin email ([legacyNoEmail]) se lee como "sin email".
+/// - `birthday` es un día: se envía `yyyy-MM-dd` (el backend lo guarda como
+///   00:00 del negocio) y se lee la fecha escrita, sin convertir de zona.
+/// - `GET /clients/:id` trae además `appointments` y `reviews`: se ignoran.
+class ClientModel {
+  /// Email de relleno de los imports anteriores a la 4.06.
+  static const legacyNoEmail = 'no-email@example.com';
 
-  PaginatedResponse({
-    required this.data,
-    required this.total,
-    required this.page,
-    required this.limit,
-    required this.totalPages,
-    required this.hasNextPage,
-    required this.hasPrevPage,
-  });
+  final String? id;
+  final String name;
+  final String lastname;
+  final String? email;
+  final String phone;
+  final String? image;
+  final String? address;
+  final bool isFromDevice;
+  final String? deviceContactId;
+  final DateTime? lastVisit;
+  final bool isActive;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final String? notes;
+  final DateTime? birthday;
+  final bool showNotes;
 
-  factory PaginatedResponse.fromJson(Map<String, dynamic> json, T Function(Map<String, dynamic>) itemFactory) {
-    return PaginatedResponse(
-      data: (json['data'] as List).map((item) => itemFactory(item as Map<String, dynamic>)).toList(),
-      total: json['total'] ?? 0,
-      page: json['page'] ?? 1,
-      limit: json['limit'] ?? 10,
-      totalPages: json['totalPages'] ?? 1,
-      hasNextPage: json['hasNextPage'] ?? false,
-      hasPrevPage: json['hasPrevPage'] ?? false,
-    );
-  }
-}
-
-typedef PaginatedClientResponse = PaginatedResponse<ClientModel>;
-
-class ClientModel extends ClientEntity {
-  ClientModel({
-    super.id,
-    required super.name,
-    required super.lastname,
-    required super.email,
-    required super.phone,
-    super.image,
-    super.address,
-    required super.ownerId,
-    super.isFromDevice,
-    super.deviceContactId,
-    super.lastVisit,
-    super.isActive,
-    super.createdAt,
-    super.updatedAt,
-    super.notes,
-    super.birthday,
-    super.showNotes,
+  const ClientModel({
+    this.id,
+    required this.name,
+    this.lastname = '',
+    this.email,
+    required this.phone,
+    this.image,
+    this.address,
+    this.isFromDevice = false,
+    this.deviceContactId,
+    this.lastVisit,
+    this.isActive = true,
+    this.createdAt,
+    this.updatedAt,
+    this.notes,
+    this.birthday,
+    this.showNotes = false,
   });
 
   factory ClientModel.fromJson(Map<String, dynamic> json) {
+    final email = JsonRead.asOptionalString(json['email']);
     return ClientModel(
-      id: json['id'],
-      name: json['name'] ?? '',
-      lastname: json['lastname'] ?? '',
-      email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
-      image: json['image'],
-      address: json['address'],
-      ownerId: json['ownerId'] ?? '',
-      isFromDevice: json['isFromDevice'] ?? false,
-      deviceContactId: json['deviceContactId'],
-      lastVisit:
-          DateCodec.tryDecode(json['lastVisit']),
-      isActive: json['isActive'] ?? true,
+      id: JsonRead.asOptionalString(json['id']),
+      name: JsonRead.asString(json['name']),
+      lastname: JsonRead.asString(json['lastname']),
+      email: email == legacyNoEmail ? null : email,
+      phone: JsonRead.asString(json['phone']),
+      image: JsonRead.asOptionalString(json['image']),
+      address: JsonRead.asOptionalString(json['address']),
+      isFromDevice: JsonRead.asBool(json['isFromDevice'], fallback: false),
+      deviceContactId: JsonRead.asOptionalString(json['deviceContactId']),
+      lastVisit: DateCodec.tryDecode(json['lastVisit']),
+      isActive: JsonRead.asBool(json['isActive'], fallback: true),
       createdAt: DateCodec.tryDecode(json['created_at']),
       updatedAt: DateCodec.tryDecode(json['updated_at']),
-      notes: json['notes'],
-      birthday:
-          DateCodec.tryDecode(json['birthday']),
-      showNotes: json['showNotes'] ?? false,
+      notes: JsonRead.asOptionalString(json['notes']),
+      birthday: DateCodec.tryDecodeDay(json['birthday']),
+      showNotes: JsonRead.asBool(json['showNotes'], fallback: false),
     );
   }
 
-  Map<String, dynamic> toJson({bool forCreate = false}) {
-    final Map<String, dynamic> json = {
-      'name': name.trim(),
-      'lastname': lastname.trim(),
-      'email': email.trim(),
-      'phone': phone.replaceAll(RegExp(r'[^\d+]'), ''),
-      'image': image,
-      'address': address?.trim(),
-      'notes': notes?.trim(),
-      'birthday': DateCodec.encodeOrNull(birthday),
-      'showNotes': showNotes,
-    };
+  factory ClientModel.fromEntity(ClientEntity entity) => ClientModel(
+        id: entity.id,
+        name: entity.name,
+        lastname: entity.lastname,
+        email: entity.email,
+        phone: entity.phone,
+        image: entity.image,
+        address: entity.address,
+        isFromDevice: entity.isFromDevice,
+        deviceContactId: entity.deviceContactId,
+        lastVisit: entity.lastVisit,
+        isActive: entity.isActive,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+        notes: entity.notes,
+        birthday: entity.birthday,
+        showNotes: entity.showNotes,
+      );
 
-    // Solo incluir estos campos si NO es para crear un nuevo cliente
-    if (!forCreate) {
-      json['id'] = id;
-      json['ownerId'] = ownerId;
-      json['isFromDevice'] = isFromDevice;
-      json['deviceContactId'] = deviceContactId;
-      json['isActive'] = isActive;
-    }
+  ClientEntity toEntity() => ClientEntity(
+        id: id,
+        name: name,
+        lastname: lastname,
+        email: email,
+        phone: phone,
+        image: image,
+        address: address,
+        isFromDevice: isFromDevice,
+        deviceContactId: deviceContactId,
+        lastVisit: lastVisit,
+        isActive: isActive,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        notes: notes,
+        birthday: birthday,
+        showNotes: showNotes,
+      );
 
-    return json;
-  }
+  /// Cuerpo de `POST /clients` y `PATCH /clients/:id` (`CreateClientDto`; el
+  /// backend rechaza campos de más, así que nunca `id`, `ownerId`,
+  /// `isActive`…).
+  ///
+  /// - `email`: `''` si no hay; el backend lo guarda como `null` (en una
+  ///   edición, así se quita).
+  /// - `notes`, `address` y `birthday` van siempre: `null` los borra al editar.
+  /// - `image` solo si hay (el backend conserva la anterior si no llega).
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'lastname': lastname,
+        'email': email ?? '',
+        'phone': phone,
+        'address': address,
+        if (image != null) 'image': image,
+        if (deviceContactId != null) 'deviceContactId': deviceContactId,
+        'notes': notes,
+        'birthday': birthday == null ? null : DateCodec.encodeDay(birthday!),
+        'showNotes': showNotes,
+      };
 
-  bool isValid() {
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-
-    final isValidName = name.trim().isNotEmpty;
-    final isValidPhone = cleanPhone.length >= 10;
-    final isValidOwnerId = ownerId.trim().isNotEmpty;
-
-    print('Validando cliente:');
-    print('- Nombre: ${isValidName ? 'válido' : 'inválido'} ($name)');
-    print('- Teléfono: ${isValidPhone ? 'válido' : 'inválido'} ($cleanPhone)');
-    print('- OwnerId: ${isValidOwnerId ? 'válido' : 'inválido'} ($ownerId)');
-
-    return isValidName && isValidPhone && isValidOwnerId;
-  }
-
-  ClientModel copyWithCleanData() {
-    return ClientModel(
-      id: id,
-      name: name.trim(),
-      lastname: lastname.trim(),
-      email: email.trim(),
-      phone: phone.replaceAll(RegExp(r'[^\d+]'), ''),
-      image: image,
-      address: address?.trim(),
-      ownerId: ownerId.trim(),
-      isFromDevice: isFromDevice,
-      deviceContactId: deviceContactId,
-      lastVisit: lastVisit,
-      isActive: isActive,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      notes: notes?.trim(),
-      birthday: birthday,
-      showNotes: showNotes,
-    );
-  }
-
-  @override
-  String toString() {
-    return 'ClientModel(id: $id, name: $name, lastname: $lastname, phone: $phone, email: $email)';
-  }
+  /// Una fila de `POST /clients/batch`: solo lo que trae un contacto; sin
+  /// email si no tiene (el backend ya no lo exige, 2.20).
+  Map<String, dynamic> toImportJson() => {
+        'name': name,
+        'lastname': lastname,
+        if (email != null) 'email': email,
+        'phone': phone,
+        if (deviceContactId != null) 'deviceContactId': deviceContactId,
+      };
 }

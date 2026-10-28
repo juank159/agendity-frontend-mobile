@@ -84,7 +84,7 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
   /// backend, con los use cases de employees).
   Future<void> _initializeEmployee() async {
     final professionalId = widget.appointment.professionalId;
-    if (professionalId == null) return;
+    if (professionalId.isEmpty) return;
     final employee = await widget.controller.findProfessional(professionalId);
     if (employee != null && mounted) {
       widget.controller.selectedEmployee.value = employee;
@@ -92,19 +92,8 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
   }
 
   void _initializeServices() {
-    // Para AppointmentEntity tenemos que intentar encontrar los IDs
-    // basándonos en los nombres de servicio
-    final availableServices = widget.controller.services;
-    selectedServiceIds.clear(); // Limpiar los IDs existentes
-
-    for (String serviceName in widget.appointment.serviceTypes) {
-      for (var service in availableServices) {
-        if (service['name'] == serviceName) {
-          selectedServiceIds.add(service['id']);
-          break;
-        }
-      }
-    }
+    // Los servicios de la cita, por id (antes se buscaban por nombre).
+    selectedServiceIds.assignAll(widget.appointment.serviceIds);
 
     // Calcular precio total
     updateTotalPrice();

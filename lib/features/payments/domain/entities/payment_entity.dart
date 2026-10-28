@@ -1,15 +1,16 @@
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/common/enums/payment_status_enum.dart';
 
-/// Pago de una cita (backend: `payments`). Una cita admite un solo pago
-/// `COMPLETED`; los reembolsos se acumulan en [refundAmount] y el pago pasa a
-/// `REFUNDED` solo cuando se devuelve todo.
+/// Pago de una cita (backend: `payments`). Una cita admite varios pagos
+/// (anticipos, 2.24) mientras lo pagado neto no supere su total; los
+/// reembolsos se acumulan en [refundAmount] y el pago pasa a `REFUNDED` solo
+/// cuando se devuelve todo.
 class PaymentEntity {
   /// `null` mientras no lo haya creado el backend.
   final String? id;
   final String appointmentId;
 
-  /// Importe en COP (> 0 y ≤ total de la cita).
+  /// Importe en COP (> 0 y ≤ saldo pendiente de la cita).
   final double amount;
 
   /// `CUSTOM` = método propio del negocio, identificado por

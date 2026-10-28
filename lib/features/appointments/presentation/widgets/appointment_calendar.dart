@@ -7,6 +7,7 @@ import 'package:login_signup/features/appointments/presentation/widgets/appointm
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import '../controllers/appointments_controller.dart';
 import '../../../auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
 
 class AppointmentCalendar extends StatelessWidget {
   final AppointmentsController controller;
@@ -442,7 +443,7 @@ class AppointmentCalendar extends StatelessWidget {
       totalSubAppointments = controller.appointments
               .where((app) => app.id == mainAppointmentId)
               .firstOrNull
-              ?.serviceTypes
+              ?.serviceNames
               .length ??
           1;
     }
@@ -454,11 +455,11 @@ class AppointmentCalendar extends StatelessWidget {
     if (appointmentEntity == null) return const SizedBox.shrink();
 
     // Determinar colores basados en el estado de pago
-    final bool isPaid = appointmentEntity.isPaymentCompleted;
+    final bool isPaid = appointmentEntity.isFullyPaid;
 
     final Color statusColor = isPaid
-        ? appointmentEntity.getPaymentStatusColor()
-        : appointmentEntity.getStatusColor();
+        ? appointmentEntity.paymentStatus.colorsOf(context).color
+        : appointmentEntity.status.colorsOf(context).color;
 
     final Color appointmentBaseColor = isPaid
         ? Color.lerp(appointment.color, Colors.green, 0.15) ?? appointment.color
@@ -493,7 +494,7 @@ class AppointmentCalendar extends StatelessWidget {
                   children: [
                     Text(
                       isSubAppointment
-                          ? appointmentEntity.serviceTypes.join(', ')
+                          ? appointmentEntity.serviceNames.join(', ')
                           : appointment.subject.split('\n').isNotEmpty
                               ? appointment.subject.split('\n')[0]
                               : '',
@@ -669,8 +670,8 @@ class AppointmentCalendar extends StatelessWidget {
     if (isSubAppointment) {
       // Para subcitas, extraer el servicio específico
       if (subAppointmentIndex >= 0 &&
-          subAppointmentIndex < appointmentEntity.serviceTypes.length) {
-        serviceText = appointmentEntity.serviceTypes[subAppointmentIndex];
+          subAppointmentIndex < appointmentEntity.serviceNames.length) {
+        serviceText = appointmentEntity.serviceNames[subAppointmentIndex];
       }
       // Solo mostrar el nombre del cliente en la primera subcita
       clientName = subAppointmentIndex == 0 ? appointmentEntity.clientName : '';

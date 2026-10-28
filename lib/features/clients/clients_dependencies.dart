@@ -6,7 +6,6 @@ import 'package:login_signup/features/clients/data/repositories/client_repositor
 import 'package:login_signup/features/clients/domain/repositories/clients_repository.dart';
 import 'package:login_signup/features/clients/domain/usecases/create_client_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/delete_client_usecase.dart';
-import 'package:login_signup/features/clients/domain/usecases/get_all_clients_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_client_by_id_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/import_clients_usecase.dart';
@@ -27,8 +26,6 @@ abstract final class ClientsDependencies {
     );
 
     Get.lazyPut(() => GetClientsPageUseCase(Get.find<ClientsRepository>()),
-        fenix: true);
-    Get.lazyPut(() => GetAllClientsUseCase(Get.find<ClientsRepository>()),
         fenix: true);
     Get.lazyPut(() => GetClientByIdUseCase(Get.find<ClientsRepository>()),
         fenix: true);

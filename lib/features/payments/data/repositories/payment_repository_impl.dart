@@ -28,6 +28,13 @@ class PaymentRepositoryImpl implements PaymentRepository {
               .map((m) => m.toEntity())
               .toList());
 
+  @override
+  Future<Either<Failure, List<PaymentEntity>>> getAppointmentPayments(
+          String appointmentId) =>
+      safeCall(() async => (await _remote.getAppointmentPayments(appointmentId))
+          .map((m) => m.toEntity())
+          .toList());
+
   /// Al crear un pago, `INVALID_STATE_TRANSITION` solo significa "cita
   /// cancelada" (`statusAfterPayment` del backend).
   static Failure _refine(Failure failure) =>

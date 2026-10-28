@@ -12,10 +12,6 @@ abstract class ClientsRepository {
   Future<Either<Failure, PaginatedList<ClientEntity>>> getClients(
       ClientsQuery query);
 
-  /// Todos los clientes sin paginar (`GET /clients/all`). Pesado: solo para
-  /// el recordatorio manual hasta la 4.09.
-  Future<Either<Failure, List<ClientEntity>>> getAllClients();
-
   Future<Either<Failure, ClientEntity>> getClientById(String id);
 
   /// Teléfono o email repetido → `DuplicateClientFailure` (o

@@ -8,6 +8,7 @@ import 'package:login_signup/features/appointments/presentation/widgets/edit_app
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
 
 class AppointmentDetailsDialog extends StatelessWidget {
   final AppointmentEntity appointment;
@@ -29,17 +30,17 @@ class AppointmentDetailsDialog extends StatelessWidget {
         : '$minutes min';
 
     // Determinar si la cita está pagada usando los métodos de la entidad
-    final bool isPaid = appointment.isPaymentCompleted;
+    final bool isPaid = appointment.isFullyPaid;
 
     // Color del encabezado según estado de pago
     final Color headerColor = isPaid
-        ? appointment.getPaymentStatusColor()
-        : appointment.getStatusColor();
+        ? appointment.paymentStatus.colorsOf(context).color
+        : appointment.status.colorsOf(context).color;
 
     // Texto de estado según pago
     final String headerStatusText = isPaid
-        ? appointment.getPaymentStatusText()
-        : appointment.getStatusText();
+        ? appointment.paymentStatus.label
+        : appointment.status.label;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -168,9 +169,7 @@ class AppointmentDetailsDialog extends StatelessWidget {
                         final bool isOwner = _isOwner;
 
                         // Solo mostramos la información del profesional si el usuario es Owner
-                        if (isOwner &&
-                            appointment.professionalId != null &&
-                            appointment.professionalId!.isNotEmpty) {
+                        if (isOwner && appointment.professionalId.isNotEmpty) {
                           return Column(
                             children: [
                               Row(
@@ -202,7 +201,7 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                         FutureBuilder<String>(
                                           future: appointmentsController
                                               .professionalName(
-                                                  appointment.professionalId!),
+                                                  appointment.professionalId),
                                           builder: (context, snapshot) {
                                             if (!snapshot.hasData) {
                                               return Row(
@@ -278,7 +277,7 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              ...appointment.serviceTypes
+                              ...appointment.serviceNames
                                   .map((service) => Padding(
                                         padding:
                                             const EdgeInsets.only(bottom: 8),
@@ -291,7 +290,7 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                                 color: isPaid
                                                     ? Colors.green[700]
                                                     : appointment
-                                                        .getPrimaryColor(),
+                                                        .primaryColor,
                                                 shape: BoxShape.circle,
                                               ),
                                             ),
@@ -357,21 +356,19 @@ class AppointmentDetailsDialog extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: appointment
-                                .getPaymentStatusColor()
+                            color: appointment.paymentStatus.colorsOf(context).color
                                 .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: appointment
-                                  .getPaymentStatusColor()
+                              color: appointment.paymentStatus.colorsOf(context).color
                                   .withValues(alpha: 0.5),
                               width: 1,
                             ),
                           ),
                           child: Text(
-                            appointment.getPaymentStatusText(),
+                            appointment.paymentStatus.label,
                             style: TextStyle(
-                              color: appointment.getPaymentStatusColor(),
+                              color: appointment.paymentStatus.colorsOf(context).color,
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
                             ),

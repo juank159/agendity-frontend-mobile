@@ -42,15 +42,4 @@ class WhatsappLauncher {
 
     return cleaned;
   }
-
-  /// Genera un mensaje de recordatorio de cita
-  static String generateAppointmentReminderMessage({
-    required String clientName,
-    required String serviceName,
-    required String date,
-    required String time,
-    String? location,
-  }) {
-    return "👋 Hola, te recordamos tu cita para *$serviceName* programada para *$date* a las *$time*. te esperamos en ${location ?? 'nuestra ubicación habitual'}.";
-  }
 }

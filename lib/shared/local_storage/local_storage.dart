@@ -1,7 +1,6 @@
 // lib/shared/local_storage/local_storage.dart
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/token_store.dart';
 
 class LocalStorage {
@@ -53,13 +52,6 @@ class LocalStorage {
     } catch (e) {
       throw Exception('Failed to verify storage operations: $e');
     }
-  }
-
-  /// Id del usuario de la sesión guardada, con el único decodificador del JWT
-  /// (`SessionRepository`). Lo usa `AppointmentsController` hasta la 4.09.
-  Future<String?> getUserId() async {
-    final token = await getToken();
-    return token == null ? null : SessionRepository.decode(token)?.userId;
   }
 
   Future<String?> getToken() => _tokens.readToken();

@@ -5,10 +5,16 @@ import 'package:login_signup/features/payments/domain/entities/payment_entity.da
 
 abstract class PaymentRepository {
   /// Registra el pago de una cita (solo Owner: el Employee recibe
-  /// `ForbiddenFailure`). Cita cancelada → `AppointmentNotPayableFailure`;
-  /// cita ya pagada o monto rechazado → `ValidationFailure` con el texto del
-  /// backend (los dos llegan como `BAD_REQUEST`).
+  /// `ForbiddenFailure`). Admite anticipos hasta el total. Cita cancelada →
+  /// `AppointmentNotPayableFailure`; ya pagada del todo → `ConflictFailure`
+  /// (`PAYMENT_ALREADY_EXISTS`); monto mayor que el saldo → `ValidationFailure`
+  /// (`BAD_REQUEST`) con el texto del backend.
   Future<Either<Failure, PaymentEntity>> createPayment(PaymentEntity payment);
+
+  /// Pagos de una cita (`GET /payments/appointment/:id`, solo Owner), de
+  /// cualquier estado.
+  Future<Either<Failure, List<PaymentEntity>>> getAppointmentPayments(
+      String appointmentId);
 
   /// Métodos propios activos del negocio (`GET /custom-payment-methods/active`),
   /// ordenados por nombre. Solo Owner: el Employee recibe `ForbiddenFailure`.

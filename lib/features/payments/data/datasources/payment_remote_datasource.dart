@@ -10,6 +10,9 @@ abstract class PaymentRemoteDataSource {
 
   /// `GET /custom-payment-methods/active` (solo Owner): lista, puede ir vacía.
   Future<List<CustomPaymentMethodModel>> getActiveCustomPaymentMethods();
+
+  /// `GET /payments/appointment/:id` (solo Owner): pagos de la cita.
+  Future<List<PaymentModel>> getAppointmentPayments(String appointmentId);
 }
 
 class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
@@ -34,6 +37,17 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
     return response.data!
         .cast<Map<String, dynamic>>()
         .map(CustomPaymentMethodModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<PaymentModel>> getAppointmentPayments(
+      String appointmentId) async {
+    final response =
+        await _dio.get<List<dynamic>>('/payments/appointment/$appointmentId');
+    return response.data!
+        .cast<Map<String, dynamic>>()
+        .map(PaymentModel.fromJson)
         .toList();
   }
 }

@@ -32,17 +32,23 @@ class FakePaymentRepository implements PaymentRepository {
   @override
   Future<Either<Failure, List<CustomPaymentMethod>>>
       getActiveCustomPaymentMethods() async => customMethods;
+
+  @override
+  Future<Either<Failure, List<PaymentEntity>>> getAppointmentPayments(
+          String appointmentId) async =>
+      const Right([]);
 }
 
 final appointment = AppointmentEntity(
   id: 'apt-1',
-  title: 'Corte',
+  client: const AppointmentClient(id: 'cli-1', name: 'Ana'),
+  professionalId: 'pro-1',
+  services: const [
+    AppointmentServiceLine(serviceId: 'svc-1', name: 'Corte', price: 45000),
+  ],
   startTime: DateTime(2026, 11, 3, 10),
   endTime: DateTime(2026, 11, 3, 11),
-  clientName: 'Ana',
-  serviceTypes: const ['Corte'],
-  status: 'PENDING',
-  totalPrice: '45000.00',
+  totalPrice: 45000,
 );
 
 void main() {

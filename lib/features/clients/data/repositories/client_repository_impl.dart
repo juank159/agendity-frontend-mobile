@@ -21,11 +21,6 @@ class ClientsRepositoryImpl implements ClientsRepository {
       safeCall(() async => (await _remote.getClients(query)).toEntity());
 
   @override
-  Future<Either<Failure, List<ClientEntity>>> getAllClients() =>
-      safeCall(() async =>
-          (await _remote.getAllClients()).map((m) => m.toEntity()).toList());
-
-  @override
   Future<Either<Failure, ClientEntity>> getClientById(String id) =>
       safeCall(() async => (await _remote.getClientById(id)).toEntity());
 

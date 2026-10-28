@@ -16,9 +16,6 @@ abstract class ClientsRemoteDataSource {
   /// `GET /clients` con paginación, filtros y orden.
   Future<ClientPageModel> getClients(ClientsQuery query);
 
-  /// `GET /clients/all`: todos, sin paginar (con sus citas y reseñas).
-  Future<List<ClientModel>> getAllClients();
-
   /// `GET /clients/:id`.
   Future<ClientModel> getClientById(String id);
 
@@ -71,15 +68,6 @@ class ClientsRemoteDataSourceImpl implements ClientsRemoteDataSource {
       },
     );
     return ClientPageModel.fromJson(response.data!);
-  }
-
-  @override
-  Future<List<ClientModel>> getAllClients() async {
-    final response = await _dio.get<List<dynamic>>('/clients/all');
-    return response.data!
-        .whereType<Map<String, dynamic>>()
-        .map(ClientModel.fromJson)
-        .toList();
   }
 
   @override

@@ -40,7 +40,7 @@ class PaymentController extends GetxController {
 
   AppointmentEntity? _appointment;
 
-  double get total => double.tryParse(_appointment?.totalPrice ?? '') ?? 0;
+  double get total => _appointment?.totalPrice ?? 0;
 
   bool get needsTransactionId =>
       method.value == PaymentMethod.TRANSFER ||

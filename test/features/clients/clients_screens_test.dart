@@ -52,10 +52,6 @@ class FakeClientsRepository implements ClientsRepository {
   }
 
   @override
-  Future<Either<Failure, List<ClientEntity>>> getAllClients() async =>
-      const Right([]);
-
-  @override
   Future<Either<Failure, ClientEntity>> getClientById(String id) async =>
       byIdResult;
 

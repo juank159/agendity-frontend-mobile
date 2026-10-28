@@ -1,11 +1,2 @@
-import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
-
-class DeleteAppointmentUseCase {
-  final AppointmentsRepository repository;
-
-  DeleteAppointmentUseCase(this.repository);
-
-  Future<void> call(String id) async {
-    await repository.deleteAppointment(id);
-  }
-}
+// Retirado en 4.09: los use cases de citas viven en domain/usecases/.
+// Archivo sin referencias: lo borra el orquestador (D-12).

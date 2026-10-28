@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/shared/widgets/whatsapp_icon.dart';
 import '../../domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
 
 class AppointmentCard extends StatelessWidget {
   final AppointmentEntity appointment;
@@ -31,8 +32,8 @@ class AppointmentCard extends StatelessWidget {
     final timeStr = '$displayHour:$minuteStr $amPm';
 
     // Obtener el nombre del servicio
-    final serviceName = appointment.serviceTypes.isNotEmpty
-        ? appointment.serviceTypes.join(', ')
+    final serviceName = appointment.serviceNames.isNotEmpty
+        ? appointment.serviceNames.join(', ')
         : 'Servicio programado';
 
     return Card(
@@ -49,7 +50,7 @@ class AppointmentCard extends StatelessWidget {
                 // Avatar del cliente (usando iniciales)
                 CircleAvatar(
                   radius: 25,
-                  backgroundColor: appointment.getPrimaryColor(),
+                  backgroundColor: appointment.primaryColor,
                   child: Text(
                     appointment.clientName.isNotEmpty
                         ? appointment.clientName[0].toUpperCase()
@@ -111,15 +112,14 @@ class AppointmentCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: appointment
-                                  .getPaymentStatusColor()
+                              color: appointment.paymentStatus.colorsOf(context).color
                                   .withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              appointment.getPaymentStatusText(),
+                              appointment.paymentStatus.label,
                               style: TextStyle(
-                                color: appointment.getPaymentStatusColor(),
+                                color: appointment.paymentStatus.colorsOf(context).color,
                                 fontSize: 12,
                               ),
                             ),

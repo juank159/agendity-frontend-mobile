@@ -1,18 +1,17 @@
-// lib/features/appointments/presentation/controllers/appointment_reminder_controller.dart
 import 'dart:async';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
-import 'package:login_signup/features/appointments/domain/usescases/get_upcoming_appointments_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/get_upcoming_appointments_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/mark_reminder_sent_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/prepare_reminder_usecase.dart';
 import '../../domain/entities/appointment_entity.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../whatsapp/data/datasources/whatsapp_launcher.dart';
-import 'package:login_signup/features/clients/domain/usecases/get_all_clients_usecase.dart';
-import '../../data/datasources/appointments_remote_datasource.dart';
 
 class AppointmentReminderController extends GetxController {
   final GetUpcomingAppointmentsUseCase getUpcomingAppointmentsUseCase;
-  final GetAllClientsUseCase getAllClientsUseCase;
+  final PrepareReminderUseCase prepareReminderUseCase;
+  final MarkReminderSentUseCase markReminderSentUseCase;
   final NotificationService notificationService = NotificationService();
 
   RxList<AppointmentEntity> upcomingAppointments = <AppointmentEntity>[].obs;
@@ -22,26 +21,15 @@ class AppointmentReminderController extends GetxController {
   // ✅ Timer para limpieza automática
   Timer? _cleanupTimer;
   
-  // ✅ Referencias para marcar recordatorios como enviados
-  late AppointmentsRemoteDataSource _appointmentsDataSource;
-
   AppointmentReminderController({
     required this.getUpcomingAppointmentsUseCase,
-    required this.getAllClientsUseCase,
+    required this.prepareReminderUseCase,
+    required this.markReminderSentUseCase,
   });
 
   @override
   void onInit() {
     super.onInit();
-    
-    // ✅ Inicializar datasource
-    try {
-      _appointmentsDataSource = Get.find<AppointmentsRemoteDataSource>();
-      print('✅ AppointmentsRemoteDataSource inicializado');
-    } catch (e) {
-      print('⚠️ Error inicializando AppointmentsRemoteDataSource: $e');
-    }
-    
     fetchUpcomingAppointments();
     
     // ✅ OPTIMIZACIÓN: Programar limpieza automática cada 5 minutos
@@ -153,7 +141,7 @@ class AppointmentReminderController extends GetxController {
           id: appointment.id.hashCode,
           title: 'Recordatorio de cita próxima',
           body:
-              'Cita de ${appointment.serviceTypes.join(", ")} para ${appointment.clientName} a las ${_formatTime(appointmentTime)}',
+              'Cita de ${appointment.serviceNames.join(", ")} para ${appointment.clientName} a las ${_formatTime(appointmentTime)}',
           payload: appointment.id,
         );
       }
@@ -166,7 +154,7 @@ class AppointmentReminderController extends GetxController {
       id: appointment.id.hashCode,
       title: 'Recordatorio de cita próxima',
       body:
-          'Cita de ${appointment.serviceTypes.join(", ")} para ${appointment.clientName} a las ${_formatTime(appointmentTime)}',
+          'Cita de ${appointment.serviceNames.join(", ")} para ${appointment.clientName} a las ${_formatTime(appointmentTime)}',
       scheduledTime: reminderTime,
       payload: appointment.id,
     );
@@ -182,126 +170,36 @@ class AppointmentReminderController extends GetxController {
     return '$displayHour:$minuteStr $amPm';
   }
 
-  // Abre WhatsApp para enviar un recordatorio
+  /// Abre WhatsApp con el recordatorio que prepara el backend (teléfono por
+  /// la cita, nunca por nombre) y, si se abrió, lo marca como enviado.
   Future<void> sendAppointmentReminder(AppointmentEntity appointment) async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
+    isLoading.value = true;
+    errorMessage.value = '';
 
-      // Obtener el cliente para conseguir el número de teléfono
-      String clientPhone = '';
-
-      try {
-        // Puente hasta la 4.09: busca el teléfono por el nombre del cliente.
-        final clients = (await getAllClientsUseCase(NoParams())).fold(
-            (failure) => throw Exception(failure.message), (list) => list);
-        final client = clients.firstWhere(
-          (client) =>
-              client.name == appointment.clientName ||
-              '${client.name} ${client.lastname}' == appointment.clientName,
-          orElse: () => throw Exception('Cliente no encontrado'),
-        );
-
-        clientPhone = client.phone;
-      } catch (e) {
-        errorMessage.value = 'No se pudo encontrar el teléfono del cliente: $e';
-        isLoading.value = false;
-        return;
-      }
-
-      if (clientPhone.isEmpty) {
-        errorMessage.value =
-            'El cliente no tiene número de teléfono registrado';
-        isLoading.value = false;
-        return;
-      }
-
-      // Usar directamente la fecha sin conversiones adicionales
-      final appointmentDate = appointment.startTime
-          .toLocal(); // Convertir explícitamente a la zona horaria local
-
-      // Formatear la fecha usando IntlFormat para el día de la semana y el día del mes
-      final dateFormatter = DateFormat('EEEE d MMMM', 'es');
-      final dateStr = dateFormatter.format(appointmentDate);
-
-      // Extraer los componentes específicos de hora y minutos para evitar problemas de formato
-      final hour = appointmentDate.hour;
-      final minute = appointmentDate.minute;
-
-      // Crear una representación manual de hora
-      final String amPm = hour >= 12 ? 'PM' : 'AM';
-      final int displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-      final String minuteStr = minute < 10 ? '0$minute' : minute.toString();
-      final timeStr = '$displayHour:$minuteStr $amPm';
-
-      // Obtener el servicio (o servicios)
-      final serviceName = appointment.serviceTypes.isNotEmpty
-          ? appointment.serviceTypes.join(', ')
-          : 'servicio programado';
-
-      // Generar el mensaje de recordatorio
-      final message = WhatsappLauncher.generateAppointmentReminderMessage(
-        clientName: appointment.clientName,
-        serviceName: serviceName,
-        date: dateStr,
-        time: timeStr,
-      );
-
-      // Abrir WhatsApp con el mensaje predefinido
-      final success = await WhatsappLauncher.openWhatsAppChat(
-        clientPhone,
-        message,
-      );
-
-      if (success) {
-        print('✅ Recordatorio enviado exitosamente para: ${appointment.clientName}');
-        print('📱 WhatsApp se abrió correctamente, procediendo a marcar como enviado');
-        
-        // ✅ NUEVA FUNCIONALIDAD: Marcar como enviado y remover de la lista
-        await _markReminderAsSent(appointment);
-        
-        // Cancelar la notificación programada
-        await notificationService.cancelNotification(appointment.id.hashCode);
-        
-        // Remover de la lista local
-        final initialCount = upcomingAppointments.length;
-        upcomingAppointments.removeWhere((a) => a.id == appointment.id);
-        final finalCount = upcomingAppointments.length;
-        
-        print('🔔 Notificación cancelada');
-        print('📋 Cita removida de la lista local ($initialCount -> $finalCount)');
-        print('🎯 Cita ${appointment.id} procesada completamente');
-      } else {
-        print('❌ WhatsApp no se pudo abrir');
-        errorMessage.value = 'No se pudo abrir WhatsApp';
-      }
-
+    final prepared = await prepareReminderUseCase(appointment.id);
+    final reminder = prepared.fold((failure) {
+      errorMessage.value = failure.message;
+      return null;
+    }, (reminder) => reminder);
+    if (reminder == null) {
       isLoading.value = false;
-    } catch (e) {
+      return;
+    }
+
+    final opened =
+        await WhatsappLauncher.openWhatsAppChat(reminder.phone, reminder.message);
+    if (!opened) {
+      errorMessage.value = 'No se pudo abrir WhatsApp';
       isLoading.value = false;
-      errorMessage.value = 'Error al enviar recordatorio: $e';
+      return;
     }
-  }
 
-  // ✅ NUEVO MÉTODO: Marcar recordatorio como enviado en el backend
-  Future<void> _markReminderAsSent(AppointmentEntity appointment) async {
-    try {
-      print('📤 Marcando recordatorio como enviado en el backend para cita: ${appointment.id}');
-      
-      // ✅ Usar datasource directamente
-      final success = await _appointmentsDataSource.markReminderAsSent(appointment.id);
-      
-      if (success) {
-        print('✅ Recordatorio marcado como enviado exitosamente en el backend');
-      } else {
-        print('⚠️ No se pudo marcar el recordatorio como enviado en el backend');
-      }
-    } catch (e) {
-      print('⚠️ Error marcando recordatorio como enviado: $e');
-      // No lanzar error para no bloquear el flujo principal
-    }
+    // Si marcar falla, el recordatorio ya salió: no se bloquea al usuario.
+    await markReminderSentUseCase(appointment.id);
+    await notificationService.cancelNotification(appointment.id.hashCode);
+    upcomingAppointments.removeWhere((a) => a.id == appointment.id);
+    isLoading.value = false;
   }
-
 
   // ✅ MÉTODO PÚBLICO: Limpiar manualmente las citas pasadas
   void cleanExpiredAppointments() {

@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
-import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
 import 'package:login_signup/features/clients/data/repositories/client_repository_impl.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
@@ -15,7 +14,6 @@ import 'package:login_signup/features/clients/domain/failures/client_failures.da
 import 'package:login_signup/features/clients/domain/usecases/client_rules.dart';
 import 'package:login_signup/features/clients/domain/usecases/create_client_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/delete_client_usecase.dart';
-import 'package:login_signup/features/clients/domain/usecases/get_all_clients_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_client_by_id_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/import_clients_usecase.dart';
@@ -140,14 +138,6 @@ void main() {
         expect(leftOf(await useCase(query)), isA<ValidationFailure>());
       }
       expect(adapter.requests, isEmpty);
-    });
-
-    test('GET /clients/all → lista de entidades', () async {
-      adapter.handler = (_) => jsonBody(200, [backendClient(email: null)]);
-      final clients =
-          rightOf(await GetAllClientsUseCase(repository)(NoParams()));
-      expect(clients.single.email, isNull);
-      expect(adapter.requests.single.uri.path, '/api/clients/all');
     });
 
     test(

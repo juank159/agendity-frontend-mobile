@@ -14,6 +14,8 @@ import 'package:login_signup/features/payments/domain/failures/payment_failures.
 import 'package:login_signup/features/payments/domain/repositories/payment_repository.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_appointment_balance_usecase.dart';
+import 'package:login_signup/features/payments/domain/entities/appointment_balance.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 
 import '../../core/network/fake_http_client_adapter.dart';
@@ -44,6 +46,11 @@ class _RecordingRepository implements PaymentRepository {
   Future<Either<Failure, List<CustomPaymentMethod>>>
       getActiveCustomPaymentMethods() async =>
           const Right([CustomPaymentMethod(id: 'cm-1', name: 'Nequi')]);
+
+  @override
+  Future<Either<Failure, List<PaymentEntity>>> getAppointmentPayments(
+          String appointmentId) async =>
+      const Right([]);
 }
 
 /// Respuesta real de `GET /custom-payment-methods/active`.
@@ -135,13 +142,13 @@ void main() {
       adapter.handler = (_) => jsonBody(409, {
             'statusCode': 409,
             'code': 'PAYMENT_ALREADY_EXISTS',
-            'message': 'Ya existe un pago completado para esta cita',
+            'message': 'La cita ya está pagada por completo',
           });
       final failure = leftOf(await repository.createPayment(newPayment));
       expect(failure, isA<ConflictFailure>());
       expect(failure, isNot(isA<AppointmentNotPayableFailure>()));
       expect(failure!.code, ApiErrorCode.paymentAlreadyExists);
-      expect(failure.message, 'Ya existe un pago completado para esta cita');
+      expect(failure.message, 'La cita ya está pagada por completo');
     });
 
     test('403 (Employee) → ForbiddenFailure', () async {
@@ -327,6 +334,60 @@ void main() {
               _RecordingRepository())
           .call(NoParams());
       expect(result.getOrElse(() => []).single.name, 'Nequi');
+    });
+  });
+
+  group('saldo de una cita (anticipos, 2.24)', () {
+    late FakeHttpClientAdapter adapter;
+    late GetAppointmentBalanceUseCase balance;
+
+    setUp(() {
+      adapter = FakeHttpClientAdapter((_) => jsonBody(200, []));
+      balance = GetAppointmentBalanceUseCase(PaymentRepositoryImpl(
+          PaymentRemoteDataSourceImpl(buildApiClient(
+        baseUrl: 'http://api.test/api',
+        tokenStore: MemoryTokenStore('jwt'),
+        httpClientAdapter: adapter,
+        retryDelay: (_) => Duration.zero,
+        enableLogs: false,
+      ))));
+    });
+
+    const params = AppointmentBalanceParams(appointmentId: 'a1', total: 100000);
+
+    test('GET /payments/appointment/:id: solo COMPLETED, netos de reembolsos',
+        () async {
+      adapter.handler = (_) => jsonBody(200, [
+            backendPayment(), // 50.000 pagados
+            backendPayment(refund: '10000.00'), // 50.000 − 10.000
+            backendPayment(status: 'REFUNDED', refund: '50000.00'),
+            backendPayment(status: 'FAILED'),
+          ]);
+      final result = (await balance(params))
+          .getOrElse(() => throw StateError('Left'));
+      expect(result, const AppointmentBalance(total: 100000, paid: 90000));
+      expect(result.outstanding, 10000);
+      expect(result.isFullyPaid, false);
+      final request = adapter.requests.single;
+      expect(request.method, 'GET');
+      expect(request.uri.path, '/api/payments/appointment/a1');
+    });
+
+    test('sin pagos → falta el total; pagada de más → saldo 0', () async {
+      expect((await balance(params)).getOrElse(() => throw StateError('L')),
+          const AppointmentBalance(total: 100000, paid: 0));
+      adapter.handler = (_) =>
+          jsonBody(200, [backendPayment(), backendPayment(), backendPayment()]);
+      final full =
+          (await balance(params)).getOrElse(() => throw StateError('L'));
+      expect(full.outstanding, 0);
+      expect(full.isFullyPaid, true);
+    });
+
+    test('403 (Employee) → ForbiddenFailure', () async {
+      adapter.handler = (_) =>
+          jsonBody(403, {'statusCode': 403, 'code': 'FORBIDDEN'});
+      expect(leftOf(await balance(params)), isA<ForbiddenFailure>());
     });
   });
 }

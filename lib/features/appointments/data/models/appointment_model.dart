@@ -1,222 +1,165 @@
-import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/core/utils/json_read.dart';
+import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
+import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/appointments/domain/entities/manual_reminder.dart';
+import 'package:login_signup/features/appointments/domain/entities/new_appointment.dart';
 
-class AppointmentModel extends AppointmentEntity {
-  final List<String> serviceIds;
-  final String clientId;
+/// DTO de una cita de `/appointments` (backend: `Appointment` con `client`,
+/// `professional` y `services`). Mezcla camelCase (`professionalId`,
+/// `reminderSent`) y snake_case (`payment_status`, `total_price`), como el
+/// backend. `total_price` y los precios llegan como texto (`numeric`).
+class AppointmentModel {
+  final String id;
+  final AppointmentClient client;
+  final String professionalId;
+  final String? professionalName;
+  final List<AppointmentServiceLine> services;
+  final DateTime start;
+  final AppointmentStatus status;
+  final AppointmentPaymentStatus paymentStatus;
+  final double totalPrice;
+  final String? notes;
+  final String? cancellationReason;
+  final bool reminderSent;
+  final DateTime? reminderSentAt;
+  final DateTime? createdAt;
 
-  AppointmentModel({
-    required super.id,
-    required super.title,
-    required super.startTime,
-    required super.endTime,
-    required super.clientName,
-    required super.serviceTypes,
-    required super.status,
-    required super.totalPrice,
-    required this.serviceIds,
-    required this.clientId,
-    super.notes,
-    super.colors,
-    super.ownerId,
-    super.professionalId,
-    super.paymentStatus,
+  const AppointmentModel({
+    required this.id,
+    required this.client,
+    required this.professionalId,
+    this.professionalName,
+    required this.services,
+    required this.start,
+    required this.status,
+    required this.paymentStatus,
+    required this.totalPrice,
+    this.notes,
+    this.cancellationReason,
+    this.reminderSent = false,
+    this.reminderSentAt,
+    this.createdAt,
   });
 
-  // factory AppointmentModel.fromJson(Map<String, dynamic> json) {
-  //   final client = json['client'];
-  //   final services = json['services'] as List<dynamic>;
-  //   final professional = json['professional'];
-
-  //   // Parsear la fecha manteniendo la hora local
-  //   final dateTime = DateTime.parse(json['date']).toLocal();
-
-  //   print('DEBUG - Fecha del servidor: ${json['date']}');
-  //   print('DEBUG - Fecha parseada local: ${dateTime.toString()}');
-
-  //   final totalDuration = services.fold<int>(
-  //     0,
-  //     (sum, service) =>
-  //         sum + (int.parse(service['duration']?.toString() ?? '30')),
-  //   );
-
-  //   return AppointmentModel(
-  //     id: json['id']?.toString() ?? '',
-  //     title: services.map((s) => s['name']?.toString() ?? '').join(', '),
-  //     startTime: dateTime,
-  //     endTime: dateTime.add(Duration(minutes: totalDuration)),
-  //     clientName: '${client['name']} ${client['lastname']}'.trim(),
-  //     serviceTypes: services.map((s) => s['name']?.toString() ?? '').toList(),
-  //     notes: json['notes']?.toString(),
-  //     status: json['status']?.toString() ?? AppointmentEntity.STATUS_PENDING,
-  //     colors: services
-  //         .map((s) => s['color']?.toString())
-  //         .where((color) => color != null && color.isNotEmpty)
-  //         .cast<String>()
-  //         .toList(),
-  //     serviceIds: services.map((s) => s['id']?.toString() ?? '').toList(),
-  //     clientId: client['id']?.toString() ?? '',
-  //     professionalId: professional['id']?.toString(),
-  //     ownerId: json['ownerId']?.toString(),
-  //     paymentStatus: json['payment_status']?.toString() ??
-  //         AppointmentEntity.PAYMENT_PENDING,
-  //     totalPrice: json['total_price']?.toString() ?? '0',
-  //   );
-  // }
-
+  /// Sin `id` o sin `date` no es una cita: lanza `FormatException` (el
+  /// repositorio lo convierte en `ServerFailure`).
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
-    final client = json['client'];
-    final services = json['services'] as List<dynamic>;
-    final professional = json['professional'];
+    final id = JsonRead.asOptionalString(json['id']);
+    final start = DateCodec.tryDecode(json['date']);
+    if (id == null || start == null) {
+      throw const FormatException('Cita sin id o sin fecha');
+    }
+    final client = JsonRead.asMap(json['client']);
+    final professional = JsonRead.asMap(json['professional']);
+    final professionalName = professional == null
+        ? ''
+        : '${JsonRead.asString(professional['name'])} '
+                '${JsonRead.asString(professional['lastname'])}'
+            .trim();
 
-    // Priorizar professionalId sobre professional.id
-    final professionalId = json['professionalId'] ?? professional['id'];
-
-    // Priorizar clientId sobre client.id
-    final clientId = json['clientId'] ?? client['id'];
-
-    // Parsear la fecha manteniendo la hora local
-    final dateTime = DateCodec.decode(json['date']);
-
-    print('DEBUG - Fecha del servidor: ${json['date']}');
-    print('DEBUG - Fecha parseada local: ${dateTime.toString()}');
-
-    final totalDuration = services.fold<int>(
-      0,
-      (sum, service) =>
-          sum + (int.parse(service['duration']?.toString() ?? '30')),
-    );
-
-    return AppointmentModel(
-      id: json['id']?.toString() ?? '',
-      title: services.map((s) => s['name']?.toString() ?? '').join(', '),
-      startTime: dateTime,
-      endTime: dateTime.add(Duration(minutes: totalDuration)),
-      clientName: '${client['name']} ${client['lastname']}'.trim(),
-      serviceTypes: services.map((s) => s['name']?.toString() ?? '').toList(),
-      notes: json['notes']?.toString(),
-      status: json['status']?.toString() ?? AppointmentEntity.STATUS_PENDING,
-      colors: services
-          .map((s) => s['color']?.toString())
-          .where((color) => color != null && color.isNotEmpty)
-          .cast<String>()
-          .toList(),
-      serviceIds: services.map((s) => s['id']?.toString() ?? '').toList(),
-      clientId: clientId,
-      professionalId: professionalId,
-      ownerId: json['ownerId']?.toString(),
-      paymentStatus: json['payment_status']?.toString() ??
-          AppointmentEntity.PAYMENT_PENDING,
-      totalPrice: json['total_price']?.toString() ?? '0',
-    );
-  }
-
-  factory AppointmentModel.create({
-    required List<String> serviceIds,
-    required String clientId,
-    required String professionalId,
-    required String ownerId,
-    required DateTime startTime,
-    required String totalPrice,
-    String? notes,
-  }) {
-    final localDateTime = startTime.toLocal();
-    print('DEBUG - Hora local al crear: ${localDateTime.toString()}');
-
-    return AppointmentModel(
-      id: '',
-      title: '',
-      startTime: localDateTime,
-      endTime: localDateTime,
-      clientName: '',
-      serviceTypes: [],
-      status: AppointmentEntity.STATUS_PENDING,
-      serviceIds: serviceIds,
-      clientId: clientId,
-      professionalId: professionalId,
-      ownerId: ownerId,
-      paymentStatus: AppointmentEntity.PAYMENT_PENDING,
-      totalPrice: totalPrice,
-      notes: notes ?? '',
-    );
-  }
-
-  factory AppointmentModel.forUpdate({
-    required String id,
-    required String professionalId,
-    required List<String> serviceIds,
-    required DateTime startTime,
-    required DateTime endTime,
-    String? notes,
-  }) {
     return AppointmentModel(
       id: id,
-      title: '',
-      startTime: startTime,
-      endTime: endTime,
-      clientName: '',
-      serviceTypes: [],
-      status: AppointmentEntity.STATUS_PENDING,
-      serviceIds: serviceIds,
-      clientId: '',
-      professionalId: professionalId,
-      totalPrice: '0',
-      notes: notes,
+      client: AppointmentClient(
+        id: JsonRead.asString(json['clientId'] ?? client?['id']),
+        name: JsonRead.asString(client?['name']),
+        lastname: JsonRead.asString(client?['lastname']),
+        phone: JsonRead.asOptionalString(client?['phone']),
+      ),
+      professionalId:
+          JsonRead.asString(json['professionalId'] ?? professional?['id']),
+      professionalName: professionalName.isEmpty ? null : professionalName,
+      services: JsonRead.asMapList(json['services'])
+          .map(_serviceLineFromJson)
+          .toList(growable: false),
+      start: start,
+      status: AppointmentStatus.fromApi(json['status']) ??
+          AppointmentStatus.PENDING,
+      paymentStatus: AppointmentPaymentStatus.fromApi(json['payment_status']) ??
+          AppointmentPaymentStatus.PENDING,
+      totalPrice: JsonRead.asDouble(json['total_price']),
+      notes: JsonRead.asOptionalString(json['notes']),
+      cancellationReason:
+          JsonRead.asOptionalString(json['cancellation_reason']),
+      reminderSent: JsonRead.asBool(
+          json['reminderSent'] ?? json['reminder_sent'],
+          fallback: false),
+      reminderSentAt: DateCodec.tryDecode(
+          json['reminderSentAt'] ?? json['reminder_sent_at']),
+      createdAt: DateCodec.tryDecode(json['created_at']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    // Instante en UTC: el backend respeta el offset (sin él leería hora de Bogotá).
-    final dateString = DateCodec.encode(startTime);
-
-    print('DEBUG - Fecha original (local): ${startTime.toString()}');
-    print('DEBUG - Fecha a enviar: $dateString');
-
-    // Asegurarnos de incluir todos los campos requeridos por el API
-    return {
-      'client_id': clientId,
-      'professional_id': professionalId,
-      'service_ids': serviceIds,
-      'date': dateString,
-      'notes': notes ?? '',
-      // No incluir owner_id si es nulo, ya que el backend podría requerir que sea un UUID válido
-      if (ownerId != null && ownerId!.isNotEmpty) 'owner_id': ownerId,
-    };
-  }
-
-  AppointmentModel copyWith({
-    String? id,
-    String? title,
-    DateTime? startTime,
-    DateTime? endTime,
-    String? clientName,
-    List<String>? serviceTypes,
-    String? notes,
-    String? status,
-    List<String>? colors,
-    List<String>? serviceIds,
-    String? clientId,
-    String? professionalId,
-    String? ownerId,
-    String? paymentStatus,
-    String? totalPrice,
-  }) {
-    return AppointmentModel(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
-      clientName: clientName ?? this.clientName,
-      serviceTypes: serviceTypes ?? this.serviceTypes,
-      notes: notes ?? this.notes,
-      status: status ?? this.status,
-      colors: colors ?? this.colors,
-      serviceIds: serviceIds ?? this.serviceIds,
-      clientId: clientId ?? this.clientId,
-      professionalId: professionalId ?? this.professionalId,
-      ownerId: ownerId ?? this.ownerId,
-      paymentStatus: paymentStatus ?? this.paymentStatus,
-      totalPrice: totalPrice ?? this.totalPrice,
+  /// `appointment_price` = precio en la cita (2.29); si faltara (respuesta
+  /// anterior a 2.29), el `price` del servicio. Duración como el backend:
+  /// sin duración o ≤ 0 cuenta 30 min.
+  static AppointmentServiceLine _serviceLineFromJson(
+      Map<String, dynamic> json) {
+    final duration = JsonRead.asInt(json['duration']);
+    final hasCurrentPrice = json['price'] != null;
+    return AppointmentServiceLine(
+      serviceId: JsonRead.asString(json['id']),
+      name: JsonRead.asString(json['name']),
+      durationMinutes: duration > 0
+          ? duration
+          : AppointmentServiceLine.defaultDurationMinutes,
+      color: JsonRead.asOptionalString(json['color']),
+      price: JsonRead.asDouble(json['appointment_price'] ?? json['price']),
+      currentPrice: hasCurrentPrice ? JsonRead.asDouble(json['price']) : null,
     );
   }
+
+  AppointmentEntity toEntity() => AppointmentEntity(
+        id: id,
+        client: client,
+        professionalId: professionalId,
+        professionalName: professionalName,
+        services: services,
+        startTime: start,
+        endTime: start.add(Duration(
+            minutes: services.fold(0, (sum, s) => sum + s.durationMinutes))),
+        status: status,
+        paymentStatus: paymentStatus,
+        totalPrice: totalPrice,
+        notes: notes,
+        cancellationReason: cancellationReason,
+        reminderSent: reminderSent,
+        reminderSentAt: reminderSentAt,
+        createdAt: createdAt,
+      );
+}
+
+/// Cuerpo de `POST /appointments` (`CreateAppointmentDto`). Sin `owner_id`
+/// (el negocio sale del JWT) ni precio (lo calcula el backend).
+abstract final class NewAppointmentModel {
+  static Map<String, dynamic> toJson(NewAppointment appointment) => {
+        'client_id': appointment.clientId,
+        'professional_id': appointment.professionalId,
+        'service_ids': appointment.serviceIds,
+        'date': DateCodec.encode(appointment.start),
+        if (appointment.notes != null) 'notes': appointment.notes,
+      };
+}
+
+/// Cuerpo de `PATCH /appointments/:id`: solo los campos que cambian.
+abstract final class AppointmentChangesModel {
+  static Map<String, dynamic> toJson(AppointmentChanges changes) => {
+        if (changes.clientId != null) 'client_id': changes.clientId,
+        if (changes.professionalId != null)
+          'professional_id': changes.professionalId,
+        if (changes.serviceIds != null) 'service_ids': changes.serviceIds,
+        if (changes.start != null) 'date': DateCodec.encode(changes.start!),
+        if (changes.notes != null) 'notes': changes.notes,
+      };
+}
+
+/// Respuesta de `POST /appointments/:id/send-reminder`.
+abstract final class ManualReminderModel {
+  static ManualReminder fromJson(Map<String, dynamic> json) => ManualReminder(
+        appointmentId: JsonRead.asString(json['appointmentId']),
+        clientId: JsonRead.asString(json['clientId']),
+        phone: JsonRead.asString(json['phone']),
+        message: JsonRead.asString(json['message']),
+        whatsappUrl: JsonRead.asString(json['whatsappUrl']),
+      );
 }

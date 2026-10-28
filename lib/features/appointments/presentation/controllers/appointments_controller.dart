@@ -1,26 +1,25 @@
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
-import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
 
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 
-import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
-import 'package:login_signup/features/appointments/data/datasources/appointment_data_source.dart';
-import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
+import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
-import 'package:login_signup/features/appointments/domain/usescases/create_appointment_usecase.dart';
-import 'package:login_signup/features/appointments/domain/usescases/delete_appointment_usecase.dart';
-import 'package:login_signup/features/appointments/domain/usescases/get_appointments_usecase.dart';
-import 'package:login_signup/features/appointments/domain/usescases/update_appointment_usecase.dart';
+import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
+import 'package:login_signup/features/appointments/domain/entities/new_appointment.dart';
+import 'package:login_signup/features/appointments/domain/failures/appointment_failures.dart';
+import 'package:login_signup/features/appointments/domain/usecases/create_appointment_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/get_appointments_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/update_appointment_usecase.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar_data_source.dart';
 
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
@@ -35,20 +34,16 @@ import 'package:login_signup/features/services/domain/usecases/get_services_usec
 // Nuevas importaciones para la funcionalidad de suscripción
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
-import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 class AppointmentsController extends GetxController {
-  final AppointmentsRepository appointmentsRepository;
   final GetAppointmentsUseCase getAppointmentsUseCase;
   final CreateAppointmentUseCase createAppointmentUseCase;
   final UpdateAppointmentUseCase updateAppointmentUseCase;
-  final DeleteAppointmentUseCase deleteAppointmentUseCase;
   final GetServicesUseCase getServicesUseCase;
   final GetClientsPageUseCase getClientsPageUseCase;
-  final LocalStorage localStorage;
 
   // Cambiar la referencia directa a una propiedad que se puede reinicializar
   Rx<EmployeeEntity?> selectedEmployee = Rx<EmployeeEntity?>(null);
@@ -145,15 +140,12 @@ class AppointmentsController extends GetxController {
   }
 
   AppointmentsController(
-      this.getAppointmentsUseCase,
-      this.createAppointmentUseCase,
-      this.updateAppointmentUseCase,
-      this.deleteAppointmentUseCase,
-      this.getServicesUseCase,
-      this.getClientsPageUseCase,
-      this.localStorage,
-      this.appointmentsRepository,
-      {required this.getProfessionalsUseCase,
+      {required this.getAppointmentsUseCase,
+      required this.createAppointmentUseCase,
+      required this.updateAppointmentUseCase,
+      required this.getServicesUseCase,
+      required this.getClientsPageUseCase,
+      required this.getProfessionalsUseCase,
       required this.getProfessionalByIdUseCase,
       this.checkSubscriptionStatusUseCase}) {
     _getUserInfo();
@@ -455,32 +447,6 @@ class AppointmentsController extends GetxController {
     update();
   }
 
-  void _loadDataForCurrentView() {
-    final now = selectedDate.value;
-    DateTime startDate;
-    DateTime endDate;
-
-    switch (currentView.value) {
-      case CalendarView.day:
-        startDate = DateTime(now.year, now.month, now.day);
-        endDate = startDate.add(const Duration(days: 1));
-        break;
-
-      case CalendarView.week:
-        startDate = now.subtract(Duration(days: now.weekday - 1));
-        endDate = startDate.add(const Duration(days: 7));
-        break;
-
-      case CalendarView.month:
-      default:
-        startDate = DateTime(now.year, now.month, 1);
-        endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-        break;
-    }
-
-    fetchAppointments(startDate: startDate, endDate: endDate);
-  }
-
   void onViewChanged(ViewChangedDetails details) {
     if (details.visibleDates.isEmpty) return;
 
@@ -672,31 +638,22 @@ class AppointmentsController extends GetxController {
       }
 
       print('🌐 Cargando desde API...');
-      final result = await getAppointmentsUseCase(
-        startDate: localStartDate,
-        endDate: localEndDate,
-      );
+      // El repositorio ya filtra por el rango (fin excluido).
+      final loaded = (await getAppointmentsUseCase(AppointmentsRange(
+        start: localStartDate!,
+        end: localEndDate!.add(const Duration(seconds: 1)),
+      )))
+          .fold((failure) {
+        error.value = failure.message;
+        return null;
+      }, (appointments) => appointments);
+      if (loaded == null) return;
+      final result = loaded;
 
       print('📊 Citas obtenidas: ${result.length}');
 
       // PRIMER FILTRO: Por rango de fechas (solucionar problema del backend)
-      List<AppointmentEntity> dateFilteredAppointments = [];
-      if (localStartDate != null && localEndDate != null) {
-        dateFilteredAppointments = result.where((appointment) {
-          final appointmentDate = appointment.startTime.toLocal();
-          final isInRange = appointmentDate.isAfter(localStartDate.subtract(const Duration(seconds: 1))) &&
-                           appointmentDate.isBefore(localEndDate.add(const Duration(seconds: 1)));
-          
-          if (!isInRange) {
-            print('⚠️ Cita fuera de rango descartada: ${appointment.startTime} (${appointment.clientName})');
-          }
-          return isInRange;
-        }).toList();
-        
-        print('📅 Filtro de fechas: ${dateFilteredAppointments.length} de ${result.length} citas en rango');
-      } else {
-        dateFilteredAppointments = result;
-      }
+      final List<AppointmentEntity> dateFilteredAppointments = result;
 
       // SEGUNDO FILTRO: Por rol del usuario
       List<AppointmentEntity> filteredAppointments = [];
@@ -744,34 +701,24 @@ class AppointmentsController extends GetxController {
         .toList();
   }
 
-  String _formatErrorMessage(dynamic error) {
-    if (error is AppointmentException) {
-      if (error.message == 'Horario no disponible') {
-        return 'El horario seleccionado no está disponible para este profesional';
-      }
-      return error.message;
-    }
+  String _formatErrorMessage(Object error) =>
+      error is Failure ? error.message : error.toString();
 
-    if (error is DioException) {
-      // Errores HTTP comunes
-      switch (error.response?.statusCode) {
-        case 400:
-          return 'Solicitud incorrecta. Por favor, verifica los datos.';
-        case 401:
-          return 'No autorizado. Por favor, inicia sesión nuevamente.';
-        case 403:
-          return 'Acceso denegado.';
-        case 404:
-          return 'Recurso no encontrado.';
-        case 500:
-          return 'Error del servidor. Por favor, contacta al soporte técnico.';
-        default:
-          return 'Error de conexión. Por favor, verifica tu conexión a internet.';
-      }
+  /// Avisa de un failure al crear o editar: diálogo de suscripción o de
+  /// horario por tipo (es decir, por `code`), y si no, el texto del failure.
+  void _showSaveFailure(Failure failure, String action) {
+    error.value = failure.message;
+    if (failure is TrialLimitReachedFailure) {
+      subscriptionMessage.value = failure.message;
+      _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
+    } else if (failure is SubscriptionInactiveFailure) {
+      subscriptionMessage.value = failure.message;
+      _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
+    } else if (failure is SlotUnavailableFailure) {
+      _showScheduleUnavailable();
+    } else {
+      AppSnackbar.error('No se pudo $action la cita: ${failure.message}');
     }
-
-    // Para otros tipos de errores, devolvemos el mensaje tal cual
-    return error.toString();
   }
 
   @override
@@ -835,208 +782,31 @@ class AppointmentsController extends GetxController {
       isLoading.value = true;
       error.value = null;
 
-      final ownerId = await localStorage.getUserId();
-      if (ownerId == null) {
-        throw Exception('No se pudo obtener el ID del usuario');
-      }
-
-      print('=== DEBUG DATOS ANTES DE CREAR CITA ===');
-      print('Client ID: $clientId');
-      print('Professional ID: ${selectedEmployee.value?.id}');
-      print('Service IDs: $selectedServiceIds');
-      print('Owner ID: $ownerId');
-      print('Start Time: $startTime');
-      print('Notes: $notes');
-
-      print("DEBUG - Hora local al crear: $startTime");
-
-      // Calcular duración total de los servicios seleccionados
-      int totalDurationMinutes = 0;
-      for (String serviceId in selectedServiceIds) {
-        final service = services.firstWhere((s) => s['id'] == serviceId,
-            orElse: () => {'duration': 30});
-        totalDurationMinutes +=
-            int.parse((service['duration'] ?? 30).toString());
-      }
-
-      // Calcular hora de finalización prevista
-      final endTime = startTime.add(Duration(minutes: totalDurationMinutes));
-      print(
-          'Hora de finalización prevista: $endTime (duración: $totalDurationMinutes min)');
-
-      final appointment = AppointmentModel.create(
-        serviceIds: selectedServiceIds.toList(),
+      final result = await createAppointmentUseCase(NewAppointment(
         clientId: clientId,
         professionalId: selectedEmployee.value!.id,
-        ownerId: ownerId,
-        startTime: startTime,
-        totalPrice: totalPrice.value.toString(),
-        notes: notes ?? '',
+        serviceIds: selectedServiceIds.toList(),
+        start: startTime,
+        notes: notes,
+      ));
+      await result.fold(
+        (failure) async => _showSaveFailure(failure, 'crear'),
+        (_) async {
+          selectedServiceIds.clear();
+          totalPrice.value = 0;
+
+          // Invalidar caché para la fecha afectada y recargar el día
+          _invalidateCacheForDate(startTime);
+          await _reloadAppointmentsForDay(startTime);
+
+          AppSnackbar.success('Cita creada correctamente');
+          update(['calendar-view']);
+        },
       );
-      try {
-        final createdAppointment = await createAppointmentUseCase(appointment);
-
-        // La cita se creó exitosamente
-        selectedServiceIds.clear();
-        totalPrice.value = 0;
-
-        // Invalidar caché para la fecha afectada
-        _invalidateCacheForDate(startTime);
-
-        // Recargar citas para el día actual
-        await _reloadAppointmentsForDay(startTime);
-
-        AppSnackbar.success('Cita creada correctamente');
-
-        update(['calendar-view']);
-      } catch (apiError) {
-        print('=== ERROR AL CREAR CITA ===');
-        print('Error tipo: ${apiError.runtimeType}');
-        print('Error detalle: $apiError');
-
-        // Verificar si es un error de límite de suscripción
-        bool isTrialEnded = false;
-        bool isSubscriptionInactive = false;
-
-        // Analizar el mensaje de error para determinar el tipo específico
-        if (apiError is DioException) {
-          final responseData = apiError.response?.data;
-          final statusCode = apiError.response?.statusCode;
-
-          if (statusCode == 400 &&
-              responseData is Map &&
-              responseData['message'] != null) {
-            final message = responseData['message'].toString().toLowerCase();
-
-            // Detectar si es fin del plan de prueba o suscripción inactiva
-            if (message.contains('límite de citas') ||
-                message.contains('plan de prueba') ||
-                message.contains('trial')) {
-              isTrialEnded = true;
-              subscriptionMessage.value = responseData['message'].toString();
-            } else if (message.contains('suscripción no está activa') ||
-                message.contains('actualiza tu plan')) {
-              isSubscriptionInactive = true;
-              subscriptionMessage.value = responseData['message'].toString();
-            }
-          }
-        }
-
-        // También verificar en el mensaje de error general si no se detectó antes
-        if (!isTrialEnded && !isSubscriptionInactive) {
-          final errorMessage = apiError.toString().toLowerCase();
-
-          if (errorMessage.contains('límite de citas') ||
-              errorMessage.contains('plan de prueba') ||
-              errorMessage.contains('trial')) {
-            isTrialEnded = true;
-            // Extraer el mensaje para el diálogo, eliminar la parte de AppointmentException
-            final message = apiError.toString();
-            final cleanMessage = message.contains(':')
-                ? message.split(':').last.trim()
-                : message;
-            subscriptionMessage.value =
-                cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
-          } else if (errorMessage.contains('suscripción no está activa') ||
-              errorMessage.contains('actualiza tu plan')) {
-            isSubscriptionInactive = true;
-            // Extraer el mensaje para el diálogo, eliminar la parte de AppointmentException
-            final message = apiError.toString();
-            final cleanMessage = message.contains(':')
-                ? message.split(':').last.trim()
-                : message;
-            subscriptionMessage.value =
-                cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
-          }
-        }
-
-        // Mostrar el diálogo correspondiente
-        if (isTrialEnded) {
-          print('ERROR DETECTADO: Fin de plan de prueba - Mostrando diálogo');
-          _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
-          return;
-        } else if (isSubscriptionInactive) {
-          print('ERROR DETECTADO: Suscripción inactiva - Mostrando diálogo');
-          _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
-          return;
-        }
-
-        // Verificar si es un error de horario no disponible
-        bool isHorarioNoDisponible = false;
-
-        if (apiError is AppointmentException &&
-            apiError.isHorarioNoDisponible) {
-          isHorarioNoDisponible = true;
-        } else {
-          // Verificación de texto para cualquier tipo de error
-          if (apiError
-              .toString()
-              .toLowerCase()
-              .contains('horario no disponible')) {
-            isHorarioNoDisponible = true;
-          }
-        }
-
-        // Mostrar el diálogo si es un error de horario no disponible
-        if (isHorarioNoDisponible) {
-          print('ERROR DETECTADO: Horario no disponible - Mostrando diálogo');
-          _showScheduleUnavailable();
-          return;
-        }
-
-        // Si no es un error de horario ni de suscripción, propagarlo
-        throw apiError;
-      }
     } catch (e) {
-      print('=== ERROR EN CONTROLLER ===');
-      print('Error final: $e');
+      // Validaciones locales de arriba (servicios o profesional sin elegir).
       error.value = e.toString();
-
-      // Verificar una última vez si contiene mensajes específicos
-      final errorMessage = e.toString().toLowerCase();
-
-      // Analizar el tipo de error de suscripción
-      bool isTrialEnded = false;
-      bool isSubscriptionInactive = false;
-
-      if (errorMessage.contains('límite de citas') ||
-          errorMessage.contains('plan de prueba') ||
-          errorMessage.contains('trial')) {
-        isTrialEnded = true;
-        // Extraer el mensaje limpio para el diálogo
-        final message = e.toString();
-        final cleanMessage =
-            message.contains(':') ? message.split(':').last.trim() : message;
-        subscriptionMessage.value =
-            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
-      } else if (errorMessage.contains('suscripción no está activa') ||
-          errorMessage.contains('actualiza tu plan')) {
-        isSubscriptionInactive = true;
-        // Extraer el mensaje limpio para el diálogo
-        final message = e.toString();
-        final cleanMessage =
-            message.contains(':') ? message.split(':').last.trim() : message;
-        subscriptionMessage.value =
-            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
-      }
-
-      // Mostrar el diálogo correspondiente
-      if (isTrialEnded) {
-        print('ERROR DETECTADO: Fin de plan de prueba - Mostrando diálogo');
-        _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
-        return;
-      } else if (isSubscriptionInactive) {
-        print('ERROR DETECTADO: Suscripción inactiva - Mostrando diálogo');
-        _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
-        return;
-      }
-
-      if (errorMessage.contains('horario no disponible')) {
-        _showScheduleUnavailable();
-      } else {
-        // Mostrar error genérico
-        AppSnackbar.error('No se pudo crear la cita: ${_formatErrorMessage(e)}');
-      }
+      AppSnackbar.error('No se pudo crear la cita: ${_formatErrorMessage(e)}');
     } finally {
       isLoading.value = false;
     }
@@ -1078,8 +848,9 @@ class AppointmentsController extends GetxController {
   }
 
 
-  /// `true` si se actualizó; `false` si la suscripción lo bloqueó (ya se
-  /// mostró el diálogo). Ante otro error informa al usuario y relanza.
+  /// Edita la cita enviando solo lo que cambió (no consulta el cupo del
+  /// plan: editar no consume citas). `true` si se guardó (o no había
+  /// cambios); `false` si falló, después de avisar al usuario.
   Future<bool> updateAppointment({
     required String appointmentId,
     required String professionalId,
@@ -1087,123 +858,47 @@ class AppointmentsController extends GetxController {
     required DateTime startTime,
     String? notes,
     String? clientId,
-    String? totalPrice, // Mantenerlo como parámetro para recibirlo
   }) async {
-    try {
-      // Verificar estado de suscripción primero
-      final canContinue = await checkSubscriptionStatus();
-      if (!canContinue) {
-        showSubscriptionDialog();
+    final original =
+        appointments.firstWhereOrNull((a) => a.id == appointmentId);
+    if (original == null) {
+      AppSnackbar.error('No se encontró la cita en la agenda cargada');
+      return false;
+    }
+    isLoading.value = true;
+    error.value = null;
+    final result = await updateAppointmentUseCase(UpdateAppointmentParams(
+      original: original,
+      changes: AppointmentChanges.between(
+        original,
+        clientId: clientId,
+        professionalId: professionalId,
+        serviceIds: serviceIds,
+        start: startTime,
+        notes: notes,
+      ),
+    ));
+    isLoading.value = false;
+    return result.fold<Future<bool>>(
+      (failure) async {
+        _showSaveFailure(failure, 'actualizar');
         return false;
-      }
-
-      isLoading.value = true;
-      error.value = null;
-
-      // DIAGNÓSTICO: Mostrar todos los datos recibidos
-      print('\n🔍 ===== INICIO ACTUALIZACIÓN CITA =====');
-      print('📝 DATOS RECIBIDOS:');
-      print('ID: $appointmentId');
-      print('Profesional: $professionalId');
-      print('Servicios: $serviceIds');
-      print('Hora: $startTime');
-      print('Notas: $notes');
-      print('Cliente ID: $clientId');
-      print('Precio Total: $totalPrice'); // Solo para debug
-
-      // Buscar cita actual para comparación
-      final currentAppointment =
-          appointments.firstWhereOrNull((a) => a.id == appointmentId);
-      if (currentAppointment == null) {
-        throw Exception(
-            'No se pudo encontrar la cita ID: $appointmentId en la lista cargada');
-      }
-
-      // Construir payload para la API - Asegurarse que todos los campos necesarios estén incluidos
-      final Map<String, dynamic> updateData = {
-        'professional_id': professionalId,
-        'service_ids': serviceIds,
-        'date': DateCodec.encode(startTime),
-        'notes': notes ?? '',
-      };
-
-      // Añadir client_id solo si fue proporcionado
-      if (clientId != null && clientId.isNotEmpty) {
-        updateData['client_id'] = clientId;
-      }
-
-      // NO añadir total_price porque el backend no lo acepta
-
-      print('\n📦 PAYLOAD A ENVIAR:');
-      print(json.encode(updateData));
-
-      // Hacer la llamada a la API
-      final result =
-          await Get.find<AppointmentsRepository>().updateAppointmentDirect(
-        appointmentId: appointmentId,
-        data: updateData,
-      );
-
-      print('\n✅ RESPUESTA RECIBIDA:');
-      print('Éxito: ${result != null}');
-      if (result != null) {
-        print('Cliente actualizado: ${result.clientName}');
-        print('Profesional actualizado: ${result.professionalId}');
-        print('Servicios actualizados: ${result.serviceTypes}');
-        print('Hora actualizada: ${result.startTime}');
-      }
-
-      // Limpiar estado
-      selectedServiceIds.clear();
-      this.totalPrice.value = 0;
-
-      // Invalidar caché para la fecha afectada
-      _invalidateCacheForDate(startTime);
-
-      // Recargar citas
-      await _reloadAppointmentsForDay(startTime);
-
-      AppSnackbar.success('Cita actualizada correctamente');
-
-      update(['calendar-view']);
-      return true;
-    } catch (e) {
-      print('\n❌ ERROR GENERAL:');
-      print('Tipo: ${e.runtimeType}');
-      print('Mensaje: $e');
-
-      error.value = e.toString();
-
-      if (e.toString().toLowerCase().contains('horario no disponible')) {
-        _showScheduleUnavailable();
-      } else {
-        AppSnackbar.error('No se pudo actualizar la cita: ${_formatErrorMessage(e)}');
-      }
-      throw e;
-    } finally {
-      print('\n🏁 ===== FIN ACTUALIZACIÓN CITA =====\n');
-      isLoading.value = false;
-    }
+      },
+      (_) async {
+        selectedServiceIds.clear();
+        totalPrice.value = 0;
+        _invalidateCacheForDate(original.startTime);
+        _invalidateCacheForDate(startTime);
+        await _reloadAppointmentsForDay(startTime);
+        AppSnackbar.success('Cita actualizada correctamente');
+        update(['calendar-view']);
+        return true;
+      },
+    );
   }
 
-  // Método para encontrar ID de cliente por nombre
-  String _findClientIdByName(String clientName) {
-    final clientMatch = clients.firstWhereOrNull((c) =>
-        '${c.name} ${c.lastname}'.trim() == clientName.trim());
-
-    if (clientMatch != null) {
-      print('📍 Cliente encontrado por nombre: ${clientMatch.id}');
-      return clientMatch.id ?? '';
-    }
-
-    print('⚠️ No se encontró cliente con nombre: "$clientName"');
-    return '';
-  }
-
-  CalendarDataSource getCalendarDataSource() {
-    print('Creando calendar data source con ${appointments.length} citas');
-    return AppointmentDataSource(appointments);
-  }
+  CalendarDataSource getCalendarDataSource() =>
+      AppointmentCalendarDataSource(appointments);
 
   void onDaySelected(DateTime date) {
     selectedDate.value = date;

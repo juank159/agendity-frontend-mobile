@@ -147,7 +147,7 @@ class AppointmentsController extends GetxController {
   /// sustituye, la añade si cae en el rango visible o la quita si salió.
   void applyChange(AppointmentEntity changed) {
     final index = appointments.indexWhere((a) => a.id == changed.id);
-    final visible = _range?.contains(changed.startTime) ?? false;
+    final visible = _range?.contains(changed.startInstant) ?? false;
     if (index >= 0 && visible) {
       appointments[index] = changed;
     } else if (index >= 0) {
@@ -155,13 +155,13 @@ class AppointmentsController extends GetxController {
     } else if (visible) {
       appointments.add(changed);
     }
-    appointments.sort((a, b) => a.startTime.compareTo(b.startTime));
+    appointments.sort((a, b) => a.startInstant.compareTo(b.startInstant));
   }
 
   /// Tras crear una cita: se muestra su día.
   void focusOn(AppointmentEntity created) {
     if (currentView.value == CalendarView.day &&
-        (_range?.contains(created.startTime) ?? false)) {
+        (_range?.contains(created.startInstant) ?? false)) {
       applyChange(created);
       return;
     }

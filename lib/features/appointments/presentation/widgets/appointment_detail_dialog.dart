@@ -14,6 +14,16 @@ import 'package:login_signup/features/payments/presentation/widgets/payment_dial
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
+/// Nota "Agendada en hora de Bogota: 10:00 a. m." si la cita se guardó en
+/// otra zona que la actual del negocio (6.03); `null` si no. Las horas del
+/// detalle ya están en la zona actual del negocio.
+String? recordedZoneNote(AppointmentEntity a) {
+  final zone = a.timeZone;
+  if (zone == null || !a.isInOtherTimeZone) return null;
+  return 'Agendada en hora de ${formatZoneCity(zone)}: '
+      '${formatTime(a.recordStartTime)}';
+}
+
 /// Detalle de una cita con sus acciones según el estado y el rol:
 /// pagar el saldo y editar (Owner), completar y cancelar (los dos; el
 /// Employee solo ve sus citas). Lo que cambia se refleja en la agenda.
@@ -147,6 +157,15 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                           '${formatTimeRange(a.startTime, a.endTime)} · '
                           '${formatDurationMinutes(a.duration.inMinutes)}',
                     ),
+                    if (recordedZoneNote(a) case final note?)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 40, bottom: 4),
+                        child: Text(
+                          note,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
                     if (!AppointmentAccess.professionalIsFixed())
                       _InfoRow(
                         icon: Icons.person_outline,

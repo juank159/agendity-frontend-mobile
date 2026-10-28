@@ -45,8 +45,8 @@ class AppointmentsRemoteDataSourceImpl implements AppointmentsRemoteDataSource {
   /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
   AppointmentsRemoteDataSourceImpl(this._dio);
 
-  /// El rango se envía aunque hoy `GET /appointments` lo ignora (devuelve
-  /// todas las del alcance): el repositorio filtra igualmente.
+  /// El backend filtra por `startDate`/`endDate` (desde la 2.34); el
+  /// repositorio vuelve a filtrar por instante como red de seguridad.
   @override
   Future<List<AppointmentModel>> getAppointments(
       AppointmentsRange range) async {

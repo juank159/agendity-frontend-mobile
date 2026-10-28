@@ -60,8 +60,8 @@ class NotificationService {
     required DateTime scheduledTime,
     String? payload,
   }) async {
-    // [scheduledTime] es una hora de pared del negocio (D-15): se programa en
-    // su instante real, no en la hora del dispositivo.
+    // [scheduledTime] es un instante UTC o una hora de pared del negocio
+    // (D-15): se programa en su instante real, no en la hora del dispositivo.
     final instant = BusinessTimeZone.toInstant(scheduledTime);
     if (instant.isBefore(BusinessTimeZone.clock())) {
       AppLogger.debug(

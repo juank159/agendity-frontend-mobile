@@ -5,8 +5,8 @@ abstract interface class StatsQuery {
 
 /// Rango de días del negocio que piden las estadísticas, con los dos extremos
 /// incluidos: el backend toma [start] desde las 00:00 y [end] hasta las
-/// 23:59:59.999 de `BUSINESS_TIMEZONE`. Solo cuenta el día de calendario de
-/// cada `DateTime` (la hora se ignora).
+/// 23:59:59.999 en la zona horaria del negocio (D-15). Solo cuenta el día de
+/// calendario de cada `DateTime` (la hora se ignora).
 class StatsRange implements StatsQuery {
   final DateTime start;
   final DateTime end;

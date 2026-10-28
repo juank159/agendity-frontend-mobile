@@ -28,11 +28,11 @@ class AppointmentEntity {
   /// Servicios en el orden de la cita, con el precio guardado en ella.
   final List<AppointmentServiceLine> services;
 
-  /// Hora de pared de la cita en su zona ([timeZone]; D-15).
-  final DateTime startTime;
-
-  /// Inicio + la suma de las duraciones de [services] (como el backend).
-  final DateTime endTime;
+  /// Inicio y fin como se guardaron: hora de pared en la zona propia de la
+  /// cita ([timeZone]; sin zona, la del negocio). La UI usa [startTime] y
+  /// [endTime], que están en la zona ACTUAL del negocio.
+  final DateTime _recordStart;
+  final DateTime _recordEnd;
 
   final AppointmentStatus status;
   final AppointmentPaymentStatus paymentStatus;
@@ -60,8 +60,8 @@ class AppointmentEntity {
     required this.professionalId,
     this.professionalName,
     required this.services,
-    required this.startTime,
-    required this.endTime,
+    required DateTime startTime,
+    required DateTime endTime,
     this.status = AppointmentStatus.PENDING,
     this.paymentStatus = AppointmentPaymentStatus.PENDING,
     required this.totalPrice,
@@ -71,15 +71,40 @@ class AppointmentEntity {
     this.reminderSentAt,
     this.createdAt,
     this.timeZone,
-  });
+  })  : _recordStart = startTime,
+        _recordEnd = endTime;
 
   /// Instante (UTC) del inicio, para comparar citas de zonas distintas.
-  DateTime get startInstant => BusinessTimeZone.toInstant(startTime, timeZone);
+  DateTime get startInstant =>
+      BusinessTimeZone.toInstant(_recordStart, timeZone);
+
+  /// La cita se guardó en otra zona que la ACTUAL del negocio (el negocio
+  /// cambió de zona después, 6.03). Una zona desconocida cuenta como la del
+  /// negocio, igual que en [startInstant].
+  bool get isInOtherTimeZone {
+    final own = BusinessTimeZone.canonicalName(timeZone);
+    return own != null && own != BusinessTimeZone.current;
+  }
+
+  /// Inicio en la zona ACTUAL del negocio (decisión de 6.05: la agenda es el
+  /// calendario del negocio, así que toda cita se pinta según su instante en
+  /// la zona de hoy del negocio, igual que las horas libres).
+  DateTime get startTime => isInOtherTimeZone
+      ? BusinessTimeZone.toWallClock(startInstant)
+      : _recordStart;
+
+  /// Fin en la zona ACTUAL del negocio: inicio + la suma de las duraciones
+  /// de [services] (como el backend).
+  DateTime get endTime => startTime.add(duration);
+
+  /// Inicio con la hora de pared de su propia zona ([timeZone]): "Agendada
+  /// en hora de Bogotá: 10:00".
+  DateTime get recordStartTime => _recordStart;
 
   String get clientName => client.fullName;
   List<String> get serviceIds => [for (final s in services) s.serviceId];
   List<String> get serviceNames => [for (final s in services) s.name];
-  Duration get duration => endTime.difference(startTime);
+  Duration get duration => _recordEnd.difference(_recordStart);
 
   bool get isPending => status == AppointmentStatus.PENDING;
   bool get isConfirmed => status == AppointmentStatus.CONFIRMED;
@@ -123,6 +148,8 @@ class AppointmentEntity {
       !reminderSent &&
       startInstant.isAfter(BusinessTimeZone.toInstant(now));
 
+  /// [startTime]/[endTime] son horas de pared en la zona de la cita
+  /// ([timeZone]), como en el constructor.
   AppointmentEntity copyWith({
     String? id,
     AppointmentClient? client,
@@ -147,8 +174,8 @@ class AppointmentEntity {
         professionalId: professionalId ?? this.professionalId,
         professionalName: professionalName ?? this.professionalName,
         services: services ?? this.services,
-        startTime: startTime ?? this.startTime,
-        endTime: endTime ?? this.endTime,
+        startTime: startTime ?? _recordStart,
+        endTime: endTime ?? _recordEnd,
         status: status ?? this.status,
         paymentStatus: paymentStatus ?? this.paymentStatus,
         totalPrice: totalPrice ?? this.totalPrice,
@@ -169,8 +196,8 @@ class AppointmentEntity {
           other.professionalId == professionalId &&
           other.professionalName == professionalName &&
           DeepEquality.lists(other.services, services) &&
-          other.startTime == startTime &&
-          other.endTime == endTime &&
+          other._recordStart == _recordStart &&
+          other._recordEnd == _recordEnd &&
           other.status == status &&
           other.paymentStatus == paymentStatus &&
           other.totalPrice == totalPrice &&
@@ -188,8 +215,8 @@ class AppointmentEntity {
         professionalId,
         professionalName,
         Object.hashAll(services),
-        startTime,
-        endTime,
+        _recordStart,
+        _recordEnd,
         status,
         paymentStatus,
         totalPrice,

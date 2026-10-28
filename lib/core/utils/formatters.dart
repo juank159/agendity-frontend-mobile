@@ -78,6 +78,10 @@ String formatUtcOffset(Duration offset) {
   return 'UTC$sign$hours:$rest';
 }
 
+/// Ciudad de una zona IANA: `America/Bogota` → `Bogota`,
+/// `America/New_York` → `New York`.
+String formatZoneCity(String zone) => zone.split('/').last.replaceAll('_', ' ');
+
 num _toNum(Object? value) {
   if (value is num) return value.isFinite ? value : 0;
   if (value is String) return num.tryParse(value.trim()) ?? 0;

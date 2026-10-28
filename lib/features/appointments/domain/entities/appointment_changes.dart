@@ -63,10 +63,10 @@ class AppointmentChanges {
     );
   }
 
-  /// La hora del formulario es la de la cita: la misma hora de pared (aunque
-  /// la cita tenga otra zona, 6.03) o el mismo instante.
+  /// La hora del formulario (de pared, en la zona actual del negocio, como
+  /// `AppointmentEntity.startTime`) es el mismo instante que el de la cita,
+  /// aunque esta se guardara en otra zona (6.03).
   static bool _sameStart(DateTime start, AppointmentEntity original) =>
-      start == original.startTime ||
       BusinessTimeZone.toInstant(start)
           .isAtSameMomentAs(original.startInstant);
 

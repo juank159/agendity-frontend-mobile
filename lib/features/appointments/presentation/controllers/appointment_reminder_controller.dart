@@ -122,7 +122,9 @@ class AppointmentReminderController extends GetxController {
       body: '${appointment.clientName}'
           '${services.isEmpty ? '' : ' · $services'}'
           ' a las ${formatTime(appointment.startTime)}',
-      scheduledTime: appointment.startTime.subtract(localNoticeLead),
+      // El instante (UTC), no la hora de pared: una cita guardada en otra
+      // zona (6.03) avisa a su hora real.
+      scheduledTime: appointment.startInstant.subtract(localNoticeLead),
       payload: appointment.id,
     );
   }

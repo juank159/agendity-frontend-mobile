@@ -92,9 +92,13 @@ void main() {
     final fromBogota = backendAppointment(
         date: '2026-11-03T10:00:00.000-05:00', timeZone: 'America/Bogota');
 
-    test('se presenta en su zona y guarda la zona en la entidad', () {
+    test('se presenta en la zona ACTUAL del negocio y guarda la suya', () {
       final appointment = read(fromBogota);
-      expect(appointment.startTime, DateTime(2026, 11, 3, 10));
+      // Decisión de 6.05: la agenda es el calendario del negocio.
+      expect(appointment.startTime, DateTime(2026, 11, 3, 11));
+      expect(appointment.endTime, DateTime(2026, 11, 3, 11, 45));
+      expect(appointment.recordStartTime, DateTime(2026, 11, 3, 10));
+      expect(appointment.isInOtherTimeZone, isTrue);
       expect(appointment.timeZone, 'America/Bogota');
       expect(appointment.startInstant, DateTime.utc(2026, 11, 3, 15));
       expect(appointment.createdAt, DateTime(2026, 10, 28, 8));

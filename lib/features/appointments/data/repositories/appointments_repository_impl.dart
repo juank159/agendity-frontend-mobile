@@ -17,8 +17,8 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
 
   AppointmentsRepositoryImpl(this._remote);
 
-  /// `GET /appointments` hoy ignora el rango y devuelve todas las citas del
-  /// alcance: se filtran aquí (inicio dentro de [range]) y se ordenan.
+  /// `GET /appointments` filtra por rango (2.34); aquí se vuelve a filtrar
+  /// por instante (inicio dentro de [range]) y se ordenan.
   @override
   Future<Either<Failure, List<AppointmentEntity>>> getAppointments(
           AppointmentsRange range) =>

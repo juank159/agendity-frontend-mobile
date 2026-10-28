@@ -1,3 +1,5 @@
+import 'package:login_signup/core/utils/deep_equality.dart';
+
 /// Estadísticas de un profesional (`GET /payments/employee-stats`): el
 /// Employee ve las suyas; el Owner, las del profesional que pida.
 class EmployeeStatsEntity {
@@ -22,8 +24,8 @@ class EmployeeStatsEntity {
       identical(this, other) ||
       other is EmployeeStatsEntity &&
           other.summary == summary &&
-          _listEquals(other.byService, byService) &&
-          _listEquals(other.dailyEvolution, dailyEvolution);
+          DeepEquality.lists(other.byService, byService) &&
+          DeepEquality.lists(other.dailyEvolution, dailyEvolution);
 
   @override
   int get hashCode => Object.hash(
@@ -117,13 +119,4 @@ class EmployeeDailyStats {
 
   @override
   int get hashCode => Object.hash(day, total, count);
-}
-
-bool _listEquals<T>(List<T> a, List<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }

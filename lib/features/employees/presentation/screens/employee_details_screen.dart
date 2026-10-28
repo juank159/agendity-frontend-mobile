@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/constants/app_colors.dart';
-import 'package:login_signup/features/employees/data/models/employee_model.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
@@ -25,8 +24,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
     // Añadir logs para depuración
     print('Mostrando detalles del empleado: ${employee.fullName}');
     print('ServiceIds: ${employee.serviceIds}');
-    print(
-        'ServiceAssignments: ${employee is EmployeeModel ? (employee as EmployeeModel).serviceAssignments : "No disponible"}');
+    print('ServiceAssignments: ${employee.serviceAssignments}');
     print('Schedule: ${employee.schedule}');
     print('Estado activo: ${employee.isActive}');
 
@@ -261,21 +259,12 @@ class EmployeeDetailsScreen extends StatelessWidget {
   Widget _buildServicesList(
       EmployeeEntity employee, ServicesController servicesController) {
     // Obtener las IDs de los servicios, preferiblemente desde serviceAssignments
-    List<String> serviceIds = [];
+    final serviceIds = employee.serviceIds;
     Map<String, double> commissions = {};
 
-    if (employee is EmployeeModel && employee.serviceAssignments != null) {
-      print('Usando serviceAssignments para los servicios');
-      serviceIds = employee.serviceAssignments!.keys.toList();
-
-      // Extraer comisiones
-      employee.serviceAssignments!.forEach((id, assignment) {
-        commissions[id] = assignment.commissionPercentage;
-      });
-    } else if (employee.serviceIds != null) {
-      print('Usando serviceIds para los servicios');
-      serviceIds = employee.serviceIds!;
-    }
+    employee.serviceAssignments.forEach((id, assignment) {
+      commissions[id] = assignment.commissionPercentage;
+    });
 
     // Si no hay IDs de servicio
     if (serviceIds.isEmpty) {
@@ -372,7 +361,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
   Widget _buildSchedule(EmployeeEntity employee) {
     print('Construyendo sección de horario con: ${employee.schedule}');
 
-    if (employee.schedule == null || employee.schedule!.isEmpty) {
+    if (employee.schedule.isEmpty) {
       return _buildSection(
         title: 'Horario',
         icon: Icons.schedule,
@@ -405,7 +394,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
       'sunday'
     ];
     final scheduleDays =
-        sortedDays.where((day) => employee.schedule!.containsKey(day)).toList();
+        sortedDays.where((day) => employee.schedule.containsKey(day)).toList();
 
     return _buildSection(
       title: 'Horario',
@@ -413,10 +402,8 @@ class EmployeeDetailsScreen extends StatelessWidget {
       children: [
         const SizedBox(height: 8),
         ...scheduleDays.map((day) {
-          final daySchedule = employee.schedule![day];
-          if (daySchedule == null ||
-              daySchedule['start'] == null ||
-              daySchedule['end'] == null) {
+          final daySchedule = employee.schedule[day];
+          if (daySchedule == null) {
             return const SizedBox.shrink();
           }
 
@@ -445,7 +432,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          daySchedule['start'] ?? '',
+                          daySchedule.start,
                           style: TextStyle(color: Colors.blue[700]),
                         ),
                       ),
@@ -461,7 +448,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          daySchedule['end'] ?? '',
+                          daySchedule.end,
                           style: TextStyle(color: Colors.blue[700]),
                         ),
                       ),

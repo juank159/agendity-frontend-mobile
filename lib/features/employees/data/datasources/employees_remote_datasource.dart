@@ -1,636 +1,130 @@
 import 'package:dio/dio.dart';
+import 'package:login_signup/core/network/interceptors/auth_interceptor.dart';
+import 'package:login_signup/core/utils/json_read.dart';
+import 'package:login_signup/features/employees/data/models/employee_input_model.dart';
 import 'package:login_signup/features/employees/data/models/employee_model.dart';
-import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
-import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/features/employees/data/models/employee_restoration_model.dart';
 
-class EmployeesRemoteDataSource {
-  final Dio dio;
-  final LocalStorage localStorage;
+/// Rutas de profesionales en `/auth` (todas solo para el Owner, salvo
+/// `verify/request-code`, que es pública). Los errores (400/401/403/404/409,
+/// red) salen como `DioException` y los traduce `safeCall` en el repositorio.
+abstract class EmployeesRemoteDataSource {
+  /// `GET /auth/employees`: el Owner y sus empleados sin baja.
+  Future<List<EmployeeModel>> getEmployees();
 
-  // Endpoints separados para plural y singular
-  static const String endpointPlural = '/auth/employees';
-  static const String endpointSingular = '/auth/employee';
-  static const String endpointRegister = '/auth/register/employee';
+  /// `GET /auth/employees/deleted`.
+  Future<List<EmployeeModel>> getDeletedEmployees();
 
-  EmployeesRemoteDataSource({
-    required this.dio,
-    required this.localStorage,
-  });
+  /// `GET /auth/employee/:id`.
+  Future<EmployeeModel> getEmployeeById(String id);
 
-  Future<List<EmployeeModel>> getEmployees(
-      {bool includeDeleted = false}) async {
-    try {
-      final token = await localStorage.getToken();
+  /// `POST /auth/register/employee`. Responde 201 `{user}` (sin token).
+  Future<EmployeeModel> createEmployee(EmployeeInputModel body);
 
-      // Construir URL con parámetros
-      String url = endpointPlural;
-      if (includeDeleted) {
-        url += '?includeDeleted=true';
-      }
+  /// `PATCH /auth/employee/:id`. Responde 200 con el profesional.
+  Future<EmployeeModel> updateEmployee(String id, EmployeeInputModel body);
 
-      print('Obteniendo empleados desde: $url');
+  /// `PATCH /auth/employee/:id/status` con `{isActive}`.
+  Future<void> setEmployeeActive(String id, bool isActive);
 
-      final response = await dio.get(
-        url,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+  /// `DELETE /auth/employee/:id` con `{reason?}` (soft-delete).
+  Future<void> deleteEmployee(String id, {String? reason});
 
-      if (response.statusCode == 200) {
-        final employeesList = (response.data as List)
-            .map((json) => EmployeeModel.fromJson(json))
-            .toList();
+  /// `PATCH /auth/employee/:id/restore`.
+  Future<EmployeeRestorationModel> restoreEmployee(String id);
 
-        // Log para depuración
-        print('📊 Empleados obtenidos: ${employeesList.length}');
-        for (var emp in employeesList) {
-          print(
-              '👤 ${emp.name} ${emp.lastname} - Activo: ${emp.isActive}, Eliminado: ${emp.isDeleted}');
-          if (emp.schedule != null) {
-            print('   Horario: ${emp.schedule}');
-          }
-        }
+  /// `POST /auth/verify/request-code` con `{email}` (pública).
+  Future<void> requestVerificationCode(String email);
 
-        return employeesList;
-      }
-      throw const ServerFailure(message: 'Failed to load employees');
-    } catch (e) {
-      print('Error al cargar empleados: $e');
+  /// `POST /auth/verify/employee-email` con `{employee_id, code}`. Un código
+  /// incorrecto responde 401: la petición se marca para no cerrar la sesión.
+  Future<void> verifyEmployeeEmail(String employeeId, String code);
+}
 
-      if (e is DioException) {
-        if (e.response != null) {
-          throw ServerFailure(
-              message: 'Error del servidor: ${e.response!.statusCode}');
-        }
-        throw NetworkFailure(
-            message: 'Error de conexión a internet: ${e.message}');
-      }
+class EmployeesRemoteDataSourceImpl implements EmployeesRemoteDataSource {
+  static const _employees = '/auth/employees';
+  static const _employee = '/auth/employee';
 
-      if (e is Failure) {
-        rethrow;
-      }
+  final Dio _dio;
 
-      throw ServerFailure(
-          message: 'Error al cargar empleados: ${e.toString()}');
-    }
-  }
+  /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
+  EmployeesRemoteDataSourceImpl(this._dio);
 
+  @override
+  Future<List<EmployeeModel>> getEmployees() => _list(_employees);
+
+  @override
+  Future<List<EmployeeModel>> getDeletedEmployees() =>
+      _list('$_employees/deleted');
+
+  @override
   Future<EmployeeModel> getEmployeeById(String id) async {
-    try {
-      final token = await localStorage.getToken();
-      final url = '$endpointSingular/$id';
-      print('Obteniendo empleado desde: $url');
-
-      final response = await dio.get(
-        url,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        print('Empleado obtenido con éxito: ${response.data}');
-        final employee = EmployeeModel.fromJson(response.data);
-        print('Horario del empleado obtenido: ${employee.schedule}');
-        return employee;
-      }
-      throw const ServerFailure(message: 'Employee not found');
-    } catch (e) {
-      print('Error al obtener empleado con ID $id: $e');
-
-      if (e is DioException) {
-        if (e.response != null) {
-          if (e.response!.statusCode == 404) {
-            throw const ServerFailure(message: 'Empleado no encontrado');
-          }
-          throw ServerFailure(
-              message: 'Error del servidor: ${e.response!.statusCode}');
-        }
-        throw NetworkFailure(
-            message: 'Error de conexión a internet: ${e.message}');
-      }
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al obtener empleado: ${e.toString()}');
-    }
+    final response = await _dio.get<Map<String, dynamic>>('$_employee/$id');
+    return EmployeeModel.fromJson(response.data!);
   }
 
-  Future<List<EmployeeModel>> getActiveEmployees() async {
-    try {
-      final token = await localStorage.getToken();
-      const url = '$endpointPlural/active';
-
-      print('📋 Obteniendo empleados activos desde: $url');
-
-      final response = await dio.get(
-        url,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        final employeesList = (response.data as List)
-            .map((json) => EmployeeModel.fromJson(json))
-            .toList();
-
-        print('✅ Empleados activos obtenidos: ${employeesList.length}');
-        return employeesList;
-      }
-
-      throw const ServerFailure(message: 'Error al cargar empleados activos');
-    } catch (e) {
-      print('❌ Error cargando empleados activos: $e');
-
-      if (e is DioException) {
-        if (e.response != null) {
-          throw ServerFailure(
-              message: 'Error del servidor: ${e.response!.statusCode}');
-        }
-        throw NetworkFailure(message: 'Error de conexión: ${e.message}');
-      }
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw const ServerFailure(message: 'Error al cargar empleados activos');
-    }
+  @override
+  Future<EmployeeModel> createEmployee(EmployeeInputModel body) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/register/employee',
+      data: body.toCreateJson(),
+    );
+    final data = response.data!;
+    return EmployeeModel.fromJson(JsonRead.asMap(data['user']) ?? data);
   }
 
-  Future<EmployeeModel> createEmployee(
-      EmployeeEntity employee, String password) async {
-    try {
-      final token = await localStorage.getToken();
-
-      // Preparar datos para la petición
-      final Map<String, dynamic> data =
-          (employee as EmployeeModel).toCreateJson(password: password);
-
-      print('Enviando horario: ${data['schedule']}');
-
-      final response = await dio.post(
-        endpointRegister,
-        data: data,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        print('Respuesta del servidor: ${response.data}');
-        if (response.data['user'] != null) {
-          return EmployeeModel.fromJson(response.data['user']);
-        }
-        return EmployeeModel.fromJson(response.data);
-      }
-
-      throw 'Error al crear profesional';
-    } on DioException catch (e) {
-      print('DioException: ${e.toString()}');
-      print('Response: ${e.response?.statusCode} - ${e.response?.data}');
-
-      // SOLUCIÓN DIRECTA: Usar el mensaje exacto del servidor para errores 409
-      if (e.response != null && e.response!.statusCode == 409) {
-        if (e.response!.data is Map) {
-          Map<String, dynamic> errorData =
-              e.response!.data as Map<String, dynamic>;
-          if (errorData.containsKey('message')) {
-            throw errorData[
-                'message']; // Lanzar directamente el mensaje del servidor
-          }
-        }
-      }
-
-      throw 'Error de conexión con el servidor'; // Mensaje genérico para otros errores
-    } catch (e) {
-      print('Otro tipo de error: ${e.toString()}');
-
-      // Simplemente propagar cualquier error
-      rethrow;
-    }
+  @override
+  Future<EmployeeModel> updateEmployee(
+      String id, EmployeeInputModel body) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '$_employee/$id',
+      data: body.toUpdateJson(),
+    );
+    return EmployeeModel.fromJson(response.data!);
   }
 
-  Future<List<EmployeeModel>> getDeletedEmployees() async {
-    try {
-      final token = await localStorage.getToken();
-      const url = '$endpointPlural/deleted';
-
-      print('🗑️ Obteniendo empleados eliminados desde: $url');
-
-      final response = await dio.get(
-        url,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        final employeesList = (response.data as List)
-            .map((json) => EmployeeModel.fromJson(json))
-            .toList();
-
-        print('✅ Empleados eliminados obtenidos: ${employeesList.length}');
-        return employeesList;
-      }
-
-      throw const ServerFailure(message: 'Error al cargar empleados eliminados');
-    } catch (e) {
-      print('❌ Error cargando empleados eliminados: $e');
-
-      if (e is DioException) {
-        if (e.response != null) {
-          throw ServerFailure(
-              message: 'Error del servidor: ${e.response!.statusCode}');
-        }
-        throw NetworkFailure(message: 'Error de conexión: ${e.message}');
-      }
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw const ServerFailure(message: 'Error al cargar empleados eliminados');
-    }
+  @override
+  Future<void> setEmployeeActive(String id, bool isActive) async {
+    await _dio.patch<void>('$_employee/$id/status',
+        data: {'isActive': isActive});
   }
 
-  Future<EmployeeModel> updateEmployee(String id, EmployeeEntity employee,
-      {String? password,
-      Map<String, ServiceAssignment>? serviceAssignments}) async {
-    try {
-      final token = await localStorage.getToken();
-      final url = '$endpointSingular/$id';
-
-      // Datos básicos
-      final Map<String, dynamic> data = {
-        'name': employee.name,
-        'lastname': employee.lastname,
-        'email': employee.email,
-        'phone': employee.phone,
-      };
-
-      // Añadir horario si existe
-      if (employee.schedule != null && employee.schedule!.isNotEmpty) {
-        data['schedule'] = employee.schedule;
-      }
-
-      // Añadir contraseña si se proporciona
-      if (password != null && password.isNotEmpty) {
-        data['password'] = password;
-      }
-
-      // AÑADIR SERVICIOS
-      if (serviceAssignments != null && serviceAssignments.isNotEmpty) {
-        print('⭐ PROCESANDO SERVICIOS: ${serviceAssignments.length} servicios');
-
-        // Crear array de servicios
-        List<Map<String, dynamic>> servicesArray = [];
-
-        // Añadir cada servicio al array
-        serviceAssignments.forEach((serviceId, assignment) {
-          Map<String, dynamic> serviceData = {
-            'serviceId': serviceId,
-            'commissionPercentage': assignment.commissionPercentage,
-            'isActive': true
-          };
-
-          if (assignment.customPrice != null) {
-            serviceData['customPrice'] = assignment.customPrice;
-          }
-
-          servicesArray.add(serviceData);
-          print(
-              '⭐ Añadido servicio: $serviceId con comisión: ${assignment.commissionPercentage}');
-        });
-
-        // Añadir array de servicios a los datos de la petición
-        data['services'] = servicesArray;
-
-        print('⭐ SERVICIOS AÑADIDOS A LA PETICIÓN: ${servicesArray.length}');
-        print('⭐ Datos de servicios: $servicesArray');
-      } else {
-        print('⚠️ NO HAY SERVICIOS PARA AÑADIR A LA PETICIÓN');
-      }
-
-
-      // Hacer la petición HTTP
-      final response = await dio.patch(
-        url,
-        data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      // Verificar respuesta
-      if (response.statusCode == 200) {
-        print('✅ ÉXITO: Empleado actualizado correctamente');
-        print('✅ RESPUESTA SERVIDOR: ${response.data}');
-
-        // Parsear respuesta
-        if (response.data['user'] != null) {
-          return EmployeeModel.fromJson(response.data['user']);
-        }
-        return EmployeeModel.fromJson(response.data);
-      }
-
-      throw ServerFailure(
-          message: 'Failed to update employee: ${response.statusCode}');
-    } catch (e) {
-      print('❌ ERROR ACTUALIZACIÓN: $e');
-
-      // Manejar errores específicos (similar al método createEmployee)
-      if (e is DioException) {
-        if (e.response != null) {
-          final statusCode = e.response!.statusCode;
-
-          if (statusCode == 409) {
-            if (e.response!.data is Map<String, dynamic> &&
-                e.response!.data['message'] != null) {
-              final String errorMessage = e.response!.data['message'];
-
-              if (errorMessage.contains('email')) {
-                final RegExp emailRegex = RegExp(r'email: ([^\s,]+)');
-                final match = emailRegex.firstMatch(errorMessage);
-                final String email = match?.group(1) ?? employee.email;
-
-                return Future.error(
-                    DuplicateEmailFailure(email: email, message: errorMessage));
-              } else if (errorMessage.contains('teléfono')) {
-                final RegExp phoneRegex = RegExp(r'teléfono: (\d+)');
-                final match = phoneRegex.firstMatch(errorMessage);
-                final String phone = match?.group(1) ?? employee.phone;
-
-                return Future.error(
-                    DuplicatePhoneFailure(phone: phone, message: errorMessage));
-              }
-
-              return Future.error(ServerFailure(message: errorMessage));
-            }
-          }
-
-          return Future.error(
-              ServerFailure(message: 'Error del servidor: $statusCode'));
-        }
-
-        return Future.error(
-            NetworkFailure(message: 'Error de conexión: ${e.message}'));
-      }
-
-      if (e is Failure) {
-        return Future.error(e);
-      }
-
-      return Future.error(ServerFailure(
-          message: 'Error al actualizar empleado: ${e.toString()}'));
-    }
+  @override
+  Future<void> deleteEmployee(String id, {String? reason}) async {
+    await _dio.delete<void>('$_employee/$id',
+        data: reason == null ? null : {'reason': reason});
   }
 
-  Future<EmployeeModel> toggleEmployeeStatus(String id, bool isActive) async {
-    try {
-      final token = await localStorage.getToken();
-      final url = '$endpointSingular/$id/status';
-
-      print('Actualizando estado del empleado en: $url');
-      print('Nuevo estado: $isActive');
-
-      final response = await dio.patch(
-        url,
-        data: {'isActive': isActive},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        print('Estado del empleado actualizado con éxito');
-        // Verificar la estructura de la respuesta
-        if (response.data['user'] != null) {
-          return EmployeeModel.fromJson(response.data['user']);
-        }
-        return EmployeeModel.fromJson(response.data);
-      }
-
-      throw ServerFailure(
-          message: 'Failed to update employee status: ${response.statusCode}');
-    } catch (e) {
-      print('Error al actualizar estado del empleado con ID $id: $e');
-
-      if (e is DioException) {
-        if (e.response != null) {
-          throw ServerFailure(
-              message: 'Error del servidor: ${e.response!.statusCode}');
-        }
-        throw NetworkFailure(
-            message: 'Error de conexión a internet: ${e.message}');
-      }
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al actualizar estado del empleado: ${e.toString()}');
-    }
+  @override
+  Future<EmployeeRestorationModel> restoreEmployee(String id) async {
+    final response =
+        await _dio.patch<Map<String, dynamic>>('$_employee/$id/restore');
+    return EmployeeRestorationModel.fromJson(response.data ?? const {},
+        fallbackId: id);
   }
 
-  Future<bool> verifyEmployeeEmail(String employeeId, String code) async {
-    try {
-      final token = await localStorage.getToken();
-
-      final response = await dio.post(
-        '/auth/verify/employee-email',
-        data: {
-          'employee_id': employeeId,
-          'code': code,
-        },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      print('Error al verificar email de empleado: $e');
-
-      if (e is DioException) {
-        if (e.response != null) {
-          if (e.response!.statusCode == 400) {
-            throw const ServerFailure(message: 'Código de verificación inválido');
-          }
-          throw ServerFailure(
-              message: 'Error del servidor: ${e.response!.statusCode}');
-        }
-        throw NetworkFailure(
-            message: 'Error de conexión a internet: ${e.message}');
-      }
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al verificar email de empleado: ${e.toString()}');
-    }
+  @override
+  Future<void> requestVerificationCode(String email) async {
+    await _dio.post<void>(
+      '/auth/verify/request-code',
+      data: {'email': email},
+      options: Options(extra: {AuthInterceptor.publicKey: true}),
+    );
   }
 
-  Future<bool> deleteEmployee(String id, {String? reason}) async {
-    try {
-      final token = await localStorage.getToken();
-      final url = '$endpointSingular/$id';
-
-      print('🚀 Eliminando empleado en: $url');
-      if (reason != null && reason.isNotEmpty) {
-        print('📝 Razón: $reason');
-      }
-
-      // Preparar datos para enviar razón si existe
-      final Map<String, dynamic>? data =
-          reason != null && reason.isNotEmpty ? {'reason': reason} : null;
-
-      final response = await dio.delete(
-        url,
-        data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        print('✅ Empleado eliminado con éxito (soft delete)');
-        return true;
-      }
-
-      throw const ServerFailure(message: 'Error al eliminar empleado');
-    } on DioException catch (e) {
-      print('❌ DioException capturado');
-      print('📊 Status Code: ${e.response?.statusCode}');
-      print('📋 Response Data: ${e.response?.data}');
-
-      if (e.response != null && e.response!.statusCode == 403) {
-        final responseData = e.response!.data;
-
-        String serverMessage = 'No se puede eliminar al dueño del negocio';
-        if (responseData is Map<String, dynamic> &&
-            responseData['message'] != null) {
-          serverMessage = responseData['message'].toString();
-        }
-
-        print('🚫 Error 403 detectado - Mensaje: $serverMessage');
-        throw OwnerDeletionFailure(message: serverMessage);
-      }
-
-      if (e.response != null && e.response!.statusCode == 409) {
-        final responseData = e.response!.data;
-        String message = 'El empleado ya ha sido eliminado previamente';
-        if (responseData is Map<String, dynamic> &&
-            responseData['message'] != null) {
-          message = responseData['message'].toString();
-        }
-        print('🔄 Error 409 - Empleado ya eliminado');
-        throw AlreadyDeletedFailure(employeeId: id, message: message);
-      }
-
-      if (e.response != null && e.response!.statusCode == 404) {
-        print('🔍 Error 404 - Empleado no encontrado');
-        throw const NotFoundFailure(message: 'Empleado no encontrado');
-      }
-
-      if (e.response != null) {
-        final responseData = e.response!.data;
-        String errorMessage = 'Error del servidor';
-        if (responseData is Map<String, dynamic> &&
-            responseData['message'] != null) {
-          errorMessage = responseData['message'].toString();
-        }
-        throw ServerFailure(message: errorMessage);
-      }
-
-      throw const NetworkFailure(message: 'Sin conexión a internet');
-    } catch (e) {
-      if (e is OwnerDeletionFailure ||
-          e is AlreadyDeletedFailure ||
-          e is NotFoundFailure ||
-          e is NetworkFailure ||
-          e is ServerFailure) {
-        rethrow;
-      }
-
-      print('💥 Error inesperado: $e');
-      throw const ServerFailure(message: 'Error inesperado al eliminar empleado');
-    }
+  @override
+  Future<void> verifyEmployeeEmail(String employeeId, String code) async {
+    await _dio.post<void>(
+      '/auth/verify/employee-email',
+      data: {'employee_id': employeeId, 'code': code},
+      options: Options(extra: {AuthInterceptor.keepSessionOn401Key: true}),
+    );
   }
 
-  Future<bool> restoreEmployee(String id) async {
-    try {
-      final token = await localStorage.getToken();
-      final url = '$endpointSingular/$id/restore';
-
-      print('♻️ Restaurando empleado en: $url');
-
-      final response = await dio.patch(
-        url,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        print('✅ Empleado restaurado con éxito');
-        return true;
-      }
-
-      throw const ServerFailure(message: 'Error al restaurar empleado');
-    } on DioException catch (e) {
-      print('❌ Error restaurando empleado');
-      print('📊 Status Code: ${e.response?.statusCode}');
-      print('📋 Response Data: ${e.response?.data}');
-
-      if (e.response != null) {
-        final statusCode = e.response!.statusCode;
-        final responseData = e.response!.data;
-
-        if (statusCode == 404) {
-          print('🔍 Empleado eliminado no encontrado');
-          throw const NotFoundFailure(message: 'Empleado eliminado no encontrado');
-        }
-
-        if (statusCode == 409) {
-          String message = 'El empleado no está eliminado';
-          if (responseData is Map<String, dynamic> &&
-              responseData['message'] != null) {
-            message = responseData['message'].toString();
-          }
-          print('⚠️ Empleado no está eliminado');
-          throw NotDeletedFailure(employeeId: id, message: message);
-        }
-
-        if (statusCode == 403) {
-          String message = 'No tienes permisos para restaurar este empleado';
-          if (responseData is Map<String, dynamic> &&
-              responseData['message'] != null) {
-            message = responseData['message'].toString();
-          }
-          throw ServerFailure(message: message);
-        }
-
-        // Error genérico del servidor
-        String errorMessage = 'Error del servidor';
-        if (responseData is Map<String, dynamic> &&
-            responseData['message'] != null) {
-          errorMessage = responseData['message'].toString();
-        }
-        throw ServerFailure(message: errorMessage);
-      }
-
-      throw NetworkFailure(message: 'Error de conexión: ${e.message}');
-    } catch (e) {
-      if (e is RestoreFailure ||
-          e is NotFoundFailure ||
-          e is NotDeletedFailure ||
-          e is NetworkFailure ||
-          e is ServerFailure) {
-        rethrow;
-      }
-
-      print('💥 Error inesperado restaurando: $e');
-      throw RestoreFailure(
-          employeeId: id, message: 'Error inesperado al restaurar empleado');
-    }
+  Future<List<EmployeeModel>> _list(String path) async {
+    final response = await _dio.get<List<dynamic>>(path);
+    return JsonRead.asMapList(response.data)
+        .map(EmployeeModel.fromJson)
+        .toList();
   }
 }

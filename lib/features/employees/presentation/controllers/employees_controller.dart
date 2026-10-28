@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
-import 'package:login_signup/features/employees/data/models/employee_model.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
+import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/features/employees/domain/failures/employee_failures.dart';
 // CASOS DE USO
 import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/delete_employee_usecase.dart';
-import 'package:login_signup/features/employees/domain/usecases/get_deleted_employee_usecase.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_deleted_employees_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
-import 'package:login_signup/features/employees/domain/usecases/restore_employee_use_case.dart';
+import 'package:login_signup/features/employees/domain/usecases/restore_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/toggle_employee_status_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/update_employee_usecase.dart';
 
@@ -272,100 +275,41 @@ class EmployeesController extends GetxController {
       isLoading.value = true;
       error.value = null;
 
-      print('📋 Controller: Cargando empleados activos');
-      final result = await getEmployeesUseCase();
-      print('✅ Controller: ${result.length} empleados activos cargados');
-
-      employees.clear();
-      employees.addAll(result);
-
-      update();
-    } catch (e) {
-      error.value = e.toString();
-      print('❌ Controller: Error al cargar empleados - $e');
-
-      Get.snackbar(
-        'Error',
-        'No se pudieron cargar los profesionales: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[900],
-      );
+      final result = await getEmployeesUseCase(NoParams());
+      result.fold((failure) {
+        error.value = failure.message;
+        Get.snackbar(
+          'Error',
+          'No se pudieron cargar los profesionales: ${failure.message}',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[900],
+        );
+      }, employees.assignAll);
     } finally {
       isLoading.value = false;
       update();
     }
   }
 
-// 🆕 NUEVO: Cargar empleados eliminados
   Future<void> loadDeletedEmployees() async {
     try {
       isLoadingDeleted.value = true;
       error.value = null;
 
-      print('🗑️ Controller: Cargando empleados eliminados');
-      final result = await getDeletedEmployeesUseCase();
-      print('✅ Controller: ${result.length} empleados eliminados cargados');
-
-      deletedEmployees.clear();
-      deletedEmployees.addAll(result);
-
-      update();
-    } catch (e) {
-      error.value = e.toString();
-      print('❌ Controller: Error al cargar empleados eliminados - $e');
-
-      Get.snackbar(
-        'Error',
-        'No se pudieron cargar los empleados eliminados: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[900],
-      );
+      final result = await getDeletedEmployeesUseCase(NoParams());
+      result.fold((failure) {
+        error.value = failure.message;
+        Get.snackbar(
+          'Error',
+          'No se pudieron cargar los empleados eliminados: ${failure.message}',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[900],
+        );
+      }, deletedEmployees.assignAll);
     } finally {
       isLoadingDeleted.value = false;
-      update();
-    }
-  }
-
-// 🆕 NUEVO: Cargar todos los empleados (activos y eliminados)
-  Future<void> loadAllEmployees({bool includeDeleted = false}) async {
-    try {
-      isLoading.value = true;
-      error.value = null;
-
-      print(
-          '📋 Controller: Cargando todos los empleados, incluir eliminados: $includeDeleted');
-      final result = await getEmployeesUseCase.getAllEmployees(
-          includeDeleted: includeDeleted);
-      print('✅ Controller: ${result.length} empleados totales cargados');
-
-      // Separar activos de eliminados
-      final activeEmployees = result.where((e) => !e.isDeleted).toList();
-      final deletedEmps = result.where((e) => e.isDeleted).toList();
-
-      employees.clear();
-      employees.addAll(activeEmployees);
-
-      if (includeDeleted) {
-        deletedEmployees.clear();
-        deletedEmployees.addAll(deletedEmps);
-      }
-
-      update();
-    } catch (e) {
-      error.value = e.toString();
-      print('❌ Controller: Error al cargar todos los empleados - $e');
-
-      Get.snackbar(
-        'Error',
-        'No se pudieron cargar los empleados: ${e.toString()}',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[900],
-      );
-    } finally {
-      isLoading.value = false;
       update();
     }
   }
@@ -433,22 +377,21 @@ class EmployeesController extends GetxController {
   }
 
   Future<EmployeeEntity?> getEmployeeById(String id) async {
-    try {
-      // Comprobar si ya está en la lista local
-      final localEmployee = employees.firstWhereOrNull((e) => e.id == id);
-      if (localEmployee != null) {
-        return localEmployee;
-      }
+    // Comprobar si ya está en la lista local
+    final localEmployee = employees.firstWhereOrNull((e) => e.id == id);
+    if (localEmployee != null) {
+      return localEmployee;
+    }
 
-      // Si no, cargar desde el servidor
+    // Si no, cargar desde el servidor
+    try {
       isLoading.value = true;
       error.value = null;
       final result = await getEmployeeByIdUseCase(id);
-      return result;
-    } catch (e) {
-      error.value = e.toString();
-      print('Error al obtener empleado: $e');
-      return null;
+      return result.fold((failure) {
+        error.value = failure.message;
+        return null;
+      }, (employee) => employee);
     } finally {
       isLoading.value = false;
     }
@@ -496,43 +439,22 @@ class EmployeesController extends GetxController {
         selectedServiceIds.clear();
         serviceCommissions.clear();
 
-        if (employee.serviceIds != null) {
-          selectedServiceIds.assignAll(employee.serviceIds!);
-        }
-
-        // Cargar comisiones
-        if (employee is EmployeeModel && employee.serviceAssignments != null) {
-          employee.serviceAssignments!.forEach((serviceId, assignment) {
-            serviceCommissions[serviceId] = assignment.commissionPercentage;
-          });
-        }
+        selectedServiceIds.assignAll(employee.serviceIds);
+        employee.serviceAssignments.forEach((serviceId, assignment) {
+          serviceCommissions[serviceId] = assignment.commissionPercentage;
+        });
 
         // Cargar horario
-        if (employee.schedule != null && employee.schedule!.isNotEmpty) {
+        if (employee.schedule.isNotEmpty) {
           print('Asignando horario: ${employee.schedule}');
-          schedule.clear(); // Limpiar primero para evitar mezclar datos
-
-          // Normalizar formato para asegurar que los valores sean compatibles
-          Map<String, Map<String, String>> normalizedSchedule = {};
-          employee.schedule!.forEach((day, timeMap) {
-            String start = timeMap['start'] ?? '09:00';
-            String end = timeMap['end'] ?? '18:00';
-
-            // Eliminar segundos si existen
-            if (start.split(':').length > 2) {
-              start = start.substring(0, 5);
-            }
-            if (end.split(':').length > 2) {
-              end = end.substring(0, 5);
-            }
-
-            normalizedSchedule[day] = {'start': start, 'end': end};
+          // El modelo ya normaliza las horas a HH:mm.
+          schedule.assignAll({
+            for (final entry in employee.schedule.entries)
+              entry.key: {'start': entry.value.start, 'end': entry.value.end},
           });
 
-          schedule.assignAll(normalizedSchedule);
-
           // IMPORTANTE: Inicializar días habilitados con las claves exactas del horario
-          List<String> activeDays = employee.schedule!.keys.toList();
+          List<String> activeDays = employee.schedule.keys.toList();
           print('Días activos detectados: $activeDays');
           initEnabledDays(initialDays: activeDays);
         } else {
@@ -692,289 +614,76 @@ class EmployeesController extends GetxController {
     );
   }
 
+  /// Crea el empleado (nace inactivo, 2.16) y abre la verificación de su
+  /// email; al verificar, el backend lo activa.
   Future<bool> createEmployeeAndVerify() async {
-    try {
-      // Validamos los datos del empleado primero
-      if (!validateEmployeeData()) {
-        return false;
-      }
-
-      print('Procediendo a crear el empleado primero, luego verificaremos...');
-
-      // 1. Primero, crear el empleado
-      isLoading.value = true;
-      final EmployeeModel employeeToCreate = EmployeeModel(
-        id: '', // El ID lo asigna el backend
-        name: name.value,
-        lastname: lastname.value,
-        email: email.value,
-        phone: phone.value,
-        isActive: false, // Lo crearemos inactivo hasta verificación
-        roles: [],
-        serviceAssignments: _prepareServiceAssignments(),
-        schedule: _prepareSchedule(),
-      );
-
-      // Log detallado para depuración
-      print('Datos de empleado a crear: ${employeeToCreate.toJson()}');
-
-      try {
-        // Intentar crear el empleado
-        final EmployeeEntity createdEmployee =
-            await createEmployeeUseCase(employeeToCreate, password.value);
-        isLoading.value = false;
-
-        print(
-            'Empleado creado con ID: ${createdEmployee.id}, redirigiendo a verificación...');
-
-        // 2. Navegación a la pantalla de verificación usando Get.to con resultado
-        try {
-          // Importante: pasar correctamente los argumentos
-          final result = await Get.to<bool>(
-            () => const VerifyEmployeeEmailScreen(),
-            binding: VerifyEmployeeEmailBinding(),
-            arguments: {
-              'email': email.value,
-              'employee_name': '${name.value} ${lastname.value}'.trim(),
-              'employee_id': createdEmployee.id,
-            },
-            fullscreenDialog: true,
-            preventDuplicates: true,
-            transition: Transition.rightToLeft,
-            duration: const Duration(milliseconds: 300),
-          );
-
-          // 3. Limpiamos el formulario independientemente del resultado
-          clearForm();
-
-          // 4. Manejar el resultado de manera explícita
-          print('Resultado recibido de verificación: $result');
-
-          if (result == true) {
-            // Recargar la lista de empleados antes de mostrar mensaje
-            try {
-              print('Recargando lista de empleados...');
-              await loadEmployees();
-              print('Lista de empleados recargada exitosamente');
-            } catch (e) {
-              print('Error al recargar empleados: $e');
-            }
-
-            // Mostrar mensaje de éxito
-            Get.snackbar(
-              'Éxito',
-              'Profesional creado y verificado correctamente',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green[100],
-              colorText: Colors.green[900],
-              duration: const Duration(seconds: 3),
-              margin: const EdgeInsets.all(10),
-              borderRadius: 10,
-              icon: const Icon(Icons.check_circle, color: Colors.green),
-            );
-
-            // 5. Usar Get.until o Get.offAllNamed para limpiar el stack
-            print('Navegando a la lista de empleados');
-            Get.offAllNamed(GetRoutes.employees);
-            return true;
-          } else {
-            // Si no se verificó, pero se creó
-            Get.snackbar(
-              'Advertencia',
-              'El empleado se ha creado pero está inactivo hasta que se verifique su email',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange[100],
-              colorText: Colors.orange[900],
-              duration: const Duration(seconds: 4),
-              margin: const EdgeInsets.all(10),
-              borderRadius: 10,
-              icon: const Icon(Icons.warning_amber, color: Colors.orange),
-            );
-
-            // También regresar a la lista de empleados
-            print('Navegando a la lista de empleados después de advertencia');
-            Get.offAllNamed(GetRoutes.employees);
-            return false;
-          }
-        } catch (navigationError) {
-          print('Error durante la navegación: $navigationError');
-          isLoading.value = false;
-
-          // En caso de error, intentar navegar a la lista de empleados de todas formas
-          print('Navegando a la lista de empleados después de error');
-          Get.offAllNamed(GetRoutes.employees);
-          return false;
-        }
-      } catch (createError) {
-        isLoading.value = false;
-        print('Error específico al crear empleado: $createError');
-
-        // SOLUCIÓN DIRECTA: Mostrar el diálogo con mensaje hardcodeado si el error es genérico
-        print('Usando método showOriginalServerError como solución directa');
-
-        // Esta es una SOLUCIÓN ALTERNATIVA que siempre mostrará el mensaje correcto
-        // independientemente de los demás errores
-        return await showOriginalServerError(email.value, phone.value);
-      }
-    } catch (e) {
-      // Error completamente inesperado en el flujo principal
-      isLoading.value = false;
-      print('Error general durante el proceso de creación: $e');
-
-      // Mostrar un diálogo para error genérico
-      Get.dialog(
-        AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.red[700], size: 28),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  "Error inesperado",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red[800],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          content: const Text(
-            "Ha ocurrido un error inesperado. Por favor, inténtelo de nuevo más tarde.",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text(
-                'Entendido',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-            ),
-          ],
-        ),
-        barrierDismissible: false,
-      );
-
-      return false;
-    }
-  }
-
-  // Método para crear un empleado (versión simple, sin verificación)
-  Future<bool> createEmployee() async {
     if (!validateEmployeeData()) {
       return false;
     }
 
+    isLoading.value = true;
+    error.value = null;
+    final result = await createEmployeeUseCase(_formInput());
+    isLoading.value = false;
+
+    return result.fold((failure) {
+      _showSaveFailure(failure, action: 'crear');
+      return false;
+    }, _openEmailVerification);
+  }
+
+  Future<bool> _openEmailVerification(EmployeeEntity created) async {
     try {
-      isLoading.value = true;
-      error.value = null;
-
-      // Filtrar días sin horario o con horarios incompletos
-      final filteredSchedule = <String, Map<String, String>>{};
-
-      // Solo incluir los días habilitados
-      for (final day in enabledDays) {
-        final hours = schedule[day];
-        if (hours != null &&
-            hours['start'] != null &&
-            hours['end'] != null &&
-            hours['start']!.isNotEmpty &&
-            hours['end']!.isNotEmpty) {
-          filteredSchedule[day] = {
-            'start': hours['start']!,
-            'end': hours['end']!
-          };
-        }
-      }
-
-      print('Horario filtrado para enviar: $filteredSchedule');
-
-      // Crear el modelo de empleado
-      final employee = EmployeeModel(
-        id: '', // El ID lo asigna el backend
-        name: name.value,
-        lastname: lastname.value,
-        email: email.value,
-        phone: phone.value,
-        isActive: true,
-        roles: [], // Roles vacíos, el backend los asignará
-        serviceAssignments: _prepareServiceAssignments(),
-        schedule: filteredSchedule.isNotEmpty ? filteredSchedule : null,
+      final verified = await Get.to<bool>(
+        () => const VerifyEmployeeEmailScreen(),
+        binding: VerifyEmployeeEmailBinding(),
+        arguments: {
+          'email': created.email,
+          'employee_name': created.fullName,
+          'employee_id': created.id,
+        },
+        fullscreenDialog: true,
+        preventDuplicates: true,
+        transition: Transition.rightToLeft,
+        duration: const Duration(milliseconds: 300),
       );
 
-      // Pasa el modelo al useCase
-      final result = await createEmployeeUseCase(employee, password.value);
-
-      // Verificar que el empleado fue creado correctamente
-      print('Empleado creado: ${result.name} ${result.lastname}');
-      print('Horario del empleado creado: ${result.schedule}');
-
-      // Añadir el nuevo empleado a la lista
-      employees.add(result);
-      filterEmployees(); // Actualizar lista filtrada
-
-      // Limpiar el formulario
       clearForm();
 
-      // Mostrar mensaje de éxito
-      Get.snackbar(
-        'Éxito',
-        'Profesional creado correctamente',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.green[100],
-        colorText: Colors.green[900],
-      );
-
-      return true;
-    } catch (e) {
-      error.value = e.toString();
-      print('Error al crear empleado: $e');
-      isLoading.value = false;
-
-      // Manejar los diferentes tipos de error
-      if (e is DuplicateEmailFailure) {
-        _showSpecificErrorDialog(
-            title: "Email duplicado",
-            icon: Icons.email,
-            message: "Ya existe un usuario con el email: ${e.email}",
-            field: "Email",
-            currentValue: e.email,
-            solution: "Por favor utilice otro correo electrónico.");
-      } else if (e is DuplicatePhoneFailure) {
-        _showSpecificErrorDialog(
-            title: "Teléfono duplicado",
-            icon: Icons.phone_android,
-            message: "Ya existe un usuario con el teléfono: ${e.phone}",
-            field: "Teléfono",
-            currentValue: e.phone,
-            solution: "Por favor utilice otro número de teléfono.");
-      } else {
-        // Error general
+      if (verified == true) {
+        await loadEmployees();
         Get.snackbar(
-          'Error',
-          'No se pudo crear el profesional: ${e.toString()}',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[900],
+          'Éxito',
+          'Profesional creado y verificado correctamente',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green[100],
+          colorText: Colors.green[900],
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(10),
+          borderRadius: 10,
+          icon: const Icon(Icons.check_circle, color: Colors.green),
         );
+        Get.offAllNamed(GetRoutes.employees);
+        return true;
       }
 
+      Get.snackbar(
+        'Advertencia',
+        'El empleado se ha creado pero está inactivo hasta que se verifique su email',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange[100],
+        colorText: Colors.orange[900],
+        duration: const Duration(seconds: 4),
+        margin: const EdgeInsets.all(10),
+        borderRadius: 10,
+        icon: const Icon(Icons.warning_amber, color: Colors.orange),
+      );
+      Get.offAllNamed(GetRoutes.employees);
       return false;
-    } finally {
-      isLoading.value = false;
-      update();
+    } catch (navigationError) {
+      print('Error durante la navegación: $navigationError');
+      Get.offAllNamed(GetRoutes.employees);
+      return false;
     }
   }
 
@@ -987,206 +696,135 @@ class EmployeesController extends GetxController {
       isLoading.value = true;
       error.value = null;
 
-      print('⭐⭐⭐ INICIO ACTUALIZACIÓN DE EMPLEADO ⭐⭐⭐');
-      print('Días habilitados antes de actualizar: $enabledDays');
-      print('Horario antes de actualizar: $schedule');
-
-      // Filtrar días sin horario o con horarios incompletos
-      final filteredSchedule = <String, Map<String, String>>{};
-
-      // Solo incluir los días habilitados
-      for (final day in enabledDays) {
-        final hours = schedule[day];
-        if (hours != null &&
-            hours['start'] != null &&
-            hours['end'] != null &&
-            hours['start']!.isNotEmpty &&
-            hours['end']!.isNotEmpty) {
-          filteredSchedule[day] = hours;
-        }
-      }
-
-      print('Horario filtrado para enviar: $filteredSchedule');
-
-      // Crear el modelo de empleado actualizado
-      // NOTA: Mantenemos el mismo email ya que es único y fue validado previamente
-      final employee = EmployeeModel(
+      final result = await updateEmployeeUseCase(UpdateEmployeeParams(
         id: editingEmployeeId.value,
-        name: name.value,
-        lastname: name.value,
-        email: email.value, // No modificamos el email
-        phone: phone.value,
-        isActive: true,
-        roles: [],
-        serviceAssignments: null, // No incluimos serviceAssignments aquí
-        schedule: filteredSchedule,
-      );
+        input: _formInput(),
+      ));
 
-      // Pasar serviceAssignments explícitamente
-      final result = await updateEmployeeUseCase(
-        editingEmployeeId.value,
-        employee,
-        password: password.value.isNotEmpty ? password.value : null,
-        serviceAssignments: _prepareServiceAssignments(),
-      );
+      return result.fold((failure) {
+        _showSaveFailure(failure, action: 'actualizar');
+        return false;
+      }, (updated) {
+        final index =
+            employees.indexWhere((e) => e.id == editingEmployeeId.value);
+        if (index >= 0) {
+          employees[index] = updated;
+          filterEmployees();
+        }
 
-      // Actualizar la lista local
-      final index =
-          employees.indexWhere((e) => e.id == editingEmployeeId.value);
-      if (index >= 0) {
-        employees[index] = result;
-        filterEmployees();
-      }
+        clearForm();
+        isEditMode.value = false;
+        editingEmployeeId.value = '';
 
-      // Limpiar formulario y mostrar éxito
-      clearForm();
-      isEditMode.value = false;
-      editingEmployeeId.value = '';
-
-      Get.back();
-      Get.snackbar(
-        'Éxito',
-        'Profesional actualizado correctamente',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.green[100],
-        colorText: Colors.green[900],
-        duration: const Duration(seconds: 3),
-        icon: const Icon(Icons.check_circle, color: Colors.green),
-      );
-
-      print('⭐⭐⭐ FIN ACTUALIZACIÓN DE EMPLEADO ⭐⭐⭐');
-      return true;
-    } catch (e) {
-      error.value = e.toString();
-      print('Error al actualizar empleado: $e');
-
-      // Manejar los diferentes tipos de error
-      if (e is DuplicateEmailFailure) {
-        _showSpecificErrorDialog(
-            title: "Email duplicado",
-            icon: Icons.email,
-            message: "Ya existe un usuario con el email: ${e.email}",
-            field: "Email",
-            currentValue: e.email,
-            solution: "Por favor utilice otro correo electrónico.");
-      } else if (e is DuplicatePhoneFailure) {
-        _showSpecificErrorDialog(
-            title: "Teléfono duplicado",
-            icon: Icons.phone_android,
-            message: "Ya existe un usuario con el teléfono: ${e.phone}",
-            field: "Teléfono",
-            currentValue: e.phone,
-            solution: "Por favor utilice otro número de teléfono.");
-      } else {
-        // Error general
+        Get.back();
         Get.snackbar(
-          'Error',
-          'No se pudo actualizar el profesional: ${e.toString()}',
+          'Éxito',
+          'Profesional actualizado correctamente',
           snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[900],
+          backgroundColor: Colors.green[100],
+          colorText: Colors.green[900],
           duration: const Duration(seconds: 3),
-          icon: const Icon(Icons.error, color: Colors.red),
+          icon: const Icon(Icons.check_circle, color: Colors.green),
         );
-      }
-
-      return false;
+        return true;
+      });
     } finally {
       isLoading.value = false;
       update();
     }
   }
 
-  Future<bool> toggleEmployeeStatus(String employeeId, bool isActive) async {
-    try {
-      error.value = null;
+  /// Formulario → datos para el use case (los normaliza y valida él).
+  EmployeeInput _formInput() => EmployeeInput(
+        name: name.value,
+        lastname: lastname.value,
+        email: email.value,
+        phone: phone.value,
+        password: password.value.isEmpty ? null : password.value,
+        services: _prepareServiceAssignments(),
+        schedule: _prepareSchedule(),
+      );
 
-      print(
-          'Cambiando estado del empleado $employeeId a: ${isActive ? "Activo" : "Inactivo"}');
-
-      // Usar el caso de uso para cambiar el estado
-      final updatedEmployee =
-          await toggleEmployeeStatusUseCase(employeeId, isActive);
-
-      print('✅ Estado cambiado exitosamente en el servidor');
-
-      // 🎯 IMPORTANTE: Solo devolver true, la UI se encarga de actualizar
-      return true;
-    } catch (e) {
-      error.value = e.toString();
-      print('❌ Error al cambiar estado del empleado: $e');
-      return false;
+  void _showSaveFailure(Failure failure, {required String action}) {
+    error.value = failure.message;
+    switch (failure) {
+      case DuplicateEmailFailure(:final email):
+        _showSpecificErrorDialog(
+            title: "Email duplicado",
+            icon: Icons.email,
+            message: failure.message,
+            field: "Email",
+            currentValue: email,
+            solution: "Por favor utilice otro correo electrónico.");
+      case DuplicatePhoneFailure(:final phone):
+        _showSpecificErrorDialog(
+            title: "Teléfono duplicado",
+            icon: Icons.phone_android,
+            message: failure.message,
+            field: "Teléfono",
+            currentValue: phone,
+            solution: "Por favor utilice otro número de teléfono.");
+      case InvalidEmployeeDataFailure():
+        _showFieldError('Revisa los datos', failure.message);
+      default:
+        Get.snackbar(
+          'Error',
+          'No se pudo $action el profesional: ${failure.message}',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[900],
+          duration: const Duration(seconds: 3),
+          icon: const Icon(Icons.error, color: Colors.red),
+        );
     }
+  }
+
+  /// `false` con el motivo en [error] (p. ej. activar sin el email
+  /// verificado: `EmployeeEmailNotVerifiedFailure`).
+  Future<bool> toggleEmployeeStatus(String employeeId, bool isActive) async {
+    error.value = null;
+    final result = await toggleEmployeeStatusUseCase(
+        ToggleEmployeeStatusParams(employeeId: employeeId, isActive: isActive));
+    return result.fold((failure) {
+      error.value = failure.message;
+      return false;
+    }, (_) => true);
   }
 
   Future<bool> deleteEmployee(String employeeId, {String? reason}) async {
     try {
-      print('🎮 Controller: Iniciando eliminación de empleado $employeeId');
-      if (reason != null && reason.isNotEmpty) {
-        print('🎮 Controller: Razón: $reason');
-      }
-
       isLoading.value = true;
       error.value = null;
 
-      final success = await deleteEmployeeUseCase(employeeId, reason: reason);
-      if (success) {
-        print('✅ Controller: Empleado eliminado exitosamente (soft delete)');
+      final result = await deleteEmployeeUseCase(
+          DeleteEmployeeParams(employeeId: employeeId, reason: reason));
 
-        // Encontrar el empleado en la lista activa
+      return result.fold((failure) {
+        error.value = failure.message;
+        switch (failure) {
+          case NotFoundFailure():
+            _showErrorSnackbar('No encontrado',
+                'El profesional no existe o ya fue eliminado');
+          case NetworkFailure():
+            _showErrorSnackbar('Sin conexión',
+                'Verifica tu conexión a internet y vuelve a intentar');
+          default:
+            _showErrorSnackbar('No se pudo eliminar', failure.message);
+        }
+        return false;
+      }, (_) {
         final employeeIndex = employees.indexWhere((e) => e.id == employeeId);
         if (employeeIndex >= 0) {
-          final deletedEmployee = employees[employeeIndex];
-
-          // Remover de la lista activa
-          employees.removeAt(employeeIndex);
-
-          // Agregar a la lista de eliminados si existe el empleado
-          if (deletedEmployee is EmployeeModel) {
-            final deletedEmployeeModel = deletedEmployee.copyWith(
-              isDeleted: true,
-              deletedAt: DateTime.now(),
-              deletionReason: reason,
-              isActive: false,
-            );
-            deletedEmployees.add(deletedEmployeeModel);
-          }
-
+          final deletedEmployee = employees.removeAt(employeeIndex);
+          deletedEmployees.add(
+              deletedEmployee.markDeleted(at: DateTime.now(), reason: reason));
           filterEmployees();
           filterDeletedEmployees();
         }
 
         _showSuccessSnackbar('Profesional eliminado correctamente');
         return true;
-      }
-      return false;
-    } on OwnerDeletionFailure catch (e) {
-      print('🚫 Controller: OwnerDeletionFailure capturado - ${e.message}');
-      _showOwnerDeleteSnackbar(e.message);
-      return false;
-    } on AlreadyDeletedFailure catch (e) {
-      print('⚠️ Controller: AlreadyDeletedFailure capturado - ${e.message}');
-      _showAlreadyDeletedSnackbar(e.message);
-      return false;
-    } on NotFoundFailure catch (e) {
-      print('🔍 Controller: NotFoundFailure capturado - ${e.message}');
-      _showErrorSnackbar(
-          'No encontrado', 'El empleado que intentas eliminar no existe');
-      return false;
-    } on NetworkFailure catch (e) {
-      print('📡 Controller: NetworkFailure capturado - ${e.message}');
-      _showErrorSnackbar('Sin conexión',
-          'Verifica tu conexión a internet y vuelve a intentar');
-      return false;
-    } on ServerFailure catch (e) {
-      print('🔧 Controller: ServerFailure capturado - ${e.message}');
-      _showErrorSnackbar('Error del servidor', e.message);
-      return false;
-    } catch (e) {
-      print('💥 Controller: Error inesperado - $e');
-      _showErrorSnackbar(
-          'Error', 'Ocurrió un problema inesperado: ${e.toString()}');
-      return false;
+      });
     } finally {
       isLoading.value = false;
       update();
@@ -1387,149 +1025,51 @@ class EmployeesController extends GetxController {
 
   Future<bool> restoreEmployee(String employeeId) async {
     try {
-      print('♻️ Controller: Iniciando restauración de empleado $employeeId');
-
       isLoadingDeleted.value = true;
       error.value = null;
 
-      final success = await restoreEmployeeUseCase(employeeId);
-      if (success) {
-        print('✅ Controller: Empleado restaurado exitosamente');
+      final result = await restoreEmployeeUseCase(employeeId);
 
-        // Encontrar el empleado en la lista eliminada
+      return result.fold((failure) {
+        error.value = failure.message;
+        switch (failure) {
+          case NotFoundFailure():
+            _showErrorSnackbar(
+                'No encontrado', 'El empleado eliminado no fue encontrado');
+          case NetworkFailure():
+            _showErrorSnackbar(
+                'Sin conexión', 'Verifica tu conexión a internet');
+          default:
+            _showErrorSnackbar('Error al restaurar', failure.message);
+        }
+        return false;
+      }, (restoration) {
         final deletedIndex =
             deletedEmployees.indexWhere((e) => e.id == employeeId);
+        EmployeeEntity? restored;
         if (deletedIndex >= 0) {
-          final restoredEmployee = deletedEmployees[deletedIndex];
-
-          // Remover de la lista eliminada
-          deletedEmployees.removeAt(deletedIndex);
-
-          // Agregar a la lista activa si es un modelo
-          if (restoredEmployee is EmployeeModel) {
-            final restoredEmployeeModel = restoredEmployee.copyWith(
-              isDeleted: false,
-              deletedAt: null,
-              deletionReason: null,
-              isActive: true,
-            );
-            employees.add(restoredEmployeeModel);
-          }
-
+          restored = deletedEmployees
+              .removeAt(deletedIndex)
+              .markRestored(isActive: restoration.isActive);
+          employees.add(restored);
           filterEmployees();
           filterDeletedEmployees();
-
-          // 🔧 AQUÍ SE LLAMA AL MÉTODO QUE FALTABA
-          _showRestoreSuccessSnackbar(restoredEmployee.fullName);
-        } else {
-          // Si no encontramos el empleado localmente, mostrar mensaje genérico
-          _showSuccessSnackbar('Profesional restaurado correctamente');
         }
 
+        if (restoration.needsEmailVerification) {
+          _showSuccessSnackbar(
+              'Profesional restaurado. Queda inactivo hasta que verifique su email');
+        } else if (restored != null) {
+          _showRestoreSuccessSnackbar(restored.fullName);
+        } else {
+          _showSuccessSnackbar('Profesional restaurado correctamente');
+        }
         return true;
-      }
-      return false;
-    } on RestoreFailure catch (e) {
-      print('❌ Controller: RestoreFailure capturado - ${e.message}');
-      _showErrorSnackbar('Error al restaurar', e.message);
-      return false;
-    } on NotFoundFailure catch (e) {
-      print('🔍 Controller: NotFoundFailure capturado - ${e.message}');
-      _showErrorSnackbar(
-          'No encontrado', 'El empleado eliminado no fue encontrado');
-      return false;
-    } on NotDeletedFailure catch (e) {
-      print('⚠️ Controller: NotDeletedFailure capturado - ${e.message}');
-      _showErrorSnackbar('No eliminado', 'El empleado no está eliminado');
-      return false;
-    } on NetworkFailure catch (e) {
-      print('📡 Controller: NetworkFailure capturado - ${e.message}');
-      _showErrorSnackbar('Sin conexión', 'Verifica tu conexión a internet');
-      return false;
-    } on ServerFailure catch (e) {
-      print('🔧 Controller: ServerFailure capturado - ${e.message}');
-      _showErrorSnackbar('Error del servidor', e.message);
-      return false;
-    } catch (e) {
-      print('💥 Controller: Error inesperado restaurando - $e');
-      _showErrorSnackbar(
-          'Error', 'Ocurrió un problema inesperado: ${e.toString()}');
-      return false;
+      });
     } finally {
       isLoadingDeleted.value = false;
       update();
     }
-  }
-
-  void _showOwnerDeleteSnackbar([String? serverMessage]) {
-    print('🎨 Mostrando snackbar para error de eliminación de dueño');
-
-    final message =
-        serverMessage ?? 'No se puede eliminar al dueño del negocio';
-
-    Get.snackbar(
-      '🚫 Acción no permitida',
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.orange.withValues(alpha: 0.95),
-      colorText: Colors.white,
-      duration: const Duration(seconds: 5),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      isDismissible: true,
-      icon: const Icon(
-        Icons.business_center,
-        color: Colors.white,
-        size: 24,
-      ),
-      mainButton: TextButton(
-        onPressed: () => Get.back(),
-        child: const Text(
-          'ENTENDIDO',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showAlreadyDeletedSnackbar(String message) {
-    print('⚠️ Mostrando snackbar para empleado ya eliminado');
-
-    Get.snackbar(
-      '⚠️ Ya eliminado',
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.amber.withValues(alpha: 0.95),
-      colorText: Colors.white,
-      duration: const Duration(seconds: 4),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      isDismissible: true,
-      icon: const Icon(
-        Icons.info_outline,
-        color: Colors.white,
-        size: 24,
-      ),
-      mainButton: TextButton(
-        onPressed: () {
-          Get.back();
-          // Opcional: mostrar empleados eliminados
-          if (!showDeletedEmployees.value) {
-            toggleDeletedEmployeesView();
-          }
-        },
-        child: const Text(
-          'VER ELIMINADOS',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
   }
 
   Future<bool> showRestoreEmployeeDialog(EmployeeEntity employee) async {
@@ -1838,109 +1378,13 @@ class EmployeesController extends GetxController {
     return serviceAssignments;
   }
 
-  Map<String, Map<String, String>> _prepareSchedule() {
-    final Map<String, Map<String, String>> filteredSchedule = {};
-    for (final day in enabledDays) {
-      final hours = schedule[day];
-      if (hours != null &&
-          hours['start'] != null &&
-          hours['end'] != null &&
-          hours['start']!.isNotEmpty &&
-          hours['end']!.isNotEmpty) {
-        filteredSchedule[day] = {
-          'start': hours['start']!,
-          'end': hours['end']!
-        };
-      }
-    }
-    return filteredSchedule;
-  }
-
-  Future<bool> showOriginalServerError(String email, String phone) async {
-    try {
-      // Obtenemos la última respuesta del servidor
-      String errorMessage = "";
-      String title = "";
-      IconData icon = Icons.error_outline;
-
-      // Verificamos primero si es un error de email
-      if (email.contains("juankpabon159@gmail.com")) {
-        errorMessage = "Ya existe un usuario con el email: $email";
-        title = "Email ya registrado";
-        icon = Icons.email;
-      }
-      // Verificamos si es un error de teléfono
-      else if (phone == "3112920040" || phone == "3112920041") {
-        errorMessage = "Ya existe un usuario con el teléfono: $phone";
-        title = "Teléfono ya registrado";
-        icon = Icons.phone_android;
-      }
-      // Para otros casos
-      else {
-        // Intentamos determinar el tipo de error por email o teléfono
-        if (email.contains("@gmail.com")) {
-          errorMessage = "Ya existe un usuario con el email: $email";
-          title = "Email ya registrado";
-          icon = Icons.email;
-        } else {
-          errorMessage = "Ya existe un usuario con el teléfono: $phone";
-          title = "Teléfono ya registrado";
-          icon = Icons.phone_android;
-        }
-      }
-
-      // Mostramos el diálogo con el mensaje apropiado
-      Get.dialog(
-        AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Row(
-            children: [
-              Icon(icon, color: Colors.red[700], size: 28),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red[800],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            errorMessage,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text(
-                'Entendido',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-            ),
-          ],
-        ),
-        barrierDismissible: false,
-      );
-
-      return false;
-    } catch (e) {
-      print("Error mostrando el diálogo: $e");
-      return false;
-    }
-  }
+  Map<String, WorkHours> _prepareSchedule() => {
+        for (final day in enabledDays)
+          if (schedule[day]
+              case {'start': final String start, 'end': final String end}
+              when start.isNotEmpty && end.isNotEmpty)
+            day: WorkHours(start: start, end: end),
+      };
 
   // Método para mostrar un diálogo de error específico con detalles del campo
   void _showSpecificErrorDialog({
@@ -2163,84 +1607,5 @@ class EmployeesController extends GetxController {
       confirmColor: newStatus ? Colors.green : Colors.orange,
       icon: newStatus ? Icons.check_circle : Icons.person_off,
     );
-  }
-
-  // Método para verificar si un empleado tiene servicios asignados
-  bool hasServices(EmployeeEntity employee) {
-    if (employee is EmployeeModel) {
-      return employee.serviceAssignments != null &&
-          employee.serviceAssignments!.isNotEmpty;
-    }
-    return false;
-  }
-
-  // Método para obtener la lista de nombres de servicios de un empleado
-  List<String> getEmployeeServiceNames(
-      EmployeeEntity employee, Map<String, String> serviceIdToName) {
-    List<String> serviceNames = [];
-
-    if (employee is EmployeeModel && employee.serviceAssignments != null) {
-      for (final serviceId in employee.serviceAssignments!.keys) {
-        if (serviceIdToName.containsKey(serviceId)) {
-          serviceNames.add(serviceIdToName[serviceId]!);
-        }
-      }
-    }
-
-    return serviceNames;
-  }
-
-  // Método para formatear el horario como texto legible
-  String formatScheduleDay(String day, Map<String, String>? hours) {
-    if (hours == null || hours['start'] == null || hours['end'] == null) {
-      return '';
-    }
-
-    final dayNames = {
-      'monday': 'Lunes',
-      'tuesday': 'Martes',
-      'wednesday': 'Miércoles',
-      'thursday': 'Jueves',
-      'friday': 'Viernes',
-      'saturday': 'Sábado',
-      'sunday': 'Domingo',
-    };
-
-    return '${dayNames[day] ?? day}: ${hours['start']} - ${hours['end']}';
-  }
-
-  // Método para verificar si un empleado tiene un horario definido
-  bool hasSchedule(EmployeeEntity employee) {
-    return employee.schedule != null && employee.schedule!.isNotEmpty;
-  }
-
-  // Método para formatear el horario completo de un empleado como texto legible
-  List<String> getFormattedSchedule(EmployeeEntity employee) {
-    List<String> formattedSchedule = [];
-
-    if (employee.schedule != null) {
-      final sortedDays = employee.schedule!.keys.toList()
-        ..sort((a, b) {
-          final dayOrder = {
-            'monday': 1,
-            'tuesday': 2,
-            'wednesday': 3,
-            'thursday': 4,
-            'friday': 5,
-            'saturday': 6,
-            'sunday': 7,
-          };
-          return (dayOrder[a] ?? 0).compareTo(dayOrder[b] ?? 0);
-        });
-
-      for (final day in sortedDays) {
-        final formattedDay = formatScheduleDay(day, employee.schedule![day]);
-        if (formattedDay.isNotEmpty) {
-          formattedSchedule.add(formattedDay);
-        }
-      }
-    }
-
-    return formattedSchedule;
   }
 }

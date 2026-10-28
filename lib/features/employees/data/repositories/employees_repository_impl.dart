@@ -1,210 +1,126 @@
-import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
-import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/repositories/employees_repository.dart';
+import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/network/safe_call.dart';
+import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
+import 'package:login_signup/features/employees/data/models/employee_input_model.dart';
+import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
+import 'package:login_signup/features/employees/domain/entities/employee_restoration.dart';
+import 'package:login_signup/features/employees/domain/failures/employee_failures.dart';
+import 'package:login_signup/features/employees/domain/repositories/employees_repository.dart';
 
 class EmployeesRepositoryImpl implements EmployeesRepository {
-  final EmployeesRemoteDataSource remoteDataSource;
+  final EmployeesRemoteDataSource _remote;
 
-  EmployeesRepositoryImpl(this.remoteDataSource);
-
-  @override
-  Future<List<EmployeeEntity>> getEmployees() async {
-    try {
-      print('🏛️ Repository: Obteniendo empleados (solo activos)');
-      return await remoteDataSource.getEmployees();
-    } catch (e) {
-      print('❌ Repository.getEmployees: $e');
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al cargar la lista de empleados: ${e.toString()}');
-    }
-  }
+  EmployeesRepositoryImpl(this._remote);
 
   @override
-  Future<EmployeeEntity> getEmployeeById(String id) async {
-    try {
-      print('🏛️ Repository: Obteniendo empleado por ID: $id');
-      return await remoteDataSource.getEmployeeById(id);
-    } catch (e) {
-      print('❌ Repository.getEmployeeById: $e');
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al obtener los datos del empleado: ${e.toString()}');
-    }
-  }
+  Future<Either<Failure, List<EmployeeEntity>>> getEmployees() => safeCall(
+      () async => (await _remote.getEmployees()).map((m) => m.toEntity()).toList());
 
   @override
-  Future<EmployeeEntity> createEmployee(
-      EmployeeEntity employee, String password) async {
-    try {
-      print('🏛️ Repository: Creando empleado: ${employee.fullName}');
-      return await remoteDataSource.createEmployee(employee, password);
-    } catch (e) {
-      print('❌ Repository.createEmployee: $e');
-      rethrow; // Propagar error sin modificar
-    }
-  }
+  Future<Either<Failure, List<EmployeeEntity>>> getDeletedEmployees() =>
+      safeCall(() async => (await _remote.getDeletedEmployees())
+          .map((m) => m.toEntity())
+          .toList());
 
   @override
-  Future<EmployeeEntity> updateEmployee(
-    String id,
-    EmployeeEntity employee, {
-    String? password,
-    Map<String, ServiceAssignment>? serviceAssignments,
-  }) async {
-    try {
-      print('🏛️ Repository: Actualizando empleado: $id');
-      return await remoteDataSource.updateEmployee(
-        id,
-        employee,
-        password: password,
-        serviceAssignments: serviceAssignments,
+  Future<Either<Failure, EmployeeEntity>> getEmployeeById(String id) =>
+      safeCall(() async => (await _remote.getEmployeeById(id)).toEntity());
+
+  @override
+  Future<Either<Failure, EmployeeEntity>> createEmployee(EmployeeInput input) =>
+      safeCall(
+        () async =>
+            (await _remote.createEmployee(EmployeeInputModel.fromEntity(input)))
+                .toEntity(),
+        refine: (failure) => _refineDuplicate(failure, input),
       );
-    } catch (e) {
-      print('❌ Repository.updateEmployee: $e');
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al actualizar el empleado: ${e.toString()}');
-    }
-  }
 
   @override
-  Future<EmployeeEntity> toggleEmployeeStatus(String id, bool isActive) async {
-    try {
-      print('🏛️ Repository: Cambiando estado de empleado $id a: $isActive');
-      return await remoteDataSource.toggleEmployeeStatus(id, isActive);
-    } catch (e) {
-      print('❌ Repository.toggleEmployeeStatus: $e');
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al cambiar el estado del empleado: ${e.toString()}');
-    }
-  }
+  Future<Either<Failure, EmployeeEntity>> updateEmployee(
+          String id, EmployeeInput input) =>
+      safeCall(
+        () async => (await _remote.updateEmployee(
+                id, EmployeeInputModel.fromEntity(input)))
+            .toEntity(),
+        refine: (failure) => _refineDuplicate(failure, input),
+      );
 
   @override
-  Future<bool> verifyEmployeeEmail(String employeeId, String code) async {
-    try {
-      print('🏛️ Repository: Verificando email de empleado: $employeeId');
-      return await remoteDataSource.verifyEmployeeEmail(employeeId, code);
-    } catch (e) {
-      print('❌ Repository.verifyEmployeeEmail: $e');
+  Future<Either<Failure, Unit>> setEmployeeActive(String id, bool isActive) =>
+      safeCall(
+        () async {
+          await _remote.setEmployeeActive(id, isActive);
+          return unit;
+        },
+        refine: _refineStatus,
+      );
 
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al verificar el email del empleado: ${e.toString()}');
-    }
-  }
-
-  // 🔄 MODIFICADO: deleteEmployee ahora acepta razón opcional
   @override
-  Future<bool> deleteEmployee(String id, {String? reason}) async {
-    try {
-      print('🏛️ Repository: Iniciando eliminación de empleado: $id');
-      if (reason != null && reason.isNotEmpty) {
-        print('🏛️ Repository: Razón: $reason');
-      }
+  Future<Either<Failure, Unit>> deleteEmployee(String id, {String? reason}) =>
+      safeCall(() async {
+        await _remote.deleteEmployee(id, reason: reason);
+        return unit;
+      });
 
-      return await remoteDataSource.deleteEmployee(id, reason: reason);
-    } catch (e) {
-      print(
-          '❌ Repository.deleteEmployee: Error - Tipo: ${e.runtimeType}, Mensaje: $e');
-      rethrow; // Solo propagar, no modificar
-    }
-  }
-
-  // 🆕 NUEVO: Restaurar empleado eliminado
   @override
-  Future<bool> restoreEmployee(String id) async {
-    try {
-      print('🏛️ Repository: Restaurando empleado: $id');
-      return await remoteDataSource.restoreEmployee(id);
-    } catch (e) {
-      print('❌ Repository.restoreEmployee: $e');
+  Future<Either<Failure, EmployeeRestoration>> restoreEmployee(String id) =>
+      safeCall(() async => (await _remote.restoreEmployee(id)).toEntity());
 
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al restaurar el empleado: ${e.toString()}');
-    }
-  }
-
-  // 🆕 NUEVO: Obtener solo empleados activos
   @override
-  Future<List<EmployeeEntity>> getActiveEmployees() async {
-    try {
-      print('🏛️ Repository: Obteniendo solo empleados activos');
-      return await remoteDataSource.getActiveEmployees();
-    } catch (e) {
-      print('❌ Repository.getActiveEmployees: $e');
+  Future<Either<Failure, Unit>> requestVerificationCode(String email) =>
+      safeCall(() async {
+        await _remote.requestVerificationCode(email);
+        return unit;
+      });
 
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al cargar empleados activos: ${e.toString()}');
-    }
-  }
-
-  // 🆕 NUEVO: Obtener solo empleados eliminados
   @override
-  Future<List<EmployeeEntity>> getDeletedEmployees() async {
-    try {
-      print('🏛️ Repository: Obteniendo empleados eliminados');
-      return await remoteDataSource.getDeletedEmployees();
-    } catch (e) {
-      print('❌ Repository.getDeletedEmployees: $e');
+  Future<Either<Failure, Unit>> verifyEmployeeEmail({
+    required String employeeId,
+    required String code,
+  }) =>
+      safeCall(
+        () async {
+          await _remote.verifyEmployeeEmail(employeeId, code);
+          return unit;
+        },
+        refine: _refineVerification,
+      );
 
-      if (e is Failure) {
-        rethrow;
-      }
+  /// El `ErrorMapper` ya da `DuplicateEmail/PhoneFailure` por `code`; aquí
+  /// se completa el valor repetido con el que se envió.
+  static Failure _refineDuplicate(Failure failure, EmployeeInput input) =>
+      switch (failure) {
+        DuplicateEmailFailure() => DuplicateEmailFailure(
+            email: input.email,
+            message: failure.message,
+            statusCode: failure.statusCode,
+            details: failure.details),
+        DuplicatePhoneFailure() => DuplicatePhoneFailure(
+            phone: input.phone,
+            message: failure.message,
+            statusCode: failure.statusCode,
+            details: failure.details),
+        _ => failure,
+      };
 
-      throw ServerFailure(
-          message: 'Error al cargar empleados eliminados: ${e.toString()}');
-    }
-  }
+  static Failure _refineStatus(Failure failure) =>
+      failure.code == ApiErrorCode.emailNotVerified
+          ? EmployeeEmailNotVerifiedFailure(
+              message: failure.message,
+              statusCode: failure.statusCode,
+              details: failure.details)
+          : failure;
 
-  // 🆕 NUEVO: Obtener todos los empleados con opción de incluir eliminados
-  @override
-  Future<List<EmployeeEntity>> getAllEmployees(
-      {bool includeDeleted = false}) async {
-    try {
-      print(
-          '🏛️ Repository: Obteniendo todos los empleados, incluir eliminados: $includeDeleted');
-      return await remoteDataSource.getEmployees(
-          includeDeleted: includeDeleted);
-    } catch (e) {
-      print('❌ Repository.getAllEmployees: $e');
-
-      if (e is Failure) {
-        rethrow;
-      }
-
-      throw ServerFailure(
-          message: 'Error al cargar todos los empleados: ${e.toString()}');
-    }
-  }
+  /// Código incorrecto, vencido o agotado: 401 del propio `verify` (la
+  /// petición no cierra la sesión, ver el datasource).
+  static Failure _refineVerification(Failure failure) =>
+      failure is UnauthorizedFailure
+          ? InvalidEmployeeVerificationCodeFailure(
+              message: failure.message,
+              code: failure.code,
+              statusCode: failure.statusCode,
+              details: failure.details)
+          : failure;
 }

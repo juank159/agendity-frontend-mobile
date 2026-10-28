@@ -3,7 +3,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:login_signup/core/di/modules/appointments_module.dart';
-import 'package:login_signup/core/di/modules/employees_module.dart';
 
 import 'package:login_signup/core/di/modules/register_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
@@ -18,6 +17,8 @@ import '../config/env_config.dart';
 import '../config/api_config.dart';
 import 'modules/auth_module.dart';
 import 'package:login_signup/features/clients/clients_dependencies.dart';
+import 'package:login_signup/features/employees/employees_dependencies.dart';
+import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
 import 'package:login_signup/features/payments/payments_dependencies.dart';
 import 'package:login_signup/features/statistics/statistics_dependencies.dart';
 import 'package:login_signup/features/subscriptions/subscriptions_dependencies.dart';
@@ -126,7 +127,8 @@ class DependencyInjection {
       ServicesDependencies.init();
       ClientsDependencies.init();
       await AppointmentsModule.init();
-      await EmployeesModule.init();
+      EmployeesDependencies.init();
+      EmployeesBinding.registerController();
       PaymentsDependencies.init();
       StatisticsDependencies.init();
       SubscriptionsDependencies.init();

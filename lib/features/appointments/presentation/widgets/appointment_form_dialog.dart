@@ -5,12 +5,8 @@ import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/professional_selector_dialog.dart';
-import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
-import 'package:login_signup/features/employees/data/repositories/employees_repository_impl.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
-import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
-import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
+import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import '../controllers/appointments_controller.dart';
 import 'client_search_selector.dart';
@@ -494,45 +490,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
 
   // Método para inicializar el módulo de empleados
   Future<void> _initEmployeesModule() async {
-    try {
-      // Inicializar remotedatasource
-      final dataSource = EmployeesRemoteDataSource(
-        dio: Get.find(),
-        localStorage: Get.find(),
-      );
-      Get.put(dataSource);
-
-      // Inicializar repository
-      final repository = EmployeesRepositoryImpl(dataSource);
-      Get.put(repository);
-
-      // Inicializar casos de uso
-      final getEmployeesUseCase = GetEmployeesUseCase(repository);
-      final getEmployeeByIdUseCase = GetEmployeeByIdUseCase(repository);
-      final createEmployeeUseCase = CreateEmployeeUseCase(repository);
-
-      Get.put(getEmployeesUseCase);
-      Get.put(getEmployeeByIdUseCase);
-      Get.put(createEmployeeUseCase);
-
-      // Inicializar controller
-      final controller = EmployeesController(
-        getEmployeesUseCase: getEmployeesUseCase,
-        getEmployeeByIdUseCase: getEmployeeByIdUseCase,
-        createEmployeeUseCase: createEmployeeUseCase,
-        updateEmployeeUseCase: Get.find(),
-        deleteEmployeeUseCase: Get.find(),
-        toggleEmployeeStatusUseCase: Get.find(),
-        restoreEmployeeUseCase: Get.find(),
-        getDeletedEmployeesUseCase: Get.find(),
-      );
-
-      Get.put(controller);
-      print('EmployeesController inicializado correctamente');
-    } catch (e) {
-      print('Error inicializando EmployeesModule: $e');
-      throw e;
-    }
+    EmployeesBinding.registerController();
   }
 
   Widget _buildServicesSummary(

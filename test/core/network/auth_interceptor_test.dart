@@ -101,6 +101,24 @@ void main() {
     expect(expiredCalls, 0);
   });
 
+  test('401 de una acción marcada keepSessionOn401 lleva token y no cierra sesión',
+      () async {
+    adapter.handler = (_) => jsonBody(401, {
+          'statusCode': 401,
+          'code': 'UNAUTHORIZED',
+          'message': 'Código de verificación inválido'
+        });
+
+    await expectLater(
+      dio.post('/auth/verify/employee-email',
+          options:
+              Options(extra: {AuthInterceptor.keepSessionOn401Key: true})),
+      throwsA(isA<DioException>()),
+    );
+    expect(adapter.requests.single.headers['Authorization'], 'Bearer jwt-1');
+    expect(expiredCalls, 0);
+  });
+
   test('401 sin token enviado no avisa', () async {
     tokens.token = null;
     adapter.handler = (_) => jsonBody(401, {'statusCode': 401});

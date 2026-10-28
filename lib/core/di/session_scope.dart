@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/di/modules/employees_module.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/edit_client_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/new_client_controller.dart';
+import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/presentation/controllers/verify_employee_email_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
@@ -60,7 +60,7 @@ abstract final class SessionScope {
     for (final delete in featureControllers) {
       delete();
     }
-    await EmployeesModule.registerController();
+    EmployeesBinding.registerController();
   }
 }
 

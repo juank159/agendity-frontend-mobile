@@ -1,20 +1,17 @@
 import 'dart:async';
-import 'dart:math' as Math;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dio/dio.dart';
 import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/features/employees/domain/usecases/request_employee_verification_code_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/verify_employee_email_usecase.dart';
-import 'package:login_signup/features/employees/domain/usecases/toggle_employee_status_usecase.dart';
 import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
 import 'package:login_signup/features/employees/presentation/screens/employees_list_screen.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 class VerifyEmployeeEmailController extends GetxController {
   // Casos de uso
+  final RequestEmployeeVerificationCodeUseCase requestVerificationCodeUseCase;
   final VerifyEmployeeEmailUseCase verifyEmployeeEmailUseCase;
-  final ToggleEmployeeStatusUseCase toggleEmployeeStatusUseCase;
 
   // Propiedades reactivas
   final RxString email = ''.obs;
@@ -45,8 +42,8 @@ class VerifyEmployeeEmailController extends GetxController {
   set employeeId(String value) => _employeeId.value = value;
 
   VerifyEmployeeEmailController({
+    required this.requestVerificationCodeUseCase,
     required this.verifyEmployeeEmailUseCase,
-    required this.toggleEmployeeStatusUseCase,
   });
 
   @override
@@ -136,53 +133,10 @@ class VerifyEmployeeEmailController extends GetxController {
       isLoading.value = true;
       errorMessage.value = null;
 
-      print(
-          'Preparando solicitud para enviar código al email: ${email.value} y empleado ID: $employeeId');
+      final result = await requestVerificationCodeUseCase(email.value);
+      if (_isDisposed.value) return;
 
-      try {
-        // Obtener Dio y token
-        final dio = Get.find<Dio>();
-        final localStorage = Get.find<LocalStorage>();
-        final token = await localStorage.getToken();
-
-        // Intento con la ruta correcta en la API
-        final response = await dio.post(
-          '${dio.options.baseUrl}/auth/verify/request-code',
-          options: Options(
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          ),
-          data: {'email': email.value, 'isNewUser': false},
-        );
-
-        print('Respuesta recibida del servidor: ${response.statusCode}');
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          print('Código enviado exitosamente, iniciando timers');
-
-          // Iniciar temporizador para código
-          _startTimer();
-
-          // Deshabilitar el reenvío temporal
-          canResendCode.value = false;
-          _startResendCountdown();
-
-          Get.snackbar(
-            'Código enviado',
-            'Se ha enviado un código de verificación a ${email.value}',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.green[100],
-            colorText: Colors.green[900],
-          );
-        } else {
-          throw Exception('Error en la solicitud: ${response.statusCode}');
-        }
-      } catch (apiError) {
-        print('Error en la API al solicitar código: $apiError');
-
+      result.fold((failure) {
         // Nunca se envía un código inventado: se muestra el error y el
         // usuario puede reintentar con el botón de reenvío.
         errorMessage.value =
@@ -191,50 +145,37 @@ class VerifyEmployeeEmailController extends GetxController {
 
         Get.snackbar(
           'Error',
-          'No se pudo enviar el código de verificación. Pulsa "Reenviar código" para intentarlo de nuevo.',
+          '${failure.message}\nPulsa "Reenviar código" para intentarlo de nuevo.',
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.red[100],
           colorText: Colors.red[900],
           duration: const Duration(seconds: 5),
         );
-      }
-    } catch (e) {
-      print('Error general al solicitar código: $e');
-      errorMessage.value = 'Error al enviar el código: ${e.toString()}';
+      }, (_) {
+        _startTimer();
+        canResendCode.value = false;
+        _startResendCountdown();
+
+        Get.snackbar(
+          'Código enviado',
+          'Se ha enviado un código de verificación a ${email.value}',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.green[100],
+          colorText: Colors.green[900],
+        );
+      });
     } finally {
-      isLoading.value = false;
-      print('Solicitud de código finalizada');
+      if (!_isDisposed.value) isLoading.value = false;
     }
   }
 
-  // Método para verificar el email con mejoras de robustez
-  // Método para verificar el email con mejoras de robustez
+  /// Verifica el código. El backend activa al empleado en el mismo paso.
   Future<void> verifyEmail() async {
-    // Verificación crítica al inicio para prevenir errores
-    if (_isDisposed.value) {
-      print('ABORT: verifyEmail cancelado - controlador ya dispuesto');
-      return;
-    }
+    if (_isDisposed.value || codeController == null) return;
 
-    if (codeController == null) {
-      print('ABORT: verifyEmail cancelado - codeController es nulo');
-      return;
-    }
-
-    print('Iniciando verificación de email');
-    print(
-        'Estado actual - isDisposed: ${_isDisposed.value}, código: ${codeController!.text}');
-
-    // Validación del código
-    if (codeController!.text.isEmpty) {
-      print('Error: código vacío');
+    final code = codeController!.text.trim();
+    if (code.isEmpty) {
       errorMessage.value = 'Por favor ingresa el código de verificación';
-      return;
-    }
-
-    if (codeController!.text.length != 6) {
-      print('Error: código inválido, longitud: ${codeController!.text.length}');
-      errorMessage.value = 'El código debe tener 6 dígitos';
       return;
     }
 
@@ -242,152 +183,38 @@ class VerifyEmployeeEmailController extends GetxController {
       isLoading.value = true;
       errorMessage.value = null;
 
-      print(
-          'Verificando email con código: ${codeController!.text} para empleado ID: $employeeId');
+      final result = await verifyEmployeeEmailUseCase(
+          VerifyEmployeeEmailParams(employeeId: employeeId, code: code));
+      if (_isDisposed.value) return;
 
-      try {
-        // Obtener dependencias necesarias
-        final dio = Get.find<Dio>();
-        final localStorage = Get.find<LocalStorage>();
-        final token = await localStorage.getToken();
+      final verified = result.fold((failure) {
+        errorMessage.value = failure.message;
+        return false;
+      }, (_) => true);
+      if (!verified) return;
 
+      _resendTimer?.cancel();
+      _resendTimer = null;
+      _codeExpirationTimer?.cancel();
+      _codeExpirationTimer = null;
 
-        // Llamada API para verificar
-        final response = await dio.post(
-          '${dio.options.baseUrl}/auth/verify/employee-email',
-          options: Options(
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': token != null ? 'Bearer $token' : '',
-            },
-          ),
-          data: {
-            'employee_id': employeeId,
-            'code': codeController!.text,
-          },
-        );
+      Get.snackbar(
+        'Éxito',
+        'Email verificado correctamente',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[900],
+        duration: const Duration(seconds: 2),
+      );
 
-        print('Respuesta de verificación: ${response.statusCode}');
+      // Marcar como dispuesto antes de navegar para evitar operaciones posteriores
+      _isDisposed.value = true;
 
-        // Nueva validación para comprobar otra vez si el controlador ha sido dispuesto
-        if (_isDisposed.value) {
-          print(
-              'WARN: Controlador dispuesto durante la verificación API - abortando');
-          return;
-        }
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          print('Email verificado exitosamente');
-          print('Respuesta: ${response.data}');
-
-          // Cancelar timers para evitar problemas
-          if (_resendTimer != null) {
-            print('Cancelando timer de reenvío');
-            _resendTimer?.cancel();
-            _resendTimer = null;
-          }
-
-          if (_codeExpirationTimer != null) {
-            print('Cancelando timer de expiración');
-            _codeExpirationTimer?.cancel();
-            _codeExpirationTimer = null;
-          }
-
-          // Activar el empleado
-          if (employeeId.isNotEmpty) {
-            try {
-              print('Activando empleado con ID: $employeeId');
-
-              // Nueva validación para evitar errores
-              if (!_isDisposed.value) {
-                await toggleEmployeeStatusUseCase(employeeId, true);
-                print('Empleado activado con éxito');
-              } else {
-                print('WARN: Omitiendo activación - controlador ya dispuesto');
-              }
-            } catch (e) {
-              print('Error al activar empleado: $e');
-              // No mostramos este error al usuario para no confundirlo
-            }
-          }
-
-          // Mostrar mensaje de éxito solo si aún no está dispuesto
-          if (!_isDisposed.value) {
-            Get.snackbar(
-              'Éxito',
-              'Email verificado correctamente',
-              snackPosition: SnackPosition.TOP,
-              backgroundColor: Colors.green[100],
-              colorText: Colors.green[900],
-              duration: const Duration(seconds: 2),
-            );
-          }
-
-          // Crear una copia local de los valores antes de la navegación
-          // para evitar errores si cambian durante la navegación
-          final bool wasDisposed = _isDisposed.value;
-
-          // Marcar como dispuesto antes de navegar para evitar operaciones posteriores
-          _isDisposed.value = true;
-
-          // Pequeño delay para asegurar que el snackbar sea visible
-          await Future.delayed(const Duration(milliseconds: 500));
-
-          // Navegar solo si no estaba dispuesto originalmente
-          if (!wasDisposed) {
-            print('Preparando navegación después de verificación exitosa');
-            // Usar un método seguro para navegar
-            safeNavigateToEmployeesList();
-          } else {
-            print('WARN: Omitiendo navegación - ya estaba dispuesto');
-          }
-        } else {
-          print(
-              'Verificación fallida: código incorrecto, status: ${response.statusCode}');
-          errorMessage.value =
-              'Código incorrecto. Por favor, intente nuevamente.';
-        }
-      } catch (e) {
-        // Verificar nuevamente si ya fue dispuesto
-        if (_isDisposed.value) {
-          print(
-              'WARN: Error de API cuando el controlador ya estaba dispuesto - ignorando');
-          return;
-        }
-
-        print('Error al verificar email con API: $e');
-        errorMessage.value =
-            'Error de conexión: ${e.toString().substring(0, Math.min(e.toString().length, 100))}';
-
-        // Intento alternativo si es error de conexión
-        if (e is DioException &&
-            (e.type == DioExceptionType.connectionTimeout ||
-                e.type == DioExceptionType.unknown)) {
-          print('Intentando método alternativo por error de conexión');
-          // Aquí podrías intentar otra estrategia como verificación offline temporal
-        }
-      }
-    } catch (e) {
-      // Final verificación de estado
-      if (_isDisposed.value) {
-        print(
-            'WARN: Error general cuando controlador ya dispuesto - ignorando');
-        return;
-      }
-
-      print('Error general durante la verificación: $e');
-      errorMessage.value =
-          'Error inesperado: ${e.toString().substring(0, Math.min(e.toString().length, 100))}';
+      // Pequeño delay para asegurar que el snackbar sea visible
+      await Future.delayed(const Duration(milliseconds: 500));
+      safeNavigateToEmployeesList();
     } finally {
-      // Verificar una última vez antes de actualizar estado
-      if (!_isDisposed.value) {
-        isLoading.value = false;
-        print('Proceso de verificación finalizado');
-      } else {
-        print(
-            'WARN: Controlador dispuesto durante finally - no actualizando isLoading');
-      }
+      if (!_isDisposed.value) isLoading.value = false;
     }
   }
 

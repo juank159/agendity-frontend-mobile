@@ -1319,10 +1319,11 @@ class AppointmentsController extends GetxController {
             : SubscriptionBlockReason.inactive);
   }
 
-  bool _isAppointmentTimeValid(DateTime appointmentTime, dynamic employee) {
+  bool _isAppointmentTimeValid(
+      DateTime appointmentTime, EmployeeEntity employee) {
     try {
       // Si el empleado no tiene horario definido, permitir cualquier hora
-      if (employee.schedule == null || employee.schedule.isEmpty) {
+      if (employee.schedule.isEmpty) {
         print('⚠️ Empleado ${employee.name} no tiene horario definido - permitiendo cualquier hora');
         return true;
       }
@@ -1350,13 +1351,8 @@ class AppointmentsController extends GetxController {
       }
 
       // Obtener horarios de inicio y fin
-      final startTimeStr = daySchedule['start']?.toString();
-      final endTimeStr = daySchedule['end']?.toString();
-      
-      if (startTimeStr == null || endTimeStr == null) {
-        print('⚠️ Horarios no definidos para ${employee.name} el $dayName');
-        return false;
-      }
+      final startTimeStr = daySchedule.start;
+      final endTimeStr = daySchedule.end;
 
       // Parsear horarios (formato: "09:00:00")
       final startTimeParts = startTimeStr.split(':');

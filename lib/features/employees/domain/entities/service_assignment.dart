@@ -1,27 +1,36 @@
-// lib/features/employees/domain/entities/service_assignment.dart
-// ARCHIVO COMPLETO - Asegúrate de que se vea exactamente así
-
+/// Servicio que atiende un profesional (`user_services`), con su comisión
+/// (0–100 %) y, si lo tiene, un precio propio distinto del de lista.
 class ServiceAssignment {
   final String serviceId;
+
+  /// Nombre del servicio; solo llega en las lecturas.
+  final String? serviceName;
+
   final double commissionPercentage;
   final double? customPrice;
 
-  ServiceAssignment({
+  const ServiceAssignment({
     required this.serviceId,
-    required this.commissionPercentage,
+    this.serviceName,
+    this.commissionPercentage = 0,
     this.customPrice,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'serviceId': serviceId,
-      'commissionPercentage': commissionPercentage,
-      if (customPrice != null) 'customPrice': customPrice,
-    };
-  }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ServiceAssignment &&
+          other.serviceId == serviceId &&
+          other.serviceName == serviceName &&
+          other.commissionPercentage == commissionPercentage &&
+          other.customPrice == customPrice;
 
   @override
-  String toString() {
-    return 'ServiceAssignment{serviceId: $serviceId, commissionPercentage: $commissionPercentage, customPrice: $customPrice}';
-  }
+  int get hashCode =>
+      Object.hash(serviceId, serviceName, commissionPercentage, customPrice);
+
+  @override
+  String toString() =>
+      'ServiceAssignment($serviceId, comisión: $commissionPercentage, '
+      'precio: $customPrice)';
 }

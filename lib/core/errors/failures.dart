@@ -121,7 +121,7 @@ class NotFoundFailure extends Failure {
 /// 409 y conflictos de negocio: `CONFLICT`, `SLOT_UNAVAILABLE`,
 /// `PROFESSIONAL_INACTIVE`, `INVALID_STATE_TRANSITION`, `APPOINTMENT_PAID`,
 /// `EMAIL_NOT_VERIFIED`, `OWNER_NOT_DELETABLE`, `CATEGORY_HAS_SERVICES`. Mirar
-/// `code` para distinguirlos.
+/// `code` para distinguirlos (o el failure de la feature, que lo refina).
 class ConflictFailure extends Failure {
   static const defaultMessage =
       'La operación entra en conflicto con el estado actual';
@@ -194,40 +194,4 @@ class DuplicatePhoneFailure extends ConflictFailure {
                   : 'Ya existe un usuario con el teléfono: $phone'),
           code: ApiErrorCode.duplicatePhone,
         );
-}
-
-// -----------------------------------------------------------------------------
-// TEMPORALES de employees: los usa el código actual (lanzados con `throw`).
-// Se mueven a `features/employees/domain/failures/` en la 4.07.
-// -----------------------------------------------------------------------------
-
-/// Borrar al dueño del negocio (`OWNER_NOT_DELETABLE`).
-class OwnerDeletionFailure extends ServerFailure {
-  OwnerDeletionFailure({String? message})
-      : super(message: message ?? 'No se puede eliminar al dueño del negocio');
-}
-
-/// El empleado ya estaba eliminado.
-class AlreadyDeletedFailure extends ServerFailure {
-  final String employeeId;
-
-  AlreadyDeletedFailure({required this.employeeId, String? message})
-      : super(
-            message: message ?? 'El empleado ya ha sido eliminado previamente');
-}
-
-/// No se pudo restaurar el empleado.
-class RestoreFailure extends ServerFailure {
-  final String? employeeId;
-
-  RestoreFailure({this.employeeId, String? message})
-      : super(message: message ?? 'No se pudo restaurar el empleado');
-}
-
-/// Se intentó restaurar un empleado que no está eliminado.
-class NotDeletedFailure extends ServerFailure {
-  final String employeeId;
-
-  NotDeletedFailure({required this.employeeId, String? message})
-      : super(message: message ?? 'El empleado no está eliminado');
 }

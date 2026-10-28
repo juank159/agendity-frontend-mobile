@@ -1,3 +1,5 @@
+import 'package:login_signup/core/utils/deep_equality.dart';
+
 /// Plan de suscripción que el negocio puede comprar (`GET /subscriptions/plans`
 /// devuelve solo los activos). El pago se hace por un enlace que genera el
 /// backend al suscribirse, no a partir del plan.
@@ -55,7 +57,7 @@ class SubscriptionPlanEntity {
           other.billingInterval == billingInterval &&
           other.isRecurring == isRecurring &&
           other.appointmentLimit == appointmentLimit &&
-          _listEquals(other.features, features) &&
+          DeepEquality.lists(other.features, features) &&
           other.isActive == isActive;
 
   @override
@@ -71,12 +73,4 @@ class SubscriptionPlanEntity {
       appointmentLimit,
       Object.hashAll(features),
       isActive);
-}
-
-bool _listEquals(List<String> a, List<String> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }

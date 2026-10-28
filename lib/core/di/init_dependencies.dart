@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:login_signup/core/di/modules/appointments_module.dart';
 
-import 'package:login_signup/core/di/modules/register_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/network/network_info.dart';
@@ -15,7 +14,7 @@ import 'package:login_signup/shared/controller/theme_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
 import '../config/api_config.dart';
-import 'modules/auth_module.dart';
+import 'package:login_signup/features/auth/auth_dependencies.dart';
 import 'package:login_signup/features/clients/clients_dependencies.dart';
 import 'package:login_signup/features/employees/employees_dependencies.dart';
 import 'package:login_signup/features/payments/payments_dependencies.dart';
@@ -33,16 +32,6 @@ class DependencyInjection {
       _initThemeController(); // Añadimos la inicialización del controlador de temas
     } catch (e) {
       print('Error initializing dependencies: $e');
-      rethrow;
-    }
-  }
-
-  static Future<void> initAuthDependencies() async {
-    try {
-      await _initCore();
-      await AuthModule.init();
-    } catch (e) {
-      print('Error initializing auth dependencies: $e');
       rethrow;
     }
   }
@@ -120,8 +109,7 @@ class DependencyInjection {
         throw Exception('Core dependencies not initialized');
       }
 
-      await AuthModule.init();
-      await RegisterModule.init();
+      AuthDependencies.init();
       await UserModule.init();
       ServicesDependencies.init();
       ClientsDependencies.init();

@@ -41,7 +41,7 @@ abstract class EmployeesRepository {
 
   /// Verifica el email con el código y **activa** al empleado
   /// (`POST /auth/verify/employee-email`). Código incorrecto, vencido o
-  /// agotado → `InvalidEmployeeVerificationCodeFailure`.
+  /// agotado → `InvalidVerificationCodeFailure` (core).
   Future<Either<Failure, Unit>> verifyEmployeeEmail({
     required String employeeId,
     required String code,

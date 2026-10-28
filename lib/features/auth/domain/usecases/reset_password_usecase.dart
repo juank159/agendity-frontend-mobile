@@ -1,29 +1,40 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/features/auth/domain/failures/auth_failures.dart';
 import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
+import 'package:login_signup/features/auth/domain/usecases/auth_rules.dart';
 
-class ResetPasswordUseCase {
-  final AuthRepository repository;
+class ResetPasswordParams {
+  final String email;
+  final String code;
+  final String newPassword;
 
-  ResetPasswordUseCase(this.repository);
+  const ResetPasswordParams({
+    required this.email,
+    required this.code,
+    required this.newPassword,
+  });
+}
 
-  /// Ejecuta el caso de uso de restablecer contraseña
-  ///
-  /// [email] - Email del usuario
-  /// [code] - Código de verificación de 6 dígitos
-  /// [newPassword] - Nueva contraseña que cumple los requisitos de seguridad
-  ///
-  /// Retorna [Right(true)] si la contraseña se restableció exitosamente
-  /// Retorna [Left(Failure)] si hubo algún error
-  Future<Either<Failure, bool>> call({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
-    return await repository.resetPassword(
-      email: email,
-      code: code,
-      newPassword: newPassword,
-    );
+/// Cambia la contraseña con el código de recuperación. Código incorrecto,
+/// vencido o agotado → `InvalidVerificationCodeFailure` (core).
+class ResetPasswordUseCase implements UseCase<Unit, ResetPasswordParams> {
+  final AuthRepository _repository;
+
+  ResetPasswordUseCase(this._repository);
+
+  @override
+  Future<Either<Failure, Unit>> call(ResetPasswordParams params) async {
+    final invalid = AuthRules.checkEmail(params.email);
+    if (invalid != null) return Left(invalid);
+    final code = params.code.trim();
+    if (code.isEmpty) {
+      return const Left(InvalidAuthDataFailure(message: AuthRules.missingCode));
+    }
+    return _repository.resetPassword(
+        email: params.email.trim(),
+        code: code,
+        newPassword: params.newPassword);
   }
 }

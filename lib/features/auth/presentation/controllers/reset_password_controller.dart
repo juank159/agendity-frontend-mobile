@@ -769,7 +769,7 @@ class ResetPasswordController extends GetxController {
 
     try {
       // ✅ USAR RequestPasswordResetUseCase para reenviar código
-      final result = await requestPasswordResetUseCase(email: email.value);
+      final result = await requestPasswordResetUseCase(email.value);
 
       result.fold(
         (failure) {
@@ -839,11 +839,11 @@ class ResetPasswordController extends GetxController {
 
     try {
       // ✅ USAR ResetPasswordUseCase para cambiar contraseña
-      final result = await resetPasswordUseCase(
+      final result = await resetPasswordUseCase(ResetPasswordParams(
         email: email.value,
         code: code.value,
         newPassword: passwordController.text,
-      );
+      ));
 
       result.fold(
         (failure) {

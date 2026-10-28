@@ -119,9 +119,8 @@ class ForgotPasswordController extends GetxController {
     isLoading.value = true;
 
     try {
-      final result = await requestPasswordResetUseCase(
-        email: emailController.text.trim(),
-      );
+      final result =
+          await requestPasswordResetUseCase(emailController.text.trim());
 
       result.fold(
         (failure) {

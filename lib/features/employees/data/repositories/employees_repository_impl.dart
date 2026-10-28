@@ -80,13 +80,10 @@ class EmployeesRepositoryImpl implements EmployeesRepository {
     required String employeeId,
     required String code,
   }) =>
-      safeCall(
-        () async {
-          await _remote.verifyEmployeeEmail(employeeId, code);
-          return unit;
-        },
-        refine: _refineVerification,
-      );
+      safeCall(() async {
+        await _remote.verifyEmployeeEmail(employeeId, code);
+        return unit;
+      });
 
   /// El `ErrorMapper` ya da `DuplicateEmail/PhoneFailure` por `code`; aquí
   /// se completa el valor repetido con el que se envió.
@@ -109,17 +106,6 @@ class EmployeesRepositoryImpl implements EmployeesRepository {
       failure.code == ApiErrorCode.emailNotVerified
           ? EmployeeEmailNotVerifiedFailure(
               message: failure.message,
-              statusCode: failure.statusCode,
-              details: failure.details)
-          : failure;
-
-  /// Código incorrecto, vencido o agotado: 400 `INVALID_VERIFICATION_CODE`
-  /// (2.33). El motivo va en `message`.
-  static Failure _refineVerification(Failure failure) =>
-      failure.code == ApiErrorCode.invalidVerificationCode
-          ? InvalidEmployeeVerificationCodeFailure(
-              message: failure.message,
-              code: failure.code,
               statusCode: failure.statusCode,
               details: failure.details)
           : failure;

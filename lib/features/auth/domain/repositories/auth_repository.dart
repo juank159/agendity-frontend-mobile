@@ -1,115 +1,49 @@
-// import 'package:dartz/dartz.dart';
-// import '../../../../core/errors/failures.dart';
-// import '../entities/user_entity.dart';
-
-// /// Repositorio de autenticación - Contrato/Interface
-// ///
-// /// Define todas las operaciones de autenticación disponibles en la aplicación
-// /// Implementado por AuthRepositoryImpl en la capa de datos
-// abstract class AuthRepository {
-//   /// Iniciar sesión con email y contraseña
-//   Future<Either<Failure, UserEntity>> login({
-//     required String email,
-//     required String password,
-//   });
-
-//   /// Cerrar sesión del usuario actual
-//   Future<Either<Failure, void>> signOut();
-
-//   /// Registrar nuevo usuario
-//   Future<Either<Failure, UserEntity>> register({
-//     required String name,
-//     required String lastname,
-//     required String email,
-//     required String phone,
-//     required String password,
-//   });
-
-//   /// Solicitar código de verificación por email
-//   ///
-//   /// [email] - Email al que enviar el código
-//   /// [isNewUser] - true para nuevos usuarios, false para existentes
-//   Future<Either<Failure, bool>> requestVerificationCode({
-//     required String email,
-//     bool isNewUser = false,
-//   });
-
-//   /// Verificar email con código recibido
-//   Future<Either<Failure, bool>> verifyEmail({
-//     required String email,
-//     required String code,
-//   });
-
-//   /// Solicitar código para restablecer contraseña
-//   Future<Either<Failure, bool>> requestPasswordReset({
-//     required String email,
-//   });
-
-//   /// Restablecer contraseña con código
-//   Future<Either<Failure, bool>> resetPassword({
-//     required String email,
-//     required String code,
-//     required String newPassword,
-//   });
-
-//   /// Cerrar sesión (alias de signOut para compatibilidad)
-//   Future<Either<Failure, bool>> logout();
-// }
-
 import 'package:dartz/dartz.dart';
-import '../../../../core/errors/failures.dart';
-import '../entities/user_entity.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/features/auth/domain/entities/register_owner_input.dart';
+import 'package:login_signup/features/auth/domain/entities/user_entity.dart';
 
-/// Repositorio de autenticación - Contrato/Interface
+/// Único contrato de autenticación: login, registro, Google, códigos y logout.
 ///
-/// Define todas las operaciones de autenticación disponibles en la aplicación
-/// Implementado por AuthRepositoryImpl en la capa de datos
+/// Login, registro y Google **inician la sesión** (guardan el JWT de Agendity
+/// con `SessionService.start`) antes de devolver el usuario; si fallan, no
+/// queda ninguna sesión. Errores por `code` (§3): credenciales →
+/// `InvalidCredentialsFailure`, cuenta sin acceso → `AccountInactiveFailure`,
+/// código malo → `InvalidVerificationCodeFailure`, throttle →
+/// `TooManyRequestsFailure`, repetidos → `DuplicateEmail/PhoneFailure`.
 abstract class AuthRepository {
-  /// Iniciar sesión con email y contraseña
+  /// `POST /auth/login`.
   Future<Either<Failure, UserEntity>> login({
     required String email,
     required String password,
   });
 
-  /// Cerrar sesión del usuario actual
-  Future<Either<Failure, void>> signOut();
+  /// `POST /auth/register/owner`: crea el negocio (Owner + trial, 2.19).
+  Future<Either<Failure, UserEntity>> registerOwner(RegisterOwnerInput input);
 
-  /// Registrar nuevo usuario
-  Future<Either<Failure, UserEntity>> register({
-    required String name,
-    required String lastname,
-    required String email,
-    required String phone,
-    required String password,
-  });
+  /// Selector de Google + `POST /auth/google` con el ID token. Se usa el JWT
+  /// de Agendity de la respuesta; el token de Google nunca es la sesión.
+  Future<Either<Failure, UserEntity>> signInWithGoogle();
 
-  /// Solicitar código de verificación por email
-  ///
-  /// [email] - Email al que enviar el código
-  /// [isNewUser] - true para nuevos usuarios, false para existentes
-  Future<Either<Failure, void>> requestVerificationCode({
-    required String email,
-    bool isNewUser = false,
-  });
+  /// `POST /auth/verify/request-code` (email desconocido → `NotFoundFailure`).
+  Future<Either<Failure, Unit>> requestVerificationCode(String email);
 
-  /// Verificar email con código recibido
-  Future<Either<Failure, bool>> verifyEmail({
+  /// `POST /auth/verify/email`.
+  Future<Either<Failure, Unit>> verifyEmail({
     required String email,
     required String code,
   });
 
-  /// Solicitar código para restablecer contraseña
-  Future<Either<Failure, void>> requestPasswordReset({
-    required String email,
-  });
+  /// `POST /auth/forgot-password`.
+  Future<Either<Failure, Unit>> requestPasswordReset(String email);
 
-  /// Restablecer contraseña con código
-  Future<Either<Failure, bool>> resetPassword({
+  /// `POST /auth/reset-password`.
+  Future<Either<Failure, Unit>> resetPassword({
     required String email,
     required String code,
     required String newPassword,
   });
 
-  /// Cerrar sesión (alias de signOut para compatibilidad)
-  Future<Either<Failure, bool>> logout();
+  /// Único logout: borra la sesión, los datos locales y la sesión de Google.
+  Future<Either<Failure, Unit>> logout();
 }

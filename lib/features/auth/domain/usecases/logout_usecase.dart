@@ -1,13 +1,14 @@
 import 'package:dartz/dartz.dart';
-import '../../../../core/errors/failures.dart';
-import '../repositories/auth_repository.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
 
-class LogoutUseCase {
-  final AuthRepository repository;
+/// Único logout de datos (lo llama `LogoutController.endSession`).
+class LogoutUseCase implements UseCase<Unit, NoParams> {
+  final AuthRepository _repository;
 
-  LogoutUseCase(this.repository);
+  LogoutUseCase(this._repository);
 
-  Future<Either<Failure, void>> execute() async {
-    return await repository.signOut();
-  }
+  @override
+  Future<Either<Failure, Unit>> call(NoParams params) => _repository.logout();
 }

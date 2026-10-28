@@ -17,20 +17,6 @@ class EmployeeEmailNotVerifiedFailure extends ConflictFailure {
         );
 }
 
-/// Código de verificación del email incorrecto, vencido o agotado tras
-/// varios intentos: 400 `INVALID_VERIFICATION_CODE` (2.33). Se conserva el
-/// texto del backend, que dice el motivo.
-class InvalidEmployeeVerificationCodeFailure extends ValidationFailure {
-  static const defaultMessage = 'Código de verificación inválido';
-
-  const InvalidEmployeeVerificationCodeFailure({
-    String? message,
-    super.code,
-    super.statusCode,
-    super.details,
-  }) : super(message: message ?? defaultMessage);
-}
-
 /// Datos de un profesional fuera de las reglas del backend
 /// (`EmployeeRules`). La producen los use cases antes de llamar al backend;
 /// [details] lista todos los problemas y [message] los une.

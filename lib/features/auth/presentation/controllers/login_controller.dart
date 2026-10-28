@@ -129,10 +129,10 @@ class LoginController extends GetxController {
     isLoading.value = true;
 
     try {
-      final result = await loginUseCase(
+      final result = await loginUseCase(LoginParams(
         email: emailController.text.trim(),
         password: passwordController.text,
-      );
+      ));
 
       result.fold(
         (failure) {

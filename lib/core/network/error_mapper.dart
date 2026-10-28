@@ -90,7 +90,7 @@ abstract final class ErrorMapper {
     ApiErrorCode.ownerNotDeletable: _conflict,
     ApiErrorCode.categoryHasServices: _conflict,
     ApiErrorCode.appointmentInPast: _validation,
-    ApiErrorCode.invalidVerificationCode: _validation,
+    ApiErrorCode.invalidVerificationCode: _invalidVerificationCode,
     ApiErrorCode.trialLimitReached: _paymentRequired,
     ApiErrorCode.subscriptionInactive: _paymentRequired,
     ApiErrorCode.tooManyRequests: _tooManyRequests,
@@ -110,6 +110,9 @@ abstract final class ErrorMapper {
 
   static Failure _validation(String? m, String? c, int? s, List<String> d) =>
       ValidationFailure(message: m, code: c, statusCode: s, details: d);
+  static Failure _invalidVerificationCode(
+          String? m, String? c, int? s, List<String> d) =>
+      InvalidVerificationCodeFailure(message: m, statusCode: s, details: d);
   static Failure _unauthorized(String? m, String? c, int? s, List<String> d) =>
       UnauthorizedFailure(message: m, code: c, statusCode: s, details: d);
   static Failure _forbidden(String? m, String? c, int? s, List<String> d) =>

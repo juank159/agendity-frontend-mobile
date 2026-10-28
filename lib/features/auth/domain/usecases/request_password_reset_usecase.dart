@@ -1,38 +1,20 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
+import 'package:login_signup/features/auth/domain/usecases/auth_rules.dart';
 
-/// UseCase para solicitar código de recuperación de contraseña
-///
-/// Este UseCase maneja la lógica específica para solicitar códigos de recuperación
-/// de contraseña para usuarios existentes que olvidaron su contraseña
-class RequestPasswordResetUseCase {
-  final AuthRepository repository;
+/// Envía el código de recuperación de contraseña (email desconocido →
+/// `NotFoundFailure`).
+class RequestPasswordResetUseCase implements UseCase<Unit, String> {
+  final AuthRepository _repository;
 
-  RequestPasswordResetUseCase(this.repository);
+  RequestPasswordResetUseCase(this._repository);
 
-  /// Ejecuta la solicitud de código de recuperación de contraseña
-  ///
-  /// [email] - Email del usuario que solicita la recuperación
-  ///
-  /// Returns: Either<Failure, void> - Error o éxito de la operación
-  Future<Either<Failure, void>> call({required String email}) async {
-    // Validación básica del email
-    if (email.isEmpty || !_isValidEmail(email)) {
-      return Left(ValidationFailure(message: 'Email inválido'));
-    }
-
-    // Llamar al repositorio para solicitar el código de recuperación
-    return await repository.requestPasswordReset(email: email);
+  @override
+  Future<Either<Failure, Unit>> call(String email) async {
+    final invalid = AuthRules.checkEmail(email);
+    if (invalid != null) return Left(invalid);
+    return _repository.requestPasswordReset(email.trim());
   }
-
-  /// Validación simple de formato de email
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
-}
-
-/// Excepción específica para errores de validación
-class ValidationFailure extends Failure {
-  ValidationFailure({required super.message});
 }

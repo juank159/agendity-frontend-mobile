@@ -17,7 +17,7 @@ class VerifyEmployeeEmailParams {
 
 /// Verifica el email del empleado con el código de 6 dígitos. El backend lo
 /// **activa** en el mismo paso (no hace falta activarlo después). Código
-/// incorrecto, vencido o agotado → `InvalidEmployeeVerificationCodeFailure`.
+/// incorrecto, vencido o agotado → `InvalidVerificationCodeFailure` (core).
 class VerifyEmployeeEmailUseCase
     extends UseCase<Unit, VerifyEmployeeEmailParams> {
   final EmployeesRepository repository;

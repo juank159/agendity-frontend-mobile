@@ -29,7 +29,6 @@
 // }
 
 import 'package:get/get.dart';
-import 'package:login_signup/core/di/modules/auth_module.dart';
 import 'package:login_signup/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:login_signup/features/auth/presentation/controllers/reset_password_controller.dart';
@@ -38,10 +37,7 @@ class ResetPasswordBinding extends Bindings {
   @override
   void dependencies() {
     // Limpiar recursos previos si existen
-    AuthModule.cleanupResetPasswordResources();
-
-    // Asegurar que las dependencias base estén inicializadas
-    AuthModule.initResetPasswordDependencies();
+    _cleanupPreviousController();
 
     // Asegurar que tenemos ResetPasswordUseCase disponible
     if (!Get.isRegistered<ResetPasswordUseCase>()) {
@@ -68,5 +64,18 @@ class ResetPasswordBinding extends Bindings {
     );
 
     print('🔑 ResetPasswordController registrado con ambos UseCases');
+  }
+
+  /// Libera un `ResetPasswordController` anterior (antes en `AuthModule`).
+  static void _cleanupPreviousController() {
+    if (!Get.isRegistered<ResetPasswordController>()) return;
+    final controller = Get.find<ResetPasswordController>();
+    try {
+      controller.passwordController.dispose();
+      controller.confirmPasswordController.dispose();
+    } catch (_) {
+      // Ya liberados.
+    }
+    Get.delete<ResetPasswordController>(force: true);
   }
 }

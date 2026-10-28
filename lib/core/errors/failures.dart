@@ -82,6 +82,23 @@ class ValidationFailure extends Failure {
   }) : super(message: message ?? defaultMessage);
 }
 
+/// `INVALID_VERIFICATION_CODE` (400, 2.33): código de verificación o de
+/// recuperación incorrecto, vencido o agotado tras varios intentos
+/// (`verify/email`, `reset-password`, `verify/employee-email`). El motivo va en
+/// [message] (texto del backend). Lo produce el `ErrorMapper` por `code`.
+class InvalidVerificationCodeFailure extends ValidationFailure {
+  static const defaultMessage = 'Código de verificación inválido';
+
+  const InvalidVerificationCodeFailure({
+    String? message,
+    super.statusCode,
+    super.details,
+  }) : super(
+          message: message ?? defaultMessage,
+          code: ApiErrorCode.invalidVerificationCode,
+        );
+}
+
 /// 401: sin token o token vencido. El `AuthInterceptor` avisa de la sesión expirada.
 class UnauthorizedFailure extends Failure {
   static const defaultMessage = 'Tu sesión expiró. Inicia sesión de nuevo.';

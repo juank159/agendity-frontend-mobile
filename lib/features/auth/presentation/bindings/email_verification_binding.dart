@@ -18,7 +18,7 @@
 // }
 
 import 'package:get/get.dart';
-import '../../../../core/di/modules/auth_module.dart';
+import 'package:login_signup/features/auth/auth_dependencies.dart';
 import '../controllers/email_verification_controller.dart';
 import '../../domain/usecases/request_verification_code_usecase.dart';
 import '../../domain/usecases/verify_email_usecase.dart';
@@ -33,7 +33,7 @@ class EmailVerificationBinding extends Bindings {
       if (!Get.isRegistered<RequestVerificationCodeUseCase>() ||
           !Get.isRegistered<VerifyEmailUseCase>()) {
         print('🔄 Inicializando AuthModule desde EmailVerificationBinding...');
-        AuthModule.init();
+        AuthDependencies.init();
       }
 
       // ← SOLUCIÓN: Forzar eliminación del controlador permanente

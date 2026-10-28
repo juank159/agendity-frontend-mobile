@@ -137,7 +137,7 @@ class FakeEmployeesRepository implements EmployeesRepository {
   }) async {
     verifications.add((employeeId, code));
     if (code != '123456') {
-      return const Left(InvalidEmployeeVerificationCodeFailure());
+      return const Left(InvalidVerificationCodeFailure());
     }
     final index = team.indexWhere((e) => e.id == employeeId);
     team[index] =
@@ -450,7 +450,7 @@ void main() {
       expect(find.text('Verifica el email de Luis Gómez'), findsOneWidget);
       await tester.enterText(find.byType(TextField).last, '000000');
       await pumpFor(tester);
-      expect(find.text(InvalidEmployeeVerificationCodeFailure.defaultMessage),
+      expect(find.text(InvalidVerificationCodeFailure.defaultMessage),
           findsOneWidget);
 
       await tester.enterText(find.byType(TextField).last, '123456');

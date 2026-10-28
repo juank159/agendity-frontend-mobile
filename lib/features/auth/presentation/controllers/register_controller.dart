@@ -1,6 +1,7 @@
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../domain/entities/register_owner_input.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/request_verification_code_usecase.dart';
 
@@ -173,13 +174,13 @@ class RegisterController extends GetxController {
     isLoading.value = true;
 
     try {
-      final result = await registerUseCase(
+      final result = await registerUseCase(RegisterOwnerInput(
         name: nameController.text.trim(),
         lastname: lastnameController.text.trim(),
         email: emailController.text.trim(),
         phone: phoneController.text.trim(),
         password: passwordController.text,
-      );
+      ));
 
       await result.fold(
         (failure) {

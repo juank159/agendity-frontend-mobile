@@ -106,11 +106,7 @@ class EmailVerificationController extends GetxController {
     isLoading.value = true;
 
     try {
-      // ← CORREGIDO: Pasar el parámetro isNewUser
-      final result = await requestCodeUseCase(
-        email: email.value,
-        isNewUser: isNewUser.value, // ← ESTO ERA LO QUE FALTABA
-      );
+      final result = await requestCodeUseCase(email.value);
 
       result.fold(
         (failure) {
@@ -159,9 +155,7 @@ class EmailVerificationController extends GetxController {
 
     try {
       final result = await verifyEmailUseCase(
-        email: email.value,
-        code: codeController.text,
-      );
+          VerifyEmailParams(email: email.value, code: codeController.text));
 
       result.fold(
         (failure) {
@@ -172,45 +166,36 @@ class EmailVerificationController extends GetxController {
             color: Colors.red,
           );
         },
-        (isVerified) async {
+        (_) async {
           // ← AGREGAR: async aquí
-          if (isVerified) {
-            print('✅ Email verificado correctamente');
-            _timer?.cancel();
-            _showSnackbar(
-              title: 'Éxito',
-              message:
-                  'Correo verificado correctamente. Ahora puedes iniciar sesión.',
-              color: Colors.green,
-            );
+          print('✅ Email verificado correctamente');
+          _timer?.cancel();
+          _showSnackbar(
+            title: 'Éxito',
+            message:
+                'Correo verificado correctamente. Ahora puedes iniciar sesión.',
+            color: Colors.green,
+          );
 
-            // ← CORREGIDO: Limpiar token para forzar login manual
-            try {
-              // Acceder al localStorage para limpiar el token
-              final localStorage = Get.find<LocalStorage>();
-              await localStorage.deleteToken();
-              print(
-                  '🔑 Token eliminado - usuario debe iniciar sesión manualmente');
-            } catch (e) {
-              print('⚠️ Error eliminando token: $e');
-            }
-
-            // Navegar al login para que inicie sesión manualmente
-            Future.delayed(const Duration(seconds: 2), () {
-              Get.offAllNamed(GetRoutes.login, arguments: {
-                'message':
-                    'Email verificado correctamente. Inicia sesión con tus credenciales.',
-                'messageType': 'success'
-              });
-            });
-          } else {
-            print('❌ Verificación falló');
-            _showSnackbar(
-              title: 'Error',
-              message: 'La verificación no pudo completarse',
-              color: Colors.red,
-            );
+          // ← CORREGIDO: Limpiar token para forzar login manual
+          try {
+            // Acceder al localStorage para limpiar el token
+            final localStorage = Get.find<LocalStorage>();
+            await localStorage.deleteToken();
+            print(
+                '🔑 Token eliminado - usuario debe iniciar sesión manualmente');
+          } catch (e) {
+            print('⚠️ Error eliminando token: $e');
           }
+
+          // Navegar al login para que inicie sesión manualmente
+          Future.delayed(const Duration(seconds: 2), () {
+            Get.offAllNamed(GetRoutes.login, arguments: {
+              'message':
+                  'Email verificado correctamente. Inicia sesión con tus credenciales.',
+              'messageType': 'success'
+            });
+          });
         },
       );
     } catch (e) {

@@ -412,7 +412,7 @@ void main() {
           'El código de verificación ha expirado');
       final failure = leftOf(await VerifyEmployeeEmailUseCase(repository)(
           const VerifyEmployeeEmailParams(employeeId: 'emp-1', code: '000000')));
-      expect(failure, isA<InvalidEmployeeVerificationCodeFailure>());
+      expect(failure, isA<InvalidVerificationCodeFailure>());
       expect(failure!.message, 'El código de verificación ha expirado');
       expect(failure.code, 'INVALID_VERIFICATION_CODE');
       expect(expiredSessions, 0);

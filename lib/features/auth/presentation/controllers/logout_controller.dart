@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/di/session_scope.dart';
 import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import '../../domain/usecases/logout_usecase.dart';
@@ -40,7 +41,7 @@ class LogoutController extends GetxController {
       if (Get.isRegistered<SessionController>()) {
         await Get.find<SessionController>().end();
       }
-      final result = await _logoutUseCase.execute();
+      final result = await _logoutUseCase(NoParams());
       result.fold(
         (failure) => debugPrint('Logout: limpieza local con error: '
             '${failure.message}'),

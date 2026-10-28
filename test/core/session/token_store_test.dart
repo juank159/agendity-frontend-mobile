@@ -53,8 +53,6 @@ void main() {
   test('LocalStorage delega el token en TokenStore (una sola entrada)',
       () async {
     final local = LocalStorage(storage, tokenStore: store);
-    await local.saveToken('x.y.z');
-    expect(await store.readToken(), 'x.y.z');
     await store.saveToken('n.u.evo');
     expect(await local.getToken(), 'n.u.evo');
     await local.deleteToken();

@@ -6,6 +6,7 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
 import 'package:login_signup/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
@@ -23,9 +24,9 @@ class _FakeLogout extends LogoutUseCase {
   int calls = 0;
   _FakeLogout() : super(_Repo());
   @override
-  Future<Either<Failure, void>> execute() async {
+  Future<Either<Failure, Unit>> call(NoParams params) async {
     calls++;
-    return const Right(null);
+    return const Right(unit);
   }
 }
 
@@ -67,8 +68,12 @@ void main() {
     await tester.pumpWidget(GetMaterialApp(
       initialRoute: GetRoutes.home,
       getPages: [
-        GetPage(name: GetRoutes.home, page: () => const Scaffold(body: Text('home'))),
-        GetPage(name: GetRoutes.login, page: () => const Scaffold(body: Text('login'))),
+        GetPage(
+            name: GetRoutes.home,
+            page: () => const Scaffold(body: Text('home'))),
+        GetPage(
+            name: GetRoutes.login,
+            page: () => const Scaffold(body: Text('login'))),
       ],
     ));
     await Get.find<SessionController>().restore();

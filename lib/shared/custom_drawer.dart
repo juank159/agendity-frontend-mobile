@@ -7,7 +7,6 @@ import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
-import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
 
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
@@ -210,26 +209,19 @@ class CustomDrawer extends GetView<UserInfoController> {
                               },
                             ),
 
+                            // Visible para Owner y Employee (los dos crean y
+                            // editan clientes; borrar, solo el Owner).
+                            _buildDrawerItem(
+                              icon: Icons.people,
+                              title: 'Clientela',
+                              onTap: () {
+                                Get.back();
+                                Get.toNamed(GetRoutes.clients);
+                              },
+                            ),
+
                             // Elementos condicionales según el rol
                             if (isOwner) ...[
-                              _buildDrawerItem(
-                                icon: Icons.people,
-                                title: 'Clientela',
-                                onTap: () async {
-                                  Get.back();
-                                  try {
-                                    final clientsController =
-                                        Get.find<ClientsController>();
-                                    await clientsController.loadClients();
-                                    Get.toNamed(GetRoutes.clients);
-                                  } catch (e) {
-                                    print('Error inicializando clientes: $e');
-                                    Get.toNamed(GetRoutes.clients);
-                                  }
-                                },
-                                badgeCount:
-                                    0, // Opcional: añade un contador dinámico
-                              ),
                               _buildDrawerItem(
                                 icon: Icons.message,
                                 title: 'Mensajes',

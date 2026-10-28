@@ -1,104 +1,54 @@
-// lib/features/clients/presentation/widgets/client_image_picker.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/edit_client_controller.dart';
+import '../controller/client_form_controller.dart';
 
-class ClientImagePicker extends GetView<EditClientController> {
-  const ClientImagePicker({super.key});
+/// Foto del cliente (alta y edición): toca para elegir otra; se sube al
+/// elegirla.
+class ClientImagePicker extends StatelessWidget {
+  final ClientFormController controller;
+
+  const ClientImagePicker({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Obx(() {
-        Widget imageContent;
-
-        if (controller.isUploadingImage.value) {
-          // Si está cargando, mostrar indicador de progreso
-          imageContent = const CircularProgressIndicator(
-            color: Colors.white,
-            strokeWidth: 3.0,
-          );
-        } else if (controller.selectedImage.value != null ||
-            controller.imageUrl.value.isNotEmpty) {
-          // Si hay una imagen seleccionada, no mostrar icono superpuesto
-          imageContent = const SizedBox.shrink();
-        } else {
-          // Si no hay imagen, mostrar icono de cámara
-          imageContent = const Icon(
-            Icons.add_a_photo,
-            color: Colors.white,
-            size: 40,
-          );
-        }
-
-        return Stack(
-          children: [
-            // Contenedor principal de la imagen
-            Container(
-              height: 160,
-              width: 160,
-              decoration: BoxDecoration(
-                color: Colors.blue.shade300,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.shade300.withValues(alpha: 0.5),
-                    spreadRadius: 2,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-                image: controller.imageUrl.value.isNotEmpty
-                    ? DecorationImage(
-                        image: NetworkImage(controller.imageUrl.value),
-                        fit: BoxFit.cover,
-                      )
-                    : controller.selectedImage.value != null
-                        ? DecorationImage(
-                            image: FileImage(controller.selectedImage.value!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => controller.pickImage(),
-                  customBorder: const CircleBorder(),
-                  child: Center(child: imageContent),
+        final url = controller.imageUrl.value;
+        final uploading = controller.isUploadingImage.value;
+        return Semantics(
+          button: true,
+          label: url.isEmpty ? 'Agregar foto' : 'Cambiar foto',
+          child: InkWell(
+            onTap: uploading ? null : controller.pickImage,
+            customBorder: const CircleBorder(),
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 56,
+                  backgroundColor: scheme.primaryContainer,
+                  foregroundColor: scheme.onPrimaryContainer,
+                  backgroundImage: url.isEmpty ? null : NetworkImage(url),
+                  child: uploading
+                      ? const CircularProgressIndicator()
+                      : url.isEmpty
+                          ? const Icon(Icons.add_a_photo, size: 36)
+                          : null,
                 ),
-              ),
+                if (url.isNotEmpty && !uploading)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      child: const Icon(Icons.edit, size: 18),
+                    ),
+                  ),
+              ],
             ),
-
-            // Botón de edición
-            if (controller.selectedImage.value != null ||
-                controller.imageUrl.value.isNotEmpty)
-              Positioned(
-                bottom: 5,
-                right: 5,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade700,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        spreadRadius: 1,
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.edit,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-          ],
+          ),
         );
       }),
     );

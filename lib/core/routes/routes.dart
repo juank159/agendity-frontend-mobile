@@ -234,7 +234,7 @@ class GetRoutes {
     GetPage(
       name: clients,
       middlewares: [AuthMiddleware()],
-      page: () => const ClientsScreen(), // Removido el const
+      page: () => const ClientsScreen(),
       binding: ClientsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
@@ -244,16 +244,16 @@ class GetRoutes {
       name: editClient,
       middlewares: [AuthMiddleware()],
       page: () => const EditClientScreen(),
-      binding: ClientsBinding(),
+      binding: EditClientBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
-      preventDuplicates: true, // Asegúrate de tener esto en true
+      preventDuplicates: true,
     ),
     GetPage(
       name: addClient,
       middlewares: [AuthMiddleware()],
       page: () => const NewClientScreen(),
-      binding: ClientsBinding(),
+      binding: NewClientBinding(),
     ),
 
     // employees Pages

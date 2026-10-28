@@ -1,27 +1,41 @@
 import 'package:get/get.dart';
 import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
+import 'package:login_signup/features/clients/presentation/controller/device_contacts.dart';
 import 'package:login_signup/features/clients/presentation/controller/edit_client_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/new_client_controller.dart';
 
-/// Solo controllers: datasource, repositorio y use cases los registra
-/// `ClientsDependencies`.
+/// Lista de clientes (`/clients`). Solo controllers: datasource, repositorio
+/// y use cases los registra `ClientsDependencies`.
 class ClientsBinding extends Bindings {
   @override
   void dependencies() {
     Get.lazyPut(() => ClientsController(
           getClientsPageUseCase: Get.find(),
           importClientsUseCase: Get.find(),
+          readDeviceContacts: readDeviceContacts,
         ));
+  }
+}
 
+/// Alta de cliente (`/clients/new`).
+class NewClientBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut(() => NewClientController(
+          createClientUseCase: Get.find(),
+          uploadClientImageUseCase: Get.find(),
+        ));
+  }
+}
+
+/// Edición de cliente (`/clients/edit`, id en `arguments['clientId']`).
+class EditClientBinding extends Bindings {
+  @override
+  void dependencies() {
     Get.lazyPut(() => EditClientController(
           getClientByIdUseCase: Get.find(),
           updateClientUseCase: Get.find(),
           deleteClientUseCase: Get.find(),
-          uploadClientImageUseCase: Get.find(),
-        ));
-
-    Get.lazyPut(() => NewClientController(
-          createClientUseCase: Get.find(),
           uploadClientImageUseCase: Get.find(),
         ));
   }

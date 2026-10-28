@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/shared/utils/color_hex.dart';
 
 /// Colores que el Owner puede dar a un servicio en la agenda. Son datos del
 /// negocio (se guardan como hex), no colores del tema.
@@ -17,22 +17,6 @@ const List<Color> servicePalette = [
   Color(0xFF795548),
   Color(0xFFE91E63),
 ];
-
-/// `Color` → `#rrggbb` (lo que guarda `ServiceEntity.color`).
-String colorToHex(Color color) =>
-    '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
-
-/// `#rrggbb` o `#rgb` → `Color`. Un valor inválido da el color por defecto
-/// del servicio.
-Color colorFromHex(String hex) {
-  var digits = hex.trim().replaceFirst('#', '');
-  if (digits.length == 3) {
-    digits = digits.split('').map((c) => '$c$c').join();
-  }
-  final value = digits.length == 6 ? int.tryParse(digits, radix: 16) : null;
-  if (value == null) return colorFromHex(ServiceEntity.defaultColor);
-  return Color(0xFF000000 | value);
-}
 
 /// Selector del color de un servicio. Si el color actual no está en la
 /// paleta (servicios antiguos), se muestra al principio para no perderlo.
@@ -78,7 +62,7 @@ class ServiceColorPicker extends StatelessWidget {
                       : null,
                 ),
                 child: colorToHex(color) == selectedHex
-                    ? Icon(Icons.check, color: _contrastOn(color), size: 20)
+                    ? Icon(Icons.check, color: contrastOn(color), size: 20)
                     : null,
               ),
             ),
@@ -86,10 +70,4 @@ class ServiceColorPicker extends StatelessWidget {
       ],
     );
   }
-
-  /// Blanco o negro, lo que se lea mejor sobre [color].
-  static Color _contrastOn(Color color) =>
-      ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-          ? const Color(0xFFFFFFFF)
-          : const Color(0xFF000000);
 }

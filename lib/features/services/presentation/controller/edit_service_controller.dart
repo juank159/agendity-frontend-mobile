@@ -6,7 +6,7 @@ import 'package:login_signup/features/services/domain/usecases/delete_service_us
 import 'package:login_signup/features/services/domain/usecases/update_service_usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
 import 'package:login_signup/features/services/presentation/controller/service_form_controller.dart';
-import 'package:login_signup/features/services/presentation/widgets/color_picker.dart';
+import 'package:login_signup/shared/utils/color_hex.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 

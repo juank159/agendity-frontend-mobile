@@ -23,12 +23,14 @@ class PaymentDialog extends GetView<PaymentController> {
   });
 
   /// Usa el navigator de GetX: quien lo llama suele cerrar antes su propio
-  /// diálogo, y su `context` ya no sirve para abrir otro.
+  /// diálogo, y su `context` ya no sirve para abrir otro. [balanceDue] = lo
+  /// que falta por pagar (con anticipos); sin él, el total.
   static Future<bool> show(
     AppointmentEntity appointment, {
+    double? balanceDue,
     List<CustomPaymentMethod> customMethods = const [],
   }) async {
-    Get.find<PaymentController>().start(appointment);
+    Get.find<PaymentController>().start(appointment, balanceDue: balanceDue);
     final result = await Get.dialog<bool>(
       PaymentDialog(appointment: appointment, customMethods: customMethods),
     );
@@ -54,7 +56,12 @@ class PaymentDialog extends GetView<PaymentController> {
                         .titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
-                _TotalBox(total: controller.total),
+                _TotalBox(
+                  total: controller.total,
+                  balanceDue: controller.hasPreviousPayments
+                      ? controller.balanceDue
+                      : null,
+                ),
                 const SizedBox(height: 16),
                 TextField(
                   key: const Key('payment-amount'),
@@ -64,7 +71,7 @@ class PaymentDialog extends GetView<PaymentController> {
                   decoration: InputDecoration(
                     labelText: 'Monto recibido',
                     prefixText: '\$ ',
-                    helperText: 'Puede ser un anticipo; no más del total.',
+                    helperText: 'Puede ser un anticipo; no más del saldo.',
                     errorText: controller.amountError.value,
                     border: const OutlineInputBorder(),
                   ),
@@ -157,31 +164,47 @@ class PaymentDialog extends GetView<PaymentController> {
 class _TotalBox extends StatelessWidget {
   final double total;
 
-  const _TotalBox({required this.total});
+  /// Saldo pendiente si ya hay pagos (anticipos); `null` si no.
+  final double? balanceDue;
+
+  const _TotalBox({required this.total, this.balanceDue});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.tokens.success;
+    final label =
+        TextStyle(color: colors.onContainer, fontWeight: FontWeight.w500);
+    final amount = TextStyle(
+      color: colors.onContainer,
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+    );
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.container,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          Text('Total de la cita',
-              style: TextStyle(
-                  color: colors.onContainer, fontWeight: FontWeight.w500)),
-          Text(
-            formatCop(total),
-            style: TextStyle(
-              color: colors.onContainer,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Total de la cita', style: label),
+              Text(formatCop(total),
+                  style: balanceDue == null ? amount : label),
+            ],
           ),
+          if (balanceDue != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Saldo pendiente', style: label),
+                Text(formatCop(balanceDue), style: amount),
+              ],
+            ),
+          ],
         ],
       ),
     );

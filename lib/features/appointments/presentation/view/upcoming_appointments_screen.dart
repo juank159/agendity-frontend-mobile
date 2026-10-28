@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controllers/appointment_reminder_controller.dart';
-import '../widgets/appointment_card.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_card.dart';
 
+/// Recordatorios manuales: próximas citas pendientes o confirmadas sin
+/// recordatorio (las canceladas no salen). Owner: las del negocio;
+/// Employee: las suyas.
 class UpcomingAppointmentsScreen
     extends GetView<AppointmentReminderController> {
   const UpcomingAppointmentsScreen({super.key});
@@ -13,44 +16,37 @@ class UpcomingAppointmentsScreen
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recordatorio de Citas'),
+        title: const Text('Recordatorios'),
         actions: [
-          // ✅ Botón para refrescar y limpiar automáticamente
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => controller.refreshAndClean(),
-            tooltip: 'Refrescar y limpiar',
-          ),
-          // ✅ Botón para limpiar citas pasadas manualmente
-          IconButton(
-            icon: const Icon(Icons.cleaning_services),
-            onPressed: () => controller.cleanExpiredAppointments(),
-            tooltip: 'Limpiar citas pasadas',
+            tooltip: 'Actualizar',
+            onPressed: controller.fetch,
           ),
         ],
       ),
       body: Obx(() => ListStateView<AppointmentEntity>(
             isLoading: controller.isLoading.value,
-            error: controller.errorMessage.value,
-            items: controller.upcomingAppointments,
-            onRetry: controller.fetchUpcomingAppointments,
+            error: controller.error.value?.message,
+            items: controller.upcoming.toList(),
+            onRetry: controller.fetch,
             loadingMessage: 'Cargando citas...',
             emptyIcon: Icons.event_available,
-            emptyMessage: 'No hay citas próximas',
+            emptyMessage: 'No hay recordatorios pendientes',
             emptySubMessage:
-                'Solo se muestran citas futuras que requieren recordatorios.\n'
-                'Las citas pasadas se limpian automáticamente.',
+                'Aquí salen las citas de los próximos 7 días que aún no '
+                'tienen recordatorio.',
             builder: (context, appointments) => RefreshIndicator(
-              onRefresh: () => controller.fetchUpcomingAppointments(),
+              onRefresh: controller.fetch,
               child: ListView.builder(
                 itemCount: appointments.length,
                 itemBuilder: (context, index) {
                   final appointment = appointments[index];
-                  return AppointmentCard(
-                    appointment: appointment,
-                    onSendReminder: () =>
-                        controller.sendAppointmentReminder(appointment),
-                  );
+                  return Obx(() => AppointmentCard(
+                        appointment: appointment,
+                        isSending: controller.sendingId.value == appointment.id,
+                        onSendReminder: () => controller.send(appointment),
+                      ));
                 },
               ),
             ),

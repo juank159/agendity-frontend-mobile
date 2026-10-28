@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
-import 'package:login_signup/features/services/presentation/widgets/color_picker.dart';
+import 'package:login_signup/shared/utils/color_hex.dart';
 
 /// Tarjeta de un servicio. Sin [onTap] es de solo lectura (Employee).
 class ServiceCard extends StatelessWidget {

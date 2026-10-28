@@ -39,17 +39,27 @@ class PaymentController extends GetxController {
   final methodError = RxnString();
 
   AppointmentEntity? _appointment;
+  double? _balanceDue;
 
   double get total => _appointment?.totalPrice ?? 0;
+
+  /// Lo que falta por pagar (con anticipos, menos que el total). Es el
+  /// máximo de este pago.
+  double get balanceDue => _balanceDue ?? total;
+
+  bool get hasPreviousPayments =>
+      (balanceDue * 100).round() < (total * 100).round();
 
   bool get needsTransactionId =>
       method.value == PaymentMethod.TRANSFER ||
       method.value == PaymentMethod.ONLINE;
 
-  /// Prepara el formulario para [appointment] con el total como monto.
-  void start(AppointmentEntity appointment) {
+  /// Prepara el formulario para [appointment] con el saldo pendiente
+  /// ([balanceDue]; sin él, el total) como monto.
+  void start(AppointmentEntity appointment, {double? balanceDue}) {
     _appointment = appointment;
-    amountController.text = total.round().toString();
+    _balanceDue = balanceDue;
+    amountController.text = _amountText(this.balanceDue);
     transactionController.clear();
     method.value = PaymentMethod.CASH;
     customMethodId.value = null;
@@ -78,7 +88,7 @@ class PaymentController extends GetxController {
   }
 
   /// Registra el pago. `true` si quedó guardado (el diálogo se cierra).
-  /// Un monto menor que el total es un anticipo y se confirma antes.
+  /// Un monto menor que el saldo es un anticipo y se confirma antes.
   Future<bool> submit() async {
     final appointment = _appointment;
     if (appointment == null || isSaving.value) return false;
@@ -95,12 +105,18 @@ class PaymentController extends GetxController {
       appointmentTotal: total,
     );
 
-    final looksValid = amount != null && amount > 0 && amount <= total;
-    if (looksValid && amount < total) {
+    final due = balanceDue;
+    if (amount != null && _cents(amount) > _cents(due) && amount <= total) {
+      amountError.value =
+          'El monto no puede superar el saldo pendiente (${formatCop(due)})';
+      return false;
+    }
+    final looksValid = amount != null && amount > 0 && amount <= due;
+    if (looksValid && _cents(amount) < _cents(due)) {
       final confirmed = await AppDialogs.confirm(
         title: '¿Registrar un anticipo?',
-        message: 'Vas a registrar ${formatCop(amount)} de un total de '
-            '${formatCop(total)}.',
+        message: 'Vas a registrar ${formatCop(amount)} de un saldo pendiente '
+            'de ${formatCop(due)}.',
         confirmLabel: 'Registrar anticipo',
         icon: Icons.payments_outlined,
       );
@@ -136,6 +152,12 @@ class PaymentController extends GetxController {
       AppSnackbar.error(failure.message, title: 'No se registró el pago');
     }
   }
+
+  static int _cents(double value) => (value * 100).round();
+
+  static String _amountText(double value) => value == value.roundToDouble()
+      ? value.round().toString()
+      : value.toStringAsFixed(2).replaceAll('.', ',');
 
   /// Texto del campo → pesos. Acepta `45000`, `45.000` y `$ 45.000`;
   /// la coma es el separador decimal. `null` si no es un número.

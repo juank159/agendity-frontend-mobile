@@ -1,538 +1,331 @@
 import 'package:flutter/material.dart';
-import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/appointment_feedback.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
-import 'package:login_signup/features/appointments/presentation/widgets/edit_appointment_dialog.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_form_dialog.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/cancel_appointment_dialog.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
-import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
+import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
-class AppointmentDetailsDialog extends StatelessWidget {
+/// Detalle de una cita con sus acciones según el estado y el rol:
+/// pagar el saldo y editar (Owner), completar y cancelar (los dos; el
+/// Employee solo ve sus citas). Lo que cambia se refleja en la agenda.
+class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
   final AppointmentEntity appointment;
 
   const AppointmentDetailsDialog({super.key, required this.appointment});
 
-  /// Rol del usuario desde la sesión de la UI (sin decodificar el JWT).
-  bool get _isOwner => Get.find<SessionController>().isOwner;
+  static Future<void> show(AppointmentEntity appointment) =>
+      Get.dialog<void>(AppointmentDetailsDialog(appointment: appointment));
+
+  AppointmentsController get _agenda => Get.find<AppointmentsController>();
+
+  // --- Acciones -------------------------------------------------------------
+
+  Future<void> _complete(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final confirmed = await AppDialogs.confirm(
+      title: '¿Completar la cita?',
+      message: appointment.isFullyPaid
+          ? 'La cita quedará como atendida.'
+          : 'La cita aún no está pagada del todo. Quedará como atendida y '
+              'podrás registrar el pago después.',
+      confirmLabel: 'Completar',
+      icon: Icons.task_alt,
+    );
+    if (!confirmed) return;
+    final updated = await controller.complete(appointment);
+    if (updated == null) return;
+    navigator.pop();
+    _agenda.applyChange(updated);
+  }
+
+  Future<void> _cancel(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final reason = await CancelAppointmentDialog.show(appointment.clientName);
+    if (reason == null) return;
+    final updated = await controller.cancel(appointment, reason: reason);
+    if (updated == null) return;
+    navigator.pop();
+    _agenda.applyChange(updated);
+  }
+
+  Future<void> _edit(BuildContext context) async {
+    Navigator.of(context).pop();
+    final saved = await AppointmentFormDialog.edit(appointment);
+    if (saved != null) _agenda.applyChange(saved);
+  }
+
+  Future<void> _pay(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final due = await controller.balanceDue(appointment);
+    if (due == null) return;
+    navigator.pop();
+    if (due <= 0) {
+      AppSnackbar.info('La cita ya está pagada');
+      await _refresh();
+      return;
+    }
+    final methods = await Get.find<PaymentController>().loadCustomMethods();
+    final paid = await PaymentDialog.show(appointment,
+        balanceDue: due, customMethods: methods);
+    if (paid) await _refresh();
+  }
+
+  /// Tras un pago la cita cambia (estado de pago y, al primer pago,
+  /// confirmada): se lee de nuevo; si no se puede, se recarga la agenda.
+  Future<void> _refresh() async {
+    final fresh = await controller.fetchLatest(appointment.id);
+    fresh == null ? await _agenda.reload() : _agenda.applyChange(fresh);
+  }
+
+  // --- Vista ----------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    final appointmentsController = Get.find<AppointmentsController>();
-
-    final totalDuration = appointment.endTime.difference(appointment.startTime);
-    final hours = totalDuration.inHours;
-    final minutes = totalDuration.inMinutes % 60;
-    final durationText = hours > 0
-        ? '$hours h ${minutes > 0 ? '$minutes min' : ''}'
-        : '$minutes min';
-
-    // Determinar si la cita está pagada usando los métodos de la entidad
-    final bool isPaid = appointment.isFullyPaid;
-
-    // Color del encabezado según estado de pago
-    final Color headerColor = isPaid
-        ? appointment.paymentStatus.colorsOf(context).color
-        : appointment.status.colorsOf(context).color;
-
-    // Texto de estado según pago
-    final String headerStatusText = isPaid
-        ? appointment.paymentStatus.label
-        : appointment.status.label;
+    final a = appointment;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final statusColors = a.status.colorsOf(context);
+    final canPay = AppointmentAccess.canPay() && a.canBePaid;
+    final canEdit = AppointmentAccess.canEdit() && !a.isFinal;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Encabezado con color según estado
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            decoration: BoxDecoration(
-              color: headerColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        headerStatusText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        appointment.clientName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          ),
-
-          // Contenido principal
-          Flexible(
-            child: SingleChildScrollView(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Fecha y hora
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child:
-                              const Icon(Icons.access_time, color: Colors.grey),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _formatDate(appointment.startTime),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      '${DateFormat('h:mm a').format(appointment.startTime.toLocal())} - '
-                                      '${DateFormat('h:mm a').format(appointment.endTime.toLocal())}',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      durationText,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[700],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const Divider(height: 32),
-
-                    // Sección del Profesional - Solo se muestra para Owner
-                    Builder(
-                      builder: (context) {
-                        final bool isOwner = _isOwner;
-
-                        // Solo mostramos la información del profesional si el usuario es Owner
-                        if (isOwner && appointment.professionalId.isNotEmpty) {
-                          return Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(Icons.person,
-                                        color: Colors.grey),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Profesional',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.grey[800],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        // Mostrar el nombre del profesional con FutureBuilder
-                                        FutureBuilder<String>(
-                                          future: appointmentsController
-                                              .professionalName(
-                                                  appointment.professionalId),
-                                          builder: (context, snapshot) {
-                                            if (!snapshot.hasData) {
-                                              return Row(
-                                                children: [
-                                                  SizedBox(
-                                                    width: 12,
-                                                    height: 12,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: Theme.of(context)
-                                                          .primaryColor,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  const Text(
-                                                    'Cargando información...',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontStyle:
-                                                          FontStyle.italic,
-                                                    ),
-                                                  ),
-                                                ],
-                                              );
-                                            }
-                                            return Text(
-                                              snapshot.data!,
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Divider(height: 32),
-                            ],
-                          );
-                        } else {
-                          // Si no es Owner, no mostramos esta sección
-                          return const SizedBox();
-                        }
-                      },
-                    ),
-
-                    // Servicios
-                    Row(
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              color: statusColors.container,
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.spa, color: Colors.grey),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Servicios',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ...appointment.serviceNames
-                                  .map((service) => Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 8),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                color: isPaid
-                                                    ? Colors.green[700]
-                                                    : appointment
-                                                        .primaryColor,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(child: Text(service)),
-                                          ],
-                                        ),
-                                      ))
-                                  ,
-                            ],
-                          ),
-                        ),
+                        Text(a.clientName,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                                color: statusColors.onContainer,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Wrap(spacing: 8, runSpacing: 4, children: [
+                          AppointmentChip.status(context, a.status),
+                          AppointmentChip.payment(context, a.paymentStatus),
+                        ]),
                       ],
                     ),
-
-                    const Divider(height: 32),
-
-                    // Precio y estado de pago
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.attach_money,
-                                  color: isPaid ? Colors.green : Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Precio total',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey[800],
-                                    ),
-                                  ),
-                                  Text(
-                                    formatCop(appointment.totalPrice),
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: isPaid
-                                          ? Colors.green[700]
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Estatus de pago
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: appointment.paymentStatus.colorsOf(context).color
-                                .withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: appointment.paymentStatus.colorsOf(context).color
-                                  .withValues(alpha: 0.5),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            appointment.paymentStatus.label,
-                            style: TextStyle(
-                              color: appointment.paymentStatus.colorsOf(context).color,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    icon: Icon(Icons.close, color: statusColors.onContainer),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _InfoRow(
+                      icon: Icons.event_outlined,
+                      title: _capitalized(formatLongDate(a.startTime)),
+                      subtitle:
+                          '${formatTimeRange(a.startTime, a.endTime)} · '
+                          '${formatDurationMinutes(a.duration.inMinutes)}',
                     ),
-
-                    // Notas (si existen)
-                    if (appointment.notes?.isNotEmpty ?? false) ...[
-                      const Divider(height: 32),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    if (!AppointmentAccess.professionalIsFixed())
+                      _InfoRow(
+                        icon: Icons.person_outline,
+                        title: 'Profesional',
+                        subtitle: a.professionalName ?? 'Sin nombre',
+                      ),
+                    const Divider(height: 24),
+                    for (var i = 0; i < a.services.length; i++)
+                      _ServiceLine(line: a.services[i], color: a.serviceColor(i)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.note, color: Colors.grey),
-                          ),
-                          const SizedBox(width: 16),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Notas',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey[800],
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  appointment.notes!,
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
+                            child: Text('Total',
+                                style: theme.textTheme.titleMedium),
                           ),
+                          Text(formatCop(a.totalPrice),
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold)),
                         ],
                       ),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Botones de acción basados en el rol del usuario
-                    Builder(
-                      builder: (context) {
-                        final bool isOwner = _isOwner;
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Botón de cerrar siempre visible para todos los roles
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cerrar'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[300],
-                                foregroundColor: Colors.black87,
-                              ),
-                            ),
-
-                            // Mostrar botones adicionales solo si el usuario es Owner y la cita no está pagada
-                            if (isOwner && !isPaid) ...[
-                              const SizedBox(height: 8),
-
-                              // Botón de registrar pago
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  // Cerrar el diálogo actual
-                                  Navigator.pop(context);
-
-                                  final customMethods = await Get.find<
-                                          PaymentController>()
-                                      .loadCustomMethods();
-                                  final paid = await PaymentDialog.show(
-                                      appointment,
-                                      customMethods: customMethods);
-                                  if (paid &&
-                                      Get.isRegistered<
-                                          AppointmentsController>()) {
-                                    Get.find<AppointmentsController>()
-                                        .fetchAppointments();
-                                  }
-                                },
-                                icon: const Icon(Icons.payment, size: 18),
-                                label: const Text('Registrar pago'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              // Botón de editar
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  // Acción para editar cita
-                                  Navigator.pop(context);
-                                  // Conseguir el controlador de citas
-                                  final appointmentsController =
-                                      Get.find<AppointmentsController>();
-
-                                  // Mostrar el diálogo de edición y esperar el resultado
-                                  final result =
-                                      await EditAppointmentDialog.show(
-                                    context,
-                                    appointment,
-                                    appointmentsController,
-                                  );
-
-                                  if (result == true) {
-                                    appointmentsController.fetchAppointments();
-                                  }
-                                },
-                                icon: const Icon(Icons.edit, size: 18),
-                                label: const Text('Editar cita'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Theme.of(context).primaryColor,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ],
-                        );
-                      },
                     ),
+                    if (a.paymentStatus == AppointmentPaymentStatus.PARTIAL)
+                      const _Note(
+                        'Tiene un anticipo registrado; al cobrar se propone '
+                        'el saldo pendiente.',
+                        tone: AppTone.info,
+                      ),
+                    if (a.notes?.trim().isNotEmpty ?? false) ...[
+                      const Divider(height: 24),
+                      _InfoRow(
+                          icon: Icons.notes, title: 'Notas', subtitle: a.notes!),
+                    ],
+                    if (a.isCancelled &&
+                        (a.cancellationReason?.trim().isNotEmpty ?? false))
+                      _InfoRow(
+                        icon: Icons.event_busy_outlined,
+                        title: 'Motivo de la cancelación',
+                        subtitle: a.cancellationReason!,
+                      ),
+                    if (!a.isFinal && !a.canCancel)
+                      const _Note(
+                        'Tiene pagos registrados: reembólsalos antes de '
+                        'cancelar la cita.',
+                        tone: AppTone.warning,
+                      ),
+                    const SizedBox(height: 16),
+                    Obx(() {
+                      final busy = controller.isBusy(a.id);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (busy) const LinearProgressIndicator(),
+                          if (canPay)
+                            FilledButton.icon(
+                              onPressed: busy ? null : () => _pay(context),
+                              icon: const Icon(Icons.payments_outlined),
+                              label: Text(a.paymentStatus ==
+                                      AppointmentPaymentStatus.PARTIAL
+                                  ? 'Cobrar saldo'
+                                  : 'Registrar pago'),
+                            ),
+                          if (a.canComplete)
+                            OutlinedButton.icon(
+                              onPressed: busy ? null : () => _complete(context),
+                              icon: const Icon(Icons.task_alt),
+                              label: const Text('Completar'),
+                            ),
+                          if (canEdit)
+                            OutlinedButton.icon(
+                              onPressed: busy ? null : () => _edit(context),
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const Text('Editar'),
+                            ),
+                          if (a.canCancel)
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                  foregroundColor: scheme.error),
+                              onPressed: busy ? null : () => _cancel(context),
+                              icon: const Icon(Icons.event_busy_outlined),
+                              label: const Text('Cancelar cita'),
+                            ),
+                        ],
+                      );
+                    }),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // Método para formatear la fecha con primera letra mayúscula
-  String _formatDate(DateTime date) {
-    final dateStr =
-        DateFormat('EEEE, dd MMMM yyyy', 'es').format(date.toLocal());
-    if (dateStr.isNotEmpty) {
-      return dateStr[0].toUpperCase() + dateStr.substring(1);
-    }
-    return dateStr;
+  static String _capitalized(String text) =>
+      text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _InfoRow(
+      {required this.icon, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: scheme.onSurfaceVariant),
+      title: Text(title),
+      subtitle: Text(subtitle),
+    );
   }
 }
 
-// Función auxiliar para mostrar el diálogo
-void showAppointmentDetails(
-    BuildContext context, AppointmentEntity appointment) {
-  showDialog(
-    context: context,
-    builder: (context) => AppointmentDetailsDialog(
-      appointment: appointment,
-    ),
-  );
+/// Un servicio con el precio guardado en la cita (2.29).
+class _ServiceLine extends StatelessWidget {
+  final AppointmentServiceLine line;
+  final Color color;
+
+  const _ServiceLine({required this.line, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final current = line.currentPrice;
+    final changed = current != null && (current - line.price).abs() >= 0.01;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 5, right: 10),
+            child: CircleAvatar(radius: 5, backgroundColor: color),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(line.name),
+                Text(
+                  formatDurationMinutes(line.durationMinutes) +
+                      (changed ? ' · hoy cuesta ${formatCop(current)}' : ''),
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          Text(formatCop(line.price)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Note extends StatelessWidget {
+  final String text;
+  final AppTone tone;
+
+  const _Note(this.text, {required this.tone});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.tokens.tone(tone);
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.container,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(text, style: TextStyle(color: colors.onContainer)),
+    );
+  }
 }

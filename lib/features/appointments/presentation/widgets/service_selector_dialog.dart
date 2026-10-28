@@ -1,396 +1,137 @@
 import 'package:flutter/material.dart';
-import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
-import '../controllers/appointments_controller.dart';
+import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/core/widgets/empty_state.dart';
+import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/shared/utils/color_hex.dart';
 
-class ServiceSelectorDialog extends StatelessWidget {
-  final AppointmentsController controller;
+/// Elige los servicios de una cita (al menos uno). Devuelve los ids en el
+/// orden en que se marcaron, o `null` si se cancela.
+class ServiceSelectorDialog extends StatefulWidget {
+  final List<ServiceEntity> catalog;
+  final List<String> selectedIds;
 
   const ServiceSelectorDialog({
     super.key,
-    required this.controller,
+    required this.catalog,
+    this.selectedIds = const [],
   });
 
-  static Future<List<String>?> show(
-    BuildContext context,
-    AppointmentsController controller,
-  ) async {
-    // Guarda los IDs seleccionados originalmente para restaurarlos si el usuario cancela
-    final originalSelectedIds = [...controller.selectedServiceIds];
+  static Future<List<String>?> show(List<ServiceEntity> catalog,
+          {List<String> selectedIds = const []}) =>
+      Get.dialog<List<String>>(
+          ServiceSelectorDialog(catalog: catalog, selectedIds: selectedIds));
 
-    // Adaptar el tamaño según la plataforma y orientación
-    final size = MediaQuery.of(context).size;
-    final maxWidth = size.width * 0.9;
-    final maxHeight = size.height * 0.7;
+  @override
+  State<ServiceSelectorDialog> createState() => _ServiceSelectorDialogState();
+}
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          width: maxWidth,
-          height: maxHeight,
-          padding: const EdgeInsets.all(16),
-          child: ServiceSelectorDialog(controller: controller),
-        ),
-      ),
-    );
+class _ServiceSelectorDialogState extends State<ServiceSelectorDialog> {
+  final _search = TextEditingController();
+  late final List<String> _selected = [...widget.selectedIds];
+  String _query = '';
 
-    // Si el usuario canceló, restaura la selección original
-    if (result != true) {
-      controller.selectedServiceIds.clear();
-      controller.selectedServiceIds.addAll(originalSelectedIds);
-      controller.updateTotalPrice();
-      return null;
-    }
-
-    // Retorna los IDs seleccionados
-    return controller.selectedServiceIds.toList();
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
+
+  void _toggle(String id) => setState(
+      () => _selected.contains(id) ? _selected.remove(id) : _selected.add(id));
+
+  double get _total => widget.catalog
+      .where((s) => _selected.contains(s.id))
+      .fold(0, (sum, s) => sum + s.price);
 
   @override
   Widget build(BuildContext context) {
-    final searchController = TextEditingController();
-    final searchQuery = ''.obs;
+    final theme = Theme.of(context);
+    final query = _query.trim().toLowerCase();
+    final filtered = widget.catalog
+        .where((s) => s.id != null && s.name.toLowerCase().contains(query))
+        .toList();
 
-    // Personalizar el formato para mostrar el símbolo de peso a la izquierda
-
-    return Column(
-      children: [
-        Text(
-          'Seleccionar Servicios',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).primaryColor,
-          ),
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 480,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
-        const SizedBox(height: 20),
-
-        // Barra de búsqueda
-        TextField(
-          controller: searchController,
-          decoration: InputDecoration(
-            labelText: 'Buscar Servicios',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                searchController.clear();
-                searchQuery.value = '';
-              },
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide(color: Theme.of(context).primaryColor),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          ),
-          onChanged: (value) => searchQuery.value = value,
-        ),
-
-        const SizedBox(height: 16),
-
-        // Lista de servicios
-        Expanded(
-          child: Obx(() {
-            final filteredServices = controller.services.where((service) {
-              final name = service['name'].toString().toLowerCase();
-              return name.contains(searchQuery.value.toLowerCase());
-            }).toList();
-
-            if (filteredServices.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No se encontraron servicios',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.separated(
-              itemCount: filteredServices.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final service = filteredServices[index];
-                final serviceId = service['id'].toString();
-                final price = double.parse(service['price'].toString());
-
-                return Obx(() {
-                  final isSelected =
-                      controller.selectedServiceIds.contains(serviceId);
-
-                  // Define el color de fondo basado en la selección
-                  // Alternando colores para una visualización más agradable
-                  final backgroundColor = isSelected
-                      ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
-                      : (index % 2 == 0 ? Colors.grey[50] : Colors.white);
-
-                  return Material(
-                    color: backgroundColor,
-                    child: InkWell(
-                      onTap: () => controller.toggleServiceSelection(serviceId),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Checkbox personalizado
-                            Container(
-                              width: 24,
-                              height: 24,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Theme.of(context).primaryColor
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Theme.of(context).primaryColor
-                                      : Colors.grey[400]!,
-                                  width: 2,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: Theme.of(context)
-                                              .primaryColor
-                                              .withValues(alpha: 0.3),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        )
-                                      ]
-                                    : null,
-                              ),
-                              child: isSelected
-                                  ? const Icon(Icons.check,
-                                      size: 16, color: Colors.white)
-                                  : null,
-                            ),
-
-                            // Información del servicio - dar más espacio
-                            Expanded(
-                              flex: 3, // Dar más espacio al nombre del servicio
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    service['name'].toString(),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.w500,
-                                      color: isSelected
-                                          ? Theme.of(context).primaryColor
-                                          : Colors.black87,
-                                    ),
-                                    // Permitir hasta 2 líneas para nombres largos
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (service['description'] != null &&
-                                      service['description']
-                                          .toString()
-                                          .isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Text(
-                                        service['description'].toString(),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                });
-              },
-            );
-          }),
-        ),
-
-        // Total y botones
-        Container(
-          padding: const EdgeInsets.only(top: 16),
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Total
-              Obx(() => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: controller.totalPrice.value > 0
-                          ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
+              Text('Elegir servicios', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _search,
+                decoration: const InputDecoration(
+                  labelText: 'Buscar servicio',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: filtered.isEmpty
+                    ? EmptyState(
+                        icon: Icons.search_off,
+                        message: widget.catalog.isEmpty
+                            ? 'No hay servicios activos'
+                            : 'Ningún servicio coincide',
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final service = filtered[index];
+                          final id = service.id!;
+                          return CheckboxListTile(
+                            value: _selected.contains(id),
+                            onChanged: (_) => _toggle(id),
+                            secondary: CircleAvatar(
+                              radius: 8,
+                              backgroundColor: colorFromHex(service.color),
+                            ),
+                            title: Text(service.name),
+                            subtitle: Text(
+                                '${formatCop(service.price)} · '
+                                '${formatDurationMinutes(service.duration)}'),
+                          );
+                        },
+                      ),
+              ),
+              const Divider(),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${formatCount(_selected.length, 'servicio', 'servicios')}'
+                      ' · ${formatCop(_total)}',
+                      style: theme.textTheme.titleSmall,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total:',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: controller.totalPrice.value > 0
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey[800],
-                          ),
-                        ),
-                        Text(
-                          formatCop(controller.totalPrice.value),
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: controller.totalPrice.value > 0
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                  )),
-
-              const SizedBox(height: 16),
-
-              // Botones - modificados para adaptarse a diferentes tamaños
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 300) {
-                    // Para pantallas muy pequeñas, usar column
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: BorderSide(color: Colors.grey[400]!),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            'Cancelar',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Confirmar',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    );
-                  } else {
-                    // Para pantallas más grandes, usar row con expanded
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: BorderSide(color: Colors.grey[400]!),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Cancelar',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Theme.of(context).primaryColor,
-                              foregroundColor: Colors.white,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'Confirmar',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-                },
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancelar'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _selected.isEmpty
+                        ? null
+                        : () => Navigator.of(context).pop(List.of(_selected)),
+                    child: const Text('Listo'),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

@@ -9,6 +9,7 @@ import 'package:login_signup/features/services/domain/failures/services_failures
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
 import 'package:login_signup/features/services/presentation/widgets/color_picker.dart';
+import 'package:login_signup/shared/utils/color_hex.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 /// Estado y reglas comunes del formulario de servicio (alta y edición; solo

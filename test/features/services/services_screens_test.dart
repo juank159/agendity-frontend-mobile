@@ -31,7 +31,7 @@ import 'package:login_signup/features/services/presentation/screen/categories_sc
 import 'package:login_signup/features/services/presentation/screen/new_category_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/new_service_screen.dart';
 import 'package:login_signup/features/services/presentation/screen/services_screen.dart';
-import 'package:login_signup/features/services/presentation/widgets/color_picker.dart';
+import 'package:login_signup/shared/utils/color_hex.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
 
 import '../../core/session/memory_token_store.dart';

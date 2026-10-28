@@ -49,6 +49,6 @@ void main() {
     // EmployeeStatsController (4.04: "Mis estadísticas" tiene el suyo), más
     // NewEmployeeController y EditEmployeeController (4.07: el formulario de
     // profesional sale del EmployeesController).
-    expect(SessionScope.featureControllers, hasLength(20));
+    expect(SessionScope.featureControllers, hasLength(21));
   });
 }

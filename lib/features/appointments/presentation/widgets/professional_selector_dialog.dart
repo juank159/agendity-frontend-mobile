@@ -1,322 +1,113 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/empty_state.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import '../controllers/appointments_controller.dart';
+import 'package:login_signup/features/employees/presentation/widgets/employee_avatar.dart';
 
-class ProfessionalSelectorDialog extends StatelessWidget {
-  final AppointmentsController appointmentsController;
+/// Elige el profesional de una cita entre los que se pueden agendar
+/// (activos y sin baja). Devuelve el elegido o `null` si se cierra.
+class ProfessionalSelectorDialog extends StatefulWidget {
+  final List<EmployeeEntity> options;
+  final String? selectedId;
 
   const ProfessionalSelectorDialog({
     super.key,
-    required this.appointmentsController,
+    required this.options,
+    this.selectedId,
   });
 
-  static Future<EmployeeEntity?> show(
-    BuildContext context,
-    AppointmentsController appointmentsController,
-  ) async {
-    // Guarda el profesional seleccionado para restaurarlo si el usuario cancela
-    final originalSelectedEmployee =
-        appointmentsController.selectedEmployee.value;
+  static Future<EmployeeEntity?> show(List<EmployeeEntity> options,
+          {String? selectedId}) =>
+      Get.dialog<EmployeeEntity>(
+          ProfessionalSelectorDialog(options: options, selectedId: selectedId));
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.7,
-          ),
-          child: ProfessionalSelectorDialog(
-            appointmentsController: appointmentsController,
-          ),
-        ),
-      ),
-    );
+  @override
+  State<ProfessionalSelectorDialog> createState() =>
+      _ProfessionalSelectorDialogState();
+}
 
-    // Si canceló, restaura la selección original
-    if (result != true) {
-      appointmentsController.selectedEmployee.value = originalSelectedEmployee;
-      return null;
-    }
+class _ProfessionalSelectorDialogState
+    extends State<ProfessionalSelectorDialog> {
+  final _search = TextEditingController();
+  String _query = '';
 
-    return appointmentsController.selectedEmployee.value;
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final searchController = TextEditingController();
-    final searchQuery = ''.obs;
+    final scheme = Theme.of(context).colorScheme;
+    final query = _query.trim().toLowerCase();
+    final filtered = widget.options
+        .where((e) => e.fullName.toLowerCase().contains(query))
+        .toList();
 
-    // Asegura que los profesionales estén cargados
-    if (appointmentsController.professionals.isEmpty) {
-      appointmentsController.loadProfessionals();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Título
-          Text(
-            'Seleccionar Profesional',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).primaryColor,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Búsqueda
-          TextField(
-            controller: searchController,
-            decoration: InputDecoration(
-              labelText: 'Buscar Profesional',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  searchController.clear();
-                  searchQuery.value = '';
-                },
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-            onChanged: (value) => searchQuery.value = value,
-          ),
-
-          const SizedBox(height: 16),
-
-          // Lista de profesionales
-          Obx(() {
-            // Manejo de estado de carga
-            if (appointmentsController.isLoadingProfessionals.value) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            // Cuando no hay profesionales
-            // Solo se ofrecen los que se pueden agendar (activos y sin baja).
-            final schedulable =
-                appointmentsController.schedulableProfessionals;
-            if (schedulable.isEmpty) {
-              return Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.person_off, size: 48, color: Colors.grey[400]),
-                    const Text('No hay profesionales disponibles'),
-                  ],
-                ),
-              );
-            }
-
-            // Filtrar profesionales según búsqueda
-            final filteredEmployees = schedulable.where((employee) {
-              final fullName =
-                  '${employee.name} ${employee.lastname}'.toLowerCase();
-              return fullName.contains(searchQuery.value.toLowerCase());
-            }).toList();
-
-            // Lista vacía después de filtrar
-            if (filteredEmployees.isEmpty) {
-              return Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
-                    const Text('No se encontraron profesionales'),
-                  ],
-                ),
-              );
-            }
-
-            // Lista de profesionales
-            return ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.4,
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: filteredEmployees.length,
-                itemBuilder: (context, index) {
-                  final employee = filteredEmployees[index];
-
-                  return Obx(() {
-                    final isSelected =
-                        appointmentsController.selectedEmployee.value?.id ==
-                            employee.id;
-
-                    // Tarjeta de profesional con indicador de selección
-                    return Card(
-                      elevation: isSelected ? 4 : 1,
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isSelected
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: InkWell(
-                        onTap: () =>
-                            appointmentsController.selectEmployee(employee),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              // Avatar/foto
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Theme.of(context)
-                                          .primaryColor
-                                          .withValues(alpha: 0.2)
-                                      : Colors.grey[200],
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? Theme.of(context).primaryColor
-                                        : Colors.grey[300]!,
-                                    width: 2,
-                                  ),
-                                ),
-                                child:
-                                    _buildAvatar(employee, isSelected, context),
-                              ),
-
-                              const SizedBox(width: 16),
-
-                              // Información
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${employee.name} ${employee.lastname}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: isSelected
-                                            ? Theme.of(context).primaryColor
-                                            : Colors.black87,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Indicador de selección
-                              if (isSelected)
-                                Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).primaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.check,
-                                      color: Colors.white, size: 16),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  });
-                },
-              ),
-            );
-          }),
-
-          const SizedBox(height: 20),
-
-          // Botones
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 480,
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancelar', style: TextStyle(fontSize: 16)),
+              Text('Elegir profesional',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _search,
+                decoration: const InputDecoration(
+                  labelText: 'Buscar profesional',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) => setState(() => _query = value),
               ),
-              Obx(() {
-                final hasSelection =
-                    appointmentsController.selectedEmployee.value != null;
-
-                return ElevatedButton(
-                  onPressed:
-                      hasSelection ? () => Navigator.pop(context, true) : null,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 36, vertical: 12),
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Confirmar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      )),
-                );
-              }),
+              const SizedBox(height: 8),
+              Flexible(
+                child: filtered.isEmpty
+                    ? EmptyState(
+                        icon: Icons.person_off_outlined,
+                        message: widget.options.isEmpty
+                            ? 'No hay profesionales disponibles'
+                            : 'Ningún profesional coincide',
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final employee = filtered[index];
+                          final selected = employee.id == widget.selectedId;
+                          return ListTile(
+                            leading:
+                                EmployeeAvatar(employee: employee, radius: 20),
+                            title: Text(employee.fullName),
+                            selected: selected,
+                            trailing: selected
+                                ? Icon(Icons.check_circle, color: scheme.primary)
+                                : null,
+                            onTap: () => Navigator.of(context).pop(employee),
+                          );
+                        },
+                      ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+              ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvatar(
-      EmployeeEntity employee, bool isSelected, BuildContext context) {
-    if (employee.image != null && employee.image!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Image.network(
-          employee.image!,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              _buildAvatarFallback(employee, isSelected, context),
-        ),
-      );
-    }
-    return _buildAvatarFallback(employee, isSelected, context);
-  }
-
-  Widget _buildAvatarFallback(
-      EmployeeEntity employee, bool isSelected, BuildContext context) {
-    return Center(
-      child: Text(
-        _getInitials(employee.name, employee.lastname),
-        style: TextStyle(
-          color: isSelected ? Theme.of(context).primaryColor : Colors.grey[700],
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
         ),
       ),
     );
-  }
-
-  String _getInitials(String name, String lastname) {
-    String initials = '';
-    if (name.isNotEmpty) initials += name[0].toUpperCase();
-    if (lastname.isNotEmpty) initials += lastname[0].toUpperCase();
-    return initials;
   }
 }

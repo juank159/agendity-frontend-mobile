@@ -1,397 +1,151 @@
-// lib/features/appointments/presentation/widgets/client_search_selector.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controllers/appointments_controller.dart';
+import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/widgets/list_state_view.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/client_picker_controller.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
-class ClientSearchSelector extends GetView<AppointmentsController> {
-  final Function(ClientEntity) onClientSelected;
+/// Busca y elige el cliente de una cita (paginado en el servidor). Crea su
+/// `ClientPickerController` al abrirse y lo borra al cerrarse. Devuelve el
+/// cliente elegido o `null`.
+class ClientSearchSelector extends StatefulWidget {
+  final ClientPickerController Function() createController;
 
-  const ClientSearchSelector({
-    super.key,
-    required this.onClientSelected,
-  });
+  const ClientSearchSelector({super.key, required this.createController});
 
-  static Future<ClientEntity?> show(
-    BuildContext context,
-    AppointmentsController controller,
-  ) async {
-    // Adaptar el tamaño según la plataforma y orientación
-    final size = MediaQuery.of(context).size;
-    final maxWidth = size.width * 0.9;
-    final maxHeight = size.height * 0.8;
+  static Future<ClientEntity?> show() => Get.dialog<ClientEntity>(
+      const ClientSearchSelector(
+          createController: ClientPickerController.fromDependencies));
 
-    final result = await showDialog<ClientEntity?>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          width: maxWidth,
-          height: maxHeight,
-          padding: const EdgeInsets.all(16),
-          child: ClientSearchSelector(
-            onClientSelected: (client) {
-              Navigator.pop(context, client);
-            },
-          ),
-        ),
-      ),
-    );
+  @override
+  State<ClientSearchSelector> createState() => _ClientSearchSelectorState();
+}
 
-    return result;
+class _ClientSearchSelectorState extends State<ClientSearchSelector> {
+  late final String _tag = 'client-picker-${identityHashCode(this)}';
+  late final ClientPickerController _controller;
+  final _search = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.put(widget.createController(), tag: _tag);
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    Get.delete<ClientPickerController>(tag: _tag);
+    super.dispose();
+  }
+
+  Future<void> _newClient() async {
+    final created = await Get.toNamed(GetRoutes.addClient);
+    if (created == true) await _controller.search();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Título
-        Text(
-          'Seleccionar Cliente',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).primaryColor,
-          ),
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 480,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
-        const SizedBox(height: 20),
-
-        // Barra de búsqueda
-        _buildSearchBar(context),
-        const SizedBox(height: 16),
-
-        // Lista de clientes
-        Expanded(
-          child: Obx(() {
-            // Mostrar loading si está cargando y no hay clientes
-            if (controller.isClientsLoading.value && controller.clients.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Cargando clientes...',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // ✅ CON PAGINACIÓN REAL, USAR LA LISTA DE CLIENTES DIRECTAMENTE
-            // El filtrado ahora se hace en el servidor
-            final clientsToShow = controller.clients;
-
-            if (clientsToShow.isEmpty && controller.clients.isNotEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No se encontraron clientes',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: () => controller.clearClientSearch(),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Limpiar búsqueda'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            if (clientsToShow.isEmpty && controller.clients.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.person_off, size: 48, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No hay clientes registrados',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.separated(
-              itemCount: clientsToShow.length + (controller.hasMoreClients.value ? 1 : 0),
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                // ✅ INDICADOR DE CARGA PARA MÁS CLIENTES
-                if (index == clientsToShow.length) {
-                  // Disparar carga de más clientes automáticamente
-                  if (controller.hasMoreClients.value && !controller.isLoadingMoreClients.value) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      controller.loadMoreClients();
-                    });
-                  }
-                  
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: controller.isLoadingMoreClients.value
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                                const SizedBox(width: 8),
-                                Text('Cargando más clientes...',
-                                    style: TextStyle(color: Colors.grey[600])),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  );
-                }
-
-                final client = clientsToShow[index];
-                final clientName = '${client.name} ${client.lastname}';
-                final firstLetter = client.name[0].toString().toUpperCase();
-
-                return Card(
-                  elevation: 1,
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: InkWell(
-                    onTap: () => onClientSelected(client),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Avatar con iniciales
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Theme.of(context)
-                                      .primaryColor
-                                      .withValues(alpha: 0.7),
-                                  Theme.of(context).primaryColor,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Theme.of(context)
-                                      .primaryColor
-                                      .withValues(alpha: 0.3),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: client.image != null &&
-                                    client.image!.isNotEmpty
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(25),
-                                    child: Image.network(
-                                      client.image!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          _buildClientAvatar(firstLetter, context),
-                                    ),
-                                  )
-                                : _buildClientAvatar(firstLetter, context),
-                          ),
-                          const SizedBox(width: 16),
-
-                          // Información del cliente
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  clientName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (client.phone.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.phone,
-                                          size: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          client.phone,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                if (client.hasEmail)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.email,
-                                          size: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            client.email!,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[600],
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-
-                          // Icono de selección
-                          Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
-                            color: Colors.grey[400],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          }),
-        ),
-
-        // Botones de acción
-        Container(
-          padding: const EdgeInsets.only(top: 16),
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context, null),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    foregroundColor: Colors.grey[700],
-                  ),
-                  child: const Text(
-                    'Cancelar',
-                    style: TextStyle(fontSize: 16),
+              Text('Elegir cliente',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _search,
+                decoration: InputDecoration(
+                  labelText: 'Buscar por nombre o teléfono',
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    tooltip: 'Limpiar búsqueda',
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _search.clear();
+                      _controller.clear();
+                    },
                   ),
                 ),
+                onChanged: (value) => _controller.query.value = value,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 8),
               Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context, null),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    foregroundColor: Theme.of(context).primaryColor,
+                child: Obx(() => ListStateView<ClientEntity>(
+                      isLoading: _controller.isLoading.value,
+                      error: _controller.error.value?.message,
+                      items: _controller.clients.toList(),
+                      onRetry: _controller.search,
+                      emptyIcon: Icons.person_off_outlined,
+                      emptyMessage: _controller.query.value.trim().isEmpty
+                          ? 'No hay clientes registrados'
+                          : 'Ningún cliente coincide',
+                      builder: (context, clients) => _ClientList(
+                        clients: clients,
+                        controller: _controller,
+                      ),
+                    )),
+              ),
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: _newClient,
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Nuevo cliente'),
                   ),
-                  child: const Text(
-                    'Nuevo Cliente',
-                    style: TextStyle(fontSize: 16),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancelar'),
                   ),
-                ),
+                ],
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildSearchBar(BuildContext context) {
-    return TextField(
-      onChanged: (value) => controller.updateClientSearch(value),
-      decoration: InputDecoration(
-        labelText: 'Buscar Cliente',
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: Obx(() => controller.clientSearchQuery.value.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () => controller.clearClientSearch(),
-              )
-            : const SizedBox.shrink()),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Theme.of(context).primaryColor),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
       ),
     );
   }
+}
 
-  Widget _buildClientAvatar(String firstLetter, BuildContext context) {
-    return Center(
-      child: Text(
-        firstLetter,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+class _ClientList extends StatelessWidget {
+  final List<ClientEntity> clients;
+  final ClientPickerController controller;
+
+  const _ClientList({required this.clients, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMore = controller.hasMore.value;
+    return ListView.builder(
+      itemCount: clients.length + (hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == clients.length) {
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => controller.loadMore());
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final client = clients[index];
+        final initial =
+            client.name.isEmpty ? '?' : client.name[0].toUpperCase();
+        return ListTile(
+          leading: CircleAvatar(child: Text(initial)),
+          title: Text(client.fullName),
+          subtitle: client.phone.isEmpty ? null : Text(client.phone),
+          onTap: () => Navigator.of(context).pop(client),
+        );
+      },
     );
   }
 }

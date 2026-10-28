@@ -13,6 +13,18 @@ class AppointmentCalendarDataSource extends CalendarDataSource {
     ];
   }
 
+  /// Id de la cita y servicio de un bloque (`<idCita>_<índice>`); un bloque
+  /// de una cita de un solo servicio es el servicio 0.
+  static ({String appointmentId, int serviceIndex}) blockOf(Object? blockId) {
+    final id = blockId?.toString() ?? '';
+    final separator = id.lastIndexOf('_');
+    final index =
+        separator < 0 ? null : int.tryParse(id.substring(separator + 1));
+    return index == null
+        ? (appointmentId: id, serviceIndex: 0)
+        : (appointmentId: id.substring(0, separator), serviceIndex: index);
+  }
+
   static List<Appointment> _blocksOf(AppointmentEntity entity) {
     if (entity.services.length <= 1) {
       return [

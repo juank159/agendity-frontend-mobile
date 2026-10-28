@@ -3,9 +3,8 @@ import 'package:login_signup/core/utils/formatters.dart';
 import '../../domain/entities/service_stats_entity.dart';
 import 'stats_card.dart';
 
-/// Servicios de las citas con un pago completado. Muestra los importes y
-/// porcentajes tal como los calcula el backend (hoy, precio de lista × veces;
-/// tarea 2.28).
+/// Ingreso neto por servicio de las citas pagadas, tal como lo reparte el
+/// backend (2.28); los porcentajes suman 100.
 class ServicesPerformanceWidget extends StatelessWidget {
   final List<ServiceStatsEntity> stats;
 
@@ -24,7 +23,7 @@ class ServicesPerformanceWidget extends StatelessWidget {
               StatsBarRow(
                 title: stat.serviceName.isEmpty ? 'Servicio' : stat.serviceName,
                 subtitle:
-                    '${stat.paymentCount == 1 ? '1 vez' : '${stat.paymentCount} veces'}'
+                    '${formatCount(stat.appointmentCount, 'cita', 'citas')}'
                     ' · ${formatPercent(stat.percentageOfTotal)}',
                 value: formatCop(stat.totalAmount),
                 fraction: StatsBarRow.fractionOf(stat.totalAmount, max),

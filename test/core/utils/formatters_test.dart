@@ -36,6 +36,12 @@ void main() {
         '${formatTime(d)} - ${formatTime(DateTime(2026, 11, 3, 16, 15))}');
   });
 
+  test('formatCount: singular solo con 1', () {
+    expect(formatCount(1, 'cita', 'citas'), '1 cita');
+    expect(formatCount(0, 'cita', 'citas'), '0 citas');
+    expect(formatCount(3, 'pago', 'pagos'), '3 pagos');
+  });
+
   test('formatDurationMinutes: minutos y horas', () {
     expect(formatDurationMinutes(45), '45 min');
     expect(formatDurationMinutes(60), '1 h');

@@ -5,8 +5,7 @@ import '../../domain/entities/employee_stats_entity.dart';
 import 'stats_card.dart';
 
 /// Estadísticas de un profesional: resumen, servicios y evolución diaria.
-/// Los importes por servicio se muestran tal como los calcula el backend
-/// (hoy, precio de lista × veces; tarea 2.28).
+/// Los importes por servicio son el neto repartido por el backend (2.28).
 class EmployeeStatsWidget extends StatelessWidget {
   final EmployeeStatsEntity stats;
 
@@ -68,9 +67,8 @@ class EmployeeStatsWidget extends StatelessWidget {
                         title: service.serviceName.isEmpty
                             ? 'Servicio'
                             : service.serviceName,
-                        subtitle: service.count == 1
-                            ? '1 vez'
-                            : '${service.count} veces',
+                        subtitle: formatCount(
+                            service.appointmentCount, 'cita', 'citas'),
                         value: formatCop(service.total),
                         fraction:
                             StatsBarRow.fractionOf(service.total, maxService),
@@ -91,7 +89,8 @@ class EmployeeStatsWidget extends StatelessWidget {
                         dense: true,
                         title: Text(formatDate(day.day)),
                         subtitle: Text(
-                            day.count == 1 ? '1 pago' : '${day.count} pagos'),
+                            '${formatCount(day.appointmentCount, 'cita', 'citas')}'
+                            ' · ${formatCount(day.paymentCount, 'pago', 'pagos')}'),
                         trailing: Text(formatCop(day.total)),
                       ),
                   ],

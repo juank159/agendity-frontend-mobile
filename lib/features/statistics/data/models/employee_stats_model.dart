@@ -5,6 +5,8 @@ import 'package:login_signup/features/statistics/domain/entities/employee_stats_
 /// DTO de `GET /payments/employee-stats`:
 /// `{summary: {...}, by_service: [...], daily_evolution: [{date: "YYYY-MM-DD"}]}`.
 /// Sin pagos en el rango: resumen en 0 y listas vacías.
+/// - `by_service[].count` son citas (2.28).
+/// - `daily_evolution[]`: `payment_count` (= `count`) y `appointment_count`.
 class EmployeeStatsModel {
   final EmployeeStatsSummary summary;
   final List<EmployeeServiceStats> byService;
@@ -29,7 +31,7 @@ class EmployeeStatsModel {
           .map((item) => EmployeeServiceStats(
                 serviceId: JsonRead.asString(item['service_id']),
                 serviceName: JsonRead.asString(item['service_name']),
-                count: JsonRead.asInt(item['count']),
+                appointmentCount: JsonRead.asInt(item['count']),
                 total: JsonRead.asDouble(item['total']),
               ))
           .toList(),
@@ -40,7 +42,9 @@ class EmployeeStatsModel {
             EmployeeDailyStats(
               day: day,
               total: JsonRead.asDouble(item['total']),
-              count: JsonRead.asInt(item['count']),
+              paymentCount:
+                  JsonRead.asInt(item['payment_count'] ?? item['count']),
+              appointmentCount: JsonRead.asInt(item['appointment_count']),
             ),
       ],
     );

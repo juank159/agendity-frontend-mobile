@@ -67,17 +67,20 @@ class EmployeeStatsSummary {
 }
 
 /// Servicios que hizo el profesional en citas pagadas. Igual que en
-/// `stats/by-service`, [total] es precio de lista × veces (no lo cobrado).
+/// `stats/by-service` (2.28), [total] es el neto de cada cita repartido entre
+/// sus servicios.
 class EmployeeServiceStats {
   final String serviceId;
   final String serviceName;
-  final int count;
+
+  /// Citas con pagos en el período que incluyen el servicio.
+  final int appointmentCount;
   final double total;
 
   const EmployeeServiceStats({
     required this.serviceId,
     required this.serviceName,
-    required this.count,
+    required this.appointmentCount,
     required this.total,
   });
 
@@ -87,11 +90,12 @@ class EmployeeServiceStats {
       other is EmployeeServiceStats &&
           other.serviceId == serviceId &&
           other.serviceName == serviceName &&
-          other.count == count &&
+          other.appointmentCount == appointmentCount &&
           other.total == total;
 
   @override
-  int get hashCode => Object.hash(serviceId, serviceName, count, total);
+  int get hashCode =>
+      Object.hash(serviceId, serviceName, appointmentCount, total);
 }
 
 /// Ingresos netos de un día del negocio.
@@ -101,12 +105,16 @@ class EmployeeDailyStats {
   final double total;
 
   /// Pagos de ese día.
-  final int count;
+  final int paymentCount;
+
+  /// Citas distintas que recibieron esos pagos.
+  final int appointmentCount;
 
   const EmployeeDailyStats({
     required this.day,
     required this.total,
-    required this.count,
+    required this.paymentCount,
+    required this.appointmentCount,
   });
 
   @override
@@ -115,8 +123,9 @@ class EmployeeDailyStats {
       other is EmployeeDailyStats &&
           other.day == day &&
           other.total == total &&
-          other.count == count;
+          other.paymentCount == paymentCount &&
+          other.appointmentCount == appointmentCount;
 
   @override
-  int get hashCode => Object.hash(day, total, count);
+  int get hashCode => Object.hash(day, total, paymentCount, appointmentCount);
 }

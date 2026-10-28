@@ -49,6 +49,24 @@ class FakeStatisticsRepository implements StatisticsRepository {
         total: 100000,
         average: 50000,
         percentage: 66.67),
+    PaymentMethodStatsEntity(
+        method: 'Nequi',
+        methodType: PaymentMethodType.custom,
+        customPaymentMethodId: 'cpm-1',
+        count: 1,
+        total: 50000,
+        average: 50000,
+        percentage: 33.33),
+  ]);
+  Either<Failure, List<ServiceStatsEntity>> byServiceResult = const Right([
+    ServiceStatsEntity(
+        serviceId: 's1',
+        serviceName: 'Cejas en hilo',
+        appointmentCount: 3,
+        paymentCount: 4,
+        totalAmount: 150000,
+        averageAmount: 50000,
+        percentageOfTotal: 100),
   ]);
   Either<Failure, List<TopClientEntity>> topClientsResult = const Right([
     TopClientEntity(
@@ -106,7 +124,7 @@ class FakeStatisticsRepository implements StatisticsRepository {
   Future<Either<Failure, List<ServiceStatsEntity>>> getPaymentStatsByService(
       StatsRange range) async {
     _count('byService', range);
-    return const Right([]);
+    return byServiceResult;
   }
 
   @override
@@ -165,10 +183,17 @@ final employeeStats = EmployeeStatsEntity(
       averagePerPayment: 40000),
   byService: const [
     EmployeeServiceStats(
-        serviceId: 's1', serviceName: 'Manicure', count: 2, total: 50000),
+        serviceId: 's1',
+        serviceName: 'Manicure',
+        appointmentCount: 2,
+        total: 50000),
   ],
   dailyEvolution: [
-    EmployeeDailyStats(day: DateTime(2026, 10, 27), total: 80000, count: 2),
+    EmployeeDailyStats(
+        day: DateTime(2026, 10, 27),
+        total: 80000,
+        paymentCount: 3,
+        appointmentCount: 2),
   ],
 );
 
@@ -257,6 +282,14 @@ void main() {
       expect(repo.callsTo('byMethod'), 1);
       expect(find.text('Efectivo'), findsOneWidget);
       expect(find.text('2 pagos'), findsOneWidget);
+      // Método propio (2.28): su nombre como etiqueta.
+      expect(find.text('Nequi'), findsOneWidget);
+      expect(find.text('1 pago'), findsOneWidget);
+
+      await tapText(tester, 'Servicios');
+      expect(find.text('Cejas en hilo'), findsOneWidget);
+      // "N citas" con appointment_count, no con los pagos.
+      expect(find.text('3 citas · 100 %'), findsOneWidget);
 
       await tapText(tester, 'Mejores clientes');
       expect(find.text('Ana Pérez'), findsOneWidget);
@@ -341,8 +374,9 @@ void main() {
 
       expect(find.text('\$ 80.000'), findsWidgets);
       expect(find.text('Manicure'), findsOneWidget);
-      // `daily_evolution.count` cuenta pagos (no citas).
-      expect(find.text('2 pagos'), findsOneWidget);
+      // Servicio: citas (2.28); día: citas y pagos por separado.
+      expect(find.text('2 citas'), findsOneWidget);
+      expect(find.text('2 citas · 3 pagos'), findsOneWidget);
     });
 
     testWidgets('el Owner ve las de su propio usuario (con professionalId)',

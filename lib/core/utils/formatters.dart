@@ -64,6 +64,10 @@ String formatDurationMinutes(int minutes) {
   return rest == 0 ? '$hours h' : '$hours h $rest min';
 }
 
+/// Cantidad con su palabra en singular o plural: `1 cita`, `3 citas`, `0 pagos`.
+String formatCount(int count, String singular, String plural) =>
+    count == 1 ? '1 $singular' : '$count $plural';
+
 num _toNum(Object? value) {
   if (value is num) return value.isFinite ? value : 0;
   if (value is String) return num.tryParse(value.trim()) ?? 0;

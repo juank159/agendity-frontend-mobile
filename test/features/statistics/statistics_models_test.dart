@@ -54,6 +54,7 @@ Map<String, dynamic> backendComparison() => {
 Map<String, dynamic> backendMethodStats({String method = 'CASH'}) => {
       'method': method,
       'method_type': 'STANDARD',
+      'custom_payment_method_id': null,
       'count': 2,
       'total': 70000,
       'average': 35000,
@@ -71,14 +72,15 @@ Map<String, dynamic> backendProfessionalStats() => {
       'percentage_of_total': 76.19047619047619,
     };
 
-/// Elemento de `GET /payments/stats/by-service`.
+/// Elemento de `GET /payments/stats/by-service` (2.28: neto repartido).
 Map<String, dynamic> backendServiceStats() => {
       'service_id': 'srv-1',
       'service_name': 'Cejas en hilo',
+      'appointment_count': 2,
       'payment_count': 3,
-      'total_amount': 135000,
+      'total_amount': 90000,
       'average_amount': 45000,
-      'percentage_of_total': 128.57142857142858,
+      'percentage_of_total': 64.28571428571429,
     };
 
 /// Elemento de `GET /payments/stats/by-client`.
@@ -119,8 +121,20 @@ Map<String, dynamic> backendEmployeeStats() => {
         },
       ],
       'daily_evolution': [
-        {'date': '2026-10-20', 'total': 30000, 'count': 1},
-        {'date': '2026-10-21', 'total': 50000, 'count': 1},
+        {
+          'date': '2026-10-20',
+          'total': 30000,
+          'count': 2,
+          'payment_count': 2,
+          'appointment_count': 1,
+        },
+        {
+          'date': '2026-10-21',
+          'total': 50000,
+          'count': 1,
+          'payment_count': 1,
+          'appointment_count': 1,
+        },
       ],
     };
 
@@ -196,11 +210,36 @@ void main() {
     expect(entity.total, 70000);
     expect(entity.percentage, closeTo(66.67, 0.01));
 
-    final unknown = PaymentMethodStatsModel.fromJson(
-        {...backendMethodStats(method: 'NEQUI'), 'method_type': 'CUSTOM'});
+    expect(entity.customPaymentMethodId, isNull);
+    expect(entity.isCustom, false);
+
+    final unknown =
+        PaymentMethodStatsModel.fromJson(backendMethodStats(method: 'NEQUI'));
     expect(unknown.toEntity().paymentMethod, isNull);
-    expect(unknown.toEntity().method, 'NEQUI');
-    expect(unknown.toEntity().methodType, PaymentMethodType.custom);
+    expect(unknown.toEntity().methodType, PaymentMethodType.standard);
+  });
+
+  test('PaymentMethodStatsModel: método propio (CUSTOM) con su id y nombre',
+      () {
+    final entity = PaymentMethodStatsModel.fromJson({
+      ...backendMethodStats(method: 'Nequi'),
+      'method_type': 'CUSTOM',
+      'custom_payment_method_id': 'cpm-1',
+    }).toEntity();
+    expect(entity.method, 'Nequi');
+    expect(entity.paymentMethod, isNull);
+    expect(entity.methodType, PaymentMethodType.custom);
+    expect(entity.isCustom, true);
+    expect(entity.customPaymentMethodId, 'cpm-1');
+
+    // Un método propio llamado como un código estándar no se confunde.
+    final named = PaymentMethodStatsModel.fromJson({
+      ...backendMethodStats(method: 'CASH'),
+      'method_type': 'CUSTOM',
+      'custom_payment_method_id': 'cpm-2',
+    }).toEntity();
+    expect(named.paymentMethod, isNull);
+    expect(named.isCustom, true);
   });
 
   test('ProfessionalStatsModel: nombre recortado', () {
@@ -213,14 +252,18 @@ void main() {
     expect(entity.percentageOfTotal, closeTo(76.19, 0.01));
   });
 
-  test('ServiceStatsModel: tal cual (el % puede pasar de 100, ver entidad)',
-      () {
+  test('ServiceStatsModel: citas, pagos y neto por cita', () {
     final entity = ServiceStatsModel.fromJson(backendServiceStats()).toEntity();
     expect(entity.serviceName, 'Cejas en hilo');
+    expect(entity.appointmentCount, 2);
     expect(entity.paymentCount, 3);
-    expect(entity.totalAmount, 135000);
+    expect(entity.totalAmount, 90000);
     expect(entity.averageAmount, 45000);
-    expect(entity.percentageOfTotal, greaterThan(100));
+    expect(entity.percentageOfTotal, closeTo(64.29, 0.01));
+
+    final legacy = ServiceStatsModel.fromJson(
+        {...backendServiceStats()}..remove('appointment_count')).toEntity();
+    expect(legacy.appointmentCount, 0);
   });
 
   group('ClientStatsModel', () {
@@ -264,10 +307,12 @@ void main() {
           const EmployeeServiceStats(
               serviceId: 'srv-1',
               serviceName: 'Cejas en hilo',
-              count: 2,
+              appointmentCount: 2,
               total: 90000));
       expect(entity.dailyEvolution.map((d) => d.day),
           [DateTime(2026, 10, 20), DateTime(2026, 10, 21)]);
+      expect(entity.dailyEvolution.first.paymentCount, 2);
+      expect(entity.dailyEvolution.first.appointmentCount, 1);
       expect(entity.dailyEvolution.last.total, 50000);
     });
 
@@ -290,6 +335,9 @@ void main() {
       }).toEntity();
       expect(entity.dailyEvolution.single.day, DateTime(2026, 10, 21));
       expect(entity.dailyEvolution.single.total, 50000);
+      // Sin `payment_count` (respuesta anterior a 2.28): `count` son pagos.
+      expect(entity.dailyEvolution.single.paymentCount, 1);
+      expect(entity.dailyEvolution.single.appointmentCount, 0);
     });
   });
 }

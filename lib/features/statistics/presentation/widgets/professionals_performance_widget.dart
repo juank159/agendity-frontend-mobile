@@ -23,8 +23,8 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
                 title: stat.professionalName.isEmpty
                     ? 'Profesional'
                     : stat.professionalName,
-                subtitle: '${_count(stat.appointmentCount, 'cita', 'citas')}'
-                    ' · ${_count(stat.paymentCount, 'pago', 'pagos')}'
+                subtitle: '${formatCount(stat.appointmentCount, 'cita', 'citas')}'
+                    ' · ${formatCount(stat.paymentCount, 'pago', 'pagos')}'
                     ' · promedio ${formatCop(stat.averagePerPayment)}',
                 value: formatCop(stat.totalAmount),
                 fraction: StatsBarRow.fractionOf(stat.totalAmount, max),
@@ -34,7 +34,4 @@ class ProfessionalsPerformanceWidget extends StatelessWidget {
       ),
     );
   }
-
-  static String _count(int n, String one, String many) =>
-      n == 1 ? '1 $one' : '$n $many';
 }

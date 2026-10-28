@@ -72,7 +72,7 @@ class PaymentMethodsChart extends StatelessWidget {
                   backgroundColor: colors[i % colors.length],
                 ),
                 title: Text(paymentMethodLabel(stats[i])),
-                subtitle: Text(_paymentsLabel(stats[i].count)),
+                subtitle: Text(formatCount(stats[i].count, 'pago', 'pagos')),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -92,7 +92,4 @@ class PaymentMethodsChart extends StatelessWidget {
       ),
     );
   }
-
-  static String _paymentsLabel(int count) =>
-      count == 1 ? '1 pago' : '$count pagos';
 }

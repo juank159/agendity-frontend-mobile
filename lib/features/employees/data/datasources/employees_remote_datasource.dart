@@ -37,7 +37,8 @@ abstract class EmployeesRemoteDataSource {
   Future<void> requestVerificationCode(String email);
 
   /// `POST /auth/verify/employee-email` con `{employee_id, code}`. Un código
-  /// incorrecto responde 401: la petición se marca para no cerrar la sesión.
+  /// incorrecto, vencido o agotado responde 400 `INVALID_VERIFICATION_CODE`;
+  /// un 401 aquí es la sesión del Owner vencida, como en cualquier otra ruta.
   Future<void> verifyEmployeeEmail(String employeeId, String code);
 }
 
@@ -117,7 +118,6 @@ class EmployeesRemoteDataSourceImpl implements EmployeesRemoteDataSource {
     await _dio.post<void>(
       '/auth/verify/employee-email',
       data: {'employee_id': employeeId, 'code': code},
-      options: Options(extra: {AuthInterceptor.keepSessionOn401Key: true}),
     );
   }
 

@@ -18,8 +18,8 @@ class EmployeeEmailNotVerifiedFailure extends ConflictFailure {
 }
 
 /// Código de verificación del email incorrecto, vencido o agotado tras
-/// varios intentos. El backend lo responde como 401 `UNAUTHORIZED` (con la
-/// sesión del Owner intacta), así que se conserva su texto, que dice el motivo.
+/// varios intentos: 400 `INVALID_VERIFICATION_CODE` (2.33). Se conserva el
+/// texto del backend, que dice el motivo.
 class InvalidEmployeeVerificationCodeFailure extends ValidationFailure {
   static const defaultMessage = 'Código de verificación inválido';
 

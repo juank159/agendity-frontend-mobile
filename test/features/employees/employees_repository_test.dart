@@ -406,13 +406,15 @@ void main() {
       expect(request.headers['Authorization'], 'Bearer jwt');
     });
 
-    test('código incorrecto (401) → failure propio y la sesión sigue', () async {
-      adapter.handler = (_) =>
-          errorBody(401, 'UNAUTHORIZED', 'Código de verificación inválido');
+    test('código incorrecto (400 INVALID_VERIFICATION_CODE) → failure propio',
+        () async {
+      adapter.handler = (_) => errorBody(400, 'INVALID_VERIFICATION_CODE',
+          'El código de verificación ha expirado');
       final failure = leftOf(await VerifyEmployeeEmailUseCase(repository)(
           const VerifyEmployeeEmailParams(employeeId: 'emp-1', code: '000000')));
       expect(failure, isA<InvalidEmployeeVerificationCodeFailure>());
-      expect(failure!.message, 'Código de verificación inválido');
+      expect(failure!.message, 'El código de verificación ha expirado');
+      expect(failure.code, 'INVALID_VERIFICATION_CODE');
       expect(expiredSessions, 0);
     });
 
@@ -422,6 +424,15 @@ void main() {
       expect(failure!.message, EmployeeRules.codeInvalid);
       expect(adapter.requests, isEmpty);
     });
+  });
+
+  test('un 401 al verificar es la sesión vencida: avisa y no es "código inválido"',
+      () async {
+    adapter.handler = (_) => errorBody(401, 'UNAUTHORIZED', 'No autorizado');
+    final failure = leftOf(await VerifyEmployeeEmailUseCase(repository)(
+        const VerifyEmployeeEmailParams(employeeId: 'emp-1', code: '123456')));
+    expect(failure, isA<UnauthorizedFailure>());
+    expect(expiredSessions, 1);
   });
 
   test('un 401 normal (token vencido) sí avisa de la sesión expirada',

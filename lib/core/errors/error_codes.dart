@@ -19,6 +19,7 @@ abstract final class ApiErrorCode {
   static const ownerNotDeletable = 'OWNER_NOT_DELETABLE';
   static const categoryHasServices = 'CATEGORY_HAS_SERVICES';
   static const appointmentInPast = 'APPOINTMENT_IN_PAST';
+  static const invalidVerificationCode = 'INVALID_VERIFICATION_CODE';
   static const duplicateEmail = 'DUPLICATE_EMAIL';
   static const duplicatePhone = 'DUPLICATE_PHONE';
   static const trialLimitReached = 'TRIAL_LIMIT_REACHED';

@@ -113,10 +113,10 @@ class EmployeesRepositoryImpl implements EmployeesRepository {
               details: failure.details)
           : failure;
 
-  /// Código incorrecto, vencido o agotado: 401 del propio `verify` (la
-  /// petición no cierra la sesión, ver el datasource).
+  /// Código incorrecto, vencido o agotado: 400 `INVALID_VERIFICATION_CODE`
+  /// (2.33). El motivo va en `message`.
   static Failure _refineVerification(Failure failure) =>
-      failure is UnauthorizedFailure
+      failure.code == ApiErrorCode.invalidVerificationCode
           ? InvalidEmployeeVerificationCodeFailure(
               message: failure.message,
               code: failure.code,

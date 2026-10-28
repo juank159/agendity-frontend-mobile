@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import 'package:login_signup/shared/controller/theme_controller.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
 
 class ThemeSettingsScreen extends StatelessWidget {
   const ThemeSettingsScreen({super.key});

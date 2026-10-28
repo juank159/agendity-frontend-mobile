@@ -6,7 +6,7 @@ import 'package:login_signup/features/appointments/domain/entities/appointment_q
 import 'package:login_signup/features/appointments/domain/usecases/get_appointments_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 

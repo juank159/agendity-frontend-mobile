@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 /// Motivo por el que la suscripción bloquea una acción.
 enum SubscriptionBlockReason { trialEnded, inactive }

@@ -1,5 +1,5 @@
 import 'package:login_signup/core/errors/failures.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import '../../domain/entities/employee_stats_entity.dart';
 import '../../domain/usecases/get_employee_stats_usecase.dart';

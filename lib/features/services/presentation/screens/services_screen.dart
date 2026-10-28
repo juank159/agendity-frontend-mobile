@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import '../../domain/entities/service_entity.dart';
-import '../controller/services_controller.dart';
+import '../controllers/services_controller.dart';
 import '../widgets/service_card.dart';
 
 /// Catálogo de servicios agrupado por categoría. El Employee lo ve en solo

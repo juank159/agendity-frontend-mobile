@@ -6,8 +6,8 @@ import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/appointments/presentation/bindings/appointment_reminder_binding.dart';
 
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
-import 'package:login_signup/features/appointments/presentation/view/appointments_view.dart';
-import 'package:login_signup/features/appointments/presentation/view/upcoming_appointments_screen.dart';
+import 'package:login_signup/features/appointments/presentation/screens/appointments_view.dart';
+import 'package:login_signup/features/appointments/presentation/screens/upcoming_appointments_screen.dart';
 
 import 'package:login_signup/features/auth/presentation/bindings/email_verification_binding.dart';
 import 'package:login_signup/features/auth/presentation/bindings/forgot_password_binding.dart';
@@ -16,15 +16,15 @@ import 'package:login_signup/features/auth/presentation/bindings/login_binding.d
 import 'package:login_signup/features/auth/presentation/bindings/register_binding.dart';
 import 'package:login_signup/features/auth/presentation/bindings/reset_password_binding.dart';
 
-import 'package:login_signup/features/auth/presentation/screen/email_verification_view.dart';
-import 'package:login_signup/features/auth/presentation/screen/forgot_password_view.dart';
-import 'package:login_signup/features/auth/presentation/screen/reset_password_view.dart';
-import 'package:login_signup/features/auth/presentation/screen/screen.dart';
+import 'package:login_signup/features/auth/presentation/screens/email_verification_view.dart';
+import 'package:login_signup/features/auth/presentation/screens/forgot_password_view.dart';
+import 'package:login_signup/features/auth/presentation/screens/reset_password_view.dart';
+import 'package:login_signup/features/auth/presentation/screens/screen.dart';
 
 import 'package:login_signup/features/clients/presentation/bindings/clients_binding.dart';
-import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
-import 'package:login_signup/features/clients/presentation/screen/edit_client_screen.dart';
-import 'package:login_signup/features/clients/presentation/screen/new_client_screen.dart';
+import 'package:login_signup/features/clients/presentation/screens/clients_screen.dart';
+import 'package:login_signup/features/clients/presentation/screens/edit_client_screen.dart';
+import 'package:login_signup/features/clients/presentation/screens/new_client_screen.dart';
 
 import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
 import 'package:login_signup/features/employees/presentation/bindings/verify_employee_email_binding.dart';
@@ -39,11 +39,11 @@ import 'package:login_signup/features/services/presentation/bindings/edit_servic
 import 'package:login_signup/features/services/presentation/bindings/new_category_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/services_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/new_service_binding.dart';
-import 'package:login_signup/features/services/presentation/screen/categories_screen.dart';
-import 'package:login_signup/features/services/presentation/screen/edit_service_screen.dart';
-import 'package:login_signup/features/services/presentation/screen/new_category_screen.dart';
-import 'package:login_signup/features/services/presentation/screen/services_screen.dart';
-import 'package:login_signup/features/services/presentation/screen/new_service_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/categories_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/edit_service_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/new_category_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/services_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/new_service_screen.dart';
 import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
 import 'package:login_signup/features/statistics/presentation/screens/employee_stats_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
@@ -51,7 +51,7 @@ import 'package:login_signup/features/subscriptions/presentation/bindings/subscr
 import 'package:login_signup/features/subscriptions/presentation/screens/payment_success_screen.dart';
 import 'package:login_signup/features/subscriptions/presentation/screens/payment_webview_screen.dart';
 import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
-import 'package:login_signup/features/theme/presentation/screen/theme_settings_screen.dart';
+import 'package:login_signup/features/theme/presentation/screens/theme_settings_screen.dart';
 import 'package:login_signup/features/whatsapp/presentation/bindings/whatsapp_binding.dart';
 import 'package:login_signup/features/whatsapp/presentation/screens/whatsapp_config_screen.dart';
 

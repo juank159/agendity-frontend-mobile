@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/clients_controller.dart';
+import '../controllers/clients_controller.dart';
 import 'client_import_summary.dart';
 
 /// Opciones para agregar clientes: crear uno o importar los contactos.

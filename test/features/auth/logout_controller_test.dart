@@ -10,7 +10,7 @@ import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
 import 'package:login_signup/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 import '../../core/session/jwt_helper.dart';
 import '../../core/session/memory_token_store.dart';

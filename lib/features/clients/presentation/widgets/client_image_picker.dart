@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/client_form_controller.dart';
+import '../controllers/client_form_controller.dart';
 
 /// Foto del cliente (alta y edición): toca para elegir otra; se sube al
 /// elegirla.

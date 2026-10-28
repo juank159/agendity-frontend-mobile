@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 import '../../core/session/jwt_helper.dart';
 import '../../core/session/memory_token_store.dart';

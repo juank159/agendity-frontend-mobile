@@ -3,11 +3,11 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/auth/domain/usecases/request_verification_code_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/verify_email_usecase.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'auth_feedback.dart';
 import 'auth_navigation.dart';
-import 'package:login_signup/shared/controller/code_countdown.dart';
+import 'package:login_signup/shared/controllers/code_countdown.dart';
 
 /// Verificación del email del Owner recién registrado (`/verify-email`,
 /// email en `arguments`). Pide el código al abrirse. El registro ya inició

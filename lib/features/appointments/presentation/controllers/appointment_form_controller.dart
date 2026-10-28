@@ -17,7 +17,7 @@ import 'package:login_signup/features/employees/domain/entities/employee_entity.
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 enum SlotsStatus { idle, loading, ready, error }

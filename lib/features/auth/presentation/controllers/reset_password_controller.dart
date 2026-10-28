@@ -7,7 +7,7 @@ import 'package:login_signup/features/auth/domain/usecases/reset_password_usecas
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'auth_feedback.dart';
 import 'auth_navigation.dart';
-import 'package:login_signup/shared/controller/code_countdown.dart';
+import 'package:login_signup/shared/controllers/code_countdown.dart';
 import 'password_policy.dart';
 
 /// Cambia la contraseña con el código de recuperación (`/reset-password`,

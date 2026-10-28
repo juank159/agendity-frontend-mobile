@@ -21,13 +21,13 @@ import 'package:login_signup/features/clients/domain/usecases/get_clients_page_u
 import 'package:login_signup/features/clients/domain/usecases/import_clients_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/update_client_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/upload_client_image_usecase.dart';
-import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
-import 'package:login_signup/features/clients/presentation/controller/edit_client_controller.dart';
-import 'package:login_signup/features/clients/presentation/controller/new_client_controller.dart';
-import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
-import 'package:login_signup/features/clients/presentation/screen/edit_client_screen.dart';
-import 'package:login_signup/features/clients/presentation/screen/new_client_screen.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/features/clients/presentation/controllers/clients_controller.dart';
+import 'package:login_signup/features/clients/presentation/controllers/edit_client_controller.dart';
+import 'package:login_signup/features/clients/presentation/controllers/new_client_controller.dart';
+import 'package:login_signup/features/clients/presentation/screens/clients_screen.dart';
+import 'package:login_signup/features/clients/presentation/screens/edit_client_screen.dart';
+import 'package:login_signup/features/clients/presentation/screens/new_client_screen.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 import '../../core/session/memory_token_store.dart';
 

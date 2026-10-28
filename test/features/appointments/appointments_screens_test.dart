@@ -31,8 +31,8 @@ import 'package:login_signup/features/appointments/presentation/controllers/appo
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
-import 'package:login_signup/features/appointments/presentation/view/appointments_view.dart';
-import 'package:login_signup/features/appointments/presentation/view/upcoming_appointments_screen.dart';
+import 'package:login_signup/features/appointments/presentation/screens/appointments_view.dart';
+import 'package:login_signup/features/appointments/presentation/screens/upcoming_appointments_screen.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar_data_source.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_detail_dialog.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_form_dialog.dart';
@@ -57,7 +57,7 @@ import 'package:login_signup/features/services/domain/usecases/get_services_usec
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
 import 'package:login_signup/features/subscriptions/domain/repositories/subscription_repository.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import '../../core/session/memory_token_store.dart';

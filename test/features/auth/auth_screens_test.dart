@@ -24,12 +24,12 @@ import 'package:login_signup/features/auth/presentation/controllers/google_auth_
 import 'package:login_signup/features/auth/presentation/controllers/login_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/register_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/reset_password_controller.dart';
-import 'package:login_signup/features/auth/presentation/screen/email_verification_view.dart';
-import 'package:login_signup/features/auth/presentation/screen/forgot_password_view.dart';
-import 'package:login_signup/features/auth/presentation/screen/login_view.dart';
-import 'package:login_signup/features/auth/presentation/screen/register_view.dart';
-import 'package:login_signup/features/auth/presentation/screen/reset_password_view.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/features/auth/presentation/screens/email_verification_view.dart';
+import 'package:login_signup/features/auth/presentation/screens/forgot_password_view.dart';
+import 'package:login_signup/features/auth/presentation/screens/login_view.dart';
+import 'package:login_signup/features/auth/presentation/screens/register_view.dart';
+import 'package:login_signup/features/auth/presentation/screens/reset_password_view.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 import '../../core/session/jwt_helper.dart';
 import '../../core/session/memory_token_store.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
-import 'package:login_signup/features/services/presentation/controller/service_form_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/service_form_controller.dart';
 import 'package:login_signup/features/services/presentation/widgets/category_picker.dart';
 import 'package:login_signup/features/services/presentation/widgets/color_picker.dart';
 import 'package:login_signup/features/services/presentation/widgets/duration_picker.dart';

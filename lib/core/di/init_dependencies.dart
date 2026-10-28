@@ -8,7 +8,7 @@ import 'package:login_signup/core/network/network_info.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/core/session/token_store.dart';
-import 'package:login_signup/shared/controller/theme_controller.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import '../config/env_config.dart';
 import 'package:login_signup/features/appointments/appointments_dependencies.dart';

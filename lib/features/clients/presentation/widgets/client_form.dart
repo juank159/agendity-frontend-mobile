@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/utils/formatters.dart';
-import '../controller/client_form_controller.dart';
+import '../controllers/client_form_controller.dart';
 import 'client_image_picker.dart';
 
 /// Campos del cliente, comunes al alta y a la edición.

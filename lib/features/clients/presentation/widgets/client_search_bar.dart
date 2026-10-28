@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
-import '../controller/clients_controller.dart';
+import '../controllers/clients_controller.dart';
 
 String _statusLabel(ClientStatusFilter value) => switch (value) {
       ClientStatusFilter.all => 'Todos',

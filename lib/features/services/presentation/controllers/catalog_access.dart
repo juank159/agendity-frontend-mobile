@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/services/domain/failures/services_failures.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 /// Reglas de la UI del catálogo (servicios y categorías) comunes a los
 /// controllers de la feature.

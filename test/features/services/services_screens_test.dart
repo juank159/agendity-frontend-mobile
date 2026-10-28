@@ -22,17 +22,17 @@ import 'package:login_signup/features/services/domain/usecases/get_services_usec
 import 'package:login_signup/features/services/domain/usecases/update_category_status_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_usecase.dart';
 import 'package:login_signup/features/services/presentation/bindings/services_binding.dart';
-import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
-import 'package:login_signup/features/services/presentation/controller/categories_controller.dart';
-import 'package:login_signup/features/services/presentation/controller/new_category_controller.dart';
-import 'package:login_signup/features/services/presentation/controller/new_service_controller.dart';
-import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
-import 'package:login_signup/features/services/presentation/screen/categories_screen.dart';
-import 'package:login_signup/features/services/presentation/screen/new_category_screen.dart';
-import 'package:login_signup/features/services/presentation/screen/new_service_screen.dart';
-import 'package:login_signup/features/services/presentation/screen/services_screen.dart';
+import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
+import 'package:login_signup/features/services/presentation/controllers/categories_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/new_category_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/new_service_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/services_controller.dart';
+import 'package:login_signup/features/services/presentation/screens/categories_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/new_category_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/new_service_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/services_screen.dart';
 import 'package:login_signup/shared/utils/color_hex.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 import '../../core/session/memory_token_store.dart';
 

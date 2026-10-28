@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 /// Devuelve la sesión de la UI o `null` si aún no está registrada.
 typedef SessionLookup = SessionController? Function();

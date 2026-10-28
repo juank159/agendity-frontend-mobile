@@ -8,7 +8,7 @@ import 'package:login_signup/features/services/domain/usecases/delete_category_u
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_status_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_usecase.dart';
-import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
+import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
 import 'package:login_signup/features/services/presentation/widgets/edit_category_dialog.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';

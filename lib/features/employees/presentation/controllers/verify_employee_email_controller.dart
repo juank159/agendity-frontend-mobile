@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/employees/domain/usecases/request_employee_verification_code_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/verify_employee_email_usecase.dart';
-import 'package:login_signup/shared/controller/code_countdown.dart';
+import 'package:login_signup/shared/controllers/code_countdown.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'employee_feedback.dart';
 import 'employee_navigation.dart';

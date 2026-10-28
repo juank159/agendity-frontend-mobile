@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/failures/services_failures.dart';
 import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
-import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
+import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 /// Alta de una categoría (solo Owner). Al guardar vuelve con `result: true`.

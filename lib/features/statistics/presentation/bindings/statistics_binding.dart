@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import '../controllers/employee_stats_controller.dart';
 import '../controllers/statistics_controller.dart';
 

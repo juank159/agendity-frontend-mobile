@@ -1,8 +1,8 @@
 import 'package:get/get.dart';
-import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
-import 'package:login_signup/features/clients/presentation/controller/device_contacts.dart';
-import 'package:login_signup/features/clients/presentation/controller/edit_client_controller.dart';
-import 'package:login_signup/features/clients/presentation/controller/new_client_controller.dart';
+import 'package:login_signup/features/clients/presentation/controllers/clients_controller.dart';
+import 'package:login_signup/features/clients/presentation/controllers/device_contacts.dart';
+import 'package:login_signup/features/clients/presentation/controllers/edit_client_controller.dart';
+import 'package:login_signup/features/clients/presentation/controllers/new_client_controller.dart';
 
 /// Lista de clientes (`/clients`). Solo controllers: datasource, repositorio
 /// y use cases los registra `ClientsDependencies`.

@@ -10,7 +10,7 @@ import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/di/init_dependencies.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/firebase_options.dart';
-import 'package:login_signup/shared/controller/theme_controller.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
 
 Future<void> main() async {

@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:login_signup/shared/controller/code_countdown.dart';
+import 'package:login_signup/shared/controllers/code_countdown.dart';
 
 // testWidgets corre en una zona con tiempo falso: `tester.pump(d)` avanza
 // los Timer sin esperar de verdad.

@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
-import '../controller/categories_controller.dart';
+import '../controllers/categories_controller.dart';
 
 enum _CategoryAction { edit, delete }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/clients_controller.dart';
+import '../controllers/clients_controller.dart';
 import '../widgets/add_client_dialog.dart';
 import '../widgets/client_list.dart';
 import '../widgets/client_search_bar.dart';

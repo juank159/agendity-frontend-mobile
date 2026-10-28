@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/services/presentation/controller/new_service_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/new_service_controller.dart';
 import 'package:login_signup/features/services/presentation/widgets/service_form.dart';
 
 /// Alta de un servicio (solo Owner).

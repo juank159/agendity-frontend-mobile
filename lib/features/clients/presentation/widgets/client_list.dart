@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
-import '../controller/clients_controller.dart';
+import '../controllers/clients_controller.dart';
 import 'client_card.dart';
 
 /// Lista paginada (scroll infinito) con sus estados de carga, error y vacío.

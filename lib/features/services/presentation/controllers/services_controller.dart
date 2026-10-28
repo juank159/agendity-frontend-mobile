@@ -5,7 +5,7 @@ import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
-import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
+import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 

@@ -29,7 +29,7 @@ import 'package:login_signup/features/statistics/presentation/controllers/statis
 import 'package:login_signup/features/statistics/presentation/screens/employee_stats_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
 import 'package:login_signup/features/statistics/presentation/widgets/date_range_selector.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 import '../../core/session/memory_token_store.dart';
 

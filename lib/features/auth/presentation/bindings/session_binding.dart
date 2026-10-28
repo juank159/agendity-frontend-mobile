@@ -3,7 +3,7 @@ import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 
 /// Controllers de sesión con alcance de app (permanentes, `SessionScope`
 /// regla 1): `SessionController`, `LogoutController` y `UserInfoController`.

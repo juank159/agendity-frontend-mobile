@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/services/presentation/controller/edit_service_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/edit_service_controller.dart';
 import 'package:login_signup/features/services/presentation/widgets/service_form.dart';
 
 /// Edición y borrado de un servicio (solo Owner).

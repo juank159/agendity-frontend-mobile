@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/clients/domain/failures/client_failures.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 

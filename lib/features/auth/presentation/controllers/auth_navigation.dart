@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'auth_feedback.dart';
 

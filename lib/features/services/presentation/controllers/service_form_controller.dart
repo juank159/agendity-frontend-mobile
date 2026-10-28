@@ -7,7 +7,7 @@ import 'package:login_signup/features/services/domain/entities/service_entity.da
 import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
 import 'package:login_signup/features/services/domain/failures/services_failures.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
-import 'package:login_signup/features/services/presentation/controller/catalog_access.dart';
+import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
 import 'package:login_signup/features/services/presentation/widgets/color_picker.dart';
 import 'package:login_signup/shared/utils/color_hex.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';

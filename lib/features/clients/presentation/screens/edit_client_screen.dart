@@ -4,7 +4,7 @@ import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/loading_state.dart';
 import 'package:login_signup/shared/widgets/whatsapp_icon.dart';
-import '../controller/edit_client_controller.dart';
+import '../controllers/edit_client_controller.dart';
 import '../widgets/client_form.dart';
 
 /// Edición de un cliente. Borrar solo lo ve el Owner.

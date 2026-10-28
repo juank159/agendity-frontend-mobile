@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/usecases/create_service_usecase.dart';
-import 'package:login_signup/features/services/presentation/controller/service_form_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/service_form_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 /// Alta de un servicio. Al guardar vuelve a la lista con `result: true`.

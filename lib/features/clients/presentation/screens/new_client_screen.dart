@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/new_client_controller.dart';
+import '../controllers/new_client_controller.dart';
 import '../widgets/client_form.dart';
 
 /// Alta de un cliente.

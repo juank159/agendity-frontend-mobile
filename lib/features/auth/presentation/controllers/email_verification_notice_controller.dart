@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/get_current_user_usecase.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'auth_navigation.dart';
 
 /// Aviso "Verifica tu email" del menú lateral mientras el Owner no haya

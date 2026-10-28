@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
-import 'package:login_signup/features/services/presentation/controller/new_category_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/new_category_controller.dart';
 
 /// Alta de una categoría de servicios (solo Owner).
 class NewCategoryScreen extends GetView<NewCategoryController> {

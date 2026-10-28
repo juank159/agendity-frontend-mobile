@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/core/config/theme_config.dart';
-import 'package:login_signup/shared/controller/theme_controller.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

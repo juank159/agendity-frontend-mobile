@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/features/employees/presentation/controllers/verify_employee_email_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
+import 'package:login_signup/shared/widgets/code_expiry_notice.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 
 /// Verificación del email de un empleado con el código de 6 dígitos. Salir
@@ -106,13 +107,9 @@ class VerifyEmployeeEmailScreen extends GetView<VerifyEmployeeEmailController> {
               onChanged: (_) {},
               onCompleted: (_) => controller.verify(),
             ),
-            Obx(() => controller.expiresIn.value > 0
-                ? Text(
-                    'El código vence en '
-                    '${VerifyEmployeeEmailController.formatSeconds(controller.expiresIn.value)}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  )
+            const SizedBox(height: 8),
+            Obx(() => controller.expiry.isActive
+                ? CodeExpiryNotice(remaining: controller.expiry.formatted)
                 : const SizedBox.shrink()),
             const SizedBox(height: 24),
             Obx(() => FilledButton(
@@ -128,9 +125,8 @@ class VerifyEmployeeEmailScreen extends GetView<VerifyEmployeeEmailController> {
                   onPressed:
                       controller.canResend ? controller.requestCode : null,
                   icon: const Icon(Icons.refresh),
-                  label: Text(controller.resendIn.value > 0
-                      ? 'Reenviar en '
-                          '${VerifyEmployeeEmailController.formatSeconds(controller.resendIn.value)}'
+                  label: Text(controller.resend.isActive
+                      ? 'Reenviar en ${controller.resend.formatted}'
                       : 'Reenviar código'),
                 )),
           ],

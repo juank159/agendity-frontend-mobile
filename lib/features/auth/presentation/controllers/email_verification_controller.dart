@@ -7,7 +7,7 @@ import 'package:login_signup/shared/controller/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'auth_feedback.dart';
 import 'auth_navigation.dart';
-import 'code_countdown.dart';
+import 'package:login_signup/shared/controller/code_countdown.dart';
 
 /// Verificación del email del Owner recién registrado (`/verify-email`,
 /// email en `arguments`). Pide el código al abrirse. El registro ya inició

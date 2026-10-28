@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 
-/// Cuenta atrás de un código enviado por email (verificación y recuperación
-/// de contraseña): vigencia del código en el backend. Quien la crea la
-/// cancela en su `onClose` con [dispose].
+/// Cuenta atrás reactiva de un código enviado por email: vigencia del código
+/// (verificación de la cuenta, recuperación de contraseña y verificación de
+/// empleados) o espera antes de poder reenviarlo. **Única** cuenta atrás de
+/// la app (5.10). Quien la crea la cancela en su `onClose` con [dispose].
 class CodeCountdown {
   /// Vigencia del código en el backend.
   static const codeLifetime = Duration(minutes: 10);
@@ -14,7 +15,7 @@ class CodeCountdown {
 
   CodeCountdown({this.lifetime = codeLifetime, this.onExpired});
 
-  /// Segundos que le quedan al código (0 = sin código vigente).
+  /// Segundos que quedan (0 = terminada o sin empezar).
   final secondsLeft = 0.obs;
 
   Timer? _timer;
@@ -22,11 +23,12 @@ class CodeCountdown {
   bool get isActive => secondsLeft.value > 0;
 
   /// `mm:ss` del tiempo restante.
-  String get formatted {
-    final seconds = secondsLeft.value;
-    return '${(seconds ~/ 60).toString().padLeft(2, '0')}:'
-        '${(seconds % 60).toString().padLeft(2, '0')}';
-  }
+  String get formatted => format(secondsLeft.value);
+
+  /// `mm:ss` de [seconds].
+  static String format(int seconds) =>
+      '${(seconds ~/ 60).toString().padLeft(2, '0')}:'
+      '${(seconds % 60).toString().padLeft(2, '0')}';
 
   /// Empieza (o reinicia) la cuenta tras enviar un código.
   void start() {
@@ -35,6 +37,7 @@ class CodeCountdown {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
+  /// La detiene sin avisar de que venció (p. ej. al verificar el código).
   void stop() {
     _timer?.cancel();
     secondsLeft.value = 0;

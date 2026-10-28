@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:login_signup/core/config/theme_config.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 
-/// Código de 6 dígitos enviado por email (verificación y recuperación) y su
-/// cuenta atrás. El [controller] lo libera el GetxController dueño.
+/// Código de 6 dígitos enviado por email (verificación y recuperación). Su
+/// vigencia se muestra con `CodeExpiryNotice` (shared). El [controller] lo
+/// libera el GetxController dueño.
 class AuthCodeField extends StatelessWidget {
   final TextEditingController controller;
   final bool enabled;
@@ -50,39 +50,6 @@ class AuthCodeField extends StatelessWidget {
       ),
       onChanged: (_) {},
       onCompleted: onCompleted,
-    );
-  }
-}
-
-/// "El código vence en mm:ss" (tono de advertencia del tema).
-class CodeExpiryNotice extends StatelessWidget {
-  final String remaining;
-
-  const CodeExpiryNotice({super.key, required this.remaining});
-
-  @override
-  Widget build(BuildContext context) {
-    final warning = context.tokens.warning;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: warning.container,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.timer_outlined, color: warning.color, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            'El código vence en $remaining',
-            style: TextStyle(
-              color: warning.onContainer,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

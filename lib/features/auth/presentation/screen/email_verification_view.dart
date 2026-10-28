@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_code_field.dart';
+import 'package:login_signup/shared/widgets/code_expiry_notice.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_layout.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_submit_button.dart';
 

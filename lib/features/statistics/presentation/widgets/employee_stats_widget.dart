@@ -46,10 +46,10 @@ class EmployeeStatsWidget extends StatelessWidget {
       }
 
       // Extraer datos del resumen
-      final totalAmount = stats.summary['total_amount'] ?? 0.0;
-      final paymentCount = stats.summary['payment_count'] ?? 0;
-      final appointmentCount = stats.summary['appointment_count'] ?? 0;
-      final averagePerPayment = stats.summary['average_per_payment'] ?? 0.0;
+      final totalAmount = stats.summary.totalAmount;
+      final paymentCount = stats.summary.paymentCount;
+      final appointmentCount = stats.summary.appointmentCount;
+      final averagePerPayment = stats.summary.averagePerPayment;
 
       return SingleChildScrollView(
         child: Column(
@@ -158,12 +158,12 @@ class EmployeeStatsWidget extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final service = stats.byService[index];
                           return ListTile(
-                            title: Text(service['service_name'] ?? 'Servicio'),
-                            subtitle:
-                                Text('${service['count'] ?? 0} servicios'),
+                            title: Text(service.serviceName.isEmpty
+                                ? 'Servicio'
+                                : service.serviceName),
+                            subtitle: Text('${service.count} servicios'),
                             trailing: Text(
-                              controller.formatCurrency(
-                                  service['total']?.toDouble() ?? 0.0),
+                              controller.formatCurrency(service.total),
                             ),
                           );
                         },
@@ -208,15 +208,13 @@ class EmployeeStatsWidget extends StatelessWidget {
                         itemCount: stats.dailyEvolution.length,
                         itemBuilder: (context, index) {
                           final day = stats.dailyEvolution[index];
-                          final date = DateTime.parse(day['date'].toString());
                           final formattedDate =
-                              DateFormat('dd/MM/yyyy').format(date);
+                              DateFormat('dd/MM/yyyy').format(day.day);
                           return ListTile(
                             title: Text(formattedDate),
-                            subtitle: Text('${day['count'] ?? 0} citas'),
+                            subtitle: Text('${day.count} citas'),
                             trailing: Text(
-                              controller.formatCurrency(
-                                  day['total']?.toDouble() ?? 0.0),
+                              controller.formatCurrency(day.total),
                             ),
                           );
                         },

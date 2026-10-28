@@ -19,6 +19,8 @@ import '../../domain/usecases/get_payment_stats_by_professional_usecase.dart';
 import '../../domain/usecases/get_payment_stats_by_service_usecase.dart';
 import '../../domain/usecases/get_payment_stats_by_client_usecase.dart';
 import '../../domain/usecases/get_top_clients_usecase.dart';
+import '../../domain/entities/stats_range.dart';
+import '../../domain/usecases/stats_use_case.dart';
 
 class StatisticsController extends GetxController {
   final GetPaymentStatsUseCase getPaymentStatsUseCase;
@@ -98,6 +100,11 @@ class StatisticsController extends GetxController {
     required this.getEmployeeStatsUseCase,
   });
 
+  StatsRange get _range => StatsRange(
+        start: selectedDateRange.value.start,
+        end: selectedDateRange.value.end,
+      );
+
   void _initializeDefaultDateRange() {
     // Obtener la fecha actual
     final DateTime now = DateTime.now();
@@ -159,24 +166,18 @@ class StatisticsController extends GetxController {
     isLoadingOverview.value = true;
     errorOverview.value = '';
 
-    try {
-      final stats = await getPaymentStatsUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
+    final range = _range;
+    (await getPaymentStatsUseCase(range)).fold(
+      (failure) => errorOverview.value = failure.message,
+      (stats) => paymentStats.value = stats,
+    );
+    if (errorOverview.value.isEmpty) {
+      (await getPaymentComparisonUseCase(range)).fold(
+        (failure) => errorOverview.value = failure.message,
+        (comparison) => paymentComparison.value = comparison,
       );
-      paymentStats.value = stats;
-
-      final comparison = await getPaymentComparisonUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
-      );
-      paymentComparison.value = comparison;
-    } catch (e) {
-      errorOverview.value = e.toString();
-      debugPrint('Error cargando datos generales: $e');
-    } finally {
-      isLoadingOverview.value = false;
     }
+    isLoadingOverview.value = false;
   }
 
   // Método para cargar estadísticas por método de pago
@@ -184,18 +185,11 @@ class StatisticsController extends GetxController {
     isLoadingPaymentMethods.value = true;
     errorPaymentMethods.value = '';
 
-    try {
-      final stats = await getPaymentStatsByMethodUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
-      );
-      paymentMethodStats.assignAll(stats);
-    } catch (e) {
-      errorPaymentMethods.value = e.toString();
-      debugPrint('Error cargando estadísticas por método de pago: $e');
-    } finally {
-      isLoadingPaymentMethods.value = false;
-    }
+    (await getPaymentStatsByMethodUseCase(_range)).fold(
+      (failure) => errorPaymentMethods.value = failure.message,
+      (stats) => paymentMethodStats.assignAll(stats),
+    );
+    isLoadingPaymentMethods.value = false;
   }
 
   // Método para cargar estadísticas por profesional
@@ -203,36 +197,22 @@ class StatisticsController extends GetxController {
     isLoadingProfessionals.value = true;
     errorProfessionals.value = '';
 
-    try {
-      final stats = await getPaymentStatsByProfessionalUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
-      );
-      professionalStats.assignAll(stats);
-    } catch (e) {
-      errorProfessionals.value = e.toString();
-      debugPrint('Error cargando estadísticas por profesional: $e');
-    } finally {
-      isLoadingProfessionals.value = false;
-    }
+    (await getPaymentStatsByProfessionalUseCase(_range)).fold(
+      (failure) => errorProfessionals.value = failure.message,
+      (stats) => professionalStats.assignAll(stats),
+    );
+    isLoadingProfessionals.value = false;
   }
 
   Future<void> loadEmployeeStats() async {
     isLoadingEmployeeStats.value = true;
     errorEmployeeStats.value = '';
 
-    try {
-      final stats = await getEmployeeStatsUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
-      );
-      employeeStats.value = stats;
-    } catch (e) {
-      errorEmployeeStats.value = e.toString();
-      debugPrint('Error cargando estadísticas de empleado: $e');
-    } finally {
-      isLoadingEmployeeStats.value = false;
-    }
+    (await getEmployeeStatsUseCase(EmployeeStatsParams(_range))).fold(
+      (failure) => errorEmployeeStats.value = failure.message,
+      (stats) => employeeStats.value = stats,
+    );
+    isLoadingEmployeeStats.value = false;
   }
 
   // Método para cargar estadísticas por servicio
@@ -240,18 +220,11 @@ class StatisticsController extends GetxController {
     isLoadingServices.value = true;
     errorServices.value = '';
 
-    try {
-      final stats = await getPaymentStatsByServiceUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
-      );
-      serviceStats.assignAll(stats);
-    } catch (e) {
-      errorServices.value = e.toString();
-      debugPrint('Error cargando estadísticas por servicio: $e');
-    } finally {
-      isLoadingServices.value = false;
-    }
+    (await getPaymentStatsByServiceUseCase(_range)).fold(
+      (failure) => errorServices.value = failure.message,
+      (stats) => serviceStats.assignAll(stats),
+    );
+    isLoadingServices.value = false;
   }
 
   // Método para cargar estadísticas por cliente
@@ -259,19 +232,11 @@ class StatisticsController extends GetxController {
     isLoadingClients.value = true;
     errorClients.value = '';
 
-    try {
-      final stats = await getPaymentStatsByClientUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
-        limit: limit,
-      );
-      clientStats.assignAll(stats);
-    } catch (e) {
-      errorClients.value = e.toString();
-      debugPrint('Error cargando estadísticas por cliente: $e');
-    } finally {
-      isLoadingClients.value = false;
-    }
+    (await getPaymentStatsByClientUseCase(StatsRankingParams(_range, limit: limit))).fold(
+      (failure) => errorClients.value = failure.message,
+      (stats) => clientStats.assignAll(stats),
+    );
+    isLoadingClients.value = false;
   }
 
   // Método para cargar los mejores clientes
@@ -279,19 +244,11 @@ class StatisticsController extends GetxController {
     isLoadingTopClients.value = true;
     errorTopClients.value = '';
 
-    try {
-      final stats = await getTopClientsUseCase(
-        selectedDateRange.value.start,
-        selectedDateRange.value.end,
-        limit: limit,
-      );
-      topClients.assignAll(stats);
-    } catch (e) {
-      errorTopClients.value = e.toString();
-      debugPrint('Error cargando mejores clientes: $e');
-    } finally {
-      isLoadingTopClients.value = false;
-    }
+    (await getTopClientsUseCase(StatsRankingParams(_range, limit: limit))).fold(
+      (failure) => errorTopClients.value = failure.message,
+      (stats) => topClients.assignAll(stats),
+    );
+    isLoadingTopClients.value = false;
   }
 
   // Método para cargar todos los datos

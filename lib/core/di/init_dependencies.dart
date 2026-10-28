@@ -6,7 +6,6 @@ import 'package:login_signup/core/di/modules/appointments_module.dart';
 import 'package:login_signup/core/di/modules/employees_module.dart';
 
 import 'package:login_signup/core/di/modules/register_module.dart';
-import 'package:login_signup/core/di/modules/statistics_module.dart';
 import 'package:login_signup/core/di/modules/subscriptions_module.dart';
 import 'package:login_signup/core/di/modules/user_module.dart';
 import 'package:login_signup/core/network/api_client.dart';
@@ -21,6 +20,7 @@ import '../config/api_config.dart';
 import 'modules/auth_module.dart';
 import 'modules/clients_module.dart';
 import 'package:login_signup/features/payments/payments_dependencies.dart';
+import 'package:login_signup/features/statistics/statistics_dependencies.dart';
 import 'package:login_signup/features/services/services_dependencies.dart';
 import 'package:login_signup/features/whatsapp/whatsapp_dependencies.dart';
 
@@ -128,7 +128,7 @@ class DependencyInjection {
       await AppointmentsModule.init();
       await EmployeesModule.init();
       PaymentsDependencies.init();
-      await StatisticsModule.init();
+      StatisticsDependencies.init();
       await SubscriptionsModule.init();
       WhatsappDependencies.init();
 

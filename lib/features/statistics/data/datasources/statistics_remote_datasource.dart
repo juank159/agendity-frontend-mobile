@@ -1,249 +1,120 @@
-// lib/features/statistics/data/datasources/statistics_remote_datasource.dart
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
-import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
-import '../../../../shared/local_storage/local_storage.dart';
-import '../models/payment_stats_model.dart';
-import '../models/payment_comparison_model.dart';
-import '../models/payment_method_stats_model.dart';
-import '../models/professional_stats_model.dart';
-import '../models/service_stats_model.dart';
-import '../models/client_stats_model.dart';
-import '../models/top_client_model.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/features/statistics/data/models/client_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
+import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/payment_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/professional_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/service_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/top_client_model.dart';
+import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
 
-class StatisticsRemoteDataSource {
-  final Dio dio;
-  final LocalStorage localStorage;
+/// Rutas `/payments/stats*` (solo Owner) y `/payments/employee-stats` (Owner
+/// con `professionalId` o Employee). `startDate`/`endDate` = `yyyy-MM-dd`, días
+/// completos del negocio. Los errores (400/403, red) salen como `DioException`
+/// y los traduce `safeCall` en el repositorio.
+abstract class StatisticsRemoteDataSource {
+  Future<PaymentStatsModel> getPaymentStats(StatsRange range);
 
-  StatisticsRemoteDataSource({
-    required this.dio,
-    required this.localStorage,
-  });
-
-  Future<PaymentStatsModel> getPaymentStats(
-      DateTime startDate, DateTime endDate) async {
-    try {
-      final token = await localStorage.getToken();
-
-      final response = await dio.get(
-        '/payments/stats',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return PaymentStatsModel.fromJson(response.data);
-      }
-
-      throw Exception(
-          'Failed to load payment stats: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getPaymentStats: $e');
-      throw Exception('Error loading payment stats: $e');
-    }
-  }
-
-  Future<PaymentComparisonModel> getPaymentComparison(
-      DateTime startDate, DateTime endDate) async {
-    try {
-      final token = await localStorage.getToken();
-
-      final response = await dio.get(
-        '/payments/stats/comparison',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return PaymentComparisonModel.fromJson(response.data);
-      }
-
-      throw Exception(
-          'Failed to load payment comparison: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getPaymentComparison: $e');
-      throw Exception('Error loading payment comparison: $e');
-    }
-  }
+  Future<PaymentComparisonModel> getPaymentComparison(StatsRange range);
 
   Future<List<PaymentMethodStatsModel>> getPaymentStatsByMethod(
-      DateTime startDate, DateTime endDate) async {
-    try {
-      final token = await localStorage.getToken();
-
-      final response = await dio.get(
-        '/payments/stats/by-method',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data
-            .map((item) => PaymentMethodStatsModel.fromJson(item))
-            .toList();
-      }
-
-      throw Exception(
-          'Failed to load payment stats by method: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getPaymentStatsByMethod: $e');
-      throw Exception('Error loading payment stats by method: $e');
-    }
-  }
+      StatsRange range);
 
   Future<List<ProfessionalStatsModel>> getPaymentStatsByProfessional(
-      DateTime startDate, DateTime endDate) async {
-    try {
-      final token = await localStorage.getToken();
+      StatsRange range);
 
-      final response = await dio.get(
-        '/payments/stats/by-professional',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-        },
-      );
+  Future<List<ServiceStatsModel>> getPaymentStatsByService(StatsRange range);
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data
-            .map((item) => ProfessionalStatsModel.fromJson(item))
-            .toList();
-      }
+  Future<List<ClientStatsModel>> getPaymentStatsByClient(StatsRange range,
+      {required int limit});
 
-      throw Exception(
-          'Failed to load payment stats by professional: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getPaymentStatsByProfessional: $e');
-      throw Exception('Error loading payment stats by professional: $e');
-    }
-  }
+  Future<List<TopClientModel>> getTopClients(StatsRange range,
+      {required int limit});
 
+  Future<EmployeeStatsModel> getEmployeeStats(StatsRange range,
+      {String? professionalId});
+}
+
+class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
+  final Dio _dio;
+
+  /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
+  StatisticsRemoteDataSourceImpl(this._dio);
+
+  @override
+  Future<PaymentStatsModel> getPaymentStats(StatsRange range) async =>
+      PaymentStatsModel.fromJson(await _getObject('/payments/stats', range));
+
+  @override
+  Future<PaymentComparisonModel> getPaymentComparison(StatsRange range) async =>
+      PaymentComparisonModel.fromJson(
+          await _getObject('/payments/stats/comparison', range));
+
+  @override
+  Future<List<PaymentMethodStatsModel>> getPaymentStatsByMethod(
+          StatsRange range) async =>
+      (await _getList('/payments/stats/by-method', range))
+          .map(PaymentMethodStatsModel.fromJson)
+          .toList();
+
+  @override
+  Future<List<ProfessionalStatsModel>> getPaymentStatsByProfessional(
+          StatsRange range) async =>
+      (await _getList('/payments/stats/by-professional', range))
+          .map(ProfessionalStatsModel.fromJson)
+          .toList();
+
+  @override
   Future<List<ServiceStatsModel>> getPaymentStatsByService(
-      DateTime startDate, DateTime endDate) async {
-    try {
-      final token = await localStorage.getToken();
+          StatsRange range) async =>
+      (await _getList('/payments/stats/by-service', range))
+          .map(ServiceStatsModel.fromJson)
+          .toList();
 
-      final response = await dio.get(
-        '/payments/stats/by-service',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-        },
-      );
+  @override
+  Future<List<ClientStatsModel>> getPaymentStatsByClient(StatsRange range,
+          {required int limit}) async =>
+      (await _getList('/payments/stats/by-client', range, {'limit': limit}))
+          .map(ClientStatsModel.fromJson)
+          .toList();
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((item) => ServiceStatsModel.fromJson(item)).toList();
-      }
+  @override
+  Future<List<TopClientModel>> getTopClients(StatsRange range,
+          {required int limit}) async =>
+      (await _getList('/payments/stats/top-clients', range, {'limit': limit}))
+          .map(TopClientModel.fromJson)
+          .toList();
 
-      throw Exception(
-          'Failed to load payment stats by service: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getPaymentStatsByService: $e');
-      throw Exception('Error loading payment stats by service: $e');
-    }
+  @override
+  Future<EmployeeStatsModel> getEmployeeStats(StatsRange range,
+          {String? professionalId}) async =>
+      EmployeeStatsModel.fromJson(await _getObject(
+        '/payments/employee-stats',
+        range,
+        {if (professionalId != null) 'professionalId': professionalId},
+      ));
+
+  Future<Map<String, dynamic>> _getObject(String path, StatsRange range,
+      [Map<String, Object> extra = const {}]) async {
+    final response = await _dio.get<Map<String, dynamic>>(path,
+        queryParameters: _query(range, extra));
+    return response.data!;
   }
 
-  Future<List<ClientStatsModel>> getPaymentStatsByClient(
-      DateTime startDate, DateTime endDate,
-      {int limit = 10}) async {
-    try {
-      final token = await localStorage.getToken();
-
-      final response = await dio.get(
-        '/payments/stats/by-client',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-          'limit': limit.toString(),
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((item) => ClientStatsModel.fromJson(item)).toList();
-      }
-
-      throw Exception(
-          'Failed to load payment stats by client: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getPaymentStatsByClient: $e');
-      throw Exception('Error loading payment stats by client: $e');
-    }
+  Future<List<Map<String, dynamic>>> _getList(String path, StatsRange range,
+      [Map<String, Object> extra = const {}]) async {
+    final response = await _dio.get<List<dynamic>>(path,
+        queryParameters: _query(range, extra));
+    return response.data!.cast<Map<String, dynamic>>();
   }
 
-  Future<List<TopClientModel>> getTopClients(
-      DateTime startDate, DateTime endDate,
-      {int limit = 5}) async {
-    try {
-      final token = await localStorage.getToken();
-
-      final response = await dio.get(
-        '/payments/stats/top-clients',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-          'limit': limit.toString(),
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((item) => TopClientModel.fromJson(item)).toList();
-      }
-
-      throw Exception(
-          'Failed to load top clients: Status ${response.statusCode}');
-    } catch (e) {
-      debugPrint('Error en getTopClients: $e');
-      throw Exception('Error loading top clients: $e');
-    }
-  }
-
-  Future<EmployeeStatsModel> getEmployeeStats(
-      DateTime startDate, DateTime endDate) async {
-    try {
-      final token = await localStorage.getToken();
-      print(
-          "Obteniendo estadísticas de empleado para el rango: ${DateCodec.encodeDay(startDate)} a ${DateCodec.encodeDay(endDate)}");
-
-      final response = await dio.get(
-        '/payments/employee-stats', // ¡Usa la ruta correcta para empleados!
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-        queryParameters: {
-          'startDate': DateCodec.encodeDay(startDate),
-          'endDate': DateCodec.encodeDay(endDate),
-        },
-      );
-
-      print(
-          "Respuesta del servidor para estadísticas de empleado: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        return EmployeeStatsModel.fromJson(response.data);
-      }
-
-      throw Exception(
-          'Failed to load employee stats: Status ${response.statusCode}');
-    } catch (e) {
-      print('Error en getEmployeeStats: $e');
-      throw Exception('Error loading employee stats: $e');
-    }
-  }
+  static Map<String, Object> _query(
+          StatsRange range, Map<String, Object> extra) =>
+      {
+        'startDate': DateCodec.encodeDay(range.start),
+        'endDate': DateCodec.encodeDay(range.end),
+        ...extra,
+      };
 }

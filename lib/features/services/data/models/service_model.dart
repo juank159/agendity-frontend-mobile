@@ -1,3 +1,4 @@
+import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/services/data/models/category_model.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
@@ -42,22 +43,23 @@ class ServiceModel {
     final category = rawCategory is Map
         ? CategoryModel.fromJson(Map<String, dynamic>.from(rawCategory))
         : null;
-    final color = _optional(json['color']);
+    final color = JsonRead.asOptionalString(json['color']);
     return ServiceModel(
-      id: _optional(json['id']),
+      id: JsonRead.asOptionalString(json['id']),
       name: json['name']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
-      price: _double(json['price']),
+      price: JsonRead.asDouble(json['price']),
       priceType:
           ServicePriceType.fromApi(json['priceType']) ?? ServicePriceType.fixed,
-      duration: _int(json['duration']),
-      categoryId: _optional(json['categoryId']) ?? category?.id ?? '',
+      duration: JsonRead.asInt(json['duration']),
+      categoryId:
+          JsonRead.asOptionalString(json['categoryId']) ?? category?.id ?? '',
       category: category,
       color: color ?? ServiceEntity.defaultColor,
-      image: _optional(json['image']),
-      onlineBooking: _bool(json['onlineBooking'], fallback: false),
-      deposit: _int(json['deposit']),
-      isActive: _bool(json['isActive'], fallback: true),
+      image: JsonRead.asOptionalString(json['image']),
+      onlineBooking: JsonRead.asBool(json['onlineBooking'], fallback: false),
+      deposit: JsonRead.asInt(json['deposit']),
+      isActive: JsonRead.asBool(json['isActive'], fallback: true),
     );
   }
 
@@ -109,21 +111,4 @@ class ServiceModel {
         'onlineBooking': onlineBooking,
         'deposit': deposit,
       };
-
-  static String? _optional(Object? value) {
-    final text = value?.toString().trim();
-    return text == null || text.isEmpty ? null : text;
-  }
-
-  static double _double(Object? value) =>
-      value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-
-  static int _int(Object? value) =>
-      value is num ? value.round() : (double.tryParse('$value') ?? 0).round();
-
-  static bool _bool(Object? value, {required bool fallback}) {
-    if (value is bool) return value;
-    if (value == null) return fallback;
-    return value.toString().toLowerCase() != 'false';
-  }
 }

@@ -1,3 +1,4 @@
+import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/common/enums/payment_status_enum.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
@@ -37,15 +38,15 @@ class PaymentModel {
     return PaymentModel(
       id: _string(json['id']),
       appointmentId: _string(json['appointment_id']) ??
-          _string(_map(json['appointment'])?['id']) ??
+          _string(JsonRead.asMap(json['appointment'])?['id']) ??
           '',
-      amount: _double(json['amount']),
+      amount: JsonRead.asDouble(json['amount']),
       paymentMethod: _parsePaymentMethod(json['payment_method'], customId),
       customPaymentMethodId: customId,
       // El backend siempre lo envía; sin él, el default de la columna.
       status: PaymentStatus.fromApi(json['status']) ?? PaymentStatus.PENDING,
       transactionId: _string(json['transaction_id']),
-      refundAmount: _double(json['refund_amount']),
+      refundAmount: JsonRead.asDouble(json['refund_amount']),
       refundReason: _string(json['refund_reason']),
       createdAt: DateCodec.tryDecode(json['created_at']),
       updatedAt: DateCodec.tryDecode(json['updated_at']),
@@ -109,14 +110,5 @@ class PaymentModel {
     if (value == null) return null;
     final text = value.toString();
     return text.isEmpty ? null : text;
-  }
-
-  static Map<String, dynamic>? _map(Object? value) =>
-      value is Map<String, dynamic> ? value : null;
-
-  static double _double(Object? value) {
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value.trim()) ?? 0;
-    return 0;
   }
 }

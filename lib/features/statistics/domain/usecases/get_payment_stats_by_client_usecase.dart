@@ -1,13 +1,18 @@
-import '../entities/client_stats_entity.dart';
-import '../repositories/statistics_repository.dart';
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/features/statistics/domain/entities/client_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
+import 'package:login_signup/features/statistics/domain/usecases/stats_use_case.dart';
 
-class GetPaymentStatsByClientUseCase {
+/// Clientes por gasto neto, con frecuencia de visita (solo Owner).
+class GetPaymentStatsByClientUseCase
+    extends StatsUseCase<List<ClientStatsEntity>, StatsRankingParams> {
   final StatisticsRepository repository;
 
   GetPaymentStatsByClientUseCase(this.repository);
 
-  Future<List<ClientStatsEntity>> call(DateTime startDate, DateTime endDate,
-      {int limit = 10}) {
-    return repository.getPaymentStatsByClient(startDate, endDate, limit: limit);
-  }
+  @override
+  Future<Either<Failure, List<ClientStatsEntity>>> fetch(
+          StatsRankingParams params) =>
+      repository.getPaymentStatsByClient(params.range, limit: params.limit);
 }

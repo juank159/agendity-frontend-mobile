@@ -1,25 +1,46 @@
-import '../../domain/entities/professional_stats_entity.dart';
+import 'package:login_signup/core/utils/json_read.dart';
+import 'package:login_signup/features/statistics/domain/entities/professional_stats_entity.dart';
 
-class ProfessionalStatsModel extends ProfessionalStatsEntity {
-  ProfessionalStatsModel({
-    required super.professionalId,
-    required super.professionalName,
-    required super.appointmentCount,
-    required super.paymentCount,
-    required super.totalAmount,
-    required super.averagePerPayment,
-    required super.percentageOfTotal,
+/// DTO de un elemento de `GET /payments/stats/by-professional`
+/// (`ProfessionalStats`). El nombre llega como `name + ' ' + lastname`, con
+/// espacio final si no hay apellido: se recorta.
+class ProfessionalStatsModel {
+  final String professionalId;
+  final String professionalName;
+  final int appointmentCount;
+  final int paymentCount;
+  final double totalAmount;
+  final double averagePerPayment;
+  final double percentageOfTotal;
+
+  const ProfessionalStatsModel({
+    required this.professionalId,
+    required this.professionalName,
+    required this.appointmentCount,
+    required this.paymentCount,
+    required this.totalAmount,
+    required this.averagePerPayment,
+    required this.percentageOfTotal,
   });
 
-  factory ProfessionalStatsModel.fromJson(Map<String, dynamic> json) {
-    return ProfessionalStatsModel(
-      professionalId: json['professional_id'] as String,
-      professionalName: json['professional_name'] as String,
-      appointmentCount: json['appointment_count'] as int,
-      paymentCount: json['payment_count'] as int,
-      totalAmount: (json['total_amount'] as num).toDouble(),
-      averagePerPayment: (json['average_per_payment'] as num).toDouble(),
-      percentageOfTotal: (json['percentage_of_total'] as num).toDouble(),
-    );
-  }
+  factory ProfessionalStatsModel.fromJson(Map<String, dynamic> json) =>
+      ProfessionalStatsModel(
+        professionalId: JsonRead.asString(json['professional_id']),
+        professionalName: JsonRead.asString(json['professional_name']),
+        appointmentCount: JsonRead.asInt(json['appointment_count']),
+        paymentCount: JsonRead.asInt(json['payment_count']),
+        totalAmount: JsonRead.asDouble(json['total_amount']),
+        averagePerPayment: JsonRead.asDouble(json['average_per_payment']),
+        percentageOfTotal: JsonRead.asDouble(json['percentage_of_total']),
+      );
+
+  ProfessionalStatsEntity toEntity() => ProfessionalStatsEntity(
+        professionalId: professionalId,
+        professionalName: professionalName,
+        appointmentCount: appointmentCount,
+        paymentCount: paymentCount,
+        totalAmount: totalAmount,
+        averagePerPayment: averagePerPayment,
+        percentageOfTotal: percentageOfTotal,
+      );
 }

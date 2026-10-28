@@ -1,3 +1,4 @@
+import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
 
 /// DTO de `/custom-payment-methods` (backend: `CustomPaymentMethod`;
@@ -18,13 +19,12 @@ class CustomPaymentMethodModel {
   });
 
   factory CustomPaymentMethodModel.fromJson(Map<String, dynamic> json) {
-    final isActive = json['isActive'];
     return CustomPaymentMethodModel(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString().trim() ?? '',
-      description: _optional(json['description']),
-      icon: _optional(json['icon']),
-      isActive: isActive is bool ? isActive : isActive != 'false',
+      description: JsonRead.asOptionalString(json['description']),
+      icon: JsonRead.asOptionalString(json['icon']),
+      isActive: JsonRead.asBool(json['isActive'], fallback: true),
     );
   }
 
@@ -44,9 +44,4 @@ class CustomPaymentMethodModel {
         icon: icon,
         isActive: isActive,
       );
-
-  static String? _optional(Object? value) {
-    final text = value?.toString().trim();
-    return text == null || text.isEmpty ? null : text;
-  }
 }

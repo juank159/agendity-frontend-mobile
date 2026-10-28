@@ -1,13 +1,18 @@
-import '../entities/top_client_entity.dart';
-import '../repositories/statistics_repository.dart';
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/features/statistics/domain/entities/top_client_entity.dart';
+import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
+import 'package:login_signup/features/statistics/domain/usecases/stats_use_case.dart';
 
-class GetTopClientsUseCase {
+/// Ranking de clientes por gasto neto (solo Owner).
+class GetTopClientsUseCase
+    extends StatsUseCase<List<TopClientEntity>, StatsRankingParams> {
   final StatisticsRepository repository;
 
   GetTopClientsUseCase(this.repository);
 
-  Future<List<TopClientEntity>> call(DateTime startDate, DateTime endDate,
-      {int limit = 5}) {
-    return repository.getTopClients(startDate, endDate, limit: limit);
-  }
+  @override
+  Future<Either<Failure, List<TopClientEntity>>> fetch(
+          StatsRankingParams params) =>
+      repository.getTopClients(params.range, limit: params.limit);
 }

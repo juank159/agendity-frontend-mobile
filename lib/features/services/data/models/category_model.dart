@@ -1,3 +1,4 @@
+import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 
 /// DTO de `/categories` (backend: `Category`; `isActive` en camelCase).
@@ -24,7 +25,7 @@ class CategoryModel {
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
-      isActive: _bool(json['isActive'], fallback: true),
+      isActive: JsonRead.asBool(json['isActive'], fallback: true),
       serviceCount: services is List ? services.length : null,
     );
   }
@@ -51,10 +52,4 @@ class CategoryModel {
         'name': name,
         'description': description,
       };
-
-  static bool _bool(Object? value, {required bool fallback}) {
-    if (value is bool) return value;
-    if (value == null) return fallback;
-    return value.toString().toLowerCase() != 'false';
-  }
 }

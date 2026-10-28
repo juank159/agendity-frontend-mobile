@@ -1,24 +1,54 @@
-// lib/features/statistics/data/models/employee_stats_model.dart
-import '../../domain/entities/employee_stats_entity.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/core/utils/json_read.dart';
+import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 
-class EmployeeStatsModel extends EmployeeStatsEntity {
-  EmployeeStatsModel({
-    required super.summary,
-    required super.byService,
-    required super.dailyEvolution,
+/// DTO de `GET /payments/employee-stats`:
+/// `{summary: {...}, by_service: [...], daily_evolution: [{date: "YYYY-MM-DD"}]}`.
+/// Sin pagos en el rango: resumen en 0 y listas vacías.
+class EmployeeStatsModel {
+  final EmployeeStatsSummary summary;
+  final List<EmployeeServiceStats> byService;
+  final List<EmployeeDailyStats> dailyEvolution;
+
+  const EmployeeStatsModel({
+    required this.summary,
+    required this.byService,
+    required this.dailyEvolution,
   });
 
   factory EmployeeStatsModel.fromJson(Map<String, dynamic> json) {
+    final summary = JsonRead.asMap(json['summary']) ?? const {};
     return EmployeeStatsModel(
-      summary: json['summary'] ?? {},
-      byService: (json['by_service'] as List?)
-              ?.map((item) => item as Map<String, dynamic>)
-              .toList() ??
-          [],
-      dailyEvolution: (json['daily_evolution'] as List?)
-              ?.map((item) => item as Map<String, dynamic>)
-              .toList() ??
-          [],
+      summary: EmployeeStatsSummary(
+        totalAmount: JsonRead.asDouble(summary['total_amount']),
+        paymentCount: JsonRead.asInt(summary['payment_count']),
+        appointmentCount: JsonRead.asInt(summary['appointment_count']),
+        averagePerPayment: JsonRead.asDouble(summary['average_per_payment']),
+      ),
+      byService: JsonRead.asMapList(json['by_service'])
+          .map((item) => EmployeeServiceStats(
+                serviceId: JsonRead.asString(item['service_id']),
+                serviceName: JsonRead.asString(item['service_name']),
+                count: JsonRead.asInt(item['count']),
+                total: JsonRead.asDouble(item['total']),
+              ))
+          .toList(),
+      dailyEvolution: [
+        // Un día ilegible se descarta en vez de romper todo el informe.
+        for (final item in JsonRead.asMapList(json['daily_evolution']))
+          if (DateCodec.tryDecodeDay(item['date']) case final day?)
+            EmployeeDailyStats(
+              day: day,
+              total: JsonRead.asDouble(item['total']),
+              count: JsonRead.asInt(item['count']),
+            ),
+      ],
     );
   }
+
+  EmployeeStatsEntity toEntity() => EmployeeStatsEntity(
+        summary: summary,
+        byService: List.unmodifiable(byService),
+        dailyEvolution: List.unmodifiable(dailyEvolution),
+      );
 }

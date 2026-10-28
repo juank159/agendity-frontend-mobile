@@ -1,76 +1,78 @@
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/network/safe_call.dart';
+import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
+import 'package:login_signup/features/statistics/domain/entities/client_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
+import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/entities/payment_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/entities/professional_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/entities/service_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
+import 'package:login_signup/features/statistics/domain/entities/top_client_entity.dart';
+import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
 
-import '../../domain/entities/payment_stats_entity.dart';
-import '../../domain/entities/payment_comparison_entity.dart';
-import '../../domain/entities/payment_method_stats_entity.dart';
-import '../../domain/entities/professional_stats_entity.dart';
-import '../../domain/entities/service_stats_entity.dart';
-import '../../domain/entities/client_stats_entity.dart';
-import '../../domain/entities/top_client_entity.dart';
-import '../../domain/repositories/statistics_repository.dart';
-import '../datasources/statistics_remote_datasource.dart';
-
+/// Sin failures propios: 403 → `ForbiddenFailure`, 400 → `ValidationFailure`
+/// y red → `NetworkFailure` ya los da `safeCall`.
 class StatisticsRepositoryImpl implements StatisticsRepository {
-  final StatisticsRemoteDataSource remoteDataSource;
+  final StatisticsRemoteDataSource _remote;
 
-  StatisticsRepositoryImpl({required this.remoteDataSource});
-
-  @override
-  Future<PaymentStatsEntity> getPaymentStats(
-      DateTime startDate, DateTime endDate) async {
-    return await remoteDataSource.getPaymentStats(startDate, endDate);
-  }
+  StatisticsRepositoryImpl(this._remote);
 
   @override
-  Future<PaymentComparisonEntity> getPaymentComparison(
-      DateTime startDate, DateTime endDate) async {
-    return await remoteDataSource.getPaymentComparison(startDate, endDate);
-  }
+  Future<Either<Failure, PaymentStatsEntity>> getPaymentStats(
+          StatsRange range) =>
+      safeCall(() async => (await _remote.getPaymentStats(range)).toEntity());
 
   @override
-  Future<List<PaymentMethodStatsEntity>> getPaymentStatsByMethod(
-      DateTime startDate, DateTime endDate) async {
-    return await remoteDataSource.getPaymentStatsByMethod(startDate, endDate);
-  }
+  Future<Either<Failure, PaymentComparisonEntity>> getPaymentComparison(
+          StatsRange range) =>
+      safeCall(
+          () async => (await _remote.getPaymentComparison(range)).toEntity());
 
   @override
-  Future<List<ProfessionalStatsEntity>> getPaymentStatsByProfessional(
-      DateTime startDate, DateTime endDate) async {
-    return await remoteDataSource.getPaymentStatsByProfessional(
-        startDate, endDate);
-  }
+  Future<Either<Failure, List<PaymentMethodStatsEntity>>>
+      getPaymentStatsByMethod(StatsRange range) =>
+          safeCall(() async => (await _remote.getPaymentStatsByMethod(range))
+              .map((m) => m.toEntity())
+              .toList());
 
   @override
-  Future<List<ServiceStatsEntity>> getPaymentStatsByService(
-      DateTime startDate, DateTime endDate) async {
-    return await remoteDataSource.getPaymentStatsByService(startDate, endDate);
-  }
+  Future<Either<Failure, List<ProfessionalStatsEntity>>>
+      getPaymentStatsByProfessional(StatsRange range) => safeCall(() async =>
+          (await _remote.getPaymentStatsByProfessional(range))
+              .map((m) => m.toEntity())
+              .toList());
 
   @override
-  Future<List<ClientStatsEntity>> getPaymentStatsByClient(
-      DateTime startDate, DateTime endDate,
-      {int limit = 10}) async {
-    return await remoteDataSource.getPaymentStatsByClient(startDate, endDate,
-        limit: limit);
-  }
+  Future<Either<Failure, List<ServiceStatsEntity>>> getPaymentStatsByService(
+          StatsRange range) =>
+      safeCall(() async => (await _remote.getPaymentStatsByService(range))
+          .map((m) => m.toEntity())
+          .toList());
 
   @override
-  Future<List<TopClientEntity>> getTopClients(
-      DateTime startDate, DateTime endDate,
-      {int limit = 5}) async {
-    return await remoteDataSource.getTopClients(startDate, endDate,
-        limit: limit);
-  }
+  Future<Either<Failure, List<ClientStatsEntity>>> getPaymentStatsByClient(
+          StatsRange range,
+          {required int limit}) =>
+      safeCall(() async =>
+          (await _remote.getPaymentStatsByClient(range, limit: limit))
+              .map((m) => m.toEntity())
+              .toList());
 
   @override
-  Future<EmployeeStatsEntity> getEmployeeStats(
-      DateTime startDate, DateTime endDate) async {
-    try {
-      final employeeStats =
-          await remoteDataSource.getEmployeeStats(startDate, endDate);
-      return employeeStats;
-    } catch (e) {
-      throw Exception('Error getting employee stats: $e');
-    }
-  }
+  Future<Either<Failure, List<TopClientEntity>>> getTopClients(StatsRange range,
+          {required int limit}) =>
+      safeCall(() async => (await _remote.getTopClients(range, limit: limit))
+          .map((m) => m.toEntity())
+          .toList());
+
+  @override
+  Future<Either<Failure, EmployeeStatsEntity>> getEmployeeStats(
+          StatsRange range,
+          {String? professionalId}) =>
+      safeCall(() async => (await _remote.getEmployeeStats(range,
+              professionalId: professionalId))
+          .toEntity());
 }

@@ -116,4 +116,34 @@ void main() {
       expect(DateCodec.encodeDay(lateNight), '2026-10-21');
     });
   });
+
+  group('tryDecodeDay (días del negocio)', () {
+    test('"YYYY-MM-DD" → medianoche local de ese día, ida y vuelta', () {
+      final day = DateCodec.tryDecodeDay('2026-10-21')!;
+      expect(day, DateTime(2026, 10, 21));
+      expect(day.isUtc, false);
+      expect(DateCodec.encodeDay(day), '2026-10-21');
+    });
+
+    test(
+        'instante con offset del negocio → la fecha escrita, en cualquier zona',
+        () {
+      // Fin del día en Bogotá: en UTC (o Tokio) ya es el día 22.
+      expect(DateCodec.tryDecodeDay('2026-10-21T23:59:59.999-05:00'),
+          DateTime(2026, 10, 21));
+      expect(DateCodec.tryDecodeDay('2026-10-21T00:00:00.000-05:00'),
+          DateTime(2026, 10, 21));
+    });
+
+    test('DateTime → solo su día', () {
+      expect(DateCodec.tryDecodeDay(DateTime(2026, 1, 5, 18, 30)),
+          DateTime(2026, 1, 5));
+    });
+
+    test('null, vacío, basura o día imposible → null', () {
+      for (final value in [null, '', 'hoy', '21-10-2026', '2026-02-30', 5]) {
+        expect(DateCodec.tryDecodeDay(value), isNull, reason: '$value');
+      }
+    });
+  });
 }

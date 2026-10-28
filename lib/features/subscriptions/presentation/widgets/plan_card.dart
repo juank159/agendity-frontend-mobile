@@ -1,246 +1,125 @@
-// lib/features/subscriptions/presentation/widgets/plan_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
 
+/// Duración del periodo pagado, según `duration_months` (nunca el nombre).
+String planPeriodLabel(int months) {
+  if (months <= 1) return 'mes';
+  if (months % 12 == 0) return months == 12 ? 'año' : '${months ~/ 12} años';
+  return '$months meses';
+}
+
+/// Cupo de citas del plan (`-1` = ilimitado).
+String planAppointmentsLabel(SubscriptionPlanEntity plan) =>
+    plan.hasUnlimitedAppointments
+        ? 'Citas ilimitadas'
+        : '${plan.appointmentLimit} citas por periodo';
+
+/// Tarjeta de un plan con su precio por periodo y el botón para pagarlo.
 class PlanCard extends StatelessWidget {
   final SubscriptionPlanEntity plan;
-  final bool isRecommended;
-  final VoidCallback onTap;
+  final bool isCurrent;
+  final bool isStarting;
+
+  /// `null` deshabilita el botón (p. ej. mientras se pide otro enlace).
+  final VoidCallback? onSelect;
 
   const PlanCard({
     super.key,
     required this.plan,
-    required this.isRecommended,
-    required this.onTap,
+    this.isCurrent = false,
+    this.isStarting = false,
+    this.onSelect,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: isRecommended
-                ? BorderSide(color: Theme.of(context).primaryColor, width: 2)
-                : BorderSide.none,
-          ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tokens = context.tokens;
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isCurrent
+            ? BorderSide(color: scheme.primary, width: 2)
+            : BorderSide.none,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    plan.name,
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (isCurrent)
+                  Chip(
+                    label: const Text('Plan actual'),
+                    backgroundColor: scheme.primaryContainer,
+                    labelStyle: TextStyle(color: scheme.onPrimaryContainer),
+                  ),
+              ],
+            ),
+            if (plan.description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(plan.description, style: theme.textTheme.bodyMedium),
+            ],
+            const SizedBox(height: 16),
+            Text.rich(
+              TextSpan(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          plan.name,
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: isRecommended
-                                        ? Theme.of(context).primaryColor
-                                        : Colors.black,
-                                  ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      _buildPlanIcon(),
-                    ],
+                  TextSpan(
+                    text: formatMoney(plan.price, currency: plan.currency),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold, color: scheme.primary),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    plan.description,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPriceRow(context),
-                  const SizedBox(height: 16),
-                  _buildFeaturesList(context),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onTap,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isRecommended
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey.shade200,
-                        foregroundColor: isRecommended
-                            ? Colors.white
-                            : Theme.of(context).primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Seleccionar Plan',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                  TextSpan(
+                    text: ' / ${planPeriodLabel(plan.durationMonths)}',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
-          ),
-        ),
-        if (isRecommended)
-          Positioned(
-            top: -10,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Text(
-                'Recomendado',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPlanIcon() {
-    IconData iconData;
-    Color iconColor;
-
-    if (plan.name.toLowerCase().contains('mensual')) {
-      iconData = Icons.calendar_month;
-      iconColor = Colors.blue;
-    } else if (plan.name.toLowerCase().contains('semestral')) {
-      iconData = Icons.calendar_today;
-      iconColor = Colors.green;
-    } else if (plan.name.toLowerCase().contains('anual')) {
-      iconData = Icons.event_available;
-      iconColor = Colors.purple;
-    } else {
-      iconData = Icons.schedule;
-      iconColor = Colors.orange;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: iconColor.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        iconData,
-        color: iconColor,
-        size: 24,
-      ),
-    );
-  }
-
-  Widget _buildPriceRow(BuildContext context) {
-    final bool isMonthly = plan.billingInterval == 'month' &&
-        !plan.name.toLowerCase().contains('semestral');
-    final bool isAnnual = plan.billingInterval == 'year' ||
-        plan.name.toLowerCase().contains('anual');
-    final bool isSemestral = plan.name.toLowerCase().contains('semestral');
-
-    String period;
-    if (isMonthly) {
-      period = '/mes';
-    } else if (isSemestral) {
-      period = '/6 meses';
-    } else if (isAnnual) {
-      period = '/año';
-    } else {
-      period = '';
-    }
-
-    final formattedPrice = _formatCurrency(plan.price, plan.currency);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          formattedPrice,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isRecommended
-                    ? Theme.of(context).primaryColor
-                    : Colors.black,
-              ),
-        ),
-        Text(
-          period,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade700,
-              ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFeaturesList(BuildContext context) {
-    List<String> features = [...plan.features];
-
-    // Si no hay características definidas, generamos algunas basadas en el plan
-    if (features.isEmpty) {
-      features = [
-        'Citas ilimitadas',
-        'Soporte 24/7',
-      ];
-
-      if (plan.name.toLowerCase().contains('semestral') ||
-          plan.name.toLowerCase().contains('anual')) {
-        features.add('Análisis de clientes');
-      }
-
-      if (plan.name.toLowerCase().contains('anual')) {
-        features.add('Reportes personalizados');
-        features.add('Prioridad en soporte técnico');
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: features
-          .map((feature) => Padding(
+            const SizedBox(height: 16),
+            for (final feature in [
+              planAppointmentsLabel(plan),
+              ...plan.features
+            ])
+              Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 18,
-                    ),
+                    Icon(Icons.check_circle,
+                        color: tokens.success.color, size: 18),
                     const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        feature,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
+                    Expanded(
+                      child: Text(feature, style: theme.textTheme.bodyMedium),
                     ),
                   ],
                 ),
-              ))
-          .toList(),
+              ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: onSelect,
+              child: isStarting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(isCurrent ? 'Renovar plan' : 'Elegir plan'),
+            ),
+          ],
+        ),
+      ),
     );
   }
-
-  String _formatCurrency(double price, String currency) =>
-      formatMoney(price, currency: currency);
 }

@@ -378,7 +378,6 @@ class GetRoutes {
       name: paymentSuccess,
       middlewares: RoleMiddleware.ownerOnly(),
       page: () => const PaymentSuccessScreen(),
-      binding: SubscriptionBinding(),
       transition: Transition.fadeIn,
     ),
   ];

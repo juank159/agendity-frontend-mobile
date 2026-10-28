@@ -1,169 +1,77 @@
-// lib/features/subscriptions/presentation/screens/subscription_plans_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/error_state.dart';
+import 'package:login_signup/core/widgets/list_state_view.dart';
+import 'package:login_signup/core/widgets/loading_state.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
-import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
-import 'package:login_signup/features/subscriptions/presentation/widgets/plan_card.dart';
+import '../controllers/subscription_controller.dart';
+import '../widgets/plan_card.dart';
+import '../widgets/subscription_status_card.dart';
 
+/// Estado de la suscripción del negocio y planes para comprar (solo Owner).
 class SubscriptionPlansScreen extends GetView<SubscriptionController> {
   const SubscriptionPlansScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Planes de Suscripción'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Planes')),
       body: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+        switch (controller.status.value) {
+          case SubscriptionLoadStatus.loading:
+            return const LoadingState(message: 'Cargando planes…');
+          case SubscriptionLoadStatus.error:
+            return ErrorState(
+              title: 'No se pudo cargar',
+              message: controller.loadError.value ?? '',
+              onRetry: controller.load,
+            );
+          case SubscriptionLoadStatus.ready:
+            return RefreshIndicator(
+              onRefresh: controller.load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (controller.subscription.value case final subscription?)
+                    SubscriptionStatusCard(
+                      subscription: subscription,
+                      isVerifying: controller.verification.value ==
+                          PaymentVerificationStatus.verifying,
+                      onVerifyPending: controller.verifyPendingPayment,
+                    ),
+                  const SizedBox(height: 16),
+                  ListStateView<SubscriptionPlanEntity>(
+                    isLoading: false,
+                    items: controller.plans,
+                    emptyIcon: Icons.workspace_premium_outlined,
+                    emptyMessage: 'No hay planes disponibles en este momento',
+                    builder: (context, plans) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final plan in plans) _plan(plan),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
         }
-
-        if (controller.error.value != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Error: ${controller.error.value}',
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => controller.loadPlans(),
-                  child: const Text('Reintentar'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: _buildPlansList(),
-            ),
-          ],
-        );
       }),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      color: Colors.blue.shade50,
-      width: double.infinity,
-      child: Column(
-        children: [
-          const Icon(
-            Icons.info_outline,
-            size: 40,
-            color: Colors.blue,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Tu plan de prueba ha finalizado',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            controller.statusMessage.value,
-            style: Theme.of(context).textTheme.bodyLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Selecciona un plan para continuar usando todas las funcionalidades',
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ],
+  Widget _plan(SubscriptionPlanEntity plan) {
+    final current = controller.subscription.value;
+    final starting = controller.startingPlanId.value;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: PlanCard(
+        plan: plan,
+        isCurrent: (current?.isActive ?? false) && current?.plan?.id == plan.id,
+        isStarting: starting == plan.id,
+        onSelect: starting == null ? () => controller.startPayment(plan) : null,
       ),
-    );
-  }
-
-  Widget _buildPlansList() {
-    if (controller.plans.isEmpty) {
-      return const Center(
-        child: Text(
-          'No hay planes disponibles en este momento',
-          style: TextStyle(fontSize: 16),
-        ),
-      );
-    }
-
-    // Identificar planes especiales
-    final SubscriptionPlanEntity? monthlyPlan =
-        controller.plans.firstWhereOrNull(
-      (plan) => plan.name.toLowerCase().contains('mensual'),
-    );
-
-    final SubscriptionPlanEntity? semestralPlan =
-        controller.plans.firstWhereOrNull(
-      (plan) => plan.name.toLowerCase().contains('semestral'),
-    );
-
-    final SubscriptionPlanEntity? annualPlan =
-        controller.plans.firstWhereOrNull(
-      (plan) => plan.name.toLowerCase().contains('anual'),
-    );
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (monthlyPlan != null)
-          PlanCard(
-            plan: monthlyPlan,
-            isRecommended: false,
-            onTap: () => controller.openPaymentLink(monthlyPlan.id),
-          ),
-
-        const SizedBox(height: 16),
-
-        if (semestralPlan != null)
-          PlanCard(
-            plan: semestralPlan,
-            isRecommended: true, // Marcar el plan semestral como recomendado
-            onTap: () => controller.openPaymentLink(semestralPlan.id),
-          ),
-
-        const SizedBox(height: 16),
-
-        if (annualPlan != null)
-          PlanCard(
-            plan: annualPlan,
-            isRecommended: false,
-            onTap: () => controller.openPaymentLink(annualPlan.id),
-          ),
-
-        const SizedBox(height: 32),
-
-        // Planes restantes (si hay otros)
-        ...controller.plans
-            .where((plan) =>
-                plan.id != monthlyPlan?.id &&
-                plan.id != semestralPlan?.id &&
-                plan.id != annualPlan?.id)
-            .map((plan) => Column(
-                  children: [
-                    PlanCard(
-                      plan: plan,
-                      isRecommended: false,
-                      onTap: () => controller.openPaymentLink(plan.id),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                )),
-      ],
     );
   }
 }

@@ -1,182 +1,203 @@
-import 'package:login_signup/core/routes/routes.dart';
-
-import 'package:flutter/material.dart';
-import 'package:login_signup/core/errors/failures.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
-import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
+import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/create_paid_subscription_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_all_plans_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_current_subscription_usecase.dart';
+import 'package:login_signup/features/subscriptions/domain/usecases/refresh_subscription_status_usecase.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
+import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
-/// Estado de la verificación de un pago contra el backend.
+/// Estado de la carga de la pantalla de planes.
+enum SubscriptionLoadStatus { loading, ready, error }
+
+/// Resultado de verificar un pago contra el backend.
 enum PaymentVerificationStatus {
   idle,
   verifying,
+
+  /// Estado efectivo `active` y sin intento pendiente.
   approved,
+
+  /// Wompi aún no confirma el intento (`pending_payment`).
   pending,
+
+  /// Sin intento pendiente ni plan activo (rechazado o no encontrado).
   failed,
-  error
+
+  /// No se pudo consultar al backend.
+  error,
 }
 
+/// Compra de un plan (solo Owner; las rutas llevan `RoleMiddleware.ownerOnly()`):
+/// estado de la suscripción, planes, inicio del pago y su verificación real.
+///
+/// Lo comparten la pantalla de planes y la webview de pago. El pago solo se
+/// da por hecho cuando el backend lo confirma: `refresh-status` (consulta
+/// Wompi y aplica el intento) y luego `GET /status` con estado `active`.
 class SubscriptionController extends GetxController {
-  final CheckSubscriptionLimitsUseCase checkSubscriptionLimitsUseCase;
-  final GetAllPlansUseCase getAllPlansUseCase;
-  final CreatePaidSubscriptionUseCase createPaidSubscriptionUseCase;
-  final GetCurrentSubscriptionUseCase getCurrentSubscriptionUseCase;
-
-  // Estado
-  final RxBool isLoading = false.obs;
-  final Rx<String?> error = Rx<String?>(null);
-  final RxBool canCreateAppointment = true.obs;
-  final RxString statusMessage = ''.obs;
-  final RxList<SubscriptionPlanEntity> plans = <SubscriptionPlanEntity>[].obs;
-  final RxString paymentUrl = ''.obs;
-  final Rx<SubscriptionPlanEntity?> selectedPlan =
-      Rx<SubscriptionPlanEntity?>(null);
-
-  // Verificación del pago (pantalla de la webview)
-  final Rx<PaymentVerificationStatus> paymentVerification =
-      PaymentVerificationStatus.idle.obs;
-  final RxString paymentVerificationMessage = ''.obs;
+  final GetCurrentSubscriptionUseCase _getStatus;
+  final GetAllPlansUseCase _getPlans;
+  final CreatePaidSubscriptionUseCase _subscribe;
+  final RefreshSubscriptionStatusUseCase _refreshStatus;
 
   SubscriptionController({
-    required this.checkSubscriptionLimitsUseCase,
-    required this.getAllPlansUseCase,
-    required this.createPaidSubscriptionUseCase,
-    required this.getCurrentSubscriptionUseCase,
-  });
+    required GetCurrentSubscriptionUseCase getCurrentSubscriptionUseCase,
+    required GetAllPlansUseCase getAllPlansUseCase,
+    required CreatePaidSubscriptionUseCase createPaidSubscriptionUseCase,
+    required RefreshSubscriptionStatusUseCase refreshSubscriptionStatusUseCase,
+  })  : _getStatus = getCurrentSubscriptionUseCase,
+        _getPlans = getAllPlansUseCase,
+        _subscribe = createPaidSubscriptionUseCase,
+        _refreshStatus = refreshSubscriptionStatusUseCase;
+
+  final status = SubscriptionLoadStatus.loading.obs;
+  final loadError = RxnString();
+  final subscription = Rxn<SubscriptionEntity>();
+  final plans = <SubscriptionPlanEntity>[].obs;
+
+  /// Plan cuyo enlace de pago se está pidiendo.
+  final startingPlanId = RxnString();
+
+  final verification = PaymentVerificationStatus.idle.obs;
+  final verificationMessage = ''.obs;
+
+  /// Suscripción confirmada por la última verificación aprobada.
+  SubscriptionEntity? verifiedSubscription;
 
   @override
   void onInit() {
     super.onInit();
-    checkStatus();
-    loadPlans();
+    load();
   }
 
-  // Verifica el estado de la suscripción
-  Future<bool> checkStatus() async {
-    isLoading.value = true;
-    error.value = null;
-    final result = await checkSubscriptionLimitsUseCase(NoParams());
-    isLoading.value = false;
-    return result.fold(
-      (failure) {
-        error.value = failure.message;
-        return false;
-      },
-      (limits) {
-        canCreateAppointment.value = limits.canCreateAppointment;
-        statusMessage.value = limits.message;
-        return limits.canCreateAppointment;
-      },
-    );
+  /// Estado de la suscripción y planes, en paralelo.
+  Future<void> load() async {
+    status.value = SubscriptionLoadStatus.loading;
+    loadError.value = null;
+    final statusRequest = _getStatus(NoParams());
+    final plansRequest = _getPlans(NoParams());
+    final statusResult = await statusRequest;
+    final plansResult = await plansRequest;
+
+    final failure = statusResult.fold((f) => f, (s) {
+          subscription.value = s;
+          return null;
+        }) ??
+        plansResult.fold((f) => f, (p) {
+          plans.assignAll(p);
+          return null;
+        });
+    if (failure != null) {
+      loadError.value = failure.message;
+      status.value = SubscriptionLoadStatus.error;
+      return;
+    }
+    status.value = SubscriptionLoadStatus.ready;
   }
 
-  // Carga los planes disponibles
-  Future<void> loadPlans() async {
-    isLoading.value = true;
-    error.value = null;
-    final result = await getAllPlansUseCase(NoParams());
-    isLoading.value = false;
-    result.fold(
-      (failure) => error.value = failure.message,
-      (result) => plans.assignAll(result),
-    );
-  }
-
-  /// Crea una suscripción pagada y devuelve el link de pago del backend.
-  /// Devuelve '' si el backend no entrega link y lanza la [Failure] si falla:
-  /// nunca inventa un link de demostración.
-  Future<String> createSubscription(String planId) async {
-    isLoading.value = true;
-    final result = await createPaidSubscriptionUseCase(planId);
-    isLoading.value = false;
-    return result.fold(
-      (failure) => throw failure,
-      (checkout) => paymentUrl.value = checkout.paymentLink,
-    );
-  }
-
-  // Método para abrir WebView con el link de pago
-  void openPaymentLink(String planId) async {
-    try {
-      // Establecer el plan seleccionado
-      selectedPlan.value = plans.firstWhere((plan) => plan.id == planId);
-
-      final url = await createSubscription(planId);
-
-      if (url.isNotEmpty) {
-        print('SubscriptionController - Abriendo WebView con URL: $url');
-        resetPaymentVerification();
-        Get.toNamed(GetRoutes.paymentWebview, arguments: {'url': url});
-      } else {
-        print('SubscriptionController - URL vacía, no se puede abrir WebView');
-        Get.snackbar(
-          'Error',
-          'El servidor no devolvió un link de pago. Inténtalo de nuevo más tarde.',
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[800],
-          duration: const Duration(seconds: 3),
-        );
-      }
-    } catch (e) {
-      print('SubscriptionController - Error al abrir WebView: $e');
-      Get.snackbar(
-        'Error',
-        e is Failure
-            ? 'No se pudo iniciar el pago: ${e.message}'
-            : 'No se pudo iniciar el pago: ${e.toString()}',
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[800],
-        duration: const Duration(seconds: 3),
+  /// Pide el enlace de pago de [plan] y abre la webview. Al volver de ella
+  /// recarga el estado (el pago pudo quedar confirmado o pendiente).
+  Future<void> startPayment(SubscriptionPlanEntity plan) async {
+    if (startingPlanId.value != null) return;
+    if (subscription.value?.hasPendingPayment ?? false) {
+      final proceed = await AppDialogs.confirm(
+        title: 'Tienes un pago en verificación',
+        message: 'Si ya pagaste, verifica ese pago antes de iniciar otro para '
+            'no pagar dos veces.',
+        confirmLabel: 'Pagar otro plan',
+        cancelLabel: 'Cancelar',
       );
+      if (!proceed) return;
     }
+
+    startingPlanId.value = plan.id;
+    final result = await _subscribe(plan.id);
+    startingPlanId.value = null;
+
+    await result.fold(
+      (failure) async =>
+          AppSnackbar.error('No se pudo iniciar el pago: ${failure.message}'),
+      (checkout) async {
+        resetVerification();
+        await Get.toNamed(GetRoutes.paymentWebview,
+            arguments: {'url': checkout.paymentLink});
+        // Tras un pago aprobado la app va a paymentSuccess y esta pantalla
+        // (con su controller) ya no existe.
+        if (!isClosed) await load();
+      },
+    );
   }
 
-  /// Consulta en el backend si el pago quedó confirmado.
-  ///
-  /// Solo `status == 'active'` cuenta como pagado. No se usa la URL de la
-  /// webview para decidir. Nota: hasta la tarea 2.03 el backend puede devolver
-  /// la suscripción de otro tenant.
+  /// Verificación real del pago: `refresh-status` y después el estado
+  /// efectivo. Éxito solo si es `active` sin intento pendiente.
   Future<PaymentVerificationStatus> verifyPayment() async {
-    paymentVerification.value = PaymentVerificationStatus.verifying;
-    paymentVerificationMessage.value = '';
+    if (verification.value == PaymentVerificationStatus.verifying) {
+      return verification.value;
+    }
+    verification.value = PaymentVerificationStatus.verifying;
+    verificationMessage.value = '';
 
-    final result = await getCurrentSubscriptionUseCase(NoParams());
-    final subscription = result.fold((_) => null, (s) => s);
-    if (subscription == null) {
-      paymentVerification.value = PaymentVerificationStatus.error;
-      paymentVerificationMessage.value =
-          'No se pudo verificar el estado del pago. Revisa tu conexión e inténtalo de nuevo.';
-    } else if (subscription.isActive) {
-      paymentVerification.value = PaymentVerificationStatus.approved;
-      paymentVerificationMessage.value = 'Plan ${subscription.plan!.name} activo';
-      selectedPlan.value = subscription.plan;
-      await checkStatus();
-    } else if (subscription.hasPendingPayment) {
-      paymentVerification.value = PaymentVerificationStatus.pending;
-      paymentVerificationMessage.value =
-          'Tu pago aún no ha sido confirmado. Puede tardar unos minutos.';
-    } else {
-      paymentVerification.value = PaymentVerificationStatus.failed;
-      paymentVerificationMessage.value =
-          'No encontramos un pago confirmado para tu suscripción.';
+    final refreshed = await _refreshStatus(NoParams());
+    final refreshFailure = refreshed.fold((f) => f, (_) => null);
+    if (refreshFailure != null) {
+      return _verificationError(refreshFailure);
     }
 
-    return paymentVerification.value;
+    final current = await _getStatus(NoParams());
+    return current.fold(_verificationError, (value) {
+      subscription.value = value;
+      if (value.hasPendingPayment) {
+        verificationMessage.value =
+            'Tu pago aún no ha sido confirmado. Puede tardar unos minutos.';
+        return verification.value = PaymentVerificationStatus.pending;
+      }
+      if (value.isActive) {
+        verifiedSubscription = value;
+        verificationMessage.value = 'Plan ${value.plan!.name} activo';
+        return verification.value = PaymentVerificationStatus.approved;
+      }
+      verificationMessage.value =
+          'No encontramos un pago confirmado. Si Wompi rechazó el pago, '
+          'puedes intentarlo de nuevo con otro medio.';
+      return verification.value = PaymentVerificationStatus.failed;
+    });
   }
 
-  /// El usuario rechazó el pago (flujo de demostración).
-  void markPaymentRejected() {
-    paymentVerification.value = PaymentVerificationStatus.failed;
-    paymentVerificationMessage.value =
-        'Tu pago no pudo ser procesado. Intenta nuevamente con otro método de pago.';
+  /// "Verificar pago" desde la pantalla de planes (pago en verificación).
+  Future<void> verifyPendingPayment() async {
+    final result = await verifyPayment();
+    switch (result) {
+      case PaymentVerificationStatus.approved:
+        Get.offAllNamed(GetRoutes.paymentSuccess,
+            arguments: verifiedSubscription);
+        return;
+      case PaymentVerificationStatus.pending:
+        AppSnackbar.info(verificationMessage.value,
+            title: 'Pago en verificación');
+      case PaymentVerificationStatus.failed:
+        AppSnackbar.warning(verificationMessage.value,
+            title: 'Pago no confirmado');
+      case PaymentVerificationStatus.error:
+        AppSnackbar.error(verificationMessage.value);
+      case PaymentVerificationStatus.idle:
+      case PaymentVerificationStatus.verifying:
+        break;
+    }
+    resetVerification();
   }
 
-  void resetPaymentVerification() {
-    paymentVerification.value = PaymentVerificationStatus.idle;
-    paymentVerificationMessage.value = '';
+  void resetVerification() {
+    verification.value = PaymentVerificationStatus.idle;
+    verificationMessage.value = '';
+  }
+
+  PaymentVerificationStatus _verificationError(Failure failure) {
+    verificationMessage.value = failure is NetworkFailure
+        ? 'No se pudo verificar el pago. Revisa tu conexión e inténtalo de nuevo.'
+        : 'No se pudo verificar el pago: ${failure.message}';
+    return verification.value = PaymentVerificationStatus.error;
   }
 }

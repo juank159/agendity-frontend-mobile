@@ -1,98 +1,77 @@
-import 'package:login_signup/core/routes/routes.dart';
 import 'package:flutter/material.dart';
-import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
+import '../widgets/plan_card.dart';
 
+/// Pago confirmado. Recibe por `arguments` la [SubscriptionEntity] que el
+/// backend devolvió activa al verificar el pago.
 class PaymentSuccessScreen extends StatelessWidget {
   const PaymentSuccessScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.tokens;
+    final args = Get.arguments;
+    final subscription = args is SubscriptionEntity ? args : null;
+    final plan = subscription?.plan;
+    final end = subscription?.endDate;
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.check_circle,
-                    color: Colors.green[700],
-                    size: 72,
-                  ),
+                CircleAvatar(
+                  radius: 56,
+                  backgroundColor: tokens.success.container,
+                  child: Icon(Icons.check_circle,
+                      color: tokens.success.color, size: 72),
                 ),
                 const SizedBox(height: 32),
                 Text(
                   '¡Gracias por tu compra!',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[800],
-                  ),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: tokens.success.onContainer),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Tu suscripción ha sido activada correctamente. Ahora puedes disfrutar de todas las funcionalidades premium.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
+                  'Tu suscripción quedó activa.',
+                  style: theme.textTheme.bodyLarge
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 48),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Detalles de tu plan',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
+                if (plan != null) ...[
+                  const SizedBox(height: 32),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          _row(context, 'Plan', plan.name),
+                          _row(context, 'Precio',
+                              '${formatMoney(plan.price, currency: plan.currency)} / ${planPeriodLabel(plan.durationMonths)}'),
+                          _row(context, 'Citas', planAppointmentsLabel(plan)),
+                          if (end != null)
+                            _row(context, 'Vigente hasta', formatDate(end)),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Obx(() => _buildPlanDetails()),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 48),
+                ],
+                const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Get.offAllNamed(GetRoutes.home);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Comenzar a usar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                  child: FilledButton(
+                    onPressed: () => Get.offAllNamed(GetRoutes.home),
+                    child: const Text('Comenzar a usar'),
                   ),
                 ),
               ],
@@ -103,51 +82,24 @@ class PaymentSuccessScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlanDetails() {
-    // Obtener los detalles del plan desde el controlador
-    final SubscriptionController controller =
-        Get.find<SubscriptionController>();
-    final planName = controller.selectedPlan.value?.name ?? 'Plan Premium';
-    final planPrice = controller.selectedPlan.value?.price ?? 0.0;
-    final planCurrency = controller.selectedPlan.value?.currency ?? 'COP';
-
-    return Column(
-      children: [
-        _buildDetailRow('Plan:', planName),
-        _buildDetailRow('Precio:', _formatCurrency(planPrice, planCurrency)),
-        _buildDetailRow('Estado:', 'Activo'),
-        _buildDetailRow('Fecha de activación:', _getCurrentDate()),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
+  Widget _row(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[700],
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+          Text(label,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(value,
+                textAlign: TextAlign.end,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
-
-  String _formatCurrency(double price, String currency) =>
-      formatMoney(price, currency: currency);
-
-  String _getCurrentDate() => formatDate(DateTime.now());
 }

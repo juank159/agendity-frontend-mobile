@@ -19,6 +19,9 @@ class PaymentModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  /// `timezone` del pago (6.03): sus fechas se leen en esa zona.
+  final String? timeZone;
+
   const PaymentModel({
     this.id,
     required this.appointmentId,
@@ -31,10 +34,12 @@ class PaymentModel {
     this.refundReason,
     this.createdAt,
     this.updatedAt,
+    this.timeZone,
   });
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
     final customId = _string(json['custom_payment_method_id']);
+    final timeZone = JsonRead.asOptionalString(json['timezone']);
     return PaymentModel(
       id: _string(json['id']),
       appointmentId: _string(json['appointment_id']) ??
@@ -48,8 +53,9 @@ class PaymentModel {
       transactionId: _string(json['transaction_id']),
       refundAmount: JsonRead.asDouble(json['refund_amount']),
       refundReason: _string(json['refund_reason']),
-      createdAt: DateCodec.tryDecode(json['created_at']),
-      updatedAt: DateCodec.tryDecode(json['updated_at']),
+      createdAt: DateCodec.tryDecode(json['created_at'], timeZone: timeZone),
+      updatedAt: DateCodec.tryDecode(json['updated_at'], timeZone: timeZone),
+      timeZone: timeZone,
     );
   }
 
@@ -80,6 +86,7 @@ class PaymentModel {
         refundReason: entity.refundReason,
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
+        timeZone: entity.timeZone,
       );
 
   PaymentEntity toEntity() => PaymentEntity(
@@ -94,6 +101,7 @@ class PaymentModel {
         refundReason: refundReason,
         createdAt: createdAt,
         updatedAt: updatedAt,
+        timeZone: timeZone,
       );
 
   /// Estándar → su valor; con método propio del negocio (o un valor que no

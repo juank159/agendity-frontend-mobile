@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/clients/data/models/client_import_result_model.dart';
 import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/data/models/client_page_model.dart';
@@ -73,7 +74,7 @@ void main() {
       expect(entity.address, 'Calle 1');
       expect(entity.showNotes, true);
       expect(entity.birthday, DateTime(1990, 5, 10));
-      expect(entity.createdAt, DateTime.utc(2026, 10, 21, 13).toLocal());
+      expect(entity.createdAt, BusinessTimeZone.toWallClock(DateTime.utc(2026, 10, 21, 13)));
       expect(entity.createdAt!.isUtc, false);
     });
 

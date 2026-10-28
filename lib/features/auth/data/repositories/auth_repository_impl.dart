@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/core/utils/device_time_zone.dart';
 import 'package:login_signup/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:login_signup/features/auth/data/datasources/google_auth_datasource.dart';
 import 'package:login_signup/features/auth/data/models/user_model.dart';
@@ -17,16 +18,19 @@ class AuthRepositoryImpl implements AuthRepository {
   final GoogleAuthDataSource _google;
   final SessionService _session;
   final LocalStorage _localStorage;
+  final DeviceTimeZoneReader _deviceTimeZone;
 
   AuthRepositoryImpl({
     required AuthRemoteDataSource remote,
     required GoogleAuthDataSource google,
     required SessionService session,
     required LocalStorage localStorage,
+    DeviceTimeZoneReader? deviceTimeZone,
   })  : _remote = remote,
         _google = google,
         _session = session,
-        _localStorage = localStorage;
+        _localStorage = localStorage,
+        _deviceTimeZone = deviceTimeZone ?? DeviceTimeZone.read;
 
   @override
   Future<Either<Failure, UserEntity>> login({
@@ -37,8 +41,15 @@ class AuthRepositoryImpl implements AuthRepository {
           refine: _refineLogin);
 
   @override
-  Future<Either<Failure, UserEntity>> registerOwner(RegisterOwnerInput input) =>
-      safeCall(() async => _start(await _remote.registerOwner(input)));
+  Future<Either<Failure, UserEntity>> registerOwner(
+          RegisterOwnerInput input) =>
+      safeCall(() async {
+        // D-15: el negocio nace con la zona del teléfono de su dueño.
+        final withZone = input.timeZone == null
+            ? input.withTimeZone(await _safeDeviceTimeZone())
+            : input;
+        return _start(await _remote.registerOwner(withZone));
+      });
 
   @override
   Future<Either<Failure, UserEntity>> signInWithGoogle() async {
@@ -50,7 +61,9 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Left(GoogleSignInRejectedFailure());
     }
     if (idToken == null) return const Left(GoogleSignInCancelledFailure());
-    return safeCall(() async => _start(await _remote.googleLogin(idToken!)),
+    return safeCall(
+        () async => _start(await _remote.googleLogin(idToken!,
+            timeZone: await _safeDeviceTimeZone())),
         refine: _refineGoogle);
   }
 
@@ -104,6 +117,15 @@ class AuthRepositoryImpl implements AuthRepository {
         }
         return unit;
       });
+
+  /// La zona del dispositivo nunca impide el alta.
+  Future<String?> _safeDeviceTimeZone() async {
+    try {
+      return await _deviceTimeZone();
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Guarda el JWT de Agendity (lanza `FormatException` si no es válido, y
   /// entonces no queda sesión) y devuelve el usuario de la respuesta.

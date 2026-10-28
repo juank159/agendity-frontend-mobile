@@ -38,6 +38,11 @@ abstract final class AuthDependencies {
       fenix: true,
     );
 
+    // Zona del negocio de la sesión (D-15): `SessionService` la lee de
+    // `GET /auth/me` al iniciar sesión y en el auto-login.
+    Get.find<SessionService>().loadTimeZone =
+        () async => (await Get.find<AuthRemoteDataSource>().me()).timeZone;
+
     Get.lazyPut(() => LoginUseCase(Get.find<AuthRepository>()), fenix: true);
     Get.lazyPut(() => RegisterUseCase(Get.find<AuthRepository>()), fenix: true);
     Get.lazyPut(() => GoogleSignInUseCase(Get.find<AuthRepository>()),

@@ -14,6 +14,9 @@ abstract final class SessionRole {
 /// `tenantId`/`ownerId` son `null` en tokens anteriores a la 2.01: la app no
 /// los necesita para hablar con el backend (los saca de la BD); solo son
 /// informativos.
+///
+/// [timeZone] (D-15) no viene en el JWT: es la zona IANA del negocio que
+/// `SessionService` carga de `GET /auth/me`; `null` mientras no se conozca.
 class Session {
   final String token;
   final String userId;
@@ -23,6 +26,7 @@ class Session {
   final String? tenantId;
   final String? ownerId;
   final DateTime? expiresAt;
+  final String? timeZone;
 
   const Session({
     required this.token,
@@ -33,7 +37,23 @@ class Session {
     this.tenantId,
     this.ownerId,
     this.expiresAt,
+    this.timeZone,
   });
+
+  /// La misma sesión con la zona del negocio [zone].
+  Session withTimeZone(String? zone) => zone == timeZone
+      ? this
+      : Session(
+          token: token,
+          userId: userId,
+          name: name,
+          email: email,
+          roles: roles,
+          tenantId: tenantId,
+          ownerId: ownerId,
+          expiresAt: expiresAt,
+          timeZone: zone,
+        );
 
   bool hasRole(String role) => roles.contains(role);
   bool get isOwner => hasRole(SessionRole.owner);
@@ -47,14 +67,15 @@ class Session {
       expiresAt != null && !now.isBefore(expiresAt!);
 
   @override
-  bool operator ==(Object other) => other is Session && other.token == token;
+  bool operator ==(Object other) =>
+      other is Session && other.token == token && other.timeZone == timeZone;
 
   @override
-  int get hashCode => token.hashCode;
+  int get hashCode => Object.hash(token, timeZone);
 
   @override
   String toString() => 'Session(userId: $userId, roles: $roles, '
-      'tenantId: $tenantId, expiresAt: $expiresAt)';
+      'tenantId: $tenantId, expiresAt: $expiresAt, timeZone: $timeZone)';
 }
 
 /// **Único** sitio que decodifica el JWT (no verifica la firma: eso es del

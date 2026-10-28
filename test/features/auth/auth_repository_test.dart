@@ -99,6 +99,8 @@ void main() {
           tokenStore: tokens, repository: SessionRepository(tokens)),
       localStorage:
           LocalStorage(const FlutterSecureStorage(), tokenStore: tokens),
+      // Sin plugin en los tests; la zona del alta: auth_time_zone_test.
+      deviceTimeZone: () async => null,
     );
   });
 

@@ -1,13 +1,15 @@
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/deep_equality.dart';
 
-/// Rango de citas a leer: [start] incluido, [end] excluido (instantes).
+/// Rango de citas a leer: [start] incluido, [end] excluido. Horas de pared
+/// del negocio (D-15) o instantes en UTC.
 class AppointmentsRange {
   final DateTime start;
   final DateTime end;
 
   const AppointmentsRange({required this.start, required this.end});
 
-  /// El día local de [day] completo.
+  /// El día [day] completo del calendario del negocio.
   factory AppointmentsRange.day(DateTime day) {
     final start = DateTime(day.year, day.month, day.day);
     return AppointmentsRange(
@@ -16,8 +18,13 @@ class AppointmentsRange {
 
   bool get isInverted => end.isBefore(start);
 
-  bool contains(DateTime instant) =>
-      !instant.isBefore(start) && instant.isBefore(end);
+  /// [moment] dentro del rango, comparando instantes (una hora de pared se
+  /// toma en la zona del negocio; para una cita, `startInstant`).
+  bool contains(DateTime moment) {
+    final instant = BusinessTimeZone.toInstant(moment);
+    return !instant.isBefore(BusinessTimeZone.toInstant(start)) &&
+        instant.isBefore(BusinessTimeZone.toInstant(end));
+  }
 
   @override
   bool operator ==(Object other) =>

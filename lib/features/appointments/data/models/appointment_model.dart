@@ -25,6 +25,9 @@ class AppointmentModel {
   final DateTime? reminderSentAt;
   final DateTime? createdAt;
 
+  /// `timezone` de la cita (6.03): sus fechas se leen en esa zona.
+  final String? timeZone;
+
   const AppointmentModel({
     required this.id,
     required this.client,
@@ -40,13 +43,15 @@ class AppointmentModel {
     this.reminderSent = false,
     this.reminderSentAt,
     this.createdAt,
+    this.timeZone,
   });
 
   /// Sin `id` o sin `date` no es una cita: lanza `FormatException` (el
   /// repositorio lo convierte en `ServerFailure`).
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
     final id = JsonRead.asOptionalString(json['id']);
-    final start = DateCodec.tryDecode(json['date']);
+    final timeZone = JsonRead.asOptionalString(json['timezone']);
+    final start = DateCodec.tryDecode(json['date'], timeZone: timeZone);
     if (id == null || start == null) {
       throw const FormatException('Cita sin id o sin fecha');
     }
@@ -85,8 +90,10 @@ class AppointmentModel {
           json['reminderSent'] ?? json['reminder_sent'],
           fallback: false),
       reminderSentAt: DateCodec.tryDecode(
-          json['reminderSentAt'] ?? json['reminder_sent_at']),
-      createdAt: DateCodec.tryDecode(json['created_at']),
+          json['reminderSentAt'] ?? json['reminder_sent_at'],
+          timeZone: timeZone),
+      createdAt: DateCodec.tryDecode(json['created_at'], timeZone: timeZone),
+      timeZone: timeZone,
     );
   }
 
@@ -126,6 +133,7 @@ class AppointmentModel {
         reminderSent: reminderSent,
         reminderSentAt: reminderSentAt,
         createdAt: createdAt,
+        timeZone: timeZone,
       );
 }
 

@@ -1,3 +1,4 @@
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/deep_equality.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 
@@ -15,8 +16,9 @@ class AppointmentChanges {
   final String? professionalId;
   final List<String>? serviceIds;
 
-  /// Nueva hora; mover a OTRA fecha exige que sea futura y reinicia el
-  /// recordatorio manual (2.18, 2.21).
+  /// Nueva hora (de pared, en la zona ACTUAL del negocio: el backend
+  /// interpreta así un movimiento, 6.03); mover a OTRA fecha exige que sea
+  /// futura y reinicia el recordatorio manual (2.18, 2.21).
   final DateTime? start;
 
   /// `''` borra las notas.
@@ -54,14 +56,19 @@ class AppointmentChanges {
               !_sameMembers(serviceIds, original.serviceIds)
           ? List.unmodifiable(serviceIds)
           : null,
-      start: start != null && !start.isAtSameMomentAs(original.startTime)
-          ? start
-          : null,
+      start: start != null && !_sameStart(start, original) ? start : null,
       notes: trimmedNotes != null && trimmedNotes != (original.notes ?? '').trim()
           ? trimmedNotes
           : null,
     );
   }
+
+  /// La hora del formulario es la de la cita: la misma hora de pared (aunque
+  /// la cita tenga otra zona, 6.03) o el mismo instante.
+  static bool _sameStart(DateTime start, AppointmentEntity original) =>
+      start == original.startTime ||
+      BusinessTimeZone.toInstant(start)
+          .isAtSameMomentAs(original.startInstant);
 
   bool get isEmpty =>
       clientId == null &&

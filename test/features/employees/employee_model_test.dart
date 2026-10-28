@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/employees/data/models/employee_input_model.dart';
 import 'package:login_signup/features/employees/data/models/employee_model.dart';
 import 'package:login_signup/features/employees/data/models/employee_restoration_model.dart';
@@ -141,8 +142,8 @@ void main() {
           EmployeeModel.fromJson(backendDeletedEmployee()).toEntity();
 
       expect(employee.isDeleted, true);
-      expect(employee.deletedAt!.isAtSameMomentAs(DateTime.utc(2026, 10, 20, 20, 30)),
-          true);
+      expect(employee.deletedAt,
+          BusinessTimeZone.toWallClock(DateTime.utc(2026, 10, 20, 20, 30)));
       expect(employee.deletionReason, 'Renuncia');
       expect(employee.status, EmployeeStatus.deleted);
       expect(employee.canBeScheduled, false);

@@ -25,9 +25,9 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
       safeCall(() async {
         final appointments = (await _remote.getAppointments(range))
             .map((m) => m.toEntity())
-            .where((a) => range.contains(a.startTime))
+            .where((a) => range.contains(a.startInstant))
             .toList()
-          ..sort((a, b) => a.startTime.compareTo(b.startTime));
+          ..sort((a, b) => a.startInstant.compareTo(b.startInstant));
         return appointments;
       }, refine: _refine);
 

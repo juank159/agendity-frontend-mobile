@@ -1,5 +1,6 @@
 import 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
 import 'package:login_signup/common/enums/appointment_status_enum.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/deep_equality.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_client.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_service_line.dart';
@@ -27,6 +28,7 @@ class AppointmentEntity {
   /// Servicios en el orden de la cita, con el precio guardado en ella.
   final List<AppointmentServiceLine> services;
 
+  /// Hora de pared de la cita en su zona ([timeZone]; D-15).
   final DateTime startTime;
 
   /// Inicio + la suma de las duraciones de [services] (como el backend).
@@ -47,6 +49,11 @@ class AppointmentEntity {
   final DateTime? reminderSentAt;
   final DateTime? createdAt;
 
+  /// Zona IANA con la que se creó o se movió por última vez la cita (6.03);
+  /// sus horas están en ella. `null` = la del negocio. Solo difiere de la del
+  /// negocio si este cambió de zona después.
+  final String? timeZone;
+
   const AppointmentEntity({
     required this.id,
     required this.client,
@@ -63,7 +70,11 @@ class AppointmentEntity {
     this.reminderSent = false,
     this.reminderSentAt,
     this.createdAt,
+    this.timeZone,
   });
+
+  /// Instante (UTC) del inicio, para comparar citas de zonas distintas.
+  DateTime get startInstant => BusinessTimeZone.toInstant(startTime, timeZone);
 
   String get clientName => client.fullName;
   List<String> get serviceIds => [for (final s in services) s.serviceId];
@@ -106,8 +117,11 @@ class AppointmentEntity {
 
   /// Le falta el recordatorio manual: pendiente o confirmada, futura y sin
   /// recordatorio enviado (el backend solo lo prepara en esos estados).
+  /// [now] es la hora de pared del negocio (`BusinessTimeZone.now()`).
   bool needsReminderAt(DateTime now) =>
-      (isPending || isConfirmed) && !reminderSent && startTime.isAfter(now);
+      (isPending || isConfirmed) &&
+      !reminderSent &&
+      startInstant.isAfter(BusinessTimeZone.toInstant(now));
 
   AppointmentEntity copyWith({
     String? id,
@@ -125,6 +139,7 @@ class AppointmentEntity {
     bool? reminderSent,
     DateTime? reminderSentAt,
     DateTime? createdAt,
+    String? timeZone,
   }) =>
       AppointmentEntity(
         id: id ?? this.id,
@@ -142,6 +157,7 @@ class AppointmentEntity {
         reminderSent: reminderSent ?? this.reminderSent,
         reminderSentAt: reminderSentAt ?? this.reminderSentAt,
         createdAt: createdAt ?? this.createdAt,
+        timeZone: timeZone ?? this.timeZone,
       );
 
   @override
@@ -162,7 +178,8 @@ class AppointmentEntity {
           other.cancellationReason == cancellationReason &&
           other.reminderSent == reminderSent &&
           other.reminderSentAt == reminderSentAt &&
-          other.createdAt == createdAt;
+          other.createdAt == createdAt &&
+          other.timeZone == timeZone;
 
   @override
   int get hashCode => Object.hash(
@@ -181,6 +198,7 @@ class AppointmentEntity {
         reminderSent,
         reminderSentAt,
         createdAt,
+        timeZone,
       );
 
   @override

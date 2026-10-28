@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
 import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
@@ -16,7 +17,7 @@ class GetUpcomingAppointmentsUseCase
   final DateTime Function() _now;
 
   GetUpcomingAppointmentsUseCase(this.repository, {DateTime Function()? now})
-      : _now = now ?? DateTime.now;
+      : _now = now ?? BusinessTimeZone.now;
 
   @override
   Future<Either<Failure, List<AppointmentEntity>>> call(
@@ -27,6 +28,6 @@ class GetUpcomingAppointmentsUseCase
     return result.map((appointments) => appointments
         .where((a) => a.needsReminderAt(now))
         .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime)));
+      ..sort((a, b) => a.startInstant.compareTo(b.startInstant)));
   }
 }

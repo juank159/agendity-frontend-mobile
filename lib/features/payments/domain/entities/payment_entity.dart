@@ -26,6 +26,10 @@ class PaymentEntity {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  /// Zona IANA del negocio al registrar el pago (6.03); sus fechas están en
+  /// ella. `null` = la del negocio. La pone el backend: no se envía.
+  final String? timeZone;
+
   const PaymentEntity({
     this.id,
     required this.appointmentId,
@@ -38,6 +42,7 @@ class PaymentEntity {
     this.refundReason,
     this.createdAt,
     this.updatedAt,
+    this.timeZone,
   });
 
   /// Lo que cuenta como ingreso (igual que las estadísticas del backend).
@@ -55,6 +60,7 @@ class PaymentEntity {
     String? refundReason,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? timeZone,
   }) =>
       PaymentEntity(
         id: id ?? this.id,
@@ -69,6 +75,7 @@ class PaymentEntity {
         refundReason: refundReason ?? this.refundReason,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        timeZone: timeZone ?? this.timeZone,
       );
 
   @override
@@ -85,7 +92,8 @@ class PaymentEntity {
           other.refundAmount == refundAmount &&
           other.refundReason == refundReason &&
           other.createdAt == createdAt &&
-          other.updatedAt == updatedAt;
+          other.updatedAt == updatedAt &&
+          other.timeZone == timeZone;
 
   @override
   int get hashCode => Object.hash(
@@ -100,5 +108,6 @@ class PaymentEntity {
         refundReason,
         createdAt,
         updatedAt,
+        timeZone,
       );
 }

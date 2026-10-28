@@ -1,3 +1,5 @@
+// lib/core/di/init_dependencies.dart
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
@@ -5,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/core/session/time_zone_store.dart';
 import 'package:login_signup/core/session/token_store.dart';
 import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
@@ -18,6 +21,7 @@ import 'package:login_signup/features/payments/payments_dependencies.dart';
 import 'package:login_signup/features/statistics/statistics_dependencies.dart';
 import 'package:login_signup/features/subscriptions/subscriptions_dependencies.dart';
 import 'package:login_signup/features/services/services_dependencies.dart';
+import 'package:login_signup/features/settings/settings_dependencies.dart';
 import 'package:login_signup/features/whatsapp/whatsapp_dependencies.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
 
@@ -49,6 +53,9 @@ class DependencyInjection {
         SessionService(
           tokenStore: tokenStore,
           repository: Get.find<SessionRepository>(),
+          // Última zona del negocio (D-15); el lector de `/auth/me` lo conecta
+          // `AuthDependencies`.
+          timeZoneStore: SecureTimeZoneStore(Get.find<FlutterSecureStorage>()),
         ),
         permanent: true,
       );
@@ -93,6 +100,7 @@ class DependencyInjection {
       PaymentsDependencies.init();
       StatisticsDependencies.init();
       SubscriptionsDependencies.init();
+      SettingsDependencies.init();
       WhatsappDependencies.init();
 
       AppLogger.debug('Features initialized successfully');

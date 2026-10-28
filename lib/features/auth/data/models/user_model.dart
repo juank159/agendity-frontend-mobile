@@ -13,6 +13,9 @@ class UserModel {
   final List<String> roles;
   final bool isEmailVerified;
 
+  /// `timezone` de `GET /auth/me` (zona del negocio, 6.01).
+  final String? timeZone;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -22,6 +25,7 @@ class UserModel {
     this.image,
     this.roles = const [],
     this.isEmailVerified = false,
+    this.timeZone,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -38,6 +42,7 @@ class UserModel {
         ],
         isEmailVerified:
             JsonRead.asBool(json['is_email_verified'], fallback: false),
+        timeZone: JsonRead.asOptionalString(json['timezone']),
       );
 
   /// `{name: 'Owner'}` (lo normal) o `'Owner'`.
@@ -56,6 +61,7 @@ class UserModel {
         image: image,
         roles: List.unmodifiable(roles),
         isEmailVerified: isEmailVerified,
+        timeZone: timeZone,
       );
 }
 

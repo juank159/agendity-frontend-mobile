@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
@@ -47,7 +48,7 @@ Map<String, dynamic> bodyOf(RequestOptions request) =>
         ? jsonDecode(request.data as String) as Map<String, dynamic>
         : request.data as Map<String, dynamic>;
 
-/// "Ahora" fijo de los tests (local).
+/// "Ahora" fijo de los tests (hora de pared del negocio, Bogotá).
 final now = DateTime(2026, 11, 1, 8);
 
 void main() {
@@ -387,8 +388,8 @@ void main() {
           ['2026-11-03T09:00:00.000-05:00', '2026-11-03T09:30:00.000-05:00']);
       final slots = rightOf(await GetAvailableSlotsUseCase(repository)(query));
       expect(slots, [
-        DateTime.parse('2026-11-03T14:00:00Z').toLocal(),
-        DateTime.parse('2026-11-03T14:30:00Z').toLocal(),
+        BusinessTimeZone.toWallClock(DateTime.parse('2026-11-03T14:00:00Z')),
+        BusinessTimeZone.toWallClock(DateTime.parse('2026-11-03T14:30:00Z')),
       ]);
       final request = adapter.requests.single;
       expect(request.uri.path, '/api/appointments/available-slots');
@@ -438,7 +439,7 @@ void main() {
     test('próximas: sin canceladas, completadas, pasadas ni ya recordadas; '
         'ordenadas', () async {
       String iso(Duration fromNow) =>
-          now.add(fromNow).toUtc().toIso8601String();
+          BusinessTimeZone.toInstant(now.add(fromNow)).toIso8601String();
       adapter.handler = (_) => jsonBody(200, [
             backendAppointment(id: 'confirmada', date: iso(const Duration(hours: 5)), status: 'CONFIRMED'),
             backendAppointment(id: 'pendiente', date: iso(const Duration(hours: 2))),
@@ -488,7 +489,7 @@ void main() {
             'sentAt': '2026-11-01T09:00:00.000-05:00',
           });
       expect(rightOf(await MarkReminderSentUseCase(repository)('apt-1')),
-          DateTime.parse('2026-11-01T14:00:00Z').toLocal());
+          BusinessTimeZone.toWallClock(DateTime.parse('2026-11-01T14:00:00Z')));
       final request = adapter.requests.single;
       expect('${request.method} ${request.uri.path}',
           'PATCH /api/appointments/apt-1/reminder/mark-sent');

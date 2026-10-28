@@ -1,8 +1,8 @@
 // lib/core/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz_init;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -16,8 +16,8 @@ class NotificationService {
   }
 
   Future<void> _initializeNotifications() async {
-    // Inicializar timezone
-    tz_init.initializeTimeZones();
+    // Una sola base de datos de zonas para toda la app (D-15).
+    BusinessTimeZone.ensureInitialized();
 
     // Configuración para Android
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -60,9 +60,10 @@ class NotificationService {
     required DateTime scheduledTime,
     String? payload,
   }) async {
-    // Verificar si la hora programada ya pasó
-    final now = DateTime.now();
-    if (scheduledTime.isBefore(now)) {
+    // [scheduledTime] es una hora de pared del negocio (D-15): se programa en
+    // su instante real, no en la hora del dispositivo.
+    final instant = BusinessTimeZone.toInstant(scheduledTime);
+    if (instant.isBefore(BusinessTimeZone.clock())) {
       AppLogger.debug(
           'Notificación en una hora pasada ($scheduledTime): se muestra ya');
       // Opción 1: No hacer nada y retornar
@@ -97,7 +98,7 @@ class NotificationService {
         id,
         title,
         body,
-        tz.TZDateTime.from(scheduledTime, tz.local),
+        tz.TZDateTime.from(instant, tz.UTC),
         platformChannelSpecifics,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle, // ✅ Cambio a inexact para evitar permisos especiales
         uiLocalNotificationDateInterpretation:
@@ -114,7 +115,7 @@ class NotificationService {
           id,
           title,
           body,
-          tz.TZDateTime.from(scheduledTime, tz.local),
+          tz.TZDateTime.from(instant, tz.UTC),
           platformChannelSpecifics,
           androidScheduleMode: AndroidScheduleMode.alarmClock, // Modo menos restrictivo
           uiLocalNotificationDateInterpretation:

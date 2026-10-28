@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/common/enums/payment_status_enum.dart';
 import 'package:login_signup/features/payments/data/models/payment_model.dart';
@@ -10,9 +11,12 @@ Map<String, dynamic> backendPayment({
   Object? customId,
   Object? status = 'COMPLETED',
   Object? refund,
+  String? timeZone = 'America/Bogota',
 }) =>
     {
       'id': 'p1',
+      // Zona guardada en el pago (backend 6.03).
+      if (timeZone != null) 'timezone': timeZone,
       'ownerId': 'owner-1',
       'amount': '50000.00',
       'payment_method': method,
@@ -39,10 +43,31 @@ void main() {
             amount: 50000,
             paymentMethod: PaymentMethod.CASH,
             status: PaymentStatus.COMPLETED,
-            createdAt: DateTime.utc(2026, 10, 21, 13).toLocal(),
-            updatedAt: DateTime.utc(2026, 10, 21, 13).toLocal(),
+            createdAt: DateTime(2026, 10, 21, 8),
+            updatedAt: DateTime(2026, 10, 21, 8),
+            timeZone: 'America/Bogota',
           ));
       expect(entity.netAmount, 50000);
+    });
+
+    test('fechas en la zona del pago aunque el negocio esté en otra (6.03)',
+        () {
+      BusinessTimeZone.use('America/Caracas');
+      addTearDown(BusinessTimeZone.reset);
+      final bogota = PaymentModel.fromJson(backendPayment()).toEntity();
+      expect(bogota.createdAt, DateTime(2026, 10, 21, 8));
+      final sinZona =
+          PaymentModel.fromJson(backendPayment(timeZone: null)).toEntity();
+      expect(sinZona.createdAt, DateTime(2026, 10, 21, 9),
+          reason: 'sin zona propia: la del negocio');
+      expect(sinZona.timeZone, isNull);
+    });
+
+    test('toJson no envía la zona (la pone el backend)', () {
+      final model = PaymentModel.fromJson(backendPayment());
+      expect(model.toJson().containsKey('timezone'), false);
+      expect(PaymentModel.fromEntity(model.toEntity()).timeZone,
+          'America/Bogota');
     });
 
     test('appointment_id plano también vale', () {

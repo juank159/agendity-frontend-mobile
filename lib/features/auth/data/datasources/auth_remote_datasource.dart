@@ -11,11 +11,14 @@ abstract class AuthRemoteDataSource {
   /// `POST /auth/login` → `{user, token}`.
   Future<AuthResponseModel> login(String email, String password);
 
-  /// `POST /auth/register/owner` → `{user, token}`.
+  /// `POST /auth/register/owner` → `{user, token}`. Envía `timezone` si el
+  /// input la trae.
   Future<AuthResponseModel> registerOwner(RegisterOwnerInput input);
 
   /// `POST /auth/google` con el ID token de Google → `{user, token}`.
-  Future<AuthResponseModel> googleLogin(String idToken);
+  /// [timeZone]: zona del negocio si la cuenta es nueva (el backend la ignora
+  /// en un login normal).
+  Future<AuthResponseModel> googleLogin(String idToken, {String? timeZone});
 
   /// `POST /auth/verify/request-code`.
   Future<void> requestVerificationCode(String email);
@@ -29,7 +32,8 @@ abstract class AuthRemoteDataSource {
   /// `POST /auth/reset-password`.
   Future<void> resetPassword(String email, String code, String newPassword);
 
-  /// `GET /auth/me` (con sesión, 2.35): el usuario de la sesión sin secretos.
+  /// `GET /auth/me` (con sesión, 2.35): el usuario de la sesión sin secretos,
+  /// con la zona del negocio (`timezone`, 6.01).
   Future<UserModel> me();
 }
 
@@ -61,11 +65,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'email': input.email,
         'phone': input.phone,
         'password': input.password,
+        if (input.timeZone != null) 'timezone': input.timeZone,
       });
 
   @override
-  Future<AuthResponseModel> googleLogin(String idToken) =>
-      _auth('/auth/google', {'token': idToken});
+  Future<AuthResponseModel> googleLogin(String idToken, {String? timeZone}) =>
+      _auth('/auth/google',
+          {'token': idToken, if (timeZone != null) 'timezone': timeZone});
 
   @override
   Future<void> requestVerificationCode(String email) =>

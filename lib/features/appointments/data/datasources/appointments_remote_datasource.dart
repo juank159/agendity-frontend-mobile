@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
@@ -129,6 +130,7 @@ class AppointmentsRemoteDataSourceImpl implements AppointmentsRemoteDataSource {
   Future<DateTime> markReminderSent(String id) async {
     final response = await _dio
         .patch<Map<String, dynamic>>('/appointments/$id/reminder/mark-sent');
-    return DateCodec.tryDecode(response.data?['sentAt']) ?? DateTime.now();
+    return DateCodec.tryDecode(response.data?['sentAt']) ??
+        BusinessTimeZone.now();
   }
 }

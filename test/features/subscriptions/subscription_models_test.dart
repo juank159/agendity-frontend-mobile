@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/subscriptions/data/models/subscription_checkout_model.dart';
 import 'package:login_signup/features/subscriptions/data/models/subscription_limits_model.dart';
 import 'package:login_signup/features/subscriptions/data/models/subscription_model.dart';
@@ -166,7 +167,8 @@ void main() {
             planId: 'plan-1',
             amount: 29900,
             currency: 'COP',
-            createdAt: DateTime.utc(2026, 10, 26, 15, 15).toLocal(),
+            createdAt:
+                BusinessTimeZone.toWallClock(DateTime.utc(2026, 10, 26, 15, 15)),
           ));
     });
 
@@ -174,7 +176,7 @@ void main() {
       final s = SubscriptionModel.fromJson(backendActive()).toEntity();
       expect(s.isActive, true);
       expect(s.plan!.name, 'Plan Mensual');
-      expect(s.endDate!.toUtc(), DateTime.utc(2026, 11, 1, 13));
+      expect(BusinessTimeZone.toInstant(s.endDate!), DateTime.utc(2026, 11, 1, 13));
       expect(s.cancelAtPeriodEnd, false);
     });
 

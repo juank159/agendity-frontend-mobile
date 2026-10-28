@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
@@ -25,7 +26,7 @@ class UpdateAppointmentUseCase
   final DateTime Function() _now;
 
   UpdateAppointmentUseCase(this.repository, {DateTime Function()? now})
-      : _now = now ?? DateTime.now;
+      : _now = now ?? BusinessTimeZone.now;
 
   @override
   Future<Either<Failure, AppointmentEntity>> call(

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
@@ -37,12 +38,15 @@ Map<String, dynamic> backendAppointment({
   List<Map<String, dynamic>>? services,
   bool reminderSent = false,
   String? phone = '3001234567',
+  String? timeZone = 'America/Bogota',
 }) =>
     {
       'id': id,
       'ownerId': 'owner-1',
       'professionalId': 'pro-1',
       'date': date,
+      // Zona guardada en la cita (backend 6.03).
+      if (timeZone != null) 'timezone': timeZone,
       'status': status,
       'payment_status': paymentStatus,
       'total_price': total,
@@ -94,7 +98,7 @@ void main() {
       expect(entity.professionalId, 'pro-1');
       expect(entity.professionalName, 'Laura Gómez');
       expect(entity.startTime,
-          DateTime.parse('2026-11-03T15:00:00.000Z').toLocal());
+          BusinessTimeZone.toWallClock(DateTime.parse('2026-11-03T15:00:00.000Z')));
       // 45 min + servicio sin duración (30, como el backend).
       expect(entity.duration, const Duration(minutes: 75));
       expect(entity.services, const [
@@ -121,7 +125,7 @@ void main() {
       expect(entity.reminderSent, false);
       expect(entity.reminderSentAt, isNull);
       expect(entity.createdAt,
-          DateTime.parse('2026-10-28T13:00:00.000Z').toLocal());
+          BusinessTimeZone.toWallClock(DateTime.parse('2026-10-28T13:00:00.000Z')));
     });
 
     test('precio en la cita (2.29): sin appointment_price usa el price', () {
@@ -142,7 +146,7 @@ void main() {
       expect(entity.paymentStatus, AppointmentPaymentStatus.PARTIAL);
       expect(entity.reminderSent, true);
       expect(entity.reminderSentAt,
-          DateTime.parse('2026-11-02T14:00:00.000Z').toLocal());
+          BusinessTimeZone.toWallClock(DateTime.parse('2026-11-02T14:00:00.000Z')));
       expect(entity.client.phone, isNull);
     });
 

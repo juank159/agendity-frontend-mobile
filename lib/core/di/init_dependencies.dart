@@ -1,10 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
-import 'package:internet_connection_checker/internet_connection_checker.dart';
 
 import 'package:login_signup/core/network/api_client.dart';
-import 'package:login_signup/core/network/network_info.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/core/session/token_store.dart';
@@ -41,10 +39,6 @@ class DependencyInjection {
       Get.put<FlutterSecureStorage>(const FlutterSecureStorage(),
           permanent: true);
 
-      // Agregar esta línea para inicializar InternetConnectionChecker
-      Get.put<InternetConnectionChecker>(InternetConnectionChecker(),
-          permanent: true);
-
       // Sesión (3.02): TokenStore es el único dueño del token; LocalStorage
       // delega en él. SessionService es la entrada de presentation.
       final tokenStore = SecureTokenStore(Get.find<FlutterSecureStorage>());
@@ -74,12 +68,6 @@ class DependencyInjection {
           onSessionExpired: Get.find<SessionService>().handleSessionExpired,
         ),
         tag: apiClientTag,
-        permanent: true,
-      );
-
-      // Inicializar NetworkInfo
-      Get.put<NetworkInfo>(
-        NetworkInfoImpl(connectionChecker: Get.find()),
         permanent: true,
       );
 

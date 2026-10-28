@@ -1,14 +1,2 @@
-import 'package:internet_connection_checker/internet_connection_checker.dart';
-
-abstract class NetworkInfo {
-  Future<bool> get isConnected;
-}
-
-class NetworkInfoImpl implements NetworkInfo {
-  final InternetConnectionChecker connectionChecker;
-
-  NetworkInfoImpl({required this.connectionChecker});
-
-  @override
-  Future<bool> get isConnected => connectionChecker.hasConnection;
-}
+// Retirado en 5.12: sin consumidores (los errores de red los da el ErrorMapper).
+// Archivo sin referencias: lo borra el orquestador (D-12).

@@ -1,46 +1,13 @@
-// lib/features/auth/presentation/bindings/login_binding.dart
-
 import 'package:get/get.dart';
-import '../controllers/google_auth_controller.dart';
-import '../../domain/usecases/google_sign_in_usecase.dart';
-import '../controllers/login_controller.dart';
-import '../../domain/usecases/login_usecase.dart';
+import 'package:login_signup/features/auth/presentation/controllers/google_auth_controller.dart';
+import 'package:login_signup/features/auth/presentation/controllers/login_controller.dart';
 
+/// Login (`/login`). Registra solo los controllers; los use cases los
+/// registra `AuthDependencies`. Viven con la ruta (sin `permanent`).
 class LoginBinding extends Bindings {
   @override
   void dependencies() {
-    if (!Get.isRegistered<GoogleAuthController>()) {
-      Get.lazyPut<GoogleAuthController>(
-        () => GoogleAuthController(
-          googleSignInUseCase: Get.find<GoogleSignInUseCase>(),
-        ),
-      );
-    }
-    print('🔗 LoginBinding: Verificando dependencias...');
-
-    // Las dependencias de auth deben permanecer después del logout
-    // Solo verificar que existan y crear el controller si es necesario
-    
-    if (Get.isRegistered<LoginUseCase>()) {
-      print('✅ LoginUseCase disponible');
-      
-      // Crear LoginController solo si no existe
-      if (!Get.isRegistered<LoginController>()) {
-        Get.lazyPut<LoginController>(
-          () => LoginController(
-            loginUseCase: Get.find<LoginUseCase>(),
-          ),
-        );
-        print('✅ LoginController creado');
-      } else {
-        print('✅ LoginController ya existe');
-      }
-    } else {
-      print('❌ LoginUseCase no disponible - dependencias de auth no inicializadas');
-      // Esto no debería suceder si el logout preserva las dependencias de auth
-      throw Exception('Dependencias de autenticación no disponibles');
-    }
-
-    print('✅ LoginBinding completado');
+    Get.lazyPut(() => LoginController(loginUseCase: Get.find()));
+    Get.lazyPut(() => GoogleAuthController(googleSignInUseCase: Get.find()));
   }
 }

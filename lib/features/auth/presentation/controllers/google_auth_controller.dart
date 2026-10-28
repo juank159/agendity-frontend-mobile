@@ -1,83 +1,35 @@
-// lib/features/auth/presentation/controllers/google_auth_controller.dart
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/google_sign_in_usecase.dart';
-import 'package:login_signup/shared/controller/session_controller.dart';
+import 'auth_feedback.dart';
+import 'auth_navigation.dart';
 
+/// Botón "Continuar con Google" del login y del registro. Cancelar el
+/// selector no muestra nada; si el backend lo rechaza o la cuenta no tiene
+/// acceso, se avisa.
 class GoogleAuthController extends GetxController {
-  final GoogleSignInUseCase googleSignInUseCase;
+  final GoogleSignInUseCase _signIn;
 
-  // Estado observable
+  GoogleAuthController({required GoogleSignInUseCase googleSignInUseCase})
+      : _signIn = googleSignInUseCase;
+
   final isLoading = false.obs;
-  final errorMessage = RxnString();
-
-  GoogleAuthController({required this.googleSignInUseCase});
 
   Future<void> signInWithGoogle() async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = null;
-
-      final result = await googleSignInUseCase(NoParams());
-
-      result.fold(
-        (failure) {
-          errorMessage.value = failure.message;
-          _showSnackbar(
-            title: 'Error',
-            message: failure.message,
-            color: Colors.red,
-          );
-        },
-        (user) => _enterHome(),
-      );
-    } catch (e) {
-      errorMessage.value = e.toString();
-      _showSnackbar(
-        title: 'Error',
-        message: 'Error inesperado: ${e.toString()}',
-        color: Colors.red,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// La capa de datos ya guardó el token: se carga la sesión de la UI antes
-  /// de navegar (AuthMiddleware la exige en la home).
-  Future<void> _enterHome() async {
-    final session = await Get.find<SessionController>().reload();
-    if (session == null) {
-      _showSnackbar(
-        title: 'Error',
-        message: 'No se pudo iniciar la sesión. Inténtalo de nuevo.',
-        color: Colors.red,
-      );
-      return;
-    }
-    Get.offAllNamed(GetRoutes.home);
-  }
-
-  void _showSnackbar({
-    required String title,
-    required String message,
-    required Color color,
-  }) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: color.withValues(alpha: 0.9),
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(15),
-      borderRadius: 8,
-      duration: const Duration(seconds: 6),
-      icon: Icon(
-        color == Colors.green ? Icons.check_circle : Icons.error,
-        color: Colors.white,
-      ),
+    if (isLoading.value) return;
+    isLoading.value = true;
+    final result = await _signIn(NoParams());
+    if (isClosed) return;
+    await result.fold(
+      (failure) async {
+        isLoading.value = false;
+        await AuthFeedback.show(failure,
+            title: 'No se pudo entrar con Google');
+      },
+      (_) async {
+        await AuthNavigation.enterHome();
+        if (!isClosed) isLoading.value = false;
+      },
     );
   }
 }

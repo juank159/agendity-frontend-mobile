@@ -1,103 +1,23 @@
-import 'package:login_signup/core/routes/routes.dart';
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:login_signup/features/auth/domain/usecases/reset_password_usecase.dart';
-
-// class ForgotPasswordController extends GetxController {
-//   final ResetPasswordUseCase resetPasswordUseCase;
-
-//   final emailController = TextEditingController();
-//   final isLoading = false.obs;
-
-//   ForgotPasswordController({required this.resetPasswordUseCase});
-
-//   @override
-//   void onClose() {
-//     emailController.dispose();
-//     super.onClose();
-//   }
-
-//   Future<void> requestPasswordReset() async {
-//     if (emailController.text.isEmpty ||
-//         !GetUtils.isEmail(emailController.text)) {
-//       _showSnackbar(
-//         title: 'Error',
-//         message: 'Por favor, ingrese un correo electrónico válido',
-//         color: Colors.red,
-//       );
-//       return;
-//     }
-
-//     isLoading.value = true;
-
-//     try {
-//       final result = await resetPasswordUseCase(
-//         email: emailController.text.trim(),
-//       );
-
-//       result.fold(
-//         (failure) {
-//           _showSnackbar(
-//             title: 'Error',
-//             message: failure.message,
-//             color: Colors.red,
-//           );
-//         },
-//         (success) {
-//           _showSnackbar(
-//             title: 'Éxito',
-//             message: 'Se ha enviado un código de recuperación a tu correo',
-//             color: Colors.green,
-//           );
-//           // Navegar a la pantalla de recuperación de contraseña
-//           Get.toNamed('/reset-password',
-//               arguments: {'email': emailController.text.trim()});
-//         },
-//       );
-//     } catch (e) {
-//       _showSnackbar(
-//         title: 'Error',
-//         message: e.toString(),
-//         color: Colors.red,
-//       );
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-
-//   void _showSnackbar({
-//     required String title,
-//     required String message,
-//     required Color color,
-//   }) {
-//     Get.snackbar(
-//       title,
-//       message,
-//       snackPosition: SnackPosition.TOP,
-//       backgroundColor: color.withOpacity(0.9),
-//       colorText: Colors.white,
-//       margin: const EdgeInsets.all(15),
-//       borderRadius: 8,
-//       duration: const Duration(seconds: 6),
-//       icon: Icon(
-//         color == Colors.green ? Icons.check_circle : Icons.error,
-//         color: Colors.white,
-//       ),
-//     );
-//   }
-// }
-
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/auth/domain/usecases/request_password_reset_usecase.dart';
+import 'package:login_signup/shared/widgets/app_snackbar.dart';
+import 'auth_feedback.dart';
+import 'auth_navigation.dart';
 
+/// Pide el código de recuperación (`/forgot-password`) y abre
+/// `/reset-password` con el email.
 class ForgotPasswordController extends GetxController {
-  final RequestPasswordResetUseCase requestPasswordResetUseCase;
+  final RequestPasswordResetUseCase _requestReset;
+
+  ForgotPasswordController(
+      {required RequestPasswordResetUseCase requestPasswordResetUseCase})
+      : _requestReset = requestPasswordResetUseCase;
 
   final emailController = TextEditingController();
   final isLoading = false.obs;
-
-  ForgotPasswordController({required this.requestPasswordResetUseCase});
+  final emailError = ''.obs;
 
   @override
   void onClose() {
@@ -106,71 +26,26 @@ class ForgotPasswordController extends GetxController {
   }
 
   Future<void> requestPasswordReset() async {
-    if (emailController.text.isEmpty ||
-        !GetUtils.isEmail(emailController.text)) {
-      _showSnackbar(
-        title: 'Error',
-        message: 'Por favor, ingrese un correo electrónico válido',
-        color: Colors.red,
-      );
-      return;
-    }
+    if (isLoading.value) return;
+    final email = emailController.text.trim();
+    emailError.value = email.isEmpty
+        ? 'Ingresa tu correo electrónico'
+        : (GetUtils.isEmail(email) ? '' : 'Ingresa un correo válido');
+    if (emailError.value.isNotEmpty) return;
 
     isLoading.value = true;
-
-    try {
-      final result =
-          await requestPasswordResetUseCase(emailController.text.trim());
-
-      result.fold(
-        (failure) {
-          _showSnackbar(
-            title: 'Error',
-            message: failure.message,
-            color: Colors.red,
-          );
-        },
-        (_) {
-          // ← Cambio: ahora es void, no bool
-          _showSnackbar(
-            title: 'Éxito',
-            message: 'Se ha enviado un código de recuperación a tu correo',
-            color: Colors.green,
-          );
-          // Navegar a la pantalla de recuperación de contraseña
-          Get.toNamed(GetRoutes.resetPassword,
-              arguments: {'email': emailController.text.trim()});
-        },
-      );
-    } catch (e) {
-      _showSnackbar(
-        title: 'Error',
-        message: e.toString(),
-        color: Colors.red,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  void _showSnackbar({
-    required String title,
-    required String message,
-    required Color color,
-  }) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: color.withValues(alpha: 0.9),
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(15),
-      borderRadius: 8,
-      duration: const Duration(seconds: 6),
-      icon: Icon(
-        color == Colors.green ? Icons.check_circle : Icons.error,
-        color: Colors.white,
-      ),
+    final result = await _requestReset(email);
+    if (isClosed) return;
+    isLoading.value = false;
+    await result.fold(
+      (failure) => AuthFeedback.show(failure,
+          title: 'No se pudo enviar el código'),
+      (_) async {
+        AppSnackbar.success('Te enviamos un código de recuperación a $email',
+            title: 'Código enviado');
+        Get.toNamed(GetRoutes.resetPassword,
+            arguments: {AuthNavigation.emailKey: email});
+      },
     );
   }
 }

@@ -3,71 +3,59 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/google_auth_controller.dart';
 
-class GoogleSignInButton extends StatelessWidget {
-  final String text;
-  final double width;
-  final double height;
-  final double borderRadius;
+/// Separador "o" + botón "Continuar con Google" del login y del registro.
+/// El `GoogleAuthController` lo registra el binding de la ruta.
+class GoogleSignInButton extends GetView<GoogleAuthController> {
+  final String dividerText;
 
-  const GoogleSignInButton({
-    super.key,
-    this.text = 'Continuar con Google',
-    this.width = double.infinity,
-    this.height = 50,
-    this.borderRadius = 8,
-  });
+  const GoogleSignInButton({super.key, this.dividerText = 'o continúa con'});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<GoogleAuthController>();
-
-    return Obx(() {
-      return SizedBox(
-        width: width,
-        height: height,
-        child: ElevatedButton(
-          onPressed:
-              controller.isLoading.value ? null : controller.signInWithGoogle,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black87,
-            elevation: 1,
-            side: const BorderSide(color: Colors.grey, width: 0.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: Divider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(dividerText,
+                  style: TextStyle(color: scheme.onSurfaceVariant)),
             ),
-          ),
-          child: controller.isLoading.value
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo de Google
-                    SvgPicture.asset(
-                      'assets/icons/google_logo.svg',
-                      height: 24,
-                      width: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    // Texto del botón
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+            const Expanded(child: Divider()),
+          ],
         ),
-      );
-    });
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 52,
+          child: Obx(() => OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: controller.isLoading.value
+                    ? null
+                    : controller.signInWithGoogle,
+                child: controller.isLoading.value
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SvgPicture.asset('assets/images/google.svg',
+                              height: 22, width: 22),
+                          const SizedBox(width: 12),
+                          const Text('Continuar con Google',
+                              style: TextStyle(fontSize: 16)),
+                        ],
+                      ),
+              )),
+        ),
+      ],
+    );
   }
 }

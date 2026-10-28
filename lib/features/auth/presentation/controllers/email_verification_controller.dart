@@ -1,259 +1,118 @@
-import 'package:login_signup/core/routes/routes.dart';
-// lib/features/auth/presentation/controllers/email_verification_controller.dart
-import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/auth/domain/usecases/request_verification_code_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/verify_email_usecase.dart';
-import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:login_signup/shared/controller/session_controller.dart';
+import 'package:login_signup/shared/widgets/app_snackbar.dart';
+import 'auth_feedback.dart';
+import 'auth_navigation.dart';
+import 'code_countdown.dart';
 
+/// Verificación del email del Owner recién registrado (`/verify-email`,
+/// email en `arguments`). Pide el código al abrirse. El registro ya inició
+/// la sesión y el Owner puede usar la app sin verificar (CLAUDE §1): al
+/// verificar, o con "Verificar más tarde", entra a la home con esa sesión.
 class EmailVerificationController extends GetxController {
-  final RequestVerificationCodeUseCase requestCodeUseCase;
-  final VerifyEmailUseCase verifyEmailUseCase;
-
-  final email = ''.obs;
-  final codeController = TextEditingController();
-  final isLoading = false.obs;
-  final timeRemaining = 600.obs; // 10 minutos
-  final isTimerActive = false.obs;
-
-  // ← NUEVO: Variable para saber si es un usuario nuevo
-  final isNewUser = true.obs;
-
-  Timer? _timer;
+  final RequestVerificationCodeUseCase _requestCode;
+  final VerifyEmailUseCase _verify;
+  final SessionController _session;
 
   EmailVerificationController({
-    required this.requestCodeUseCase,
-    required this.verifyEmailUseCase,
-  }) {
-    // ← DEBUGGING: Constructor
-    print('🔧 EmailVerificationController constructor llamado');
-  }
+    required RequestVerificationCodeUseCase requestCodeUseCase,
+    required VerifyEmailUseCase verifyEmailUseCase,
+    SessionController? session,
+    String? email,
+  })  : _requestCode = requestCodeUseCase,
+        _verify = verifyEmailUseCase,
+        _session = session ?? Get.find<SessionController>(),
+        email = email ?? AuthNavigation.emailArgument();
+
+  final String email;
+
+  final codeController = TextEditingController();
+  final isSending = false.obs;
+  final isVerifying = false.obs;
+  final errorMessage = RxnString();
+
+  late final countdown = CodeCountdown(
+    onExpired: () => errorMessage.value = 'El código venció. Pide uno nuevo.',
+  );
+
+  bool get isBusy => isSending.value || isVerifying.value;
 
   @override
   void onInit() {
     super.onInit();
-    print('🔥 EmailVerificationController inicializado');
-
-    // Obtener email y tipo de usuario de argumentos de navegación
-    if (Get.arguments != null) {
-      print('📧 Argumentos recibidos: ${Get.arguments}');
-
-      if (Get.arguments['email'] != null) {
-        email.value = Get.arguments['email'];
-        print('📧 Email obtenido: ${email.value}');
-      } else {
-        print('⚠️ No se encontró email en argumentos');
-      }
-
-      // ← NUEVO: Verificar si es nuevo usuario (por defecto true para registro)
-      if (Get.arguments['isNewUser'] != null) {
-        isNewUser.value = Get.arguments['isNewUser'];
-      }
-
-      print('👤 Es nuevo usuario: ${isNewUser.value}');
-
-      // ← CAMBIO: Solo solicitar código si el email no está vacío
-      if (email.value.isNotEmpty) {
-        print('📧 Email válido, solicitando código automáticamente...');
-        requestVerificationCode();
-      } else {
-        print('❌ Email vacío, no se puede solicitar código');
-        _showSnackbar(
-          title: 'Error',
-          message:
-              'No se recibió el email correctamente. Por favor, regresa e intenta de nuevo.',
-          color: Colors.red,
-        );
-      }
-    } else {
-      print('❌ No se recibieron argumentos de navegación');
+    if (email.isEmpty) {
+      errorMessage.value =
+          'No sabemos a qué correo enviar el código. Inicia sesión de nuevo.';
+      return;
     }
+    requestVerificationCode();
   }
 
   @override
   void onClose() {
-    try {
-      _timer?.cancel();
-
-      // ← PROTECCIÓN: Verificar si el controlador ya fue disposed
-      if (!codeController.text.isEmpty || codeController.text.isEmpty) {
-        // Si podemos acceder al texto sin error, entonces no está disposed
-        codeController.dispose();
-      }
-    } catch (e) {
-      // Si hay error, significa que ya estaba disposed, ignorar
-      print('⚠️ TextEditingController ya estaba disposed: $e');
-    }
-
+    countdown.dispose();
+    codeController.dispose();
     super.onClose();
   }
 
+  /// Envía (o reenvía) el código.
   Future<void> requestVerificationCode() async {
-    if (email.value.isEmpty) {
-      print('❌ Email vacío, no se puede solicitar código');
-      _showSnackbar(
-        title: 'Error',
-        message: 'No se ha proporcionado un correo electrónico',
-        color: Colors.red,
-      );
-      return;
-    }
-
-    print('📧 Solicitando código de verificación para: ${email.value}');
-    print('👤 Es nuevo usuario: ${isNewUser.value}');
-
-    isLoading.value = true;
-
-    try {
-      final result = await requestCodeUseCase(email.value);
-
-      result.fold(
-        (failure) {
-          print('❌ Error solicitando código: ${failure.message}');
-          _showSnackbar(
-            title: 'Error',
-            message: failure.message,
-            color: Colors.red,
-          );
-        },
-        (success) {
-          print('✅ Código solicitado exitosamente');
-          _showSnackbar(
-            title: 'Código enviado',
-            message: 'Se ha enviado un código de verificación a tu correo',
-            color: Colors.green,
-          );
-          _startTimer();
-        },
-      );
-    } catch (e) {
-      print('❌ Excepción solicitando código: ${e.toString()}');
-      _showSnackbar(
-        title: 'Error',
-        message: e.toString(),
-        color: Colors.red,
-      );
-    } finally {
-      isLoading.value = false;
-    }
+    if (isBusy || email.isEmpty) return;
+    isSending.value = true;
+    errorMessage.value = null;
+    final result = await _requestCode(email);
+    if (isClosed) return;
+    isSending.value = false;
+    result.fold(
+      (failure) => errorMessage.value =
+          'No se pudo enviar el código: ${AuthFeedback.messageFor(failure)}',
+      (_) {
+        countdown.start();
+        AppSnackbar.info('Enviamos un código de 6 dígitos a $email',
+            title: 'Código enviado');
+      },
+    );
   }
 
   Future<void> verifyEmail() async {
-    if (codeController.text.isEmpty) {
-      _showSnackbar(
-        title: 'Error',
-        message: 'Por favor, ingresa el código de verificación',
-        color: Colors.yellow[800]!,
-      );
-      return;
-    }
+    if (isBusy || email.isEmpty) return;
+    isVerifying.value = true;
+    errorMessage.value = null;
+    final result = await _verify(
+        VerifyEmailParams(email: email, code: codeController.text));
+    if (isClosed) return;
 
-    print(
-        '🔍 Verificando email - Email: ${email.value}, Código: ${codeController.text}');
-    isLoading.value = true;
-
-    try {
-      final result = await verifyEmailUseCase(
-          VerifyEmailParams(email: email.value, code: codeController.text));
-
-      result.fold(
-        (failure) {
-          print('❌ Error en verificación: ${failure.message}');
-          _showSnackbar(
-            title: 'Error',
-            message: failure.message,
-            color: Colors.red,
-          );
-        },
-        (_) async {
-          // ← AGREGAR: async aquí
-          print('✅ Email verificado correctamente');
-          _timer?.cancel();
-          _showSnackbar(
-            title: 'Éxito',
-            message:
-                'Correo verificado correctamente. Ahora puedes iniciar sesión.',
-            color: Colors.green,
-          );
-
-          // ← CORREGIDO: Limpiar token para forzar login manual
-          try {
-            // Acceder al localStorage para limpiar el token
-            final localStorage = Get.find<LocalStorage>();
-            await localStorage.deleteToken();
-            print(
-                '🔑 Token eliminado - usuario debe iniciar sesión manualmente');
-          } catch (e) {
-            print('⚠️ Error eliminando token: $e');
-          }
-
-          // Navegar al login para que inicie sesión manualmente
-          Future.delayed(const Duration(seconds: 2), () {
-            Get.offAllNamed(GetRoutes.login, arguments: {
-              'message':
-                  'Email verificado correctamente. Inicia sesión con tus credenciales.',
-              'messageType': 'success'
-            });
-          });
-        },
-      );
-    } catch (e) {
-      print('❌ Excepción en verificación: $e');
-      _showSnackbar(
-        title: 'Error',
-        message: 'Error inesperado durante la verificación',
-        color: Colors.red,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    timeRemaining.value = 600; // 10 minutos
-    isTimerActive.value = true;
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (timeRemaining.value > 0) {
-        timeRemaining.value--;
-      } else {
-        timer.cancel();
-        isTimerActive.value = false;
-        _showSnackbar(
-          title: 'Aviso',
-          message: 'El código ha expirado, solicita uno nuevo',
-          color: Colors.orange,
-        );
-      }
-    });
-  }
-
-  String get formattedTime {
-    final minutes = (timeRemaining.value / 60).floor();
-    final seconds = timeRemaining.value % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  void _showSnackbar({
-    required String title,
-    required String message,
-    required Color color,
-  }) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: color.withValues(alpha: 0.9),
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(15),
-      borderRadius: 8,
-      duration: const Duration(seconds: 6),
-      icon: Icon(
-        color == Colors.green ? Icons.check_circle : Icons.error,
-        color: Colors.white,
-      ),
+    await result.fold(
+      (failure) async {
+        isVerifying.value = false;
+        errorMessage.value = AuthFeedback.messageFor(failure);
+      },
+      (_) async {
+        countdown.stop();
+        if (await _enterApp()) {
+          AppSnackbar.success('Tu correo quedó verificado',
+              title: 'Correo verificado');
+        }
+        if (!isClosed) isVerifying.value = false;
+      },
     );
+  }
+
+  /// El Owner entra sin verificar.
+  Future<void> skip() => _enterApp();
+
+  /// Home con la sesión del registro; si ya no hay sesión, al login.
+  Future<bool> _enterApp() async {
+    if (await AuthNavigation.enterHome(
+        session: _session, reportMissing: false)) {
+      return true;
+    }
+    Get.offAllNamed(GetRoutes.login);
+    AppSnackbar.info('Inicia sesión para continuar');
+    return false;
   }
 }

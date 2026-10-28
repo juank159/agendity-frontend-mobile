@@ -68,6 +68,16 @@ String formatDurationMinutes(int minutes) {
 String formatCount(int count, String singular, String plural) =>
     count == 1 ? '1 $singular' : '$count $plural';
 
+/// Diferencia con UTC: `UTC-05:00`, `UTC+05:30`, `UTC` (sin diferencia).
+String formatUtcOffset(Duration offset) {
+  if (offset == Duration.zero) return 'UTC';
+  final sign = offset.isNegative ? '-' : '+';
+  final minutes = offset.inMinutes.abs();
+  final hours = (minutes ~/ 60).toString().padLeft(2, '0');
+  final rest = (minutes % 60).toString().padLeft(2, '0');
+  return 'UTC$sign$hours:$rest';
+}
+
 num _toNum(Object? value) {
   if (value is num) return value.isFinite ? value : 0;
   if (value is String) return num.tryParse(value.trim()) ?? 0;

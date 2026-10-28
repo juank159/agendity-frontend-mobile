@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/failures/employee_failures.dart';
 import 'package:login_signup/features/employees/domain/usecases/delete_employee_usecase.dart';
@@ -39,7 +40,7 @@ class EmployeesController extends GetxController {
         _setActive = toggleEmployeeStatusUseCase,
         _delete = deleteEmployeeUseCase,
         _restore = restoreEmployeeUseCase,
-        _now = clock ?? DateTime.now;
+        _now = clock ?? BusinessTimeZone.now;
 
   /// El Owner y sus empleados sin baja.
   final employees = <EmployeeEntity>[].obs;

@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/services/notification_service.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_upcoming_appointments_usecase.dart';
@@ -38,7 +39,7 @@ class AppointmentReminderController extends GetxController {
         _markSent = markReminderSentUseCase,
         _openLink = openLink ?? openExternalLink,
         _notifications = notifications ?? NotificationService.new,
-        _now = now ?? DateTime.now;
+        _now = now ?? BusinessTimeZone.now;
 
   final upcoming = <AppointmentEntity>[].obs;
   final isLoading = false.obs;
@@ -68,10 +69,11 @@ class AppointmentReminderController extends GetxController {
   }
 
   /// Quita de la lista las citas que ya empezaron (al enviar: la lista pudo
-  /// quedarse abierta un rato).
+  /// quedarse abierta un rato). Compara instantes: una cita guardada en otra
+  /// zona (6.03) conserva la suya.
   void prunePast() {
-    final now = _now();
-    upcoming.removeWhere((a) => !a.startTime.isAfter(now));
+    final now = BusinessTimeZone.toInstant(_now());
+    upcoming.removeWhere((a) => !a.startInstant.isAfter(now));
   }
 
   /// Abre WhatsApp con el recordatorio de [appointment] y lo marca enviado.

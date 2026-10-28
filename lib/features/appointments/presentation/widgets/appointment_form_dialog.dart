@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_form_controller.dart';
@@ -75,14 +76,14 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   }
 
   Future<void> _pickDay() async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = BusinessTimeZone.today();
     final current = c.day.value;
     final picked = await showDatePicker(
       context: context,
       initialDate: current,
       firstDate: current.isBefore(today) ? current : today,
       lastDate: DateTime(today.year + 1, today.month, today.day),
+      currentDate: today,
     );
     if (picked != null) c.selectDay(picked);
   }

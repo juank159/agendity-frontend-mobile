@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar_data_source.dart';
@@ -65,7 +66,9 @@ class AppointmentCalendar extends GetView<AppointmentsController> {
             viewHeaderHeight: 60,
             showNavigationArrow: true,
             showDatePickerButton: true,
-            showCurrentTimeIndicator: true,
+            // La línea de "ahora" del calendario usa el reloj del
+            // dispositivo: se oculta si el negocio está en otra zona (D-15).
+            showCurrentTimeIndicator: !BusinessTimeZone.differsFromDevice,
             backgroundColor: scheme.surface,
             todayHighlightColor: scheme.primary,
             cellBorderColor: scheme.outlineVariant,
@@ -145,9 +148,10 @@ class _MonthCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
-    final isToday =
-        date.year == now.year && date.month == now.month && date.day == now.day;
+    final today = BusinessTimeZone.today();
+    final isToday = date.year == today.year &&
+        date.month == today.month &&
+        date.day == today.day;
     final dayColor = isToday
         ? scheme.onPrimary
         : isCurrentMonth

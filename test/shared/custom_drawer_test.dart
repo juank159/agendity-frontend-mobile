@@ -23,7 +23,12 @@ void main() {
     'Formularios',
     'Enviar opiniones',
   ];
-  const ownerOnly = ['Personal', 'WhatsApp', 'Planes y suscripción'];
+  const ownerOnly = [
+    'Personal',
+    'Zona horaria',
+    'WhatsApp',
+    'Planes y suscripción',
+  ];
   const forEveryone = [
     'Servicios',
     'Clientela',

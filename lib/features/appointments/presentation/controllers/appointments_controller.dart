@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointments_usecase.dart';
@@ -27,7 +28,7 @@ class AppointmentsController extends GetxController {
     DateTime Function()? now,
   })  : _getAppointments = getAppointmentsUseCase,
         _checkLimits = checkSubscriptionLimitsUseCase,
-        _now = now ?? DateTime.now;
+        _now = now ?? BusinessTimeZone.now;
 
   final appointments = <AppointmentEntity>[].obs;
   final currentView = CalendarView.day.obs;
@@ -41,6 +42,7 @@ class AppointmentsController extends GetxController {
 
   AppointmentsRange? _range;
   int _request = 0;
+  Worker? _timeZoneWorker;
 
   /// Employee que no es Owner: ve "Mis citas".
   bool get isEmployeeView => Get.isRegistered<SessionController>() &&
@@ -60,7 +62,19 @@ class AppointmentsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Si el Owner cambia la zona del negocio (configuración), las horas ya
+    // cargadas se piden de nuevo en la zona nueva.
+    if (Get.isRegistered<SessionController>()) {
+      _timeZoneWorker =
+          Get.find<SessionController>().onTimeZoneChanged((_) => reload());
+    }
     _load(rangeFor(currentView.value, selectedDate.value));
+  }
+
+  @override
+  void onClose() {
+    _timeZoneWorker?.dispose();
+    super.onClose();
   }
 
   /// Rango que se pide para [view] alrededor de [date]: el día, la semana

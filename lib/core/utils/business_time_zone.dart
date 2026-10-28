@@ -93,6 +93,15 @@ abstract final class BusinessTimeZone {
             .offset);
   }
 
+  /// `true` si ahora el reloj del dispositivo no marca la misma hora que el
+  /// del negocio (otra diferencia con UTC). La UI lo usa para avisar de que
+  /// las horas son las del negocio y para ocultar lo que el calendario pinta
+  /// con la hora del dispositivo (la línea de "ahora").
+  static bool get differsFromDevice {
+    final instant = clock();
+    return utcOffset(null, instant) != instant.toLocal().timeZoneOffset;
+  }
+
   /// "Ahora" en el reloj del negocio (hora de pared, no UTC). Es el que decide
   /// "hoy", "solo a futuro" y "próximos días".
   static DateTime now([String? zone]) => toWallClock(clock(), zone);

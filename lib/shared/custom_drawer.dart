@@ -7,8 +7,8 @@ import 'package:login_signup/features/auth/presentation/widgets/email_verificati
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 
 /// Menú lateral de la home. Solo entradas con pantalla real; las de Owner
-/// (Personal, WhatsApp y Planes) se ocultan al Employee, igual que
-/// `RoleMiddleware.ownerOnly()` en sus rutas. Colores del `ColorScheme`.
+/// (Personal, Zona horaria, WhatsApp y Planes) se ocultan al Employee, igual
+/// que `RoleMiddleware.ownerOnly()` en sus rutas. Colores del `ColorScheme`.
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
@@ -65,8 +65,13 @@ class CustomDrawer extends GetView<UserInfoController> {
             ),
             const _SectionTitle('CONFIGURACIÓN'),
             // Solo Owner: el backend responde 403 al Employee en la
-            // configuración de WhatsApp y al suscribirse.
+            // configuración del negocio, la de WhatsApp y al suscribirse.
             if (isOwner) ...[
+              _DrawerItem(
+                icon: Icons.public,
+                title: 'Zona horaria',
+                onTap: () => _open(GetRoutes.businessSettings),
+              ),
               _DrawerItem(
                 icon: Icons.chat_outlined,
                 title: 'WhatsApp',

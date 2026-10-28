@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
@@ -67,7 +68,7 @@ class AppointmentFormController extends GetxController {
         _getServices = getServicesUseCase,
         _getProfessionals = getProfessionalsUseCase,
         _session = session,
-        _now = now ?? DateTime.now,
+        _now = now ?? BusinessTimeZone.now,
         _preferredStart = original?.startTime ?? initialStart;
 
   /// Con los use cases registrados por `<feature>_dependencies`.

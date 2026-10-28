@@ -17,6 +17,7 @@ import 'package:login_signup/features/services/presentation/controllers/edit_ser
 import 'package:login_signup/features/services/presentation/controllers/new_category_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/new_service_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/services_controller.dart';
+import 'package:login_signup/features/settings/presentation/controllers/business_settings_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/employee_stats_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/statistics_controller.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
@@ -59,6 +60,7 @@ abstract final class SessionScope {
     deleteSessionController<EmployeeStatsController>,
     deleteSessionController<SubscriptionController>,
     deleteSessionController<WhatsappController>,
+    deleteSessionController<BusinessSettingsController>,
   ];
 
   /// Borra los controllers de feature. Todos viven con su ruta (desde la

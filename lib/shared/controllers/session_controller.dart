@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 
 /// Sesión en memoria para la UI (usuario, roles, tenant), sobre [SessionService].
 ///
@@ -39,6 +40,25 @@ class SessionController extends GetxController {
   String? get name => session.value?.name;
   String? get email => session.value?.email;
   List<String> get roles => session.value?.roles ?? const [];
+
+  /// Zona IANA del negocio (D-15). Mientras no se conozca, la que usa la app
+  /// (`BusinessTimeZone.current`, por defecto `America/Bogota`).
+  String get timeZone => session.value?.timeZone ?? BusinessTimeZone.current;
+
+  /// Llama a [onChanged] cada vez que cambia la zona del negocio de una
+  /// sesión iniciada (no al cerrar sesión). Las pantallas con horas ya
+  /// cargadas lo usan para volver a pedirlas. Quien lo llama libera el
+  /// `Worker` en su `onClose`.
+  Worker onTimeZoneChanged(void Function(String timeZone) onChanged) {
+    var last = session.value?.timeZone;
+    return ever<Session?>(session, (current) {
+      if (current == null) return;
+      final zone = current.timeZone;
+      if (zone == null || zone == last) return;
+      last = zone;
+      onChanged(zone);
+    });
+  }
 
   // --- Ciclo de vida ------------------------------------------------------
 

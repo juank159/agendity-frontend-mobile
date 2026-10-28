@@ -50,7 +50,8 @@ void main() {
     // NewEmployeeController y EditEmployeeController (4.07: el formulario de
     // profesional sale del EmployeesController), más
     // AppointmentActionsController (4.09) y EmailVerificationNoticeController
-    // (4.08b: aviso "Verifica tu email" del menú).
-    expect(SessionScope.featureControllers, hasLength(22));
+    // (4.08b: aviso "Verifica tu email" del menú), más
+    // BusinessSettingsController (6.04: zona horaria del negocio).
+    expect(SessionScope.featureControllers, hasLength(23));
   });
 }

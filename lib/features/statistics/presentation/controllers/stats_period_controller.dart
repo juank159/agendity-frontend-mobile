@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import '../../domain/entities/stats_range.dart';
 
 /// Base de las pantallas de estadísticas: el período elegido (días del
@@ -7,11 +8,12 @@ abstract class StatsPeriodController extends GetxController {
   final DateTime Function() now;
 
   StatsPeriodController({DateTime Function()? clock})
-      : now = clock ?? DateTime.now;
+      : now = clock ?? BusinessTimeZone.now;
 
   late final Rx<StatsRange> range = StatsRange.day(today).obs;
 
-  /// Medianoche local de hoy.
+  /// Hoy a las 00:00 en el calendario del negocio (D-15), no en el del
+  /// dispositivo.
   DateTime get today {
     final current = now();
     return DateTime(current.year, current.month, current.day);

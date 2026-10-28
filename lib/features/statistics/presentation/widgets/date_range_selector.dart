@@ -13,7 +13,7 @@ enum StatsPeriodPreset {
   final String label;
   const StatsPeriodPreset(this.label);
 
-  /// Rango del período respecto a [today] (medianoche local de hoy).
+  /// Rango del período respecto a [today] (hoy en el calendario del negocio).
   StatsRange rangeFor(DateTime today) {
     switch (this) {
       case StatsPeriodPreset.today:
@@ -116,6 +116,7 @@ class DateRangeSelector extends StatelessWidget {
       context: context,
       firstDate: DateTime(2020),
       lastDate: today,
+      currentDate: today,
       initialDateRange: DateTimeRange(
         start: selected.start.isAfter(today) ? today : selected.start,
         end: selected.end.isAfter(today) ? today : selected.end,

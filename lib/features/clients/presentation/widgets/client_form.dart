@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import '../controllers/client_form_controller.dart';
 import 'client_image_picker.dart';
@@ -67,12 +68,13 @@ class ClientForm extends StatelessWidget {
   }
 
   Future<void> _pickBirthday(BuildContext context) async {
-    final now = DateTime.now();
+    final today = BusinessTimeZone.today();
     final picked = await showDatePicker(
       context: context,
-      initialDate: controller.birthday.value ?? DateTime(now.year - 30),
+      initialDate: controller.birthday.value ?? DateTime(today.year - 30),
       firstDate: DateTime(1900),
-      lastDate: now,
+      lastDate: today,
+      currentDate: today,
       helpText: 'Cumpleaños',
     );
     if (picked != null) {

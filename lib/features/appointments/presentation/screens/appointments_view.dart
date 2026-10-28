@@ -7,6 +7,7 @@ import 'package:login_signup/features/appointments/presentation/widgets/appointm
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_form_dialog.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/view_selector_bottom_sheet.dart';
 import 'package:login_signup/shared/custom_drawer.dart';
+import 'package:login_signup/shared/widgets/business_time_zone_notice.dart';
 
 /// Home: la agenda. El Owner ve las citas de todo el negocio; el Employee,
 /// "Mis citas" (filtra el backend). Los dos pueden agendar: el Employee,
@@ -33,16 +34,24 @@ class AppointmentsView extends GetView<AppointmentsController> {
         ],
       ),
       drawer: const CustomDrawer(),
-      body: Obx(() {
-        final failure = controller.error.value;
-        if (failure != null && controller.appointments.isEmpty) {
-          return ErrorState(
-            message: failure.message,
-            onRetry: controller.reload,
-          );
-        }
-        return const AppointmentCalendar();
-      }),
+      body: Column(
+        children: [
+          // Solo si el dispositivo está en otra zona que el negocio (D-15).
+          const BusinessTimeZoneNotice(),
+          Expanded(
+            child: Obx(() {
+              final failure = controller.error.value;
+              if (failure != null && controller.appointments.isEmpty) {
+                return ErrorState(
+                  message: failure.message,
+                  onRetry: controller.reload,
+                );
+              }
+              return const AppointmentCalendar();
+            }),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Nueva cita',
         onPressed: () => startNewAppointment(controller),

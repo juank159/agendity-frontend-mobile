@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/shared/utils/external_link.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/errors/failures.dart';
@@ -153,12 +154,18 @@ void main() {
         readDeviceContacts: contacts ?? () async => const [],
       ));
 
+  final opened = <Uri>[];
+
   EditClientController putEditController() => Get.put(EditClientController(
         getClientByIdUseCase: GetClientByIdUseCase(repo),
         updateClientUseCase: UpdateClientUseCase(repo),
         deleteClientUseCase: DeleteClientUseCase(repo),
         uploadClientImageUseCase: UploadClientImageUseCase(repo),
         clientId: 'c1',
+        openLink: (uri) async {
+          opened.add(uri);
+          return true;
+        },
       ));
 
   group('Lista', () {
@@ -296,5 +303,38 @@ void main() {
       expect(await Get.find<EditClientController>().delete(), isFalse);
       expect(repo.deleted, isEmpty);
     });
+  
+    testWidgets('Llamar y WhatsApp con el teléfono guardado (Employee)',
+        (tester) async {
+      signInAs('Employee');
+      opened.clear();
+      putEditController();
+      await pump(tester, const EditClientScreen());
+
+      await tapText(tester, 'Llamar');
+      await tapText(tester, 'WhatsApp');
+
+      expect(opened.map((u) => u.toString()),
+          ['tel:3001234567', 'https://wa.me/573001234567']);
+    });
+
+    testWidgets('sin teléfono no hay Llamar ni WhatsApp', (tester) async {
+      signInAs('Owner');
+      repo.byIdResult = const Right(ClientEntity(id: 'c1', name: 'Sin', phone: ''));
+      putEditController();
+      await pump(tester, const EditClientScreen());
+
+      expect(find.text('Llamar'), findsNothing);
+      expect(find.text('WhatsApp'), findsNothing);
+    });
+  });
+
+  test('número para wa.me: misma regla que el backend', () {
+    expect(toWhatsappPhone('300 123 4567'), '573001234567');
+    expect(toWhatsappPhone('+1 (555) 123-4567'), '15551234567');
+    expect(toWhatsappPhone('573001234567'), '573001234567');
+    expect(toWhatsappPhone('12345'), '12345');
+    expect(whatsappUri(''), isNull);
+    expect(phoneCallUri('+57 300-123'), Uri.parse('tel:+57300123'));
   });
 }

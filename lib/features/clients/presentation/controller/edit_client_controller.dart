@@ -3,6 +3,7 @@ import 'package:login_signup/features/clients/domain/entities/client_entity.dart
 import 'package:login_signup/features/clients/domain/usecases/delete_client_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_client_by_id_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/update_client_usecase.dart';
+import 'package:login_signup/shared/utils/external_link.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'client_access.dart';
@@ -17,6 +18,7 @@ class EditClientController extends ClientFormController {
   final GetClientByIdUseCase _getClient;
   final UpdateClientUseCase _updateClient;
   final DeleteClientUseCase _deleteClient;
+  final ExternalLinkOpener _openLink;
 
   EditClientController({
     required GetClientByIdUseCase getClientByIdUseCase,
@@ -25,7 +27,9 @@ class EditClientController extends ClientFormController {
     required super.uploadClientImageUseCase,
     super.imagePicker,
     String? clientId,
-  })  : _getClient = getClientByIdUseCase,
+    ExternalLinkOpener? openLink,
+  })  : _openLink = openLink ?? openExternalLink,
+        _getClient = getClientByIdUseCase,
         _updateClient = updateClientUseCase,
         _deleteClient = deleteClientUseCase,
         clientId = clientId ?? _clientIdFromArguments();
@@ -38,6 +42,22 @@ class EditClientController extends ClientFormController {
   final isDeleting = false.obs;
 
   bool get canDelete => ClientAccess.canDelete();
+
+  /// Teléfono guardado del cliente (no el que se está editando); vacío =
+  /// sin "Llamar" ni "WhatsApp".
+  String get savedPhone => client.value?.phone.trim() ?? '';
+
+  /// Abre el marcador con el teléfono del cliente.
+  Future<void> callClient() =>
+      _open(phoneCallUri(savedPhone), 'No se pudo abrir el teléfono');
+
+  /// Abre el chat de WhatsApp con el cliente.
+  Future<void> writeOnWhatsapp() =>
+      _open(whatsappUri(savedPhone), 'No se pudo abrir WhatsApp');
+
+  Future<void> _open(Uri? uri, String errorMessage) async {
+    if (uri == null || !await _openLink(uri)) AppSnackbar.error(errorMessage);
+  }
 
   static String _clientIdFromArguments() {
     final args = Get.arguments;

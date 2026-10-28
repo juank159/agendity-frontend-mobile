@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/loading_state.dart';
+import 'package:login_signup/shared/widgets/whatsapp_icon.dart';
 import '../controller/edit_client_controller.dart';
 import '../widgets/client_form.dart';
 
@@ -45,6 +46,9 @@ class _EditClientBody extends GetView<EditClientController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Obx(() => controller.savedPhone.isEmpty
+                ? const SizedBox.shrink()
+                : const _ContactActions()),
             ClientForm(controller: controller),
             const SizedBox(height: 16),
             Obx(() {
@@ -80,6 +84,39 @@ class _EditClientBody extends GetView<EditClientController> {
             }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "Llamar" y "WhatsApp" con el teléfono guardado del cliente (Owner y
+/// Employee). Sin teléfono no se muestran.
+class _ContactActions extends GetView<EditClientController> {
+  const _ContactActions();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: controller.callClient,
+              icon: const Icon(Icons.call_outlined),
+              label: const Text('Llamar'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: controller.writeOnWhatsapp,
+              icon: WhatsappIcon(color: scheme.primary, size: 18),
+              label: const Text('WhatsApp'),
+            ),
+          ),
+        ],
       ),
     );
   }

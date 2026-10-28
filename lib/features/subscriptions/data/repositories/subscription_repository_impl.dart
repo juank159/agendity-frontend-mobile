@@ -1,86 +1,44 @@
-// lib/features/subscriptions/data/repositories/subscription_repository_impl.dart
-
-import 'package:login_signup/core/errors/exceptions.dart';
+import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/features/subscriptions/data/datasources/subscription_remote_datasource.dart';
+import 'package:login_signup/features/subscriptions/domain/entities/subscription_checkout.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
+import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
+import 'package:login_signup/features/subscriptions/domain/failures/subscription_failures.dart';
 import 'package:login_signup/features/subscriptions/domain/repositories/subscription_repository.dart';
 
 class SubscriptionRepositoryImpl implements SubscriptionRepository {
-  final SubscriptionRemoteDataSource remoteDataSource;
+  final SubscriptionRemoteDataSource _remote;
 
-  SubscriptionRepositoryImpl({required this.remoteDataSource});
+  SubscriptionRepositoryImpl(this._remote);
 
   @override
-  Future<Map<String, dynamic>> checkSubscriptionStatus() async {
-    try {
-      return await remoteDataSource.checkSubscriptionStatus();
-    } on ServerException catch (e) {
-      print('ServerException en checkSubscriptionStatus: ${e.message}');
-      return {
-        'canCreateAppointment': false,
-        'message': e.message,
-      };
-    } catch (e) {
-      print('Exception general en checkSubscriptionStatus: $e');
-      return {
-        'canCreateAppointment': false,
-        'message': 'Error al verificar estado de suscripción.',
-      };
-    }
+  Future<Either<Failure, List<SubscriptionPlanEntity>>> getPlans() => safeCall(
+      () async => (await _remote.getPlans()).map((m) => m.toEntity()).toList());
+
+  @override
+  Future<Either<Failure, SubscriptionEntity>> getStatus() =>
+      safeCall(() async => (await _remote.getStatus()).toEntity(),
+          refine: refineSubscriptionFailure);
+
+  @override
+  Future<Either<Failure, SubscriptionLimits>> checkLimits() =>
+      safeCall(() async => (await _remote.checkLimits()).toEntity(),
+          refine: refineSubscriptionFailure);
+
+  @override
+  Future<Either<Failure, SubscriptionCheckout>> subscribe(String planId) async {
+    final result = await safeCall(
+        () async => (await _remote.subscribe(planId)).toEntity(),
+        refine: refineSubscriptionFailure);
+    return result.flatMap((checkout) => checkout.paymentLink.isEmpty
+        ? const Left(PaymentLinkUnavailableFailure())
+        : Right(checkout));
   }
 
   @override
-  Future<List<SubscriptionPlanEntity>> getAllPlans() async {
-    try {
-      final planModels = await remoteDataSource.getAllPlans();
-      return planModels;
-    } on ServerException catch (e) {
-      print('ServerException en getAllPlans: ${e.message}');
-      throw ServerFailure(message: e.message);
-    } catch (e) {
-      print('Exception general en getAllPlans: $e');
-      throw const ServerFailure(message: 'Error inesperado al obtener planes');
-    }
-  }
-
-  @override
-  Future<SubscriptionPlanEntity> getPlanById(String id) async {
-    try {
-      return await remoteDataSource.getPlanById(id);
-    } on ServerException catch (e) {
-      print('ServerException en getPlanById: ${e.message}');
-      throw ServerFailure(message: e.message);
-    } catch (e) {
-      print('Exception general en getPlanById: $e');
-      throw const ServerFailure(message: 'Error inesperado al obtener plan');
-    }
-  }
-
-  @override
-  Future<SubscriptionEntity> getCurrentSubscription() async {
-    try {
-      return await remoteDataSource.getCurrentSubscription();
-    } on ServerException catch (e) {
-      print('ServerException en getCurrentSubscription: ${e.message}');
-      throw ServerFailure(message: e.message);
-    } catch (e) {
-      print('Exception general en getCurrentSubscription: $e');
-      throw const ServerFailure(message: 'Error inesperado al obtener suscripción');
-    }
-  }
-
-  @override
-  Future<Map<String, dynamic>> createPaidSubscription(
-      String planId, String redirectUrl) async {
-    try {
-      return await remoteDataSource.createPaidSubscription(planId, redirectUrl);
-    } on ServerException catch (e) {
-      print('ServerException en createPaidSubscription: ${e.message}');
-      throw ServerFailure(message: e.message);
-    } catch (e) {
-      print('Exception general en createPaidSubscription: $e');
-      throw const ServerFailure(message: 'Error inesperado al crear suscripción');
-    }
-  }
+  Future<Either<Failure, SubscriptionRefresh>> refreshStatus() =>
+      safeCall(() async => (await _remote.refreshStatus()).toEntity(),
+          refine: refineSubscriptionFailure);
 }

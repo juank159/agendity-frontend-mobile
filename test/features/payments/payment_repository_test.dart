@@ -130,16 +130,18 @@ void main() {
       expect(failure!.details, ['amount must be a positive number']);
     });
 
-    test('400 BAD_REQUEST (cita ya pagada) → ValidationFailure con el texto',
+    test('409 PAYMENT_ALREADY_EXISTS (cita ya pagada) → ConflictFailure',
         () async {
-      adapter.handler = (_) => jsonBody(400, {
-            'statusCode': 400,
-            'code': 'BAD_REQUEST',
+      adapter.handler = (_) => jsonBody(409, {
+            'statusCode': 409,
+            'code': 'PAYMENT_ALREADY_EXISTS',
             'message': 'Ya existe un pago completado para esta cita',
           });
       final failure = leftOf(await repository.createPayment(newPayment));
-      expect(failure, isA<ValidationFailure>());
-      expect(failure!.message, 'Ya existe un pago completado para esta cita');
+      expect(failure, isA<ConflictFailure>());
+      expect(failure, isNot(isA<AppointmentNotPayableFailure>()));
+      expect(failure!.code, ApiErrorCode.paymentAlreadyExists);
+      expect(failure.message, 'Ya existe un pago completado para esta cita');
     });
 
     test('403 (Employee) → ForbiddenFailure', () async {

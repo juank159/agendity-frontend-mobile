@@ -39,6 +39,7 @@ void main() {
       (ApiErrorCode.emailNotVerified, 409, ConflictFailure),
       (ApiErrorCode.ownerNotDeletable, 403, ConflictFailure),
       (ApiErrorCode.categoryHasServices, 409, ConflictFailure),
+      (ApiErrorCode.paymentAlreadyExists, 409, ConflictFailure),
       (ApiErrorCode.appointmentInPast, 400, ValidationFailure),
       (ApiErrorCode.duplicateEmail, 409, DuplicateEmailFailure),
       (ApiErrorCode.duplicatePhone, 409, DuplicatePhoneFailure),

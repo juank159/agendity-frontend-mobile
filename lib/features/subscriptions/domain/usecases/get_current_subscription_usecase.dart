@@ -1,16 +1,18 @@
-// lib/features/subscriptions/domain/usecases/get_current_subscription_usecase.dart
-
+import 'package:dartz/dartz.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
 import 'package:login_signup/features/subscriptions/domain/repositories/subscription_repository.dart';
 
-/// Obtiene la suscripción actual del negocio (`GET /subscriptions/status`).
-/// Se usa para confirmar un pago: solo `status == 'active'` cuenta como pagado.
-class GetCurrentSubscriptionUseCase {
+/// Suscripción del negocio con su estado efectivo (`GET /subscriptions/status`).
+/// Un pago está confirmado solo si `isActive` (no basta la URL de la webview).
+class GetCurrentSubscriptionUseCase
+    extends UseCase<SubscriptionEntity, NoParams> {
   final SubscriptionRepository repository;
 
   GetCurrentSubscriptionUseCase(this.repository);
 
-  Future<SubscriptionEntity> call() async {
-    return await repository.getCurrentSubscription();
-  }
+  @override
+  Future<Either<Failure, SubscriptionEntity>> call(NoParams params) =>
+      repository.getStatus();
 }

@@ -85,6 +85,7 @@ abstract final class ErrorMapper {
     ApiErrorCode.professionalInactive: _conflict,
     ApiErrorCode.invalidStateTransition: _conflict,
     ApiErrorCode.appointmentPaid: _conflict,
+    ApiErrorCode.paymentAlreadyExists: _conflict,
     ApiErrorCode.emailNotVerified: _conflict,
     ApiErrorCode.ownerNotDeletable: _conflict,
     ApiErrorCode.categoryHasServices: _conflict,

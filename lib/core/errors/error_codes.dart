@@ -14,6 +14,7 @@ abstract final class ApiErrorCode {
   static const professionalInactive = 'PROFESSIONAL_INACTIVE';
   static const invalidStateTransition = 'INVALID_STATE_TRANSITION';
   static const appointmentPaid = 'APPOINTMENT_PAID';
+  static const paymentAlreadyExists = 'PAYMENT_ALREADY_EXISTS';
   static const emailNotVerified = 'EMAIL_NOT_VERIFIED';
   static const ownerNotDeletable = 'OWNER_NOT_DELETABLE';
   static const categoryHasServices = 'CATEGORY_HAS_SERVICES';

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
-import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/create_paid_subscription_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_all_plans_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/get_current_subscription_usecase.dart';
@@ -20,7 +21,7 @@ enum PaymentVerificationStatus {
 }
 
 class SubscriptionController extends GetxController {
-  final CheckSubscriptionStatusUseCase checkSubscriptionStatusUseCase;
+  final CheckSubscriptionLimitsUseCase checkSubscriptionLimitsUseCase;
   final GetAllPlansUseCase getAllPlansUseCase;
   final CreatePaidSubscriptionUseCase createPaidSubscriptionUseCase;
   final GetCurrentSubscriptionUseCase getCurrentSubscriptionUseCase;
@@ -41,7 +42,7 @@ class SubscriptionController extends GetxController {
   final RxString paymentVerificationMessage = ''.obs;
 
   SubscriptionController({
-    required this.checkSubscriptionStatusUseCase,
+    required this.checkSubscriptionLimitsUseCase,
     required this.getAllPlansUseCase,
     required this.createPaidSubscriptionUseCase,
     required this.getCurrentSubscriptionUseCase,
@@ -56,81 +57,46 @@ class SubscriptionController extends GetxController {
 
   // Verifica el estado de la suscripción
   Future<bool> checkStatus() async {
-    try {
-      isLoading.value = true;
-      error.value = null;
-
-      final result = await checkSubscriptionStatusUseCase();
-
-      canCreateAppointment.value = result['canCreateAppointment'] ?? false;
-      statusMessage.value = result['message'] ?? '';
-
-      print('SubscriptionController - Estado: ${canCreateAppointment.value}');
-      print('SubscriptionController - Mensaje: ${statusMessage.value}');
-
-      return canCreateAppointment.value;
-    } catch (e) {
-      print('SubscriptionController - Error en checkStatus: $e');
-      error.value = e.toString();
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
+    isLoading.value = true;
+    error.value = null;
+    final result = await checkSubscriptionLimitsUseCase(NoParams());
+    isLoading.value = false;
+    return result.fold(
+      (failure) {
+        error.value = failure.message;
+        return false;
+      },
+      (limits) {
+        canCreateAppointment.value = limits.canCreateAppointment;
+        statusMessage.value = limits.message;
+        return limits.canCreateAppointment;
+      },
+    );
   }
 
   // Carga los planes disponibles
   Future<void> loadPlans() async {
-    try {
-      isLoading.value = true;
-      error.value = null;
-
-      final result = await getAllPlansUseCase();
-
-      if (result.isEmpty) {
-        print('SubscriptionController - No se encontraron planes disponibles');
-      } else {
-        print('SubscriptionController - Planes cargados: ${result.length}');
-        // Imprimir detalles de los planes para depuración
-        for (int i = 0; i < result.length; i++) {
-          print(
-              'Plan ${i + 1}: ${result[i].name} - ${result[i].price} ${result[i].currency}');
-        }
-      }
-
-      plans.assignAll(result);
-    } catch (e) {
-      print('SubscriptionController - Error en loadPlans: $e');
-      error.value = e.toString();
-
-      // Mostrar snackbar con error
-      Get.snackbar(
-        'Error',
-        'No se pudieron cargar los planes: ${e.toString()}',
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[800],
-        duration: const Duration(seconds: 3),
-      );
-    } finally {
-      isLoading.value = false;
-    }
+    isLoading.value = true;
+    error.value = null;
+    final result = await getAllPlansUseCase(NoParams());
+    isLoading.value = false;
+    result.fold(
+      (failure) => error.value = failure.message,
+      (result) => plans.assignAll(result),
+    );
   }
 
   /// Crea una suscripción pagada y devuelve el link de pago del backend.
   /// Devuelve '' si el backend no entrega link y lanza la [Failure] si falla:
   /// nunca inventa un link de demostración.
   Future<String> createSubscription(String planId) async {
-    try {
-      isLoading.value = true;
-
-      // El backend acepta myapp:// y lo reemplaza para Wompi.
-      const redirectUrl = 'myapp://payment-callback';
-      final result = await createPaidSubscriptionUseCase(planId, redirectUrl);
-
-      paymentUrl.value = (result['payment_link'] as String?) ?? '';
-      return paymentUrl.value;
-    } finally {
-      isLoading.value = false;
-    }
+    isLoading.value = true;
+    final result = await createPaidSubscriptionUseCase(planId);
+    isLoading.value = false;
+    return result.fold(
+      (failure) => throw failure,
+      (checkout) => paymentUrl.value = checkout.paymentLink,
+    );
   }
 
   // Método para abrir WebView con el link de pago
@@ -178,32 +144,25 @@ class SubscriptionController extends GetxController {
     paymentVerification.value = PaymentVerificationStatus.verifying;
     paymentVerificationMessage.value = '';
 
-    try {
-      final subscription = await getCurrentSubscriptionUseCase();
-
-      switch (subscription.status) {
-        case 'active':
-          paymentVerification.value = PaymentVerificationStatus.approved;
-          paymentVerificationMessage.value = subscription.statusMessage;
-          if (subscription.plan != null) {
-            selectedPlan.value = subscription.plan;
-          }
-          await checkStatus();
-          break;
-        case 'pending':
-          paymentVerification.value = PaymentVerificationStatus.pending;
-          paymentVerificationMessage.value =
-              'Tu pago aún no ha sido confirmado. Puede tardar unos minutos.';
-          break;
-        default:
-          paymentVerification.value = PaymentVerificationStatus.failed;
-          paymentVerificationMessage.value =
-              'No encontramos un pago confirmado para tu suscripción.';
-      }
-    } catch (e) {
+    final result = await getCurrentSubscriptionUseCase(NoParams());
+    final subscription = result.fold((_) => null, (s) => s);
+    if (subscription == null) {
       paymentVerification.value = PaymentVerificationStatus.error;
       paymentVerificationMessage.value =
           'No se pudo verificar el estado del pago. Revisa tu conexión e inténtalo de nuevo.';
+    } else if (subscription.isActive) {
+      paymentVerification.value = PaymentVerificationStatus.approved;
+      paymentVerificationMessage.value = 'Plan ${subscription.plan!.name} activo';
+      selectedPlan.value = subscription.plan;
+      await checkStatus();
+    } else if (subscription.hasPendingPayment) {
+      paymentVerification.value = PaymentVerificationStatus.pending;
+      paymentVerificationMessage.value =
+          'Tu pago aún no ha sido confirmado. Puede tardar unos minutos.';
+    } else {
+      paymentVerification.value = PaymentVerificationStatus.failed;
+      paymentVerificationMessage.value =
+          'No encontramos un pago confirmado para tu suscripción.';
     }
 
     return paymentVerification.value;

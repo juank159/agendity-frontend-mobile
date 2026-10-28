@@ -195,7 +195,7 @@ class PlanCard extends StatelessWidget {
   }
 
   Widget _buildFeaturesList(BuildContext context) {
-    List<String> features = plan.features ?? [];
+    List<String> features = [...plan.features];
 
     // Si no hay características definidas, generamos algunas basadas en el plan
     if (features.isEmpty) {

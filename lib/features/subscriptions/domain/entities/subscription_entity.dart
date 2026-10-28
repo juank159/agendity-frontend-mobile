@@ -1,105 +1,81 @@
-// lib/features/subscriptions/domain/entities/subscription_entity.dart
+import 'package:login_signup/features/subscriptions/domain/entities/pending_payment.dart';
+import 'package:login_signup/features/subscriptions/domain/entities/subscription_plan.dart';
+import 'package:login_signup/features/subscriptions/domain/entities/subscription_status.dart';
 
+export 'package:login_signup/features/subscriptions/domain/entities/pending_payment.dart';
+export 'package:login_signup/features/subscriptions/domain/entities/subscription_plan.dart';
+export 'package:login_signup/features/subscriptions/domain/entities/subscription_status.dart';
+
+/// Suscripción del negocio con su **estado efectivo** (`GET /subscriptions/status`):
+/// el backend ya calcula `expired` (fecha de fin pasada) y deja `active` una
+/// cancelada que sigue vigente ([cancelAtPeriodEnd]). Si y cuántas citas se
+/// pueden crear lo dice `SubscriptionLimits` (`check-limits`), que cuenta las
+/// citas del periodo de los planes con límite.
 class SubscriptionEntity {
-  final String id;
-  final String tenantId;
-  final String status; // 'trial', 'active', 'canceled', 'expired', etc.
+  /// `null` si el negocio aún no tiene fila (trial sin usar).
+  final String? id;
+  final SubscriptionStatus status;
   final int trialAppointmentsUsed;
   final int trialAppointmentsLimit;
   final bool isTrialUsed;
-  final DateTime? subscriptionStartDate;
-  final DateTime? subscriptionEndDate;
+  final DateTime? startDate;
+  final DateTime? endDate;
   final SubscriptionPlanEntity? plan;
 
-  SubscriptionEntity({
-    required this.id,
-    required this.tenantId,
+  /// Cancelada, pero vigente (y sin renovación) hasta [endDate].
+  final bool cancelAtPeriodEnd;
+  final PendingPayment? pendingPayment;
+
+  const SubscriptionEntity({
+    this.id,
     required this.status,
-    required this.trialAppointmentsUsed,
-    required this.trialAppointmentsLimit,
-    required this.isTrialUsed,
-    this.subscriptionStartDate,
-    this.subscriptionEndDate,
+    this.trialAppointmentsUsed = 0,
+    this.trialAppointmentsLimit = 0,
+    this.isTrialUsed = false,
+    this.startDate,
+    this.endDate,
     this.plan,
+    this.cancelAtPeriodEnd = false,
+    this.pendingPayment,
   });
 
-  // Método para verificar si puede crear citas
-  bool get canCreateAppointment {
-    if (status == 'active' && plan != null) {
-      return true;
-    }
+  bool get isTrial => status == SubscriptionStatus.trial;
 
-    if (status == 'trial' && trialAppointmentsUsed < trialAppointmentsLimit) {
-      return true;
-    }
+  /// Plan pagado vigente (incluida una cancelación que aún no llega a su fin).
+  bool get isActive => status == SubscriptionStatus.active && plan != null;
 
-    return false;
+  int get trialAppointmentsRemaining {
+    final remaining = trialAppointmentsLimit - trialAppointmentsUsed;
+    return remaining < 0 ? 0 : remaining;
   }
 
-  // Método para obtener el mensaje de estado
-  String get statusMessage {
-    if (status == 'trial') {
-      final remaining = trialAppointmentsLimit - trialAppointmentsUsed;
-      return 'Citas restantes en prueba: $remaining';
-    }
+  bool get hasPendingPayment => pendingPayment != null;
 
-    if (status == 'active' && plan != null) {
-      return 'Plan ${plan!.name} activo hasta ${_formatDate(subscriptionEndDate)}';
-    }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SubscriptionEntity &&
+          other.id == id &&
+          other.status == status &&
+          other.trialAppointmentsUsed == trialAppointmentsUsed &&
+          other.trialAppointmentsLimit == trialAppointmentsLimit &&
+          other.isTrialUsed == isTrialUsed &&
+          other.startDate == startDate &&
+          other.endDate == endDate &&
+          other.plan == plan &&
+          other.cancelAtPeriodEnd == cancelAtPeriodEnd &&
+          other.pendingPayment == pendingPayment;
 
-    if (status == 'expired') {
-      return 'Tu suscripción ha expirado. Por favor, renueva tu plan.';
-    }
-
-    if (isTrialUsed) {
-      return 'Has alcanzado el límite de citas de prueba. Por favor, adquiere un plan.';
-    }
-
-    return 'Suscripción inactiva';
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return '';
-    return '${date.day}/${date.month}/${date.year}';
-  }
-}
-
-class SubscriptionPlanEntity {
-  final String id;
-  final String name;
-  final String description;
-  final double price;
-  final String currency;
-  final String billingInterval; // 'month' o 'year'
-  final int appointmentLimit;
-  final String wompiPriceId;
-  final bool isActive;
-  final List<String>? features;
-
-  SubscriptionPlanEntity({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.currency,
-    required this.billingInterval,
-    required this.appointmentLimit,
-    required this.wompiPriceId,
-    required this.isActive,
-    this.features,
-  });
-
-  // Método para obtener la URL de pago de Wompi
-  String get paymentUrl => 'https://checkout.wompi.co/l/$wompiPriceId';
-
-  // Método para obtener la duración en meses
-  int get durationMonths {
-    if (name.toLowerCase().contains('semestral')) {
-      return 6;
-    } else if (name.toLowerCase().contains('anual') ||
-        billingInterval == 'year') {
-      return 12;
-    }
-    return 1; // Por defecto mensual
-  }
+  @override
+  int get hashCode => Object.hash(
+      id,
+      status,
+      trialAppointmentsUsed,
+      trialAppointmentsLimit,
+      isTrialUsed,
+      startDate,
+      endDate,
+      plan,
+      cancelAtPeriodEnd,
+      pendingPayment);
 }

@@ -34,7 +34,8 @@ import 'package:login_signup/features/services/domain/entities/service_entity.da
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 
 // Nuevas importaciones para la funcionalidad de suscripción
-import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_status_usecase.dart';
+import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
+import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
@@ -94,9 +95,12 @@ class AppointmentsController extends GetxController {
   final RxString userId = ''.obs;
 
   // Servicio de suscripciones
-  late CheckSubscriptionStatusUseCase? checkSubscriptionStatusUseCase;
+  late CheckSubscriptionLimitsUseCase? checkSubscriptionStatusUseCase;
   final RxBool canCreateAppointment = true.obs;
   final RxString subscriptionMessage = ''.obs;
+
+  /// Motivo del último bloqueo de `check-limits` (por `code`, no por texto).
+  SubscriptionBlock? _subscriptionBlock;
 
   EmployeesController? _employeesController;
   EmployeesController? get employeesController {
@@ -149,9 +153,9 @@ class AppointmentsController extends GetxController {
     if (checkSubscriptionStatusUseCase == null) {
       try {
         checkSubscriptionStatusUseCase =
-            Get.find<CheckSubscriptionStatusUseCase>();
+            Get.find<CheckSubscriptionLimitsUseCase>();
       } catch (e) {
-        print('No se encontró CheckSubscriptionStatusUseCase: $e');
+        print('No se encontró CheckSubscriptionLimitsUseCase: $e');
       }
     }
   }
@@ -162,72 +166,37 @@ class AppointmentsController extends GetxController {
 
       if (checkSubscriptionStatusUseCase == null) {
         print(
-            'CheckSubscriptionStatusUseCase es null, intentando encontrarlo...');
+            'CheckSubscriptionLimitsUseCase es null, intentando encontrarlo...');
         try {
           checkSubscriptionStatusUseCase =
-              Get.find<CheckSubscriptionStatusUseCase>();
-          print('CheckSubscriptionStatusUseCase encontrado con éxito');
+              Get.find<CheckSubscriptionLimitsUseCase>();
+          print('CheckSubscriptionLimitsUseCase encontrado con éxito');
         } catch (e) {
-          print('No se pudo encontrar CheckSubscriptionStatusUseCase: $e');
+          print('No se pudo encontrar CheckSubscriptionLimitsUseCase: $e');
           return true; // Por defecto, permitir si no se puede verificar
         }
       }
 
       if (checkSubscriptionStatusUseCase == null) {
-        print('CheckSubscriptionStatusUseCase sigue siendo null');
+        print('CheckSubscriptionLimitsUseCase sigue siendo null');
         return true;
       }
 
-      print('Llamando a checkSubscriptionStatusUseCase...');
-      final result = await checkSubscriptionStatusUseCase!.call();
-      print('Respuesta de CheckSubscriptionStatusUseCase: $result');
-
-      canCreateAppointment.value = result['canCreateAppointment'] ?? true;
-      subscriptionMessage.value = result['message'] ?? '';
-
-      print('Estado de suscripción: ${canCreateAppointment.value}');
-      print('Mensaje: ${subscriptionMessage.value}');
-
-      // Guardar el mensaje para el diálogo
-      if (!canCreateAppointment.value && result['message'] != null) {
-        subscriptionMessage.value = result['message'];
-      }
-
-      return canCreateAppointment.value;
+      final result = await checkSubscriptionStatusUseCase!.call(NoParams());
+      return result.fold(
+        // Si no se puede comprobar, se deja seguir: el backend vuelve a
+        // validarlo al crear la cita.
+        (failure) => true,
+        (limits) {
+          canCreateAppointment.value = limits.canCreateAppointment;
+          subscriptionMessage.value = limits.message;
+          _subscriptionBlock = limits.block;
+          return limits.canCreateAppointment;
+        },
+      );
     } catch (e) {
       print('Error verificando estado de suscripción: $e');
-
-      // Verificar si es un error relacionado con la suscripción
-      final errorMessage = e.toString().toLowerCase();
-
-      if (errorMessage.contains('límite de citas') ||
-          errorMessage.contains('plan de prueba') ||
-          errorMessage.contains('trial')) {
-        canCreateAppointment.value = false;
-
-        // Extraer el mensaje para mostrarlo en el diálogo correspondiente
-        final message = e.toString();
-        final cleanMessage =
-            message.contains(':') ? message.split(':').last.trim() : message;
-        subscriptionMessage.value =
-            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
-
-        return false;
-      } else if (errorMessage.contains('suscripción no está activa') ||
-          errorMessage.contains('actualiza tu plan')) {
-        canCreateAppointment.value = false;
-
-        // Extraer el mensaje para mostrarlo en el diálogo correspondiente
-        final message = e.toString();
-        final cleanMessage =
-            message.contains(':') ? message.split(':').last.trim() : message;
-        subscriptionMessage.value =
-            cleanMessage.replaceAll(RegExp(r'\(Code: \d+\)'), '').trim();
-
-        return false;
-      }
-
-      return true; // Por defecto, permitir si hay un error no relacionado con suscripción
+      return true;
     }
   }
 
@@ -887,15 +856,7 @@ class AppointmentsController extends GetxController {
       // Verificar estado de suscripción
       final canContinue = await checkSubscriptionStatus();
       if (!canContinue) {
-        // En lugar de mostrar siempre el mismo diálogo, detectar el mensaje para mostrar el adecuado
-        final message = subscriptionMessage.value.toLowerCase();
-        if (message.contains('límite de citas') ||
-            message.contains('plan de prueba') ||
-            message.contains('trial')) {
-          _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
-        } else {
-          _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
-        }
+        showSubscriptionDialog();
         return;
       }
 
@@ -1351,15 +1312,10 @@ class AppointmentsController extends GetxController {
 
 // Método público para elegir qué diálogo mostrar
   void showSubscriptionDialog() {
-    final message = subscriptionMessage.value.toLowerCase();
-
-    if (message.contains('límite de citas') ||
-        message.contains('plan de prueba') ||
-        message.contains('trial')) {
-      _showSubscriptionBlocked(SubscriptionBlockReason.trialEnded);
-    } else {
-      _showSubscriptionBlocked(SubscriptionBlockReason.inactive);
-    }
+    _showSubscriptionBlocked(
+        _subscriptionBlock == SubscriptionBlock.trialLimitReached
+            ? SubscriptionBlockReason.trialEnded
+            : SubscriptionBlockReason.inactive);
   }
 
   bool _isAppointmentTimeValid(DateTime appointmentTime, dynamic employee) {

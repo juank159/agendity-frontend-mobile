@@ -1,9 +1,8 @@
 import 'package:login_signup/core/errors/failures.dart';
 
-/// Ya existe un cliente con ese teléfono (o email) en el negocio (409 al crear
-/// o editar). El backend lo comprueba antes de guardar y responde
-/// `ConflictException` → `code: CONFLICT`, con un mensaje que dice qué campo
-/// se repite; por eso se conserva el texto del servidor.
+/// Ya existe un cliente con ese teléfono o email en el negocio (409
+/// `DUPLICATE_EMAIL`/`DUPLICATE_PHONE` al crear o editar, 2.30). Se conserva
+/// el texto del servidor, que dice el valor repetido.
 class DuplicateClientFailure extends ConflictFailure {
   static const defaultMessage =
       'Ya existe un cliente con ese teléfono o email en tu negocio';
@@ -16,8 +15,7 @@ class DuplicateClientFailure extends ConflictFailure {
   }) : super(message: message ?? defaultMessage);
 }
 
-/// Teléfono repetido en el negocio (`DUPLICATE_PHONE`: el índice único
-/// (teléfono, negocio) frenó un alta simultánea).
+/// Teléfono repetido en el negocio (`DUPLICATE_PHONE`).
 class DuplicateClientPhoneFailure extends DuplicateClientFailure {
   static const defaultMessage =
       'Ya existe un cliente con ese teléfono en tu negocio';

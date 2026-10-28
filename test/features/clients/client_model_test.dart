@@ -77,8 +77,8 @@ void main() {
       expect(entity.createdAt!.isUtc, false);
     });
 
-    test('sin email (null, vacío o el marcador antiguo) → email null', () {
-      for (final email in [null, '', '  ', ClientModel.legacyNoEmail]) {
+    test('sin email (null o vacío) → email null', () {
+      for (final email in [null, '', '  ']) {
         final entity =
             ClientModel.fromJson(backendClient(email: email)).toEntity();
         expect(entity.email, isNull, reason: '$email');

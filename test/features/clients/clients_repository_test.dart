@@ -219,33 +219,50 @@ void main() {
       expect(adapter.requests, isEmpty);
     });
 
-    test(
-        '409 CONFLICT (comprobación previa) → DuplicateClientFailure con el texto del backend',
+    test('409 DUPLICATE_EMAIL → DuplicateClientFailure con el texto del backend',
         () async {
-      adapter.handler = (_) => errorBody(
-          409, 'CONFLICT', 'Ya existe un cliente con el teléfono: 3001234567');
+      adapter.handler = (_) => errorBody(409, 'DUPLICATE_EMAIL',
+          'Ya existe un cliente con el email: ana@example.com');
       for (final result in [
         await CreateClientUseCase(repository)(newClient),
         await UpdateClientUseCase(repository)(newClient.copyWith(id: 'cli-1')),
       ]) {
         final failure = leftOf(result);
         expect(failure, isA<DuplicateClientFailure>());
+        expect(failure, isNot(isA<DuplicateClientPhoneFailure>()));
         expect(failure, isA<ConflictFailure>());
         expect(failure!.message,
-            'Ya existe un cliente con el teléfono: 3001234567');
+            'Ya existe un cliente con el email: ana@example.com');
+        expect(failure.code, ApiErrorCode.duplicateEmail);
         expect(failure.statusCode, 409);
       }
     });
 
-    test('409 DUPLICATE_PHONE (índice único) → DuplicateClientPhoneFailure',
+    test(
+        '409 DUPLICATE_PHONE → DuplicateClientPhoneFailure con el texto del backend',
         () async {
-      adapter.handler = (_) => errorBody(
-          409, 'DUPLICATE_PHONE', 'Ya existe un registro con ese teléfono');
+      adapter.handler = (_) => errorBody(409, 'DUPLICATE_PHONE',
+          'Ya existe un cliente con el teléfono: 3001234567');
+      for (final result in [
+        await CreateClientUseCase(repository)(newClient),
+        await UpdateClientUseCase(repository)(newClient.copyWith(id: 'cli-1')),
+      ]) {
+        final failure = leftOf(result);
+        expect(failure, isA<DuplicateClientPhoneFailure>());
+        expect(failure, isA<DuplicateClientFailure>());
+        expect(failure!.code, ApiErrorCode.duplicatePhone);
+        expect(failure.message,
+            'Ya existe un cliente con el teléfono: 3001234567');
+      }
+    });
+
+    test('409 CONFLICT al guardar ya no es un duplicado: ConflictFailure genérico',
+        () async {
+      adapter.handler = (_) => errorBody(409, 'CONFLICT', 'Conflicto');
       final failure = leftOf(await repository.createClient(newClient));
-      expect(failure, isA<DuplicateClientPhoneFailure>());
-      expect(failure, isA<DuplicateClientFailure>());
-      expect(failure!.code, ApiErrorCode.duplicatePhone);
-      expect(failure.message, DuplicateClientPhoneFailure.defaultMessage);
+      expect(failure, isA<ConflictFailure>());
+      expect(failure, isNot(isA<DuplicateClientFailure>()));
+      expect(failure!.code, ApiErrorCode.conflict);
     });
 
     test('PATCH /clients/:id: email vacío lo quita; sin id → failure local',

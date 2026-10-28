@@ -5,15 +5,11 @@ import 'package:login_signup/features/clients/domain/entities/client_entity.dart
 /// DTO de `/clients` (backend: `Client`, en camelCase salvo `created_at` y
 /// `updated_at`).
 ///
-/// - `email` puede llegar `null` (2.20). El marcador que la app ponía antes a
-///   los importados sin email ([legacyNoEmail]) se lee como "sin email".
+/// - `email` puede llegar `null` (2.20): cliente sin email.
 /// - `birthday` es un día: se envía `yyyy-MM-dd` (el backend lo guarda como
 ///   00:00 del negocio) y se lee la fecha escrita, sin convertir de zona.
 /// - `GET /clients/:id` trae además `appointments` y `reviews`: se ignoran.
 class ClientModel {
-  /// Email de relleno de los imports anteriores a la 4.06.
-  static const legacyNoEmail = 'no-email@example.com';
-
   final String? id;
   final String name;
   final String lastname;
@@ -51,12 +47,11 @@ class ClientModel {
   });
 
   factory ClientModel.fromJson(Map<String, dynamic> json) {
-    final email = JsonRead.asOptionalString(json['email']);
     return ClientModel(
       id: JsonRead.asOptionalString(json['id']),
       name: JsonRead.asString(json['name']),
       lastname: JsonRead.asString(json['lastname']),
-      email: email == legacyNoEmail ? null : email,
+      email: JsonRead.asOptionalString(json['email']),
       phone: JsonRead.asString(json['phone']),
       image: JsonRead.asOptionalString(json['image']),
       address: JsonRead.asOptionalString(json['address']),

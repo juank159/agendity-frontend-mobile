@@ -13,15 +13,10 @@ typedef SessionExpiredCallback = FutureOr<void> Function(String expiredToken);
 /// - Rutas públicas (login, registro, recuperar contraseña…): marcar la
 ///   petición con `Options(extra: {AuthInterceptor.publicKey: true})`; no se
 ///   envía token y su 401 (p. ej. "Credenciales inválidas") no cierra sesión.
-/// - Rutas autenticadas cuyo 401 lo produce la propia acción y no la sesión
-///   (`POST /auth/verify/employee-email` con un código incorrecto): marcar con
-///   `Options(extra: {AuthInterceptor.keepSessionOn401Key: true})`. Se envía
-///   el token, pero su 401 no cierra sesión.
 /// - El aviso se da una sola vez por token: varias peticiones que fallan a la
 ///   vez con el mismo token vencido no disparan varios cierres de sesión.
 class AuthInterceptor extends Interceptor {
   static const publicKey = 'public';
-  static const keepSessionOn401Key = 'keepSessionOn401';
   static const _tokenKey = 'authToken';
 
   final TokenStore _tokenStore;
@@ -36,9 +31,6 @@ class AuthInterceptor extends Interceptor {
 
   static bool isPublic(RequestOptions options) =>
       options.extra[publicKey] == true;
-
-  static bool _keepsSessionOn401(RequestOptions options) =>
-      options.extra[keepSessionOn401Key] == true;
 
   @override
   Future<void> onRequest(
@@ -77,7 +69,6 @@ class AuthInterceptor extends Interceptor {
     final sentToken = options.extra[_tokenKey];
     if (err.response?.statusCode == 401 &&
         !isPublic(options) &&
-        !_keepsSessionOn401(options) &&
         sentToken is String &&
         sentToken != _expiredToken) {
       _expiredToken = sentToken;

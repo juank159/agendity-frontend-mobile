@@ -66,16 +66,16 @@ class ClientsRepositoryImpl implements ClientsRepository {
   Future<Either<Failure, String>> uploadImage(String filePath) =>
       safeCall(() => _remote.uploadImage(filePath));
 
-  /// Al crear o editar, los 409 son de unicidad dentro del negocio:
-  /// `DUPLICATE_PHONE` (índice único, alta simultánea) o `CONFLICT` (la
-  /// comprobación previa del backend; su mensaje dice si es el teléfono o el
-  /// email).
+  /// Cliente repetido en el negocio al crear o editar (2.30):
+  /// `DUPLICATE_PHONE` o `DUPLICATE_EMAIL`, tanto de la comprobación previa
+  /// como del índice único. Se conserva el texto del backend, que dice el
+  /// valor repetido.
   static Failure _refineSave(Failure failure) => switch (failure.code) {
         ApiErrorCode.duplicatePhone => DuplicateClientPhoneFailure(
-            statusCode: failure.statusCode, details: failure.details),
-        ApiErrorCode.duplicateEmail ||
-        ApiErrorCode.conflict =>
-          DuplicateClientFailure(
+            message: failure.message,
+            statusCode: failure.statusCode,
+            details: failure.details),
+        ApiErrorCode.duplicateEmail => DuplicateClientFailure(
               message: failure.message,
               code: failure.code,
               statusCode: failure.statusCode,

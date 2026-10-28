@@ -15,6 +15,7 @@ import 'package:login_signup/features/services/presentation/controller/edit_serv
 import 'package:login_signup/features/services/presentation/controller/new_category_controller.dart';
 import 'package:login_signup/features/services/presentation/controller/new_service_controller.dart';
 import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
+import 'package:login_signup/features/statistics/presentation/controllers/employee_stats_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/statistics_controller.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
 import 'package:login_signup/features/whatsapp/presentation/controllers/whatsapp_controller.dart';
@@ -48,6 +49,7 @@ abstract final class SessionScope {
     deleteSessionController<CategoriesController>,
     deleteSessionController<NewCategoryController>,
     deleteSessionController<StatisticsController>,
+    deleteSessionController<EmployeeStatsController>,
     deleteSessionController<SubscriptionController>,
     deleteSessionController<WhatsappController>,
   ];

@@ -1,151 +1,177 @@
-// lib/features/statistics/presentation/screens/statistics_dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/statistics/presentation/widgets/expandable_section.dart';
+import 'package:login_signup/core/widgets/error_state.dart';
+import 'package:login_signup/core/widgets/list_state_view.dart';
+import '../../domain/entities/payment_method_stats_entity.dart';
+import '../../domain/entities/professional_stats_entity.dart';
+import '../../domain/entities/service_stats_entity.dart';
+import '../../domain/entities/top_client_entity.dart';
 import '../controllers/statistics_controller.dart';
 import '../widgets/date_range_selector.dart';
+import '../widgets/expandable_section.dart';
 import '../widgets/overview_stats_card.dart';
-import '../widgets/stats_section_header.dart';
 import '../widgets/payment_comparison_card.dart';
-import '../widgets/top_clients_widget.dart';
 import '../widgets/payment_methods_chart.dart';
 import '../widgets/professionals_performance_widget.dart';
 import '../widgets/services_performance_widget.dart';
+import '../widgets/stats_card.dart';
+import '../widgets/stats_section_view.dart';
+import '../widgets/top_clients_widget.dart';
 
-class StatisticsDashboardScreen extends StatelessWidget {
+/// Estadísticas del negocio (solo Owner). Ingresos netos por días del
+/// negocio; los bloques plegables se cargan al abrirlos.
+class StatisticsDashboardScreen extends GetView<StatisticsController> {
   const StatisticsDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<StatisticsController>();
-
+    if (!controller.canView) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Estadísticas')),
+        body: const ErrorState(
+          title: 'Sin acceso',
+          icon: Icons.lock_outline,
+          message: StatisticsController.ownerOnlyMessage,
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard de Estadísticas'),
+        title: const Text('Estadísticas'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: controller.refreshAllStats,
-            tooltip: 'Actualizar datos',
+            tooltip: 'Actualizar',
+            onPressed: controller.refreshAll,
           ),
         ],
       ),
-      body: Obx(() {
-        // Mostrar indicador de carga si estamos cargando datos iniciales
-        if (controller.isLoadingOverview.value &&
-            controller.paymentStats.value == null) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        // Mostrar error si hay uno
-        if (controller.errorOverview.value.isNotEmpty &&
-            controller.paymentStats.value == null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(
-                  'Error al cargar datos',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(controller.errorOverview.value),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: controller.loadOverviewData,
-                  child: const Text('Reintentar'),
-                ),
-              ],
+      body: RefreshIndicator(
+        onRefresh: controller.refreshAll,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: [
+            Obx(() => DateRangeSelector(
+                  selected: controller.range.value,
+                  today: controller.today,
+                  onChanged: controller.setRange,
+                )),
+            const SizedBox(height: 16),
+            StatsSectionView(
+              section: controller.overview,
+              onRetry: controller.loadOverview,
+              loadingMessage: 'Cargando estadísticas…',
+              isEmpty: (stats) => stats.isEmpty,
+              emptySubMessage: 'Prueba con un período más amplio.',
+              builder: (context, stats) => OverviewStatsCard(stats: stats),
             ),
-          );
-        }
-
-        // Mostrar el dashboard
-        return RefreshIndicator(
-          onRefresh: () => controller.loadAllStats(),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Selector de rango de fechas
-                DateRangeSelector(
-                  selectedDateRange: controller.selectedDateRange.value,
-                  onDateRangeSelected: controller.setDateRange,
-                ),
-
-                const SizedBox(height: 16),
-
-                // Tarjeta de resumen
-                if (controller.paymentStats.value != null)
-                  OverviewStatsCard(stats: controller.paymentStats.value!),
-
-                const SizedBox(height: 24),
-
-                // Comparación con período anterior
-                const StatsSectionHeader(
-                  title: 'Comparación con período anterior',
-                  icon: Icons.compare_arrows,
-                ),
-                if (controller.paymentComparison.value != null)
-                  PaymentComparisonCard(
-                      comparison: controller.paymentComparison.value!),
-
-                const SizedBox(height: 24),
-
-                // Métodos de pago
-                ExpandableSection(
-                  title: 'Métodos de pago',
-                  icon: Icons.payment,
-                  isExpanded: controller.isPaymentMethodsExpanded,
-                  onToggle: controller.togglePaymentMethods,
-                  child: PaymentMethodsChart(),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Rendimiento por profesional
-                ExpandableSection(
-                  title: 'Rendimiento por profesional',
-                  icon: Icons.person,
-                  isExpanded: controller.isProfessionalsExpanded,
-                  onToggle: controller.toggleProfessionals,
-                  child: const ProfessionalsPerformanceWidget(),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Rendimiento por servicio
-                ExpandableSection(
-                  title: 'Rendimiento por servicio',
-                  icon: Icons.spa,
-                  isExpanded: controller.isServicesExpanded,
-                  onToggle: controller.toggleServices,
-                  child: const ServicesPerformanceWidget(),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Top clientes
-                ExpandableSection(
-                  title: 'Mejores clientes',
-                  icon: Icons.people,
-                  isExpanded: controller.isTopClientsExpanded,
-                  onToggle: controller.toggleTopClients,
-                  child: const TopClientsWidget(),
-                ),
-
-                const SizedBox(height: 32),
-              ],
+            const SizedBox(height: 16),
+            StatsCard(
+              title: 'Comparación con el período anterior',
+              child: StatsSectionView(
+                section: controller.comparison,
+                onRetry: controller.loadOverview,
+                builder: (context, comparison) =>
+                    PaymentComparisonCard(comparison: comparison),
+              ),
             ),
-          ),
-        );
-      }),
+            const SizedBox(height: 8),
+            _Section(
+              section: StatsDashboardSection.paymentMethods,
+              title: 'Métodos de pago',
+              icon: Icons.payment,
+              child: Obx(() => ListStateView<PaymentMethodStatsEntity>(
+                    isLoading: controller.paymentMethods.isLoading.value,
+                    error: controller.paymentMethods.error.value,
+                    items: controller.paymentMethods.data.value ?? const [],
+                    onRetry: _retry(StatsDashboardSection.paymentMethods),
+                    emptyIcon: Icons.payment,
+                    emptyMessage: 'Sin pagos en este período',
+                    builder: (context, stats) =>
+                        PaymentMethodsChart(stats: stats),
+                  )),
+            ),
+            _Section(
+              section: StatsDashboardSection.professionals,
+              title: 'Ingresos por profesional',
+              icon: Icons.person_outline,
+              child: Obx(() => ListStateView<ProfessionalStatsEntity>(
+                    isLoading: controller.professionals.isLoading.value,
+                    error: controller.professionals.error.value,
+                    items: controller.professionals.data.value ?? const [],
+                    onRetry: _retry(StatsDashboardSection.professionals),
+                    emptyIcon: Icons.person_outline,
+                    emptyMessage: 'Sin pagos en este período',
+                    builder: (context, stats) =>
+                        ProfessionalsPerformanceWidget(stats: stats),
+                  )),
+            ),
+            _Section(
+              section: StatsDashboardSection.services,
+              title: 'Servicios',
+              icon: Icons.spa_outlined,
+              child: Obx(() => ListStateView<ServiceStatsEntity>(
+                    isLoading: controller.services.isLoading.value,
+                    error: controller.services.error.value,
+                    items: controller.services.data.value ?? const [],
+                    onRetry: _retry(StatsDashboardSection.services),
+                    emptyIcon: Icons.spa_outlined,
+                    emptyMessage: 'Sin servicios pagados en este período',
+                    builder: (context, stats) =>
+                        ServicesPerformanceWidget(stats: stats),
+                  )),
+            ),
+            _Section(
+              section: StatsDashboardSection.topClients,
+              title: 'Mejores clientes',
+              icon: Icons.people_outline,
+              child: Obx(() => ListStateView<TopClientEntity>(
+                    isLoading: controller.topClients.isLoading.value,
+                    error: controller.topClients.error.value,
+                    items: controller.topClients.data.value ?? const [],
+                    onRetry: _retry(StatsDashboardSection.topClients),
+                    emptyIcon: Icons.people_outline,
+                    emptyMessage: 'Sin clientes con pagos en este período',
+                    builder: (context, clients) => TopClientsWidget(
+                      clients: clients,
+                      onShowMore: controller.canShowMoreTopClients
+                          ? controller.showMoreTopClients
+                          : null,
+                    ),
+                  )),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  VoidCallback _retry(StatsDashboardSection section) =>
+      () => controller.loadSection(section);
+}
+
+class _Section extends GetView<StatisticsController> {
+  final StatsDashboardSection section;
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  const _Section({
+    required this.section,
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() => ExpandableSection(
+          title: title,
+          icon: icon,
+          isExpanded: controller.isExpanded(section),
+          onToggle: () => controller.toggle(section),
+          child: child,
+        ));
   }
 }

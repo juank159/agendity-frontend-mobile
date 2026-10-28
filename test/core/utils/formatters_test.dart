@@ -42,4 +42,11 @@ void main() {
     expect(formatDurationMinutes(75), '1 h 15 min');
     expect(formatDurationMinutes(-5), '0 min');
   });
+
+  test('formatPercent: de 0 a 100, un decimal como mucho', () {
+    expect(formatPercent(15), '15 %');
+    expect(formatPercent(12.46), '12,5 %');
+    expect(formatPercent(1250), '1.250 %');
+    expect(formatPercent(null), '0 %');
+  });
 }

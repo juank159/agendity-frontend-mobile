@@ -327,7 +327,7 @@ class GetRoutes {
       name: employeeStats,
       middlewares: [AuthMiddleware()],
       page: () => const EmployeeStatsScreen(),
-      binding: StatisticsBinding(),
+      binding: EmployeeStatsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,

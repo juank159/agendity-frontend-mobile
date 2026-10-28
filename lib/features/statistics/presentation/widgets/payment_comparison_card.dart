@@ -1,165 +1,123 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import '../../domain/entities/payment_comparison_entity.dart';
-import '../controllers/statistics_controller.dart';
 
+/// Período elegido frente al anterior de la misma duración.
 class PaymentComparisonCard extends StatelessWidget {
   final PaymentComparisonEntity comparison;
 
-  const PaymentComparisonCard({
-    super.key,
-    required this.comparison,
+  const PaymentComparisonCard({super.key, required this.comparison});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final current = comparison.currentPeriod;
+    final previous = comparison.previousPeriod;
+    final change = comparison.change;
+    final muted = theme.textTheme.bodySmall
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Actual: ${_period(current)}', style: muted),
+        Text('Anterior: ${_period(previous)}', style: muted),
+        const Divider(height: 24),
+        _ComparisonRow(
+          label: 'Ingresos netos',
+          current: formatCop(current.totalAmount),
+          previous: formatCop(previous.totalAmount),
+          percentage: change.amountPercentage,
+        ),
+        const SizedBox(height: 16),
+        _ComparisonRow(
+          label: 'Pagos',
+          current: '${current.paymentCount}',
+          previous: '${previous.paymentCount}',
+          percentage: change.countPercentage,
+        ),
+        const SizedBox(height: 16),
+        _ComparisonRow(
+          label: 'Promedio por pago',
+          current: formatCop(current.averageAmount),
+          previous: formatCop(previous.averageAmount),
+          percentage: change.averagePercentage,
+        ),
+      ],
+    );
+  }
+
+  static String _period(PeriodStatsEntity period) {
+    final start = formatDate(period.startDate);
+    final end = formatDate(period.endDate);
+    return start == end ? start : '$start - $end';
+  }
+}
+
+class _ComparisonRow extends StatelessWidget {
+  final String label;
+  final String current;
+  final String previous;
+  final double percentage;
+
+  const _ComparisonRow({
+    required this.label,
+    required this.current,
+    required this.previous,
+    required this.percentage,
   });
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<StatisticsController>();
-    final change = comparison.change;
-
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Período actual: ${controller.formatDate(comparison.currentPeriod.startDate)} - ${controller.formatDate(comparison.currentPeriod.endDate)}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Período anterior: ${controller.formatDate(comparison.previousPeriod.startDate)} - ${controller.formatDate(comparison.previousPeriod.endDate)}',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[700],
-              ),
-            ),
-            const Divider(height: 24),
-
-            // Ventas
-            _buildComparisonRow(
-              context,
-              'Ventas',
-              controller.formatCurrency(comparison.currentPeriod.totalAmount),
-              controller.formatCurrency(comparison.previousPeriod.totalAmount),
-              change.amountPercentage,
-              controller.getPercentageColor(change.amountPercentage),
-              controller.getPercentageIcon(change.amountPercentage),
-            ),
-            const SizedBox(height: 16),
-
-            // Transacciones
-            _buildComparisonRow(
-              context,
-              'Transacciones',
-              comparison.currentPeriod.paymentCount.toString(),
-              comparison.previousPeriod.paymentCount.toString(),
-              change.countPercentage,
-              controller.getPercentageColor(change.countPercentage),
-              controller.getPercentageIcon(change.countPercentage),
-            ),
-            const SizedBox(height: 16),
-
-            // Valor promedio
-            _buildComparisonRow(
-              context,
-              'Valor promedio',
-              controller.formatCurrency(comparison.currentPeriod.averageAmount),
-              controller
-                  .formatCurrency(comparison.previousPeriod.averageAmount),
-              change.averagePercentage,
-              controller.getPercentageColor(change.averagePercentage),
-              controller.getPercentageIcon(change.averagePercentage),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildComparisonRow(
-    BuildContext context,
-    String label,
-    String currentValue,
-    String previousValue,
-    double percentageChange,
-    Color changeColor,
-    IconData changeIcon,
-  ) {
-    final controller = Get.find<StatisticsController>();
-
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tokens = context.tokens;
+    final Color color;
+    final IconData icon;
+    if (percentage > 0) {
+      color = tokens.success.color;
+      icon = Icons.arrow_upward;
+    } else if (percentage < 0) {
+      color = tokens.error.color;
+      icon = Icons.arrow_downward;
+    } else {
+      color = scheme.onSurfaceVariant;
+      icon = Icons.remove;
+    }
     return Row(
       children: [
         Expanded(
-          flex: 3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                currentValue,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                'Anterior: $previousValue',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
+              Text(label,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: scheme.onSurfaceVariant)),
+              Text(current,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Anterior: $previous',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant)),
             ],
           ),
         ),
-        Expanded(
-          flex: 2,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            decoration: BoxDecoration(
-              color: changeColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  changeIcon,
-                  color: changeColor,
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  controller.formatPercent(percentageChange.abs()),
-                  style: TextStyle(
-                    color: changeColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                formatPercent(percentage.abs()),
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
         ),
       ],

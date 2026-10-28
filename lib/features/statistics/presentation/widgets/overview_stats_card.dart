@@ -1,116 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import '../../domain/entities/payment_stats_entity.dart';
-import '../controllers/statistics_controller.dart';
+import 'stats_card.dart';
 
+/// Resumen del período: ingresos netos, número de pagos y promedio por pago.
 class OverviewStatsCard extends StatelessWidget {
   final PaymentStatsEntity stats;
 
-  const OverviewStatsCard({
-    super.key,
-    required this.stats,
-  });
+  const OverviewStatsCard({super.key, required this.stats});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<StatisticsController>();
-
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Resumen de ventas',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Total de ventas
-            _buildStatRow(
-              context,
-              'Total de ventas',
-              controller.formatCurrency(stats.totalAmount),
-              Icons.monetization_on,
-              Colors.green,
-            ),
-            const SizedBox(height: 12),
-
-            // Número de transacciones
-            _buildStatRow(
-              context,
-              'Transacciones',
-              stats.paymentCount.toString(),
-              Icons.receipt_long,
-              Colors.blue,
-            ),
-            const SizedBox(height: 12),
-
-            // Valor promedio
-            _buildStatRow(
-              context,
-              'Valor promedio',
-              controller.formatCurrency(stats.averageAmount),
-              Icons.analytics,
-              Colors.orange,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatRow(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
+    final tokens = context.tokens;
+    return StatsCard(
+      title: 'Ingresos del período',
+      subtitle: 'Pagos completados menos lo reembolsado',
+      child: Column(
+        children: [
+          StatTile(
+            label: 'Ingresos netos',
+            value: formatCop(stats.totalAmount),
+            icon: Icons.payments_outlined,
+            color: tokens.success.color,
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 28,
+          const SizedBox(height: 12),
+          StatTile(
+            label: 'Pagos',
+            value: '${stats.paymentCount}',
+            icon: Icons.receipt_long_outlined,
+            color: tokens.info.color,
           ),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ],
+          const SizedBox(height: 12),
+          StatTile(
+            label: 'Promedio por pago',
+            value: formatCop(stats.averageAmount),
+            icon: Icons.analytics_outlined,
+            color: tokens.warning.color,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,71 +1,65 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
+/// Bloque plegable del panel: el contenido solo se construye abierto.
 class ExpandableSection extends StatelessWidget {
   final String title;
   final IconData icon;
-  final Widget child;
-  final RxBool isExpanded;
+  final bool isExpanded;
   final VoidCallback onToggle;
+  final Widget child;
 
   const ExpandableSection({
     super.key,
     required this.title,
     required this.icon,
-    required this.child,
     required this.isExpanded,
     required this.onToggle,
+    required this.child,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Encabezado que actúa como toggle
         InkWell(
           onTap: onToggle,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Row(
               children: [
-                Icon(icon, size: 24, color: Theme.of(context).primaryColor),
+                Icon(icon, color: scheme.primary),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
-                Obx(() => Icon(
-                      isExpanded.value
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: Colors.grey[600],
-                    )),
+                Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: scheme.onSurfaceVariant,
+                  semanticLabel: isExpanded ? 'Plegar' : 'Desplegar',
+                ),
               ],
             ),
           ),
         ),
-
-        // Contenido expandible
-        Obx(() => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: isExpanded.value ? null : 0,
-              curve: Curves.easeInOut,
-              child: ClipRect(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  heightFactor: isExpanded.value ? 1.0 : 0.0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: child,
-                  ),
-                ),
-              ),
-            )),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.topCenter,
+          child: isExpanded
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: child,
+                )
+              : const SizedBox(width: double.infinity),
+        ),
       ],
     );
   }

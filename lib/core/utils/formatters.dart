@@ -27,6 +27,13 @@ String formatMoney(Object? value, {String currency = 'COP'}) {
   return '$code ${_toNum(value).toStringAsFixed(2)}';
 }
 
+final NumberFormat _percentFormat = NumberFormat('#,##0.#', 'es_CO');
+
+/// Porcentaje ya expresado de 0 a 100: `15` → `15 %`, `12.46` → `12,5 %`.
+/// Sin tope: muestra lo que llegue (p. ej. más de 100).
+String formatPercent(Object? percent) =>
+    '${_percentFormat.format(_toNum(percent))} %';
+
 /// `03/11/2026`
 String formatDate(DateTime date) => DateFormat('dd/MM/yyyy', 'es').format(date);
 

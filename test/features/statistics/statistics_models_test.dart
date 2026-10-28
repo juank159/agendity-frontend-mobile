@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
-import 'package:login_signup/features/statistics/data/models/client_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
@@ -81,19 +80,6 @@ Map<String, dynamic> backendServiceStats() => {
       'total_amount': 90000,
       'average_amount': 45000,
       'percentage_of_total': 64.28571428571429,
-    };
-
-/// Elemento de `GET /payments/stats/by-client`.
-Map<String, dynamic> backendClientStats() => {
-      'client_id': 'cli-1',
-      'client_name': 'Ana Pérez',
-      'first_visit_date': '2026-10-01T09:00:00.000-05:00',
-      'last_visit_date': '2026-10-21T15:30:00.000-05:00',
-      'visit_count': 3,
-      'payment_count': 3,
-      'total_spent': 105000,
-      'average_per_payment': 35000,
-      'frequency_days': 10,
     };
 
 /// Elemento de `GET /payments/stats/top-clients`.
@@ -264,24 +250,6 @@ void main() {
     final legacy = ServiceStatsModel.fromJson(
         {...backendServiceStats()}..remove('appointment_count')).toEntity();
     expect(legacy.appointmentCount, 0);
-  });
-
-  group('ClientStatsModel', () {
-    test('visitas con offset → mismo instante, en hora local', () {
-      final entity = ClientStatsModel.fromJson(backendClientStats()).toEntity();
-      expect(entity.clientName, 'Ana Pérez');
-      expect(entity.firstVisitDate!.isUtc, false);
-      expect(entity.firstVisitDate!.toUtc(), DateTime.utc(2026, 10, 1, 14));
-      expect(entity.lastVisitDate!.toUtc(), DateTime.utc(2026, 10, 21, 20, 30));
-      expect(entity.frequencyDays, 10);
-      expect(entity.totalSpent, 105000);
-    });
-
-    test('fecha null (Date inválido en el backend) → null, sin excepción', () {
-      final entity = ClientStatsModel.fromJson(
-          {...backendClientStats(), 'first_visit_date': null}).toEntity();
-      expect(entity.firstVisitDate, isNull);
-    });
   });
 
   test('TopClientModel', () {

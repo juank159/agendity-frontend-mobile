@@ -46,7 +46,7 @@ void main() {
         'roles': ['Owner'],
         'exp': epochSeconds(DateTime.now().add(const Duration(hours: 1))),
       });
-    // Permanente, como en UserModule.
+    // Permanente, como en SessionBinding.
     Get.put(
       SessionController(SessionService(
         tokenStore: store,

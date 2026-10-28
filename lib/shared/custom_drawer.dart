@@ -13,7 +13,7 @@ import 'package:login_signup/core/utils/app_logger.dart';
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
-  // UserInfoController se registra una sola vez en UserModule.
+  // UserInfoController se registra una sola vez en SessionBinding.
   UserInfoController _ensureUserInfoController() =>
       Get.find<UserInfoController>();
 

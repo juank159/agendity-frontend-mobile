@@ -22,7 +22,7 @@ class RetryInterceptor extends Interceptor {
 
   static Duration _defaultDelay(int attempt) => Duration(seconds: attempt);
 
-  /// Única regla de reintento de la app. También la usa `ApiConfig` (Dio antiguo).
+  /// Única regla de reintento de la app.
   static bool shouldRetry(DioException error) {
     final method = error.requestOptions.method.toUpperCase();
     if (!_idempotentMethods.contains(method)) return false;

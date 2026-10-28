@@ -8,7 +8,6 @@ import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
-import 'package:login_signup/features/statistics/domain/entities/client_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
@@ -125,14 +124,6 @@ class FakeStatisticsRepository implements StatisticsRepository {
       StatsRange range) async {
     _count('byService', range);
     return byServiceResult;
-  }
-
-  @override
-  Future<Either<Failure, List<ClientStatsEntity>>> getPaymentStatsByClient(
-      StatsRange range,
-      {required int limit}) async {
-    _count('byClient', range);
-    return const Right([]);
   }
 
   @override

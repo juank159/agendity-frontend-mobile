@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
-import 'package:login_signup/features/statistics/data/models/client_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
@@ -26,9 +25,6 @@ abstract class StatisticsRemoteDataSource {
       StatsRange range);
 
   Future<List<ServiceStatsModel>> getPaymentStatsByService(StatsRange range);
-
-  Future<List<ClientStatsModel>> getPaymentStatsByClient(StatsRange range,
-      {required int limit});
 
   Future<List<TopClientModel>> getTopClients(StatsRange range,
       {required int limit});
@@ -71,13 +67,6 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
           StatsRange range) async =>
       (await _getList('/payments/stats/by-service', range))
           .map(ServiceStatsModel.fromJson)
-          .toList();
-
-  @override
-  Future<List<ClientStatsModel>> getPaymentStatsByClient(StatsRange range,
-          {required int limit}) async =>
-      (await _getList('/payments/stats/by-client', range, {'limit': limit}))
-          .map(ClientStatsModel.fromJson)
           .toList();
 
   @override

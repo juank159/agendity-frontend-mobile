@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
-import 'package:login_signup/features/statistics/domain/entities/client_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
@@ -27,10 +26,6 @@ abstract class StatisticsRepository {
 
   Future<Either<Failure, List<ServiceStatsEntity>>> getPaymentStatsByService(
       StatsRange range);
-
-  Future<Either<Failure, List<ClientStatsEntity>>> getPaymentStatsByClient(
-      StatsRange range,
-      {required int limit});
 
   Future<Either<Failure, List<TopClientEntity>>> getTopClients(StatsRange range,
       {required int limit});

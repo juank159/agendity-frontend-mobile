@@ -10,7 +10,7 @@ import 'package:login_signup/core/utils/app_logger.dart';
 
 /// Único punto de cierre de sesión: el botón del drawer ([logout]) y la
 /// sesión expirada ([endSession] con `expired: true`, conectado en
-/// `UserModule`). Alcance de app (permanente).
+/// `SessionBinding`). Alcance de app (permanente).
 ///
 /// Orden: borra la sesión → limpieza local del repositorio → navega a login
 /// → cuando las pantallas de la sesión ya no están montadas, borra los

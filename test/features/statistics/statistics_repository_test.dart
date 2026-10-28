@@ -11,7 +11,6 @@ import 'package:login_signup/features/statistics/domain/entities/stats_range.dar
 import 'package:login_signup/features/statistics/domain/failures/statistics_failures.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_comparison_usecase.dart';
-import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_client_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_method_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_professional_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_service_usecase.dart';
@@ -23,7 +22,6 @@ import '../../core/network/fake_http_client_adapter.dart';
 import '../../core/session/memory_token_store.dart';
 import 'statistics_models_test.dart'
     show
-        backendClientStats,
         backendComparison,
         backendEmployeeStats,
         backendEmptyEmployeeStats,
@@ -94,8 +92,6 @@ void main() {
               jsonBody(200, [backendProfessionalStats()]),
             '/api/payments/stats/by-service' =>
               jsonBody(200, [backendServiceStats()]),
-            '/api/payments/stats/by-client' =>
-              jsonBody(200, [backendClientStats()]),
             '/api/payments/stats/top-clients' =>
               jsonBody(200, [backendTopClient()]),
             '/api/payments/employee-stats' =>
@@ -117,11 +113,6 @@ void main() {
           'Laura');
       expect(rightOf(await repository.getPaymentStatsByService(october)),
           hasLength(1));
-      expect(
-          rightOf(await repository.getPaymentStatsByClient(october, limit: 20))
-              .single
-              .frequencyDays,
-          10);
       expect(rightOf(await repository.getTopClients(october, limit: 5)),
           hasLength(1));
       expect(
@@ -134,7 +125,6 @@ void main() {
       final byPath = {
         for (final r in adapter.requests) r.uri.path: r.uri.queryParameters
       };
-      expect(byPath['/api/payments/stats/by-client']!['limit'], '20');
       expect(byPath['/api/payments/stats/top-clients']!['limit'], '5');
       expect(byPath['/api/payments/employee-stats'], {
         'startDate': '2026-10-01',
@@ -159,7 +149,6 @@ void main() {
         await repository.getPaymentStatsByMethod(october),
         await repository.getPaymentStatsByProfessional(october),
         await repository.getPaymentStatsByService(october),
-        await repository.getPaymentStatsByClient(october, limit: 10),
         await repository.getTopClients(october, limit: 5),
       ];
       for (final result in results) {
@@ -261,8 +250,6 @@ void main() {
         await GetPaymentStatsByMethodUseCase(repository)(inverted),
         await GetPaymentStatsByProfessionalUseCase(repository)(inverted),
         await GetPaymentStatsByServiceUseCase(repository)(inverted),
-        await GetPaymentStatsByClientUseCase(repository)(
-            StatsRankingParams(inverted, limit: 10)),
         await GetTopClientsUseCase(repository)(
             StatsRankingParams(inverted, limit: 5)),
         await GetEmployeeStatsUseCase(repository)(

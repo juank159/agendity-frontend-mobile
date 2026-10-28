@@ -5,8 +5,8 @@ import 'package:login_signup/core/network/interceptors/log_interceptor.dart';
 import 'package:login_signup/core/network/interceptors/retry_interceptor.dart';
 import 'package:login_signup/core/session/token_store.dart';
 
-/// Tag del Dio nuevo en GetX (D-04): `Get.find<Dio>(tag: apiClientTag)`.
-/// Convive con el Dio sin tag de `ApiConfig` hasta terminar la Fase 4.
+/// Tag del único Dio de la app en GetX: `Get.find<Dio>(tag: apiClientTag)`
+/// (el Dio sin tag de `ApiConfig` se retiró en 5.01).
 const apiClientTag = 'api';
 
 /// Único sitio que crea el `Dio` de la app (ARQUITECTURA.md §2.2).

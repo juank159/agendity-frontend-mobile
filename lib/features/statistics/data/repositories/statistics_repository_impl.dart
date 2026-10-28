@@ -2,7 +2,6 @@ import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
-import 'package:login_signup/features/statistics/domain/entities/client_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
@@ -51,15 +50,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
       safeCall(() async => (await _remote.getPaymentStatsByService(range))
           .map((m) => m.toEntity())
           .toList());
-
-  @override
-  Future<Either<Failure, List<ClientStatsEntity>>> getPaymentStatsByClient(
-          StatsRange range,
-          {required int limit}) =>
-      safeCall(() async =>
-          (await _remote.getPaymentStatsByClient(range, limit: limit))
-              .map((m) => m.toEntity())
-              .toList());
 
   @override
   Future<Either<Failure, List<TopClientEntity>>> getTopClients(StatsRange range,

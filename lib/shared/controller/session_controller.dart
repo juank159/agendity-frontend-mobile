@@ -10,7 +10,7 @@ import 'package:login_signup/core/session/session_service.dart';
 ///   decodifica el JWT ni lee `'token'`.
 /// - Los middlewares de rutas la leen de forma síncrona ([isLoggedIn],
 ///   [isOwner]); por eso el splash llama a [restore] antes de navegar.
-/// - Se registra una sola vez (`core/di/modules/user_module.dart`).
+/// - Se registra una sola vez (`SessionBinding` de auth).
 class SessionController extends GetxController {
   final SessionService _service;
   final DateTime Function() _now;

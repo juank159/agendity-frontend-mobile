@@ -6,7 +6,6 @@ import 'package:login_signup/features/statistics/data/repositories/statistics_re
 import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_comparison_usecase.dart';
-import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_client_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_method_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_professional_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_service_usecase.dart';
@@ -40,9 +39,6 @@ abstract final class StatisticsDependencies {
         fenix: true);
     Get.lazyPut(
         () => GetPaymentStatsByServiceUseCase(Get.find<StatisticsRepository>()),
-        fenix: true);
-    Get.lazyPut(
-        () => GetPaymentStatsByClientUseCase(Get.find<StatisticsRepository>()),
         fenix: true);
     Get.lazyPut(() => GetTopClientsUseCase(Get.find<StatisticsRepository>()),
         fenix: true);

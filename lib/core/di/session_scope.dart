@@ -4,6 +4,7 @@ import 'package:login_signup/features/appointments/presentation/controllers/appo
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_controller.dart';
+import 'package:login_signup/features/auth/presentation/controllers/email_verification_notice_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/edit_client_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/new_client_controller.dart';
@@ -48,6 +49,7 @@ abstract final class SessionScope {
     deleteSessionController<EditEmployeeController>,
     deleteSessionController<VerifyEmployeeEmailController>,
     deleteSessionController<EmailVerificationController>,
+    deleteSessionController<EmailVerificationNoticeController>,
     deleteSessionController<ServicesController>,
     deleteSessionController<NewServiceController>,
     deleteSessionController<EditServiceController>,

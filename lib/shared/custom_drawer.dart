@@ -7,6 +7,7 @@ import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/features/auth/presentation/widgets/email_verification_notice.dart';
 
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
@@ -147,6 +148,8 @@ class CustomDrawer extends GetView<UserInfoController> {
                             ),
                           ),
                         ),
+                        // Owner con el email sin verificar (4.08b).
+                        const EmailVerificationNotice(),
                       ],
                     ),
                   ),

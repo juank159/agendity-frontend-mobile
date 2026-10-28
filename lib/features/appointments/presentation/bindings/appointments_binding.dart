@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/auth/presentation/controllers/email_verification_notice_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 
 /// Agenda (home). Los use cases los registran los `<feature>_dependencies`;
@@ -32,6 +33,13 @@ class AppointmentsBinding implements Bindings {
         getActiveCustomPaymentMethodsUseCase: Get.find(),
       ),
       fenix: true,
+    );
+    // Aviso "Verifica tu email" del menú lateral de la home (Owner).
+    Get.lazyPut<EmailVerificationNoticeController>(
+      () => EmailVerificationNoticeController(
+        getEmployeesUseCase: Get.find(),
+        session: Get.find(),
+      ),
     );
   }
 }

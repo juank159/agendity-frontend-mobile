@@ -48,7 +48,9 @@ void main() {
     // EditCategoryController, muerto (retirado en la 4.03), más
     // EmployeeStatsController (4.04: "Mis estadísticas" tiene el suyo), más
     // NewEmployeeController y EditEmployeeController (4.07: el formulario de
-    // profesional sale del EmployeesController).
-    expect(SessionScope.featureControllers, hasLength(21));
+    // profesional sale del EmployeesController), más
+    // AppointmentActionsController (4.09) y EmailVerificationNoticeController
+    // (4.08b: aviso "Verifica tu email" del menú).
+    expect(SessionScope.featureControllers, hasLength(22));
   });
 }

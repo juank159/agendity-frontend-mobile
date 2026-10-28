@@ -13,6 +13,7 @@ import 'package:login_signup/features/auth/data/repositories/auth_repository_imp
 import 'package:login_signup/features/auth/domain/entities/register_owner_input.dart';
 import 'package:login_signup/features/auth/domain/failures/auth_failures.dart';
 import 'package:login_signup/features/auth/domain/usecases/auth_rules.dart';
+import 'package:login_signup/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/google_sign_in_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/logout_usecase.dart';
@@ -375,5 +376,45 @@ void main() {
     expect(await storage.read(key: 'theme'), isNull);
     expect(google.signOuts, 1);
     expect(adapter.requests, isEmpty);
+  });
+
+  group('usuario de la sesión (GET /auth/me, 2.35)', () {
+    test('con el token de la sesión → entidad con isEmailVerified', () async {
+      tokens.token = agendityJwt;
+      adapter.handler = (_) => jsonBody(200, {
+            'id': 'own-1',
+            'name': 'Ana',
+            'lastname': 'Pérez',
+            'email': 'ana@example.com',
+            'phone': null,
+            'image': null,
+            'roles': [
+              {'name': 'Owner'}
+            ],
+            'tenantId': 'own-1',
+            'isActive': true,
+            'is_email_verified': true,
+          });
+
+      final result = await GetCurrentUserUseCase(repository)(NoParams());
+      final me = result.getOrElse(() => throw StateError('Left'));
+      expect(me.id, 'own-1');
+      expect(me.roles, ['Owner']);
+      expect(me.isEmailVerified, true);
+      expect(me.phone, isNull);
+      final request = adapter.requests.single;
+      expect('${request.method} ${request.uri.path}', 'GET /api/auth/me');
+      expect(request.headers['Authorization'], 'Bearer $agendityJwt');
+    });
+
+    test('401 (sesión vencida) → UnauthorizedFailure y aviso de sesión',
+        () async {
+      tokens.token = agendityJwt;
+      adapter.handler = (_) => jsonBody(
+          401, {'statusCode': 401, 'code': 'UNAUTHORIZED', 'message': 'x'});
+      final result = await repository.getCurrentUser();
+      expect(result.fold((f) => f, (_) => null), isA<UnauthorizedFailure>());
+      expect(expiredSessions, 1);
+    });
   });
 }

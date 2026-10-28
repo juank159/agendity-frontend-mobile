@@ -136,6 +136,10 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<Either<Failure, Unit>> logout() async => const Right(unit);
+
+  @override
+  Future<Either<Failure, UserEntity>> getCurrentUser() async =>
+      const Right(owner);
 }
 
 void main() {

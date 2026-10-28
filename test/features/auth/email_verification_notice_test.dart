@@ -9,32 +9,29 @@ import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_notice_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/email_verification_notice.dart';
-import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/domain/repositories/employees_repository.dart';
-import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
+import 'package:login_signup/features/auth/domain/entities/user_entity.dart';
+import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
+import 'package:login_signup/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
 
 import '../../core/session/memory_token_store.dart';
 
-/// `GET /auth/employees` devuelve al propio Owner con `is_email_verified`.
-class FakeTeamRepository implements EmployeesRepository {
+/// `GET /auth/me` devuelve al usuario de la sesión con `is_email_verified`.
+class FakeMeRepository implements AuthRepository {
   bool ownerVerified = false;
   int calls = 0;
 
   @override
-  Future<Either<Failure, List<EmployeeEntity>>> getEmployees() async {
+  Future<Either<Failure, UserEntity>> getCurrentUser() async {
     calls++;
-    return Right([
-      EmployeeEntity(
-        id: 'o1',
-        name: 'Olga',
-        lastname: '',
-        email: 'olga@mail.com',
-        isActive: true,
-        isEmailVerified: ownerVerified,
-        isOwner: true,
-      ),
-    ]);
+    return Right(UserEntity(
+      id: 'o1',
+      name: 'Olga',
+      lastname: '',
+      email: 'olga@mail.com',
+      roles: const ['Owner'],
+      isEmailVerified: ownerVerified,
+    ));
   }
 
   @override
@@ -42,12 +39,12 @@ class FakeTeamRepository implements EmployeesRepository {
 }
 
 void main() {
-  late FakeTeamRepository repo;
+  late FakeMeRepository repo;
   late SessionController session;
 
   setUp(() {
     Get.testMode = true;
-    repo = FakeTeamRepository();
+    repo = FakeMeRepository();
   });
   tearDown(Get.reset);
 
@@ -72,7 +69,7 @@ void main() {
           page: () => const Scaffold(body: EmailVerificationNotice()),
           binding: BindingsBuilder(() => Get.lazyPut(() =>
               EmailVerificationNoticeController(
-                  getEmployeesUseCase: GetEmployeesUseCase(repo),
+                  getCurrentUserUseCase: GetCurrentUserUseCase(repo),
                   session: session))),
         ),
         GetPage(

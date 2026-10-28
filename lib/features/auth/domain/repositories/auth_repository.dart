@@ -44,6 +44,10 @@ abstract class AuthRepository {
     required String newPassword,
   });
 
+  /// `GET /auth/me`: el usuario de la sesión (con `isEmailVerified`, que el
+  /// JWT no trae). Owner y Employee.
+  Future<Either<Failure, UserEntity>> getCurrentUser();
+
   /// Único logout: borra la sesión, los datos locales y la sesión de Google.
   Future<Either<Failure, Unit>> logout();
 }

@@ -90,6 +90,10 @@ class AuthRepositoryImpl implements AuthRepository {
       });
 
   @override
+  Future<Either<Failure, UserEntity>> getCurrentUser() =>
+      safeCall(() async => (await _remote.me()).toEntity());
+
+  @override
   Future<Either<Failure, Unit>> logout() => safeCall(() async {
         await _session.end();
         await _localStorage.clearAllData();

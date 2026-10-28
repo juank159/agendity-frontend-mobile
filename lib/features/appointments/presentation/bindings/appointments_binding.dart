@@ -37,7 +37,7 @@ class AppointmentsBinding implements Bindings {
     // Aviso "Verifica tu email" del menú lateral de la home (Owner).
     Get.lazyPut<EmailVerificationNoticeController>(
       () => EmailVerificationNoticeController(
-        getEmployeesUseCase: Get.find(),
+        getCurrentUserUseCase: Get.find(),
         session: Get.find(),
       ),
     );

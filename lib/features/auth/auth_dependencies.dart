@@ -6,6 +6,7 @@ import 'package:login_signup/features/auth/data/datasources/auth_remote_datasour
 import 'package:login_signup/features/auth/data/datasources/google_auth_datasource.dart';
 import 'package:login_signup/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
+import 'package:login_signup/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/google_sign_in_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/login_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/logout_usecase.dart';
@@ -18,7 +19,7 @@ import 'package:login_signup/shared/local_storage/local_storage.dart';
 
 /// Datasources, repositorio y use cases de auth (ARQUITECTURA §4). Los
 /// controllers los registran los bindings; `LogoutController` (alcance de
-/// app), `UserModule`.
+/// app), `SessionBinding`.
 abstract final class AuthDependencies {
   static void init() {
     Get.lazyPut<AuthRemoteDataSource>(
@@ -50,6 +51,8 @@ abstract final class AuthDependencies {
     Get.lazyPut(() => RequestPasswordResetUseCase(Get.find<AuthRepository>()),
         fenix: true);
     Get.lazyPut(() => ResetPasswordUseCase(Get.find<AuthRepository>()),
+        fenix: true);
+    Get.lazyPut(() => GetCurrentUserUseCase(Get.find<AuthRepository>()),
         fenix: true);
   }
 }

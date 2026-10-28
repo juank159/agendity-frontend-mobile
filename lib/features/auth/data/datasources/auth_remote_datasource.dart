@@ -3,9 +3,10 @@ import 'package:login_signup/core/network/interceptors/auth_interceptor.dart';
 import 'package:login_signup/features/auth/data/models/user_model.dart';
 import 'package:login_signup/features/auth/domain/entities/register_owner_input.dart';
 
-/// `/auth/*` públicas sobre el Dio `api` (ARQUITECTURA §4): todas van con
-/// `AuthInterceptor.publicKey` (sin token; su 401 no cierra sesión). Sin
-/// try/catch: los errores los traduce `safeCall` por `code`.
+/// `/auth/*` sobre el Dio `api` (ARQUITECTURA §4): las públicas van con
+/// `AuthInterceptor.publicKey` (sin token; su 401 no cierra sesión); `me` va
+/// con el token de la sesión. Sin try/catch: los errores los traduce
+/// `safeCall` por `code`.
 abstract class AuthRemoteDataSource {
   /// `POST /auth/login` → `{user, token}`.
   Future<AuthResponseModel> login(String email, String password);
@@ -27,6 +28,9 @@ abstract class AuthRemoteDataSource {
 
   /// `POST /auth/reset-password`.
   Future<void> resetPassword(String email, String code, String newPassword);
+
+  /// `GET /auth/me` (con sesión, 2.35): el usuario de la sesión sin secretos.
+  Future<UserModel> me();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -79,4 +83,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<void> resetPassword(String email, String code, String newPassword) =>
       _post('/auth/reset-password',
           {'email': email, 'code': code, 'newPassword': newPassword});
+
+  @override
+  Future<UserModel> me() async {
+    final response = await _dio.get<Map<String, dynamic>>('/auth/me');
+    return UserModel.fromJson(response.data!);
+  }
 }

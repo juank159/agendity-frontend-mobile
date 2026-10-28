@@ -5,8 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/edit_appointment_dialog.dart';
-import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
@@ -21,8 +19,7 @@ class AppointmentDetailsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Intentar obtener el controlador de empleados
-    final employeesController = Get.find<EmployeesController>();
+    final appointmentsController = Get.find<AppointmentsController>();
 
     final totalDuration = appointment.endTime.difference(appointment.startTime);
     final hours = totalDuration.inHours;
@@ -202,13 +199,12 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 4),
                                         // Mostrar el nombre del profesional con FutureBuilder
-                                        FutureBuilder<EmployeeEntity?>(
-                                          future: employeesController
-                                              .getEmployeeById(
+                                        FutureBuilder<String>(
+                                          future: appointmentsController
+                                              .professionalName(
                                                   appointment.professionalId!),
                                           builder: (context, snapshot) {
-                                            if (snapshot.connectionState ==
-                                                ConnectionState.waiting) {
+                                            if (!snapshot.hasData) {
                                               return Row(
                                                 children: [
                                                   SizedBox(
@@ -222,75 +218,24 @@ class AppointmentDetailsDialog extends StatelessWidget {
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8),
-                                                  Text(
+                                                  const Text(
                                                     'Cargando información...',
                                                     style: TextStyle(
                                                       fontSize: 14,
-                                                      color: Colors.grey[600],
                                                       fontStyle:
                                                           FontStyle.italic,
                                                     ),
                                                   ),
                                                 ],
                                               );
-                                            } else if (snapshot.hasError ||
-                                                snapshot.data == null) {
-                                              // También buscar en el empleado seleccionado actualmente
-                                              final selectedEmployee =
-                                                  employeesController
-                                                      .selectedEmployee.value;
-                                              if (selectedEmployee != null &&
-                                                  selectedEmployee.id ==
-                                                      appointment
-                                                          .professionalId) {
-                                                return Text(
-                                                  '${selectedEmployee.name} ${selectedEmployee.lastname}'
-                                                      .trim(),
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                );
-                                              }
-
-                                              // Buscar en la lista de empleados cargados
-                                              for (var employee
-                                                  in employeesController
-                                                      .employees) {
-                                                if (employee.id ==
-                                                    appointment
-                                                        .professionalId) {
-                                                  return Text(
-                                                    '${employee.name} ${employee.lastname}'
-                                                        .trim(),
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-
-                                              // Si todavía no encontramos, mostrar ID
-                                              return Text(
-                                                'Profesional ID: ${appointment.professionalId}',
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              );
-                                            } else {
-                                              final employee = snapshot.data!;
-                                              return Text(
-                                                '${employee.name} ${employee.lastname}'
-                                                    .trim(),
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              );
                                             }
+                                            return Text(
+                                              snapshot.data!,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            );
                                           },
                                         ),
                                       ],
@@ -587,15 +532,6 @@ class AppointmentDetailsDialog extends StatelessWidget {
 // Función auxiliar para mostrar el diálogo
 void showAppointmentDetails(
     BuildContext context, AppointmentEntity appointment) {
-  // Asegurarse de que el controlador de empleados esté disponible
-  if (!Get.isRegistered<EmployeesController>()) {
-    Get.snackbar(
-      'Error',
-      'No se pudo cargar la información del profesional',
-      snackPosition: SnackPosition.BOTTOM,
-    );
-  }
-
   showDialog(
     context: context,
     builder: (context) => AppointmentDetailsDialog(

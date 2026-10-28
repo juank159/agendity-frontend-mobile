@@ -46,7 +46,9 @@ void main() {
   test('la lista de SessionScope no incluye los de alcance de app', () {
     // 18 controllers de feature (inventario de la 3.05) menos
     // EditCategoryController, muerto (retirado en la 4.03), más
-    // EmployeeStatsController (4.04: "Mis estadísticas" tiene el suyo).
-    expect(SessionScope.featureControllers, hasLength(18));
+    // EmployeeStatsController (4.04: "Mis estadísticas" tiene el suyo), más
+    // NewEmployeeController y EditEmployeeController (4.07: el formulario de
+    // profesional sale del EmployeesController).
+    expect(SessionScope.featureControllers, hasLength(20));
   });
 }

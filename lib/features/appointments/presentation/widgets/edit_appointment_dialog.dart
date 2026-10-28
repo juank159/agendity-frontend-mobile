@@ -9,7 +9,6 @@ import 'package:login_signup/features/appointments/domain/entities/appointment_e
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/professional_selector_dialog.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
 class EditAppointmentDialog extends StatefulWidget {
@@ -81,29 +80,14 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
     _initializeServices();
   }
 
-  void _initializeEmployee() async {
-    final employeesController = Get.find<EmployeesController>();
-
-    // Si el profesionalId existe, intentar encontrar el empleado
-    if (widget.appointment.professionalId != null) {
-      // Primero verificar si el empleado ya está en el controlador
-      for (var employee in employeesController.employees) {
-        if (employee.id == widget.appointment.professionalId) {
-          widget.controller.selectedEmployee.value = employee;
-          return;
-        }
-      }
-
-      // Si no está, intentar obtenerlo
-      try {
-        final employee = await employeesController
-            .getEmployeeById(widget.appointment.professionalId!);
-        if (employee != null) {
-          widget.controller.selectedEmployee.value = employee;
-        }
-      } catch (e) {
-        print('Error al cargar el profesional: $e');
-      }
+  /// Selecciona el profesional de la cita (de la lista ya cargada o del
+  /// backend, con los use cases de employees).
+  Future<void> _initializeEmployee() async {
+    final professionalId = widget.appointment.professionalId;
+    if (professionalId == null) return;
+    final employee = await widget.controller.findProfessional(professionalId);
+    if (employee != null && mounted) {
+      widget.controller.selectedEmployee.value = employee;
     }
   }
 
@@ -330,11 +314,9 @@ class _EditAppointmentDialogState extends State<EditAppointmentDialog> {
             width: double.infinity,
             child: TextButton.icon(
               onPressed: () async {
-                final employeesController = Get.find<EmployeesController>();
                 await ProfessionalSelectorDialog.show(
                   context,
                   widget.controller,
-                  employeesController,
                 );
               },
               icon: Icon(

@@ -25,11 +25,9 @@ import 'package:login_signup/features/clients/presentation/bindings/clients_bind
 import 'package:login_signup/features/clients/presentation/screen/clients_screen.dart';
 import 'package:login_signup/features/clients/presentation/screen/edit_client_screen.dart';
 import 'package:login_signup/features/clients/presentation/screen/new_client_screen.dart';
-import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 
 import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
 import 'package:login_signup/features/employees/presentation/bindings/verify_employee_email_binding.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/presentation/screens/create_employee_screen.dart';
 import 'package:login_signup/features/employees/presentation/screens/edit_employee_screen.dart';
 import 'package:login_signup/features/employees/presentation/screens/employee_details_screen.dart';
@@ -88,7 +86,9 @@ class GetRoutes {
   static const String addEmployee = '/employees/new';
   static const String verifyEmployeeEmail = '/verify-employee-email';
   static const String employeeDetails = '/employee-details';
-  static const String employeeEdit = '/edit-employee/:id';
+
+  /// Edición; el id va en `arguments['employeeId']` (como `editClient`).
+  static const String employeeEdit = '/employees/edit';
 
   // statistics Routes
   static const String statistics = '/statistics';
@@ -266,28 +266,14 @@ class GetRoutes {
       transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 300),
       preventDuplicates: true,
-      // Agrega esta opción para eliminar rutas previas
-      popGesture: false,
     ),
     GetPage(
       name: addEmployee,
       middlewares: RoleMiddleware.ownerOnly(),
       page: () => const CreateEmployeeScreen(),
-      binding: BindingsBuilder(() {
-        ServicesBinding.registerController();
-        Get.lazyPut(() => EmployeesController(
-              getEmployeesUseCase: Get.find(),
-              getEmployeeByIdUseCase: Get.find(),
-              createEmployeeUseCase: Get.find(),
-              updateEmployeeUseCase: Get.find(),
-              deleteEmployeeUseCase: Get.find(),
-              toggleEmployeeStatusUseCase: Get.find(),
-              restoreEmployeeUseCase: Get.find(),
-              getDeletedEmployeesUseCase: Get.find(),
-            ));
-      }),
+      binding: NewEmployeeBinding(),
+      transition: Transition.rightToLeft,
     ),
-
     GetPage(
       name: verifyEmployeeEmail,
       middlewares: RoleMiddleware.ownerOnly(),
@@ -295,22 +281,18 @@ class GetRoutes {
       binding: VerifyEmployeeEmailBinding(),
       transition: Transition.rightToLeft,
     ),
-
     GetPage(
       name: employeeDetails,
       middlewares: RoleMiddleware.ownerOnly(),
-      page: () => EmployeeDetailsScreen(
-        employee: Get.arguments as EmployeeEntity,
-      ),
-      binding: EmployeesBinding(),
+      page: () => const EmployeeDetailsScreen(),
+      transition: Transition.rightToLeft,
     ),
     GetPage(
       name: employeeEdit,
       middlewares: RoleMiddleware.ownerOnly(),
-      page: () => EditEmployeeScreen(
-        employeeId: Get.parameters['id'] ?? '',
-      ),
-      binding: EmployeesBinding(),
+      page: () => const EditEmployeeScreen(),
+      binding: EditEmployeeBinding(),
+      transition: Transition.rightToLeft,
     ),
 
     // statistics Pages

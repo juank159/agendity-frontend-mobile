@@ -1,113 +1,165 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/employees/presentation/controllers/employee_form_controller.dart';
+import 'employee_schedule_section.dart';
+import 'employee_services_section.dart';
 
+/// Formulario de profesional, **único** para alta y edición: datos básicos,
+/// servicios con comisión y horario. En edición el email es de solo lectura
+/// y la contraseña es opcional.
 class EmployeeFormSection extends StatelessWidget {
-  final EmployeesController controller;
-  final bool isEditMode;
+  final EmployeeFormController controller;
+  final bool isEdit;
+  final String submitLabel;
 
   const EmployeeFormSection({
     super.key,
     required this.controller,
-    this.isEditMode = false,
+    required this.submitLabel,
+    this.isEdit = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Usar GetBuilder en lugar de Obx para evitar reconstrucciones innecesarias
-    return GetBuilder<EmployeesController>(
-      builder: (_) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          _buildTextField(
+          const _SectionTitle(icon: Icons.person_outline, title: 'Datos'),
+          _Field(
             label: 'Nombre *',
-            hint: 'Ingrese el nombre',
-            // Usar el controlador preexistente del EmployeesController
             controller: controller.nameController,
-            onChanged: controller.updateName,
+            icon: Icons.person_outline,
+            textCapitalization: TextCapitalization.words,
           ),
-          const SizedBox(height: 16),
-          _buildTextField(
+          _Field(
             label: 'Apellido *',
-            hint: 'Ingrese el apellido',
             controller: controller.lastnameController,
-            onChanged: controller.updateLastname,
+            icon: Icons.people_outline,
+            textCapitalization: TextCapitalization.words,
           ),
-          const SizedBox(height: 16),
-          _buildTextField(
+          _Field(
             label: 'Email *',
-            hint: 'Ingrese el email',
             controller: controller.emailController,
-            onChanged: controller.updateEmail,
+            icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
+            readOnly: isEdit,
+            helper: isEdit
+                ? 'El email no se puede cambiar: es su usuario y ya se '
+                    'verificó (o está pendiente de verificar).'
+                : 'Le enviaremos un código para verificarlo.',
           ),
-          const SizedBox(height: 16),
-          _buildTextField(
+          _Field(
             label: 'Teléfono *',
-            hint: 'Ingrese el teléfono',
             controller: controller.phoneController,
-            onChanged: controller.updatePhone,
+            icon: Icons.phone_android_outlined,
             keyboardType: TextInputType.phone,
-            // Añadir el formatter para aceptar múltiples dígitos
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            formatters: [FilteringTextInputFormatter.digitsOnly],
+            helper: '10 dígitos',
           ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            label: isEditMode
-                ? 'Contraseña (dejar en blanco para no cambiar)'
-                : 'Contraseña *',
-            hint: isEditMode
-                ? 'Nueva contraseña (opcional)'
-                : 'Ingrese la contraseña',
+          _Field(
+            label: isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña *',
             controller: controller.passwordController,
-            onChanged: controller.updatePassword,
-            isPassword: true,
+            icon: Icons.lock_outline,
+            obscure: true,
+            helper: isEdit
+                ? 'Déjala en blanco para no cambiarla'
+                : 'Mínimo 8 caracteres con mayúscula, minúscula, número y '
+                    'un carácter especial (@\$!%*?&)',
           ),
+          const SizedBox(height: 8),
+          const _SectionTitle(icon: Icons.spa_outlined, title: 'Servicios'),
+          EmployeeServicesSection(controller: controller),
+          const SizedBox(height: 8),
+          const _SectionTitle(icon: Icons.schedule, title: 'Horario'),
+          EmployeeScheduleSection(controller: controller),
+          const SizedBox(height: 16),
+          Obx(() => FilledButton.icon(
+                onPressed:
+                    controller.isSaving.value ? null : controller.submit,
+                icon: controller.isSaving.value
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Icon(isEdit ? Icons.save : Icons.person_add_alt_1),
+                label: Text(submitLabel),
+              )),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTextField({
-    required String label,
-    required String hint,
-    required Function(String) onChanged,
-    required TextEditingController controller,
-    TextInputType keyboardType = TextInputType.text,
-    bool isPassword = false,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-          ),
+class _SectionTitle extends StatelessWidget {
+  final IconData icon;
+  final String title;
+
+  const _SectionTitle({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 8),
+          Text(title,
+              style: TextStyle(
+                  color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? formatters;
+  final bool obscure;
+  final bool readOnly;
+  final String? helper;
+  final TextCapitalization textCapitalization;
+
+  const _Field({
+    required this.label,
+    required this.controller,
+    required this.icon,
+    this.keyboardType,
+    this.formatters,
+    this.obscure = false,
+    this.readOnly = false,
+    this.helper,
+    this.textCapitalization = TextCapitalization.none,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: formatters,
+        obscureText: obscure,
+        readOnly: readOnly,
+        textCapitalization: textCapitalization,
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helper,
+          helperMaxLines: 3,
+          prefixIcon: Icon(icon),
+          suffixIcon: readOnly ? const Icon(Icons.lock_outline) : null,
+          border: const OutlineInputBorder(),
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          onChanged: onChanged,
-          keyboardType: keyboardType,
-          obscureText: isPassword,
-          inputFormatters: inputFormatters,
-          decoration: InputDecoration(
-            hintText: hint,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.grey),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            filled: true,
-            fillColor: Colors.grey[50],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

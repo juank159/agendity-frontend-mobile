@@ -1,34 +1,45 @@
 import 'package:get/get.dart';
+import 'package:login_signup/features/employees/presentation/controllers/edit_employee_controller.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
-import 'package:login_signup/features/services/presentation/bindings/services_binding.dart';
+import 'package:login_signup/features/employees/presentation/controllers/new_employee_controller.dart';
 
-/// Rutas de la gestión de profesionales. Los use cases los registra
-/// `EmployeesDependencies` al arrancar; aquí solo van los controllers.
-class EmployeesBinding implements Bindings {
+/// Lista de profesionales (`/employees`). **Único** registro de
+/// `EmployeesController`: vive con su ruta (sin `permanent`); ninguna otra
+/// feature lo crea ni lo busca. Datasource, repositorio y use cases los
+/// registra `EmployeesDependencies`.
+class EmployeesBinding extends Bindings {
   @override
   void dependencies() {
-    ServicesBinding.registerController();
-    registerController();
+    Get.lazyPut(() => EmployeesController(
+          getEmployeesUseCase: Get.find(),
+          getDeletedEmployeesUseCase: Get.find(),
+          toggleEmployeeStatusUseCase: Get.find(),
+          deleteEmployeeUseCase: Get.find(),
+          restoreEmployeeUseCase: Get.find(),
+        ));
   }
+}
 
-  /// Registra el `EmployeesController` si falta. Lo llaman el arranque,
-  /// `SessionScope.reset()` (logout) y las rutas de la feature. Sigue
-  /// `permanent` hasta que FP lo ligue a sus rutas (4.07): la feature navega
-  /// con `offAllNamed` y un controller ligado a la ruta se perdería.
-  static void registerController() {
-    if (Get.isRegistered<EmployeesController>()) return;
-    Get.put<EmployeesController>(
-      EmployeesController(
-        getEmployeesUseCase: Get.find(),
-        getEmployeeByIdUseCase: Get.find(),
-        createEmployeeUseCase: Get.find(),
-        updateEmployeeUseCase: Get.find(),
-        deleteEmployeeUseCase: Get.find(),
-        toggleEmployeeStatusUseCase: Get.find(),
-        restoreEmployeeUseCase: Get.find(),
-        getDeletedEmployeesUseCase: Get.find(),
-      ),
-      permanent: true,
-    );
+/// Alta de profesional (`/employees/new`).
+class NewEmployeeBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut(() => NewEmployeeController(
+          createEmployeeUseCase: Get.find(),
+          getServicesUseCase: Get.find(),
+        ));
+  }
+}
+
+/// Edición de profesional (`/employees/edit`, id en
+/// `arguments['employeeId']`).
+class EditEmployeeBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut(() => EditEmployeeController(
+          getEmployeeByIdUseCase: Get.find(),
+          updateEmployeeUseCase: Get.find(),
+          getServicesUseCase: Get.find(),
+        ));
   }
 }

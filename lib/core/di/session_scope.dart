@@ -6,8 +6,9 @@ import 'package:login_signup/features/auth/presentation/controllers/email_verifi
 import 'package:login_signup/features/clients/presentation/controller/clients_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/edit_client_controller.dart';
 import 'package:login_signup/features/clients/presentation/controller/new_client_controller.dart';
-import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
+import 'package:login_signup/features/employees/presentation/controllers/edit_employee_controller.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/employees/presentation/controllers/new_employee_controller.dart';
 import 'package:login_signup/features/employees/presentation/controllers/verify_employee_email_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/services/presentation/controller/categories_controller.dart';
@@ -41,6 +42,8 @@ abstract final class SessionScope {
     deleteSessionController<NewClientController>,
     deleteSessionController<EditClientController>,
     deleteSessionController<EmployeesController>,
+    deleteSessionController<NewEmployeeController>,
+    deleteSessionController<EditEmployeeController>,
     deleteSessionController<VerifyEmployeeEmailController>,
     deleteSessionController<EmailVerificationController>,
     deleteSessionController<ServicesController>,
@@ -54,13 +57,12 @@ abstract final class SessionScope {
     deleteSessionController<WhatsappController>,
   ];
 
-  /// Borra los controllers de feature y vuelve a registrar los que el
-  /// arranque deja creados (`EmployeesController`, permanente hasta la 4.07).
+  /// Borra los controllers de feature. Todos viven con su ruta (desde la
+  /// 4.07 ninguno es permanente), así que el arranque no deja ninguno creado.
   static Future<void> reset() async {
     for (final delete in featureControllers) {
       delete();
     }
-    EmployeesBinding.registerController();
   }
 }
 

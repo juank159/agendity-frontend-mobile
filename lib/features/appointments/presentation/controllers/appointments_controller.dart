@@ -7,7 +7,6 @@ import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
 import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
 
-import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
@@ -27,7 +26,6 @@ import 'package:login_signup/features/clients/domain/entities/clients_query.dart
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 
 import 'package:login_signup/core/usecases/usecase.dart';
@@ -102,32 +100,48 @@ class AppointmentsController extends GetxController {
   /// Motivo del último bloqueo de `check-limits` (por `code`, no por texto).
   SubscriptionBlock? _subscriptionBlock;
 
-  EmployeesController? _employeesController;
-  EmployeesController? get employeesController {
-    if (_employeesController == null) {
-      try {
-        _employeesController = Get.find<EmployeesController>();
-      } catch (e) {
-        print('Error al obtener EmployeesController: $e');
-        try {
-          // Intentar crear un nuevo controlador
-          _employeesController = EmployeesController(
-              getEmployeesUseCase: Get.find(),
-              getEmployeeByIdUseCase: Get.find(),
-              createEmployeeUseCase: Get.find(),
-              updateEmployeeUseCase: Get.find(),
-              deleteEmployeeUseCase: Get.find(),
-              toggleEmployeeStatusUseCase: Get.find(),
-              restoreEmployeeUseCase: Get.find(),
-              getDeletedEmployeesUseCase: Get.find());
+  /// Profesionales que se pueden elegir en una cita. Appointments los pide
+  /// con los use cases de employees; no usa el controller de esa feature.
+  final GetEmployeesUseCase getProfessionalsUseCase;
+  final GetEmployeeByIdUseCase getProfessionalByIdUseCase;
+  final RxList<EmployeeEntity> professionals = <EmployeeEntity>[].obs;
+  final RxBool isLoadingProfessionals = false.obs;
 
-          Get.put(_employeesController!);
-        } catch (innerError) {
-          print('No se pudo crear EmployeesController: $innerError');
-        }
-      }
+  /// Profesionales a los que se puede agendar (activos y sin baja).
+  List<EmployeeEntity> get schedulableProfessionals =>
+      professionals.where((e) => e.canBeScheduled).toList();
+
+  /// Carga los profesionales del negocio (solo el Owner puede listarlos).
+  Future<void> loadProfessionals() async {
+    if (isLoadingProfessionals.value) return;
+    isLoadingProfessionals.value = true;
+    final result = await getProfessionalsUseCase(NoParams());
+    isLoadingProfessionals.value = false;
+    result.fold((_) {}, professionals.assignAll);
+  }
+
+  /// El profesional [id], de la lista cargada o del backend; `null` si no se
+  /// puede leer (p. ej. un Employee, que no lista profesionales).
+  Future<EmployeeEntity?> findProfessional(String id) async {
+    final local = professionals.firstWhereOrNull((e) => e.id == id);
+    if (local != null) return local;
+    final result = await getProfessionalByIdUseCase(id);
+    return result.fold((_) => null, (employee) => employee);
+  }
+
+  /// Nombre para mostrar del profesional [id]. Si es el propio usuario, su
+  /// nombre de la sesión.
+  Future<String> professionalName(String id) async {
+    final employee = await findProfessional(id);
+    if (employee != null) return employee.fullName;
+    final session = Get.isRegistered<SessionController>()
+        ? Get.find<SessionController>().session.value
+        : null;
+    if (session != null && session.userId == id) {
+      final name = session.name?.trim() ?? '';
+      if (name.isNotEmpty) return name;
     }
-    return _employeesController;
+    return 'Profesional';
   }
 
   AppointmentsController(
@@ -139,8 +153,9 @@ class AppointmentsController extends GetxController {
       this.getClientsPageUseCase,
       this.localStorage,
       this.appointmentsRepository,
-      {this.checkSubscriptionStatusUseCase}) {
-    _initializeControllers();
+      {required this.getProfessionalsUseCase,
+      required this.getProfessionalByIdUseCase,
+      this.checkSubscriptionStatusUseCase}) {
     _getUserInfo();
     _initializeCalendar();
     _loadInitialData();
@@ -217,58 +232,6 @@ class AppointmentsController extends GetxController {
 
     apply(session.session.value);
     _sessionWorker = ever<Session?>(session.session, apply);
-  }
-
-  void _initializeControllers() {
-    try {
-      // Intentar conseguir el EmployeesController, pero manejar si no está disponible
-      _employeesController = Get.find<EmployeesController>();
-    } catch (e) {
-      print('EmployeesController no disponible: $e');
-      // Intentar inicializar EmployeesController
-      _initializeEmployeesController();
-    }
-  }
-
-  void _initializeEmployeesController() {
-    try {
-      // Intentar registrar un nuevo controlador directamente
-      _employeesController = EmployeesController(
-          getEmployeesUseCase: Get.find(),
-          getEmployeeByIdUseCase: Get.find(),
-          createEmployeeUseCase: Get.find(),
-          updateEmployeeUseCase: Get.find(),
-          deleteEmployeeUseCase: Get.find(),
-          toggleEmployeeStatusUseCase: Get.find(),
-          restoreEmployeeUseCase: Get.find(),
-          getDeletedEmployeesUseCase: Get.find());
-
-      Get.put(_employeesController!);
-      print('EmployeesController inicializado manualmente');
-    } catch (e) {
-      print('No se pudo inicializar EmployeesController: $e');
-      // Si falla, intenta crear uno con dependencias explícitas
-      try {
-        final getEmployeesUseCase = Get.find<GetEmployeesUseCase>();
-        final getEmployeeByIdUseCase = Get.find<GetEmployeeByIdUseCase>();
-        final createEmployeeUseCase = Get.find<CreateEmployeeUseCase>();
-
-        _employeesController = EmployeesController(
-            getEmployeesUseCase: getEmployeesUseCase,
-            getEmployeeByIdUseCase: getEmployeeByIdUseCase,
-            createEmployeeUseCase: createEmployeeUseCase,
-            updateEmployeeUseCase: Get.find(),
-            deleteEmployeeUseCase: Get.find(),
-            toggleEmployeeStatusUseCase: Get.find(),
-            restoreEmployeeUseCase: Get.find(),
-            getDeletedEmployeesUseCase: Get.find());
-
-        Get.put(_employeesController!);
-      } catch (innerError) {
-        print(
-            'Error al crear EmployeesController con dependencias explícitas: $innerError');
-      }
-    }
   }
 
   void _initializeCalendar() {
@@ -861,11 +824,6 @@ class AppointmentsController extends GetxController {
         return;
       }
 
-      // Verificaciones existentes...
-      if (employeesController == null) {
-        throw Exception('El controlador de empleados no está disponible');
-      }
-
       if (selectedServiceIds.isEmpty) {
         throw Exception('Debe seleccionar al menos un servicio');
       }
@@ -1116,17 +1074,9 @@ class AppointmentsController extends GetxController {
 
 
   Future<void> selectEmployee(EmployeeEntity employee) async {
-    if (employeesController != null) {
-      selectedEmployee.value = employee;
-    } else {
-      Get.snackbar(
-        'Error',
-        'No se pudo seleccionar el empleado',
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[800],
-      );
-    }
+    selectedEmployee.value = employee;
   }
+
 
   /// `true` si se actualizó; `false` si la suscripción lo bloqueó (ya se
   /// mostró el diálogo). Ante otro error informa al usuario y relanza.
@@ -1263,7 +1213,6 @@ class AppointmentsController extends GetxController {
   @override
   void onClose() {
     _sessionWorker?.dispose();
-    _employeesController = null;
     selectedServiceIds.clear();
     totalPrice.value = 0;
     _invalidateCache(); // Limpiar caché al cerrar

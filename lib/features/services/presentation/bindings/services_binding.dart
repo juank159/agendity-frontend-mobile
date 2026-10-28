@@ -5,8 +5,8 @@ import '../controller/services_controller.dart';
 
 /// Use cases: `ServicesDependencies` (arranque de la app).
 class ServicesBinding extends Bindings {
-  /// **Único** registro de [ServicesController]. Lo usan la ruta de
-  /// servicios y las de empleados (que listan servicios). `fenix`: tras
+  /// **Único** registro de [ServicesController]. Lo usa la ruta de
+  /// servicios (employees pide el catálogo con `GetServicesUseCase`). `fenix`: tras
   /// borrarse con su ruta o en el logout (`SessionScope`), el siguiente
   /// `Get.find` crea uno nuevo, que carga la lista en `onInit`.
   static void registerController() {

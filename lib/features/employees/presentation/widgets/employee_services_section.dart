@@ -1,180 +1,129 @@
 import 'package:flutter/material.dart';
-import 'package:login_signup/core/utils/formatters.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/constants/app_colors.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/core/widgets/empty_state.dart';
+import 'package:login_signup/core/widgets/error_state.dart';
+import 'package:login_signup/core/widgets/loading_state.dart';
+import 'package:login_signup/features/employees/presentation/controllers/employee_form_controller.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
-import 'package:login_signup/features/services/presentation/controller/services_controller.dart';
 
+/// Servicios que atiende el profesional, agrupados por categoría, con su
+/// comisión (0–100 %).
 class EmployeeServicesSection extends StatelessWidget {
-  final EmployeesController employeesController;
-  final ServicesController servicesController;
+  final EmployeeFormController controller;
 
-  const EmployeeServicesSection({
-    super.key,
-    required this.employeesController,
-    required this.servicesController,
+  const EmployeeServicesSection({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      switch (controller.catalogStatus.value) {
+        case EmployeeLoadStatus.loading:
+          return const SizedBox(
+              height: 120,
+              child: LoadingState(message: 'Cargando servicios…'));
+        case EmployeeLoadStatus.error:
+          return SizedBox(
+            height: 260,
+            child: ErrorState(
+              message: controller.catalogError.value ?? '',
+              onRetry: controller.loadCatalog,
+            ),
+          );
+        case EmployeeLoadStatus.ready:
+          final grouped = controller.catalogByCategory;
+          if (grouped.isEmpty) {
+            return const SizedBox(
+              height: 260,
+              child: EmptyState(
+                icon: Icons.spa_outlined,
+                message: 'No hay servicios',
+                subMessage: 'Crea servicios en el catálogo para asignarlos.',
+              ),
+            );
+          }
+          // Lee el mapa para que el Obx reaccione a la selección.
+          final selected = Map.of(controller.commissions);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final entry in grouped.entries)
+                _CategoryCard(
+                  category: entry.key,
+                  services: entry.value,
+                  selected: selected,
+                  controller: controller,
+                ),
+            ],
+          );
+      }
+    });
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  final String category;
+  final List<ServiceEntity> services;
+  final Map<String, double> selected;
+  final EmployeeFormController controller;
+
+  const _CategoryCard({
+    required this.category,
+    required this.services,
+    required this.selected,
+    required this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<ServicesController>(
-      builder: (controller) {
-        // Cargar servicios si están vacíos
-        if (controller.services.isEmpty) {
-          // Sólo mostrar loader si está cargando
-          if (controller.isLoading.value) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          } else {
-            // Intentar cargar servicios de forma manual
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              controller.loadServices();
-            });
-            return const Center(
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Cargando servicios...',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
-            );
-          }
-        }
-
-        // Mostrar los servicios agrupados
-        final groupedServices = controller.getServicesGroupedByCategory();
-        if (groupedServices.isEmpty) {
-          return const Center(
-            child: Column(
-              children: [
-                Icon(Icons.warning, size: 48, color: Colors.orange),
-                SizedBox(height: 16),
-                Text(
-                  'No hay servicios disponibles',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          children: groupedServices.entries.map((entry) {
-            return _buildCategoryServicesList(
-              categoryName: entry.key,
-              services: entry.value,
-              selectedIds: employeesController.selectedServiceIds,
-              onToggle: employeesController.toggleServiceSelection,
-              updateCommission: employeesController.updateServiceCommission,
-              commissions: employeesController.serviceCommissions,
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryServicesList({
-    required String categoryName,
-    required List<dynamic> services,
-    required RxList<String> selectedIds,
-    required Function(String) onToggle,
-    required Function(String, double) updateCommission,
-    required RxMap<String, double> commissions,
-  }) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              categoryName,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            Text(category,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            for (final service in services) ...[
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(service.name),
+                subtitle: Text(formatCop(service.price),
+                    style: TextStyle(color: scheme.onSurfaceVariant)),
+                value: selected.containsKey(service.id),
+                onChanged: (_) => controller.toggleService(service.id!),
               ),
-            ),
-            const SizedBox(height: 8),
-            ...services.map((service) {
-              final ServiceEntity serviceEntity = service as ServiceEntity;
-              final serviceId = serviceEntity.id ?? '';
-
-              return GetBuilder<EmployeesController>(
-                builder: (controller) {
-                  final isSelected =
-                      controller.selectedServiceIds.contains(serviceId);
-
-                  return Column(
+              if (selected.containsKey(service.id))
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: Row(
                     children: [
-                      CheckboxListTile(
-                        title: Text(serviceEntity.name),
-                        subtitle: Text(
-                          formatCop(serviceEntity.price),
-                          style: TextStyle(
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.bold,
-                          ),
+                      const Text('Comisión'),
+                      Expanded(
+                        child: Slider(
+                          value: selected[service.id]!,
+                          max: 100,
+                          divisions: 20,
+                          label: formatPercent(selected[service.id]),
+                          semanticFormatterCallback: (v) =>
+                              'Comisión ${formatPercent(v)}',
+                          onChanged: (v) =>
+                              controller.setCommission(service.id!, v),
                         ),
-                        value: isSelected,
-                        onChanged: (_) => onToggle(serviceId),
-                        activeColor: AppColors.cardIndicator,
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
                       ),
-
-                      // Mostrar el selector de porcentaje si el servicio está seleccionado
-                      if (isSelected)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                              left: 32.0, right: 16.0, bottom: 8.0),
-                          child: Row(
-                            children: [
-                              const Text(
-                                "Comisión: ",
-                                style: TextStyle(fontSize: 14),
-                              ),
-                              Expanded(
-                                child: Obx(() => Slider(
-                                      value: commissions[serviceId] ?? 0.0,
-                                      min: 0.0,
-                                      max: 100.0,
-                                      divisions: 20,
-                                      label:
-                                          "${commissions[serviceId]?.toStringAsFixed(1) ?? '0.0'}%",
-                                      onChanged: (value) =>
-                                          updateCommission(serviceId, value),
-                                    )),
-                              ),
-                              Obx(() => Text(
-                                    "${commissions[serviceId]?.toStringAsFixed(1) ?? '0.0'}%",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )),
-                            ],
-                          ),
-                        ),
+                      SizedBox(
+                        width: 56,
+                        child: Text(formatPercent(selected[service.id]),
+                            textAlign: TextAlign.end),
+                      ),
                     ],
-                  );
-                },
-              );
-            }),
+                  ),
+                ),
+            ],
           ],
         ),
       ),

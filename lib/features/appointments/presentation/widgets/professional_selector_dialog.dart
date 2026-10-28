@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import '../controllers/appointments_controller.dart';
 
 class ProfessionalSelectorDialog extends StatelessWidget {
   final AppointmentsController appointmentsController;
-  final EmployeesController employeesController;
 
   const ProfessionalSelectorDialog({
     super.key,
     required this.appointmentsController,
-    required this.employeesController,
   });
 
   static Future<EmployeeEntity?> show(
     BuildContext context,
     AppointmentsController appointmentsController,
-    EmployeesController employeesController,
   ) async {
     // Guarda el profesional seleccionado para restaurarlo si el usuario cancela
     final originalSelectedEmployee =
@@ -36,7 +32,6 @@ class ProfessionalSelectorDialog extends StatelessWidget {
           ),
           child: ProfessionalSelectorDialog(
             appointmentsController: appointmentsController,
-            employeesController: employeesController,
           ),
         ),
       ),
@@ -56,9 +51,9 @@ class ProfessionalSelectorDialog extends StatelessWidget {
     final searchController = TextEditingController();
     final searchQuery = ''.obs;
 
-    // Asegura que empleados estén cargados
-    if (employeesController.employees.isEmpty) {
-      employeesController.loadEmployees();
+    // Asegura que los profesionales estén cargados
+    if (appointmentsController.professionals.isEmpty) {
+      appointmentsController.loadProfessionals();
     }
 
     return Padding(
@@ -104,12 +99,15 @@ class ProfessionalSelectorDialog extends StatelessWidget {
           // Lista de profesionales
           Obx(() {
             // Manejo de estado de carga
-            if (employeesController.isLoading.value) {
+            if (appointmentsController.isLoadingProfessionals.value) {
               return const Center(child: CircularProgressIndicator());
             }
 
             // Cuando no hay profesionales
-            if (employeesController.employees.isEmpty) {
+            // Solo se ofrecen los que se pueden agendar (activos y sin baja).
+            final schedulable =
+                appointmentsController.schedulableProfessionals;
+            if (schedulable.isEmpty) {
               return Center(
                 child: Column(
                   children: [
@@ -121,8 +119,7 @@ class ProfessionalSelectorDialog extends StatelessWidget {
             }
 
             // Filtrar profesionales según búsqueda
-            final filteredEmployees =
-                employeesController.employees.where((employee) {
+            final filteredEmployees = schedulable.where((employee) {
               final fullName =
                   '${employee.name} ${employee.lastname}'.toLowerCase();
               return fullName.contains(searchQuery.value.toLowerCase());

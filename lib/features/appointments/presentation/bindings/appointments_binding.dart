@@ -15,7 +15,8 @@ import 'package:login_signup/features/appointments/presentation/controllers/appo
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_all_clients_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
@@ -31,9 +32,6 @@ class AppointmentsBinding implements Bindings {
         NetworkInfoImpl(connectionChecker: InternetConnectionChecker()),
       );
     }
-
-    // Primero intentar registrar el EmployeesController si no existe
-    _ensureEmployeesController();
 
     // Data Sources
     Get.lazyPut<AppointmentsRemoteDataSource>(
@@ -93,6 +91,8 @@ class AppointmentsBinding implements Bindings {
         Get.find<GetClientsPageUseCase>(),
         Get.find<LocalStorage>(),
         Get.find<AppointmentsRepository>(),
+        getProfessionalsUseCase: Get.find<GetEmployeesUseCase>(),
+        getProfessionalByIdUseCase: Get.find<GetEmployeeByIdUseCase>(),
       ),
       fenix: true,
     );
@@ -106,27 +106,6 @@ class AppointmentsBinding implements Bindings {
           getAllClientsUseCase: Get.find<GetAllClientsUseCase>(),
         ),
       );
-    }
-  }
-
-  void _ensureEmployeesController() {
-    if (!Get.isRegistered<EmployeesController>()) {
-      try {
-        Get.put(
-            EmployeesController(
-                getEmployeesUseCase: Get.find(),
-                getEmployeeByIdUseCase: Get.find(),
-                createEmployeeUseCase: Get.find(),
-                updateEmployeeUseCase: Get.find(),
-                deleteEmployeeUseCase: Get.find(),
-                toggleEmployeeStatusUseCase: Get.find(),
-                restoreEmployeeUseCase: Get.find(),
-                getDeletedEmployeesUseCase: Get.find()),
-            permanent: false);
-        print('EmployeesController registrado desde AppointmentsBinding');
-      } catch (e) {
-        print('Error al registrar EmployeesController: $e');
-      }
     }
   }
 }

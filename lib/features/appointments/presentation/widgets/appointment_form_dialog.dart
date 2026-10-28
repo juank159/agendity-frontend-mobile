@@ -6,8 +6,6 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/professional_selector_dialog.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
-import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import '../controllers/appointments_controller.dart';
 import 'client_search_selector.dart';
 import 'service_selector_dialog.dart';
@@ -101,15 +99,6 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
             hour: widget.initialDateTime!.hour, minute: widget.initialDateTime!.minute)
         : TimeOfDay.now());
 
-    // Crear una variable para el controlador
-    final employeesControllerRx = Rxn<EmployeesController>();
-
-    // Intentar inicializar el módulo de empleados y obtener el controlador
-    _initializeEmployeesController().then((controller) {
-      employeesControllerRx.value = controller;
-      // NO cargar empleados automáticamente - solo obtener el controlador
-    });
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Form(
@@ -131,11 +120,7 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Selector de profesional
-                    Obx(() => employeesControllerRx.value != null
-                        ? _buildProfessionalSelector(
-                            context, widget.controller, employeesControllerRx.value!)
-                        : _buildErrorMessage(
-                            context, "Cargando profesionales...")),
+                    _buildProfessionalSelector(context, widget.controller),
 
                     const SizedBox(height: 16),
 
@@ -237,7 +222,6 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
   Widget _buildProfessionalSelector(
     BuildContext context,
     AppointmentsController controller,
-    EmployeesController employeesController,
   ) {
     return Container(
       decoration: BoxDecoration(
@@ -380,15 +364,12 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
             width: double.infinity,
             child: TextButton.icon(
               onPressed: () async {
-                // Cargar empleados solo cuando se requiere abrir el selector
-                if (employeesController.employees.isEmpty) {
-                  await employeesController.loadEmployees();
+                // Cargar profesionales solo cuando se abre el selector
+                if (controller.professionals.isEmpty) {
+                  await controller.loadProfessionals();
                 }
-                await ProfessionalSelectorDialog.show(
-                  context,
-                  controller,
-                  employeesController,
-                );
+                if (!context.mounted) return;
+                await ProfessionalSelectorDialog.show(context, controller);
               },
               icon: Icon(
                 widget.controller.selectedEmployee.value == null
@@ -440,57 +421,6 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
     if (name.isNotEmpty) initials += name[0].toUpperCase();
     if (lastname.isNotEmpty) initials += lastname[0].toUpperCase();
     return initials;
-  }
-
-  // Método para mostrar mensaje de error o carga
-  Widget _buildErrorMessage(BuildContext context, String message) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.grey[700]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Método para inicializar de manera segura el EmployeesController
-  Future<EmployeesController?> _initializeEmployeesController() async {
-    try {
-      // Primero intentar encontrar el controlador existente
-      return Get.find<EmployeesController>();
-    } catch (e) {
-      print('Intentando inicializar EmployeesController desde cero');
-      try {
-        // Inicializar EmployeesModule manualmente
-        await _initEmployeesModule();
-        return Get.find<EmployeesController>();
-      } catch (innerE) {
-        print('Error inicializando EmployeesController: $innerE');
-        return null;
-      }
-    }
-  }
-
-  // Método para inicializar el módulo de empleados
-  Future<void> _initEmployeesModule() async {
-    EmployeesBinding.registerController();
   }
 
   Widget _buildServicesSummary(

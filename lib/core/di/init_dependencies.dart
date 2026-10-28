@@ -18,7 +18,6 @@ import '../config/api_config.dart';
 import 'modules/auth_module.dart';
 import 'package:login_signup/features/clients/clients_dependencies.dart';
 import 'package:login_signup/features/employees/employees_dependencies.dart';
-import 'package:login_signup/features/employees/presentation/bindings/employees_binding.dart';
 import 'package:login_signup/features/payments/payments_dependencies.dart';
 import 'package:login_signup/features/statistics/statistics_dependencies.dart';
 import 'package:login_signup/features/subscriptions/subscriptions_dependencies.dart';
@@ -128,7 +127,6 @@ class DependencyInjection {
       ClientsDependencies.init();
       await AppointmentsModule.init();
       EmployeesDependencies.init();
-      EmployeesBinding.registerController();
       PaymentsDependencies.init();
       StatisticsDependencies.init();
       SubscriptionsDependencies.init();

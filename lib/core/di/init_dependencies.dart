@@ -22,26 +22,17 @@ import 'package:login_signup/features/statistics/statistics_dependencies.dart';
 import 'package:login_signup/features/subscriptions/subscriptions_dependencies.dart';
 import 'package:login_signup/features/services/services_dependencies.dart';
 import 'package:login_signup/features/whatsapp/whatsapp_dependencies.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 class DependencyInjection {
   static Future<void> init() async {
     try {
-      // Ya no se llama a _initEnv() porque se inicializa antes en main()
+      // EnvConfig se inicializa antes, en main().
       await _initCore();
       await _initFeatures();
       _initThemeController(); // Añadimos la inicialización del controlador de temas
     } catch (e) {
-      print('Error initializing dependencies: $e');
-      rethrow;
-    }
-  }
-
-  static Future<void> _initEnv() async {
-    try {
-      await EnvConfig.init();
-      EnvConfig.validateEnv();
-    } catch (e) {
-      print('Error initializing environment: $e');
+      AppLogger.error('Error initializing dependencies', e);
       rethrow;
     }
   }
@@ -96,9 +87,9 @@ class DependencyInjection {
         permanent: true,
       );
 
-      print('Core dependencies initialized successfully');
+      AppLogger.debug('Core dependencies initialized successfully');
     } catch (e) {
-      print('Error initializing core dependencies: $e');
+      AppLogger.error('Error initializing core dependencies', e);
       rethrow;
     }
   }
@@ -120,9 +111,9 @@ class DependencyInjection {
       SubscriptionsDependencies.init();
       WhatsappDependencies.init();
 
-      print('Features initialized successfully');
+      AppLogger.debug('Features initialized successfully');
     } catch (e) {
-      print('Error initializing features: $e');
+      AppLogger.error('Error initializing features', e);
       rethrow;
     }
   }
@@ -132,10 +123,10 @@ class DependencyInjection {
     try {
       if (!Get.isRegistered<ThemeController>()) {
         Get.put<ThemeController>(ThemeController(), permanent: true);
-        print('Theme controller initialized successfully');
+        AppLogger.debug('Theme controller initialized successfully');
       }
     } catch (e) {
-      print('Error initializing theme controller: $e');
+      AppLogger.error('Error initializing theme controller', e);
       rethrow;
     }
   }

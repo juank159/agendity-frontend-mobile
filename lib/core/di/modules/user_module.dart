@@ -4,6 +4,7 @@ import 'package:login_signup/shared/controller/session_controller.dart';
 import 'package:login_signup/features/auth/domain/usecases/logout_usecase.dart';
 import '../../../features/auth/presentation/controllers/logout_controller.dart';
 import '../../../features/auth/presentation/controllers/user_info_controller.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 class UserModule {
   /// Registro **único** de la sesión de la UI. Requiere `SessionService`
@@ -36,7 +37,7 @@ class UserModule {
         );
       }
     } catch (e) {
-      print('Error initializing UserModule: $e');
+      AppLogger.error('Error initializing UserModule', e);
       rethrow;
     }
   }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
@@ -57,9 +59,16 @@ class ClientsRepositoryImpl implements ClientsRepository {
               .importClients(clients.map(ClientModel.fromEntity).toList()))
           .toEntity(sent: clients.length));
 
+  /// Un archivo que ya no existe es un error del usuario (elegir otra foto),
+  /// no del servidor: se decide aquí, antes de comprimir y subir.
   @override
-  Future<Either<Failure, String>> uploadImage(String filePath) =>
-      safeCall(() => _remote.uploadImage(filePath));
+  Future<Either<Failure, String>> uploadImage(String filePath) async {
+    if (!File(filePath).existsSync()) {
+      return const Left(InvalidClientDataFailure(
+          message: ClientsRemoteDataSourceImpl.unreadableImage));
+    }
+    return safeCall(() => _remote.uploadImage(filePath));
+  }
 
   /// Cliente repetido en el negocio al crear o editar (2.30):
   /// `DUPLICATE_PHONE` o `DUPLICATE_EMAIL`, tanto de la comprobación previa

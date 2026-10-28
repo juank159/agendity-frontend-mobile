@@ -8,6 +8,7 @@ import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/email_verification_notice.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
@@ -258,7 +259,7 @@ class CustomDrawer extends GetView<UserInfoController> {
                                   try {
                                     await Get.toNamed(GetRoutes.employees);
                                   } catch (e) {
-                                    print('Error al navegar a Personal: $e');
+                                    AppLogger.error('Error al navegar a Personal', e);
                                     Get.snackbar(
                                       'Error',
                                       'No se pudo cargar la pantalla de Personal',

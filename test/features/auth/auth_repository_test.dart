@@ -40,7 +40,7 @@ ResponseBody errorBody(int status, String code, String message) =>
 /// SDK de Google falso: devuelve [idToken] (`null` = cancelado) o lanza.
 class FakeGoogle implements GoogleAuthDataSource {
   String? idToken = 'google-id-token';
-  Object? error;
+  Error? error;
   int signOuts = 0;
 
   @override

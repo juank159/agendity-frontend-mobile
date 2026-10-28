@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 /// Feedback breve y común de la app (sustituye a los `Get.snackbar` con
 /// colores fijos). Usa los tokens del tema, así que respeta el modo oscuro.
@@ -41,7 +42,7 @@ abstract final class AppSnackbar {
     try {
       _present(messenger, tone, colors, title, message, duration);
     } catch (e) {
-      debugPrint('AppSnackbar: no se pudo mostrar "$title": $e');
+      AppLogger.error('AppSnackbar: no se pudo mostrar "$title"', e);
     }
   }
 

@@ -1,7 +1,7 @@
 import 'package:dartz/dartz.dart';
-import 'package:flutter/foundation.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/error_mapper.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 /// Convierte un failure genérico en uno de la feature (p. ej. `code ==
 /// ApiErrorCode.slotUnavailable` → `SlotUnavailableFailure`).
@@ -22,9 +22,9 @@ Future<Either<Failure, T>> safeCall<T>(
     return Right(await call());
   } catch (error, stackTrace) {
     final failure = ErrorMapper.fromObject(error);
-    if (kDebugMode && failure is ServerFailure && failure.statusCode == null) {
+    if (failure is ServerFailure && failure.statusCode == null) {
       // Errores de programación (TypeError en un fromJson, etc.): sin datos de la petición.
-      debugPrint('[safeCall] ${error.runtimeType}: $error\n$stackTrace');
+      AppLogger.error('[safeCall] ${error.runtimeType}', '$error\n$stackTrace');
     }
     return Left(refine == null ? failure : refine(failure));
   }

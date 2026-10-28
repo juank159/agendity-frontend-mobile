@@ -1,5 +1,4 @@
 import 'package:dartz/dartz.dart';
-import 'package:flutter/foundation.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/core/session/session_service.dart';
@@ -11,6 +10,7 @@ import 'package:login_signup/features/auth/domain/entities/user_entity.dart';
 import 'package:login_signup/features/auth/domain/failures/auth_failures.dart';
 import 'package:login_signup/features/auth/domain/repositories/auth_repository.dart';
 import 'package:login_signup/shared/local_storage/local_storage.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remote;
@@ -46,7 +46,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       idToken = await _google.obtainIdToken();
     } catch (error) {
-      debugPrint('Google Sign-In: ${error.runtimeType}');
+      AppLogger.error('Google Sign-In', error.runtimeType);
       return const Left(GoogleSignInRejectedFailure());
     }
     if (idToken == null) return const Left(GoogleSignInCancelledFailure());

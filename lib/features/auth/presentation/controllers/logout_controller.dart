@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/di/session_scope.dart';
@@ -7,6 +6,7 @@ import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/shared/controller/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import '../../domain/usecases/logout_usecase.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 /// Único punto de cierre de sesión: el botón del drawer ([logout]) y la
 /// sesión expirada ([endSession] con `expired: true`, conectado en
@@ -43,8 +43,8 @@ class LogoutController extends GetxController {
       }
       final result = await _logoutUseCase(NoParams());
       result.fold(
-        (failure) => debugPrint('Logout: limpieza local con error: '
-            '${failure.message}'),
+        (failure) => AppLogger.error(
+            'Logout: limpieza local con error', failure.message),
         (_) {},
       );
 
@@ -61,7 +61,7 @@ class LogoutController extends GetxController {
         AppSnackbar.success('Sesión cerrada correctamente');
       }
     } catch (e) {
-      debugPrint('Error en logout: $e');
+      AppLogger.error('Error en logout', e);
       AppSnackbar.error('Error al cerrar sesión');
     } finally {
       isLoading.value = false;

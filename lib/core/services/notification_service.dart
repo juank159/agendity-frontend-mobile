@@ -1,5 +1,6 @@
 // lib/core/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_init;
 
@@ -47,7 +48,7 @@ class NotificationService {
     // Maneja la acción cuando el usuario toca la notificación
     if (response.payload != null) {
       // Aquí puedes navegar a la pantalla de detalles de la cita
-      print('Notification payload: ${response.payload}');
+      AppLogger.debug('Notification payload: ${response.payload}');
     }
   }
 
@@ -62,8 +63,8 @@ class NotificationService {
     // Verificar si la hora programada ya pasó
     final now = DateTime.now();
     if (scheduledTime.isBefore(now)) {
-      print(
-          'Warning: Attempting to schedule notification for past time: $scheduledTime');
+      AppLogger.debug(
+          'Notificación en una hora pasada ($scheduledTime): se muestra ya');
       // Opción 1: No hacer nada y retornar
       // return;
 
@@ -103,9 +104,9 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: payload,
       );
-      print('Notification scheduled successfully for: $scheduledTime');
+      AppLogger.debug('Notification scheduled for: $scheduledTime');
     } catch (e) {
-      print('Error scheduling notification: $e');
+      AppLogger.error('Error scheduling notification', e);
       
       // ✅ FALLBACK MEJORADO: Intentar con modo normal primero
       try {
@@ -120,9 +121,9 @@ class NotificationService {
               UILocalNotificationDateInterpretation.absoluteTime,
           payload: payload,
         );
-        print('Notification scheduled with alarmClock mode');
+        AppLogger.debug('Notification scheduled with alarmClock mode');
       } catch (e2) {
-        print('Failed with alarmClock mode: $e2');
+        AppLogger.error('Failed with alarmClock mode', e2);
         // Como último recurso, mostrar inmediatamente
         await showNotification(
           id: id,
@@ -169,9 +170,8 @@ class NotificationService {
   Future<void> cancelNotification(int id) async {
     try {
       await flutterLocalNotificationsPlugin.cancel(id);
-      print('Notification cancelled successfully for ID: $id');
     } catch (e) {
-      print('Error cancelling notification ID $id: $e');
+      AppLogger.error('Error cancelling notification $id', e);
     }
   }
 
@@ -179,9 +179,8 @@ class NotificationService {
   Future<void> cancelAllNotifications() async {
     try {
       await flutterLocalNotificationsPlugin.cancelAll();
-      print('All notifications cancelled successfully');
     } catch (e) {
-      print('Error cancelling all notifications: $e');
+      AppLogger.error('Error cancelling all notifications', e);
     }
   }
 }

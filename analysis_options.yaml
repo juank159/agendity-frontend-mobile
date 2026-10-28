@@ -21,7 +21,10 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
+    # 5.04: nada de print (logs con `AppLogger`, solo en debug) y solo se
+    # lanzan Exception/Error (los failures viajan en Either, no con throw).
+    avoid_print: true
+    only_throw_errors: true
     # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 
 # Additional information about this file can be found at

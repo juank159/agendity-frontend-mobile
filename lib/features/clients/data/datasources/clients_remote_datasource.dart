@@ -7,7 +7,6 @@ import 'package:login_signup/features/clients/data/models/client_import_result_m
 import 'package:login_signup/features/clients/data/models/client_model.dart';
 import 'package:login_signup/features/clients/data/models/client_page_model.dart';
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
-import 'package:login_signup/features/clients/domain/failures/client_failures.dart';
 
 /// Rutas `/clients` y `POST /upload/image`. Owner y Employee (los clientes son
 /// del negocio). Los errores (400/403/404/409, red) salen como `DioException`
@@ -113,9 +112,6 @@ class ClientsRemoteDataSourceImpl implements ClientsRemoteDataSource {
   @override
   Future<String> uploadImage(String filePath) async {
     final original = File(filePath);
-    if (!original.existsSync()) {
-      throw const InvalidClientDataFailure(message: unreadableImage);
-    }
     final file = await _compress(original);
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(

@@ -2,6 +2,7 @@
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:login_signup/core/session/token_store.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 class LocalStorage {
   final FlutterSecureStorage _storage;
@@ -27,9 +28,9 @@ class LocalStorage {
       // Verificar que todos los métodos de almacenamiento estén funcionando
       await _testStorageOperations();
 
-      print('LocalStorage initialized successfully');
+      AppLogger.debug('LocalStorage initialized successfully');
     } catch (e) {
-      print('Error initializing LocalStorage: $e');
+      AppLogger.error('Error initializing LocalStorage', e);
       rethrow;
     }
   }
@@ -48,7 +49,7 @@ class LocalStorage {
       // Test delete
       await _storage.delete(key: '_test_key');
 
-      print('Storage operations verified successfully');
+      AppLogger.debug('Storage operations verified successfully');
     } catch (e) {
       throw Exception('Failed to verify storage operations: $e');
     }
@@ -59,7 +60,6 @@ class LocalStorage {
   Future<void> deleteToken() => _tokens.clearToken();
 
   Future<void> clearAllData() async {
-    print('Limpiando todos los datos almacenados...');
     await _storage.deleteAll();
   }
 

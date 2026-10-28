@@ -11,6 +11,7 @@ import 'package:login_signup/core/di/init_dependencies.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/firebase_options.dart';
 import 'package:login_signup/shared/controller/theme_controller.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 Future<void> main() async {
   try {
@@ -27,14 +28,11 @@ Future<void> main() async {
     await initializeDateFormatting('es', null);
     await DependencyInjection.init();
 
-    debugPrint('Rutas registradas:');
-    GetRoutes.routes.forEach((route) {
-      debugPrint('Ruta: ${route.name}, Page: ${route.page}');
-    });
+    AppLogger.debug('Rutas registradas: ${GetRoutes.routes.length}');
 
     runApp(const MyApp());
   } catch (e) {
-    debugPrint('Error inicializando la aplicación: $e');
+    AppLogger.error('Error inicializando la aplicación', e);
     rethrow;
   }
 }
@@ -83,7 +81,7 @@ class MyApp extends StatelessWidget {
           // Otras configuraciones
           navigatorKey: Get.key,
           onInit: () {
-            debugPrint('App inicializada correctamente');
+            AppLogger.debug('App inicializada correctamente');
           },
 
           // Configuración de navegación

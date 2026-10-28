@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
@@ -22,6 +21,7 @@ import 'package:login_signup/features/statistics/presentation/controllers/employ
 import 'package:login_signup/features/statistics/presentation/controllers/statistics_controller.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
 import 'package:login_signup/features/whatsapp/presentation/controllers/whatsapp_controller.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 /// Controllers que guardan datos del usuario que inició sesión.
 ///
@@ -78,6 +78,6 @@ void deleteSessionController<T>() {
   try {
     Get.delete<T>(force: true);
   } catch (e) {
-    debugPrint('SessionScope: error al borrar $T: $e');
+    AppLogger.error('SessionScope: error al borrar $T', e);
   }
 }

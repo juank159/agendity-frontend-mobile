@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:login_signup/core/network/interceptors/retry_interceptor.dart';
+import 'package:login_signup/core/utils/app_logger.dart';
 
 class ApiConfig {
   static Dio createDio(String baseUrl) {
@@ -23,44 +23,33 @@ class ApiConfig {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         // Solo en debug y nunca headers ni cuerpo (llevan el token y la contraseña).
-        if (kDebugMode) {
-          print('=== REQUEST === ${options.method} ${options.uri}');
-        }
+        AppLogger.debug('=== REQUEST === ${options.method} ${options.uri}');
         return handler.next(options);
       },
       onResponse: (response, handler) {
         // Sin headers ni cuerpo: la respuesta del login trae el token.
-        if (kDebugMode) {
-          print('=== RESPONSE === ${response.statusCode} '
-              '${response.requestOptions.method} ${response.requestOptions.uri}');
-        }
+        AppLogger.debug('=== RESPONSE === ${response.statusCode} '
+            '${response.requestOptions.method} ${response.requestOptions.uri}');
         return handler.next(response);
       },
       onError: (error, handler) async {
-        if (kDebugMode) {
-          print('\n=== ERROR ===');
-          print('Error Type: ${error.type}');
-          print(
-              'Error [${error.response?.statusCode}] ${error.requestOptions.uri}');
-          if (error.response?.data != null) {
-            print('Error data: ${error.response?.data}');
-          }
-        }
+        // Sin el cuerpo: puede traer datos personales.
+        AppLogger.debug('=== ERROR === ${error.type} '
+            '[${error.response?.statusCode}] ${error.requestOptions.uri}');
 
         var retryCount = error.requestOptions.extra['retryCount'] ?? 0;
 
         if (RetryInterceptor.shouldRetry(error) && retryCount < 3) {
-          print('Reintentando petición - Intento ${retryCount + 1}');
+          AppLogger.debug('Reintentando petición - Intento ${retryCount + 1}');
           retryCount++;
           await Future.delayed(Duration(seconds: retryCount));
 
           try {
             final opts = error.requestOptions..extra['retryCount'] = retryCount;
             final response = await dio.fetch(opts);
-            print('Reintento exitoso');
             return handler.resolve(response);
           } catch (e) {
-            print('Reintento fallido: $e');
+            AppLogger.error('Reintento fallido', e);
             return handler.next(
               DioException(
                 requestOptions: error.requestOptions,

@@ -1,23 +1,18 @@
-// lib/widgets/custom_drawer.dart
-
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
-import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/email_verification_notice.dart';
-import 'package:login_signup/core/utils/app_logger.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
 
+/// Menú lateral de la home. Solo entradas con pantalla real; las de Owner
+/// (Personal, WhatsApp y Planes) se ocultan al Employee, igual que
+/// `RoleMiddleware.ownerOnly()` en sus rutas. Colores del `ColorScheme`.
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
-  // UserInfoController se registra una sola vez en SessionBinding.
-  UserInfoController _ensureUserInfoController() =>
-      Get.find<UserInfoController>();
-
-  Future<void> _showLogoutDialog() async {
+  Future<void> _confirmLogout() async {
     final confirmed = await AppDialogs.confirm(
       title: '¿Cerrar sesión?',
       message: '¿Seguro que quieres cerrar la sesión?',
@@ -28,437 +23,204 @@ class CustomDrawer extends GetView<UserInfoController> {
     if (confirmed) await Get.find<LogoutController>().logout();
   }
 
+  /// Cierra el menú y abre [route].
+  void _open(String route) {
+    Get.back();
+    Get.toNamed(route);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final userController = _ensureUserInfoController();
-
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.85,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1A237E), // Azul oscuro
-              Color(0xFF0D47A1), // Azul profundo
-              Color(0xFF01579B), // Azul oscuro
+      child: Obx(() {
+        final isOwner = controller.isOwner();
+        return ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _DrawerHeader(controller: controller, isOwner: isOwner),
+            const _SectionTitle('NAVEGACIÓN'),
+            // Owner y Employee (el Employee, en solo lectura).
+            _DrawerItem(
+              icon: Icons.sell_outlined,
+              title: 'Servicios',
+              onTap: () => _open(GetRoutes.services),
+            ),
+            // Owner y Employee crean y editan clientes; borrar, solo el Owner.
+            _DrawerItem(
+              icon: Icons.people_outline,
+              title: 'Clientela',
+              onTap: () => _open(GetRoutes.clients),
+            ),
+            if (isOwner)
+              _DrawerItem(
+                icon: Icons.badge_outlined,
+                title: 'Personal',
+                onTap: () => _open(GetRoutes.employees),
+              ),
+            _DrawerItem(
+              icon: Icons.bar_chart,
+              title: 'Informes',
+              onTap: () => _open(controller.getStatisticsRoute()),
+            ),
+            const _SectionTitle('CONFIGURACIÓN'),
+            // Solo Owner: el backend responde 403 al Employee en la
+            // configuración de WhatsApp y al suscribirse.
+            if (isOwner) ...[
+              _DrawerItem(
+                icon: Icons.chat_outlined,
+                title: 'WhatsApp',
+                onTap: () => _open(GetRoutes.configWhatsapp),
+              ),
+              _DrawerItem(
+                icon: Icons.workspace_premium_outlined,
+                title: 'Planes y suscripción',
+                onTap: () => _open(GetRoutes.subscriptionPlans),
+              ),
             ],
-          ),
-        ),
-        child: SafeArea(
-          child: Obx(() {
-            final bool isOwner = userController.isOwner();
-
-            return Column(
-              children: [
-                  // Perfil de usuario
-                  Container(
-                    padding: const EdgeInsets.only(top: 30, bottom: 20),
-                    child: Column(
-                      children: [
-                        // Avatar del usuario
-                        Obx(() => Container(
-                              height: 100,
-                              width: 100,
-                              margin: const EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.blue.shade300,
-                                    Colors.blue.shade600,
-                                  ],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 10,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  width: 4,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  userController.userInitial.value,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            )),
-
-                        // Nombre de usuario
-                        Obx(() => Text(
-                              userController.userName.value,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            )),
-
-                        // Email del usuario
-                        Obx(() => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 24),
-                              child: Text(
-                                userController.userEmail.value,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 14,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            )),
-
-                        // Chip de rol
-                        Container(
-                          margin: const EdgeInsets.only(top: 12),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isOwner
-                                ? Colors.amber.withValues(alpha: 0.2)
-                                : Colors.blue.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isOwner
-                                  ? Colors.amber.withValues(alpha: 0.5)
-                                  : Colors.blue.withValues(alpha: 0.5),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            isOwner ? "PROPIETARIO" : "EMPLEADO",
-                            style: TextStyle(
-                              color: isOwner ? Colors.amber : Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        // Owner con el email sin verificar (4.08b).
-                        const EmailVerificationNotice(),
-                      ],
-                    ),
-                  ),
-
-                  // Separador decorativo
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    height: 2,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withValues(alpha: 0.5),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Lista de opciones del menú
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.03),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
-                          ),
-                        ),
-                        child: ListView(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.only(top: 20, bottom: 20),
-                          children: [
-                            // Sección: Buscar
-                            _buildSectionTitle('NAVEGACIÓN'),
-
-                            _buildDrawerItem(
-                              icon: Icons.search,
-                              title: 'Buscar',
-                              onTap: () {
-                                Get.back();
-                                // Implementar acción de búsqueda
-                              },
-                            ),
-
-                            // Visible para Owner y Employee (el Employee,
-                            // en solo lectura).
-                            _buildDrawerItem(
-                              icon: Icons.sell,
-                              title: 'Servicios',
-                              onTap: () {
-                                Get.back();
-                                Get.toNamed(GetRoutes.services);
-                              },
-                            ),
-
-                            // Visible para Owner y Employee (los dos crean y
-                            // editan clientes; borrar, solo el Owner).
-                            _buildDrawerItem(
-                              icon: Icons.people,
-                              title: 'Clientela',
-                              onTap: () {
-                                Get.back();
-                                Get.toNamed(GetRoutes.clients);
-                              },
-                            ),
-
-                            // Elementos condicionales según el rol
-                            if (isOwner) ...[
-                              _buildDrawerItem(
-                                icon: Icons.message,
-                                title: 'Mensajes',
-                                onTap: () {
-                                  Get.back();
-                                  // Implementar navegación
-                                },
-                                isBeta: true, // Indica que es una función beta
-                              ),
-                              _buildDrawerItem(
-                                icon: Icons.monetization_on,
-                                title: 'Gastos',
-                                onTap: () {
-                                  Get.back();
-                                  // Implementar navegación
-                                },
-                              ),
-                              _buildDrawerItem(
-                                icon: Icons.calendar_today,
-                                title: 'Reserva Online',
-                                onTap: () {
-                                  Get.back();
-                                  // Implementar navegación
-                                },
-                              ),
-                              _buildDrawerItem(
-                                icon: Icons.person,
-                                title: 'Personal',
-                                onTap: () async {
-                                  Get.back();
-                                  try {
-                                    await Get.toNamed(GetRoutes.employees);
-                                  } catch (e) {
-                                    AppLogger.error('Error al navegar a Personal', e);
-                                    Get.snackbar(
-                                      'Error',
-                                      'No se pudo cargar la pantalla de Personal',
-                                      backgroundColor: Colors.red[100],
-                                      colorText: Colors.red[900],
-                                      snackPosition: SnackPosition.BOTTOM,
-                                    );
-                                  }
-                                },
-                              ),
-                              _buildDrawerItem(
-                                icon: Icons.description,
-                                title: 'Formularios',
-                                onTap: () {
-                                  Get.back();
-                                  // Implementar navegación
-                                },
-                              ),
-                            ],
-
-                            // Visible para Owner y Employee
-                            _buildDrawerItem(
-                              icon: Icons.bar_chart,
-                              title: 'Informes',
-                              onTap: () {
-                                Get.back();
-                                final route = userController.getStatisticsRoute();
-                                Get.toNamed(route);
-                              },
-                            ),
-
-                            // Sección: Configuración
-                            const SizedBox(height: 16),
-                            _buildSectionTitle('CONFIGURACIÓN'),
-
-                            // Solo Owner: el backend responde 403 al Employee
-                            // en la configuración de WhatsApp y al suscribirse.
-                            if (isOwner) ...[
-                              _buildDrawerItem(
-                                icon: Icons.settings,
-                                title: 'Ajustes',
-                                onTap: () {
-                                  Get.back();
-                                  Get.toNamed(GetRoutes.configWhatsapp);
-                                },
-                              ),
-                              _buildDrawerItem(
-                                icon: Icons.help,
-                                title: 'Centro de ayuda',
-                                onTap: () {
-                                  Get.back();
-                                  Get.toNamed(GetRoutes.subscriptionPlans);
-                                },
-                              ),
-                            ],
-                            _buildDrawerItem(
-                              icon: Icons.send,
-                              title: 'Enviar opiniones',
-                              onTap: () {
-                                Get.back();
-                                // Implementar navegación
-                              },
-                            ),
-
-                            // Sección: Cuenta
-                            const SizedBox(height: 16),
-                            _buildSectionTitle('CUENTA'),
-
-                            _buildDrawerItem(
-                              icon: Icons.logout_rounded,
-                              title: 'Cerrar Sesión',
-                              onTap: () {
-                                Get.back();
-                                _showLogoutDialog();
-                              },
-                              isDestructive:
-                                  true, // Estilo especial para acciones destructivas
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }),
-        ),
-      ),
+            _DrawerItem(
+              icon: Icons.palette_outlined,
+              title: 'Apariencia',
+              onTap: () => _open(GetRoutes.themeSettings),
+            ),
+            const _SectionTitle('CUENTA'),
+            _DrawerItem(
+              icon: Icons.logout_rounded,
+              title: 'Cerrar sesión',
+              destructive: true,
+              onTap: () {
+                Get.back();
+                _confirmLogout();
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      }),
     );
   }
+}
 
-  // Widget para crear títulos de sección
-  Widget _buildSectionTitle(String title) {
+/// Avatar, nombre, email, rol y el aviso de email sin verificar (4.08b).
+class _DrawerHeader extends StatelessWidget {
+  final UserInfoController controller;
+  final bool isOwner;
+
+  const _DrawerHeader({required this.controller, required this.isOwner});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final roleBackground =
+        isOwner ? scheme.tertiaryContainer : scheme.secondaryContainer;
+    final roleForeground =
+        isOwner ? scheme.onTertiaryContainer : scheme.onSecondaryContainer;
+
+    return Container(
+      color: scheme.primaryContainer,
+      padding: EdgeInsets.fromLTRB(
+          16, MediaQuery.of(context).padding.top + 24, 16, 20),
+      child: Obx(() => Column(
+            children: [
+              CircleAvatar(
+                radius: 44,
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+                child: Text(
+                  controller.userInitial.value,
+                  style: const TextStyle(
+                      fontSize: 38, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                controller.userName.value,
+                textAlign: TextAlign.center,
+                style: text.titleLarge?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (controller.userEmail.value.isNotEmpty)
+                Text(
+                  controller.userEmail.value,
+                  textAlign: TextAlign.center,
+                  style: text.bodyMedium
+                      ?.copyWith(color: scheme.onPrimaryContainer),
+                ),
+              const SizedBox(height: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: roleBackground,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  isOwner ? 'PROPIETARIO' : 'EMPLEADO',
+                  style: text.labelMedium?.copyWith(
+                    color: roleForeground,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const EmailVerificationNotice(),
+            ],
+          )),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 10),
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 8),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 12,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.primary,
           fontWeight: FontWeight.bold,
-          color: Colors.blue.shade300,
           letterSpacing: 1.5,
         ),
       ),
     );
   }
+}
 
-  // Widget para crear items del drawer
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    int badgeCount = 0,
-    bool isBeta = false,
-    bool isDestructive = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          splashColor: isDestructive
-              ? Colors.red.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.1),
-          highlightColor: isDestructive
-              ? Colors.red.withValues(alpha: 0.05)
-              : Colors.white.withValues(alpha: 0.05),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isDestructive
-                        ? Colors.red.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 22,
-                    color: isDestructive ? Colors.red.shade300 : Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: isDestructive ? Colors.red.shade300 : Colors.white,
-                    ),
-                  ),
-                ),
-                if (badgeCount > 0)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      badgeCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                if (isBeta)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.amber,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      "BETA",
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  const _DrawerItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = destructive ? scheme.error : scheme.onSurface;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: ListTile(
+        leading: Icon(icon, color: destructive ? scheme.error : scheme.primary),
+        title: Text(
+          title,
+          style: TextStyle(color: color, fontWeight: FontWeight.w500),
         ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onTap: onTap,
       ),
     );
   }

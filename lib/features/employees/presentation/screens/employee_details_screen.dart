@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/features/employees/presentation/widgets/employee_avatar.dart';
 import 'package:login_signup/features/employees/presentation/widgets/employee_schedule_section.dart';
 import 'package:login_signup/features/employees/presentation/widgets/employee_status_ui.dart';
@@ -53,7 +53,7 @@ class EmployeeDetailsScreen extends StatelessWidget {
                               leading: const Icon(Icons.spa_outlined),
                               title: Text(service.serviceName ?? 'Servicio'),
                               subtitle: Text([
-                                'Comisión ${formatPercent(service.commissionPercentage)}',
+                                'Comisión ${formatPercent(service.effectiveCommission(employee.commissionPercentage))}',
                                 if (service.customPrice != null)
                                   'Precio propio ${formatCop(service.customPrice)}',
                               ].join(' · ')),

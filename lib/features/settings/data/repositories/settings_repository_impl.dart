@@ -23,7 +23,20 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
   @override
   Future<Either<Failure, BusinessSettings>> updateTimeZone(String timeZone) =>
-      safeCall(() async => _applied(await _remote.updateTimeZone(timeZone)));
+      _update(BusinessSettingsModel.timeZoneUpdate(timeZone));
+
+  @override
+  Future<Either<Failure, BusinessSettings>> updateName(String name) =>
+      _update(BusinessSettingsModel.nameUpdate(name));
+
+  @override
+  Future<Either<Failure, BusinessSettings>> updateOpeningHours(
+          OpeningHours? hours) =>
+      _update(BusinessSettingsModel.openingHoursUpdate(hours));
+
+  Future<Either<Failure, BusinessSettings>> _update(
+          Map<String, dynamic> changes) =>
+      safeCall(() async => _applied(await _remote.update(changes)));
 
   /// La zona que dice el backend es la de la sesión desde ahora.
   Future<BusinessSettings> _applied(BusinessSettingsModel model) async {

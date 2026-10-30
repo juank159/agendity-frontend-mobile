@@ -3,7 +3,7 @@ import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/role_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 
 /// Profesional tal como lo devuelve `/auth/employee*` (usuario sin secretos +
 /// `roles: [{name}]`).
@@ -31,6 +31,9 @@ class EmployeeModel {
   final List<String> roles;
   final Map<String, ServiceAssignment> services;
   final Map<String, WorkHours> schedule;
+
+  /// `commission_percentage` (decimal como texto; 8.02). Sin él, 0.
+  final double commissionPercentage;
   final DateTime? deletedAt;
   final String? deletionReason;
 
@@ -47,6 +50,7 @@ class EmployeeModel {
     this.roles = const [],
     this.services = const {},
     this.schedule = const {},
+    this.commissionPercentage = 0,
     this.deletedAt,
     this.deletionReason,
   });
@@ -81,6 +85,7 @@ class EmployeeModel {
       roles: roles,
       services: _readServices(json),
       schedule: _readSchedule(json),
+      commissionPercentage: JsonRead.asDouble(json['commission_percentage']),
       deletedAt: DateCodec.tryDecode(json['deletedAt']),
       deletionReason: JsonRead.asOptionalString(json['deletionReason']),
     );
@@ -96,12 +101,16 @@ class EmployeeModel {
           flat ? (row['id'] ?? row['serviceId']) : row['serviceId']);
       if (id == null) continue;
       final customPrice = row['customPrice'];
+      final commission = row['commissionPercentage'];
       services[id] = ServiceAssignment(
         serviceId: id,
         serviceName: JsonRead.asOptionalString(
             flat ? row['name'] : JsonRead.asMap(row['service'])?['name']),
-        commissionPercentage: JsonRead.asDouble(row['commissionPercentage']),
+        // 8.02: null = sin excepción (usa la general).
+        commissionPercentage:
+            commission == null ? null : JsonRead.asDouble(commission),
         customPrice: customPrice == null ? null : JsonRead.asDouble(customPrice),
+        isActive: JsonRead.asBool(row['isActive'], fallback: true),
       );
     }
     return services;
@@ -143,6 +152,7 @@ class EmployeeModel {
         roles: [for (final role in roles) RoleEntity(role)],
         serviceAssignments: services,
         schedule: schedule,
+        commissionPercentage: commissionPercentage,
         deletedAt: deletedAt,
         deletionReason: deletionReason,
       );

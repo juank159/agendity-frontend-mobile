@@ -38,6 +38,12 @@ void main() {
       (ApiErrorCode.appointmentPaid, 409, ConflictFailure),
       (ApiErrorCode.emailNotVerified, 409, ConflictFailure),
       (ApiErrorCode.ownerNotDeletable, 403, ConflictFailure),
+      (ApiErrorCode.serviceNotOfferedByProfessional, 409, ConflictFailure),
+      (ApiErrorCode.appointmentNotStarted, 409, ConflictFailure),
+      (ApiErrorCode.outsideBusinessHours, 409, ConflictFailure),
+      (ApiErrorCode.bookingLimitReached, 409, ConflictFailure),
+      (ApiErrorCode.onlineBookingUnavailable, 409, ConflictFailure),
+      (ApiErrorCode.emailDeliveryFailed, 503, EmailDeliveryFailure),
       (ApiErrorCode.categoryHasServices, 409, ConflictFailure),
       (ApiErrorCode.paymentAlreadyExists, 409, ConflictFailure),
       (ApiErrorCode.appointmentInPast, 400, ValidationFailure),
@@ -69,6 +75,23 @@ void main() {
           400, body(400, 'SLOT_UNAVAILABLE', 'Horario no disponible'));
       expect(failure, isA<ConflictFailure>());
       expect(failure, isNot(isA<ValidationFailure>()));
+    });
+
+    test('EMAIL_DELIVERY_FAILED (503): conserva su texto y es reintentable',
+        () {
+      final failure = ErrorMapper.fromDioException(badResponse(
+          503,
+          body(503, 'EMAIL_DELIVERY_FAILED',
+              'No pudimos enviar el correo con el código.')));
+      expect(failure, isA<EmailDeliveryFailure>());
+      expect(failure, isA<ServerFailure>());
+      expect(failure.message, 'No pudimos enviar el correo con el código.');
+      expect(failure.code, ApiErrorCode.emailDeliveryFailed);
+      expect(
+          ErrorMapper.fromDioException(
+                  badResponse(503, body(503, 'EMAIL_DELIVERY_FAILED', null)))
+              .message,
+          EmailDeliveryFailure.defaultMessage);
     });
 
     test('code en minúsculas se normaliza', () {

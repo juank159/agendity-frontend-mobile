@@ -28,13 +28,19 @@ class EmployeeInputModel {
         'lastname': input.lastname,
         'email': input.email,
         'phone': input.phone,
+        if (input.commissionPercentage != null)
+          'commission_percentage': input.commissionPercentage,
         'services': [
           for (final service in input.services.values)
             {
               'serviceId': service.serviceId,
-              'commissionPercentage': service.commissionPercentage,
+              // 8.02: sin excepción no se envía (si no, un 0 % taparía la
+              // comisión general).
+              if (service.commissionPercentage != null)
+                'commissionPercentage': service.commissionPercentage,
               if (service.customPrice != null)
                 'customPrice': service.customPrice,
+              if (!service.isActive) 'isActive': false,
             },
         ],
         'schedule': {

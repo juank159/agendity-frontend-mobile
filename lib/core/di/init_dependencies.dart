@@ -40,7 +40,13 @@ class DependencyInjection {
 
   static Future<void> _initCore() async {
     try {
-      Get.put<FlutterSecureStorage>(const FlutterSecureStorage(),
+      // macOS (7.04-1): el keychain de "data protection" exige firmar con un
+      // equipo y el entitlement keychain-access-groups; sin ellos (debug sin
+      // firma) da -34018 y la app no arranca. El keychain clásico (login) no
+      // los necesita. iOS y Android no cambian.
+      Get.put<FlutterSecureStorage>(
+          const FlutterSecureStorage(
+              mOptions: MacOsOptions(useDataProtectionKeyChain: false)),
           permanent: true);
 
       // Sesión (3.02): TokenStore es el único dueño del token; LocalStorage

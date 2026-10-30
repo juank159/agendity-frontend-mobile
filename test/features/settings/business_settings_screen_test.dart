@@ -49,6 +49,15 @@ class FakeSettingsRepository implements SettingsRepository {
     await session.applyTimeZone(timeZone);
     return Right(BusinessSettings(timeZone: timeZone));
   }
+  // 8.03 (FD): nombre y horario; esta pantalla aún no los usa.
+  @override
+  Future<Either<Failure, BusinessSettings>> updateName(String name) async =>
+      Right(BusinessSettings(timeZone: saved, name: name));
+
+  @override
+  Future<Either<Failure, BusinessSettings>> updateOpeningHours(
+          OpeningHours? hours) async =>
+      Right(BusinessSettings(timeZone: saved, openingHours: hours));
 }
 
 const zones = [

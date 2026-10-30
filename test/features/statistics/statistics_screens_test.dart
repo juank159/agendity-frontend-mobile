@@ -8,6 +8,7 @@ import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
 import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
@@ -141,6 +142,15 @@ class FakeStatisticsRepository implements StatisticsRepository {
     _count('employee', range);
     employeeProfessionalIds.add(professionalId);
     return employeeResult;
+  }
+
+  // 8.03 (FD): liquidación de comisiones; estas pantallas aún no la usan.
+  @override
+  Future<Either<Failure, CommissionSettlement>> getCommissionSettlement(
+      StatsRange range,
+      {String? professionalId}) async {
+    _count('commissions', range);
+    return const Right(CommissionSettlement(totals: CommissionAmounts()));
   }
 }
 

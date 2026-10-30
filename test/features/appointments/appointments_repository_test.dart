@@ -197,6 +197,19 @@ void main() {
       });
     }
 
+    for (final (code, type) in [
+      ('SERVICE_NOT_OFFERED_BY_PROFESSIONAL', ServiceNotOfferedFailure),
+      ('OUTSIDE_BUSINESS_HOURS', OutsideBusinessHoursFailure),
+    ]) {
+      test('409 $code → $type (7.03, 8.01)', () async {
+        adapter.handler = (_) => errorBody(409, code, 'Texto de $code');
+        final failure = leftOf(await create()(newAppointment));
+        expect(failure.runtimeType, type);
+        expect(failure, isA<ConflictFailure>());
+        expect(failure!.message, 'Texto de $code');
+      });
+    }
+
     test('HTTP definitivo (409/402) → mismo failure', () async {
       adapter.handler =
           (_) => errorBody(409, 'SLOT_UNAVAILABLE', 'Horario no disponible');
@@ -354,6 +367,17 @@ void main() {
       expect(failure, isA<AppointmentPaidFailure>());
       expect(failure, isA<ConflictFailure>());
       expect(failure!.message, startsWith('La cita tiene pagos'));
+    });
+
+    test('completar antes de empezar → AppointmentNotStartedFailure (7.03)',
+        () async {
+      adapter.handler = (_) => errorBody(409, 'APPOINTMENT_NOT_STARTED',
+          'No se puede completar una cita que aún no ha empezado');
+      final failure =
+          leftOf(await CompleteAppointmentUseCase(repository)('apt-1'));
+      expect(failure, isA<AppointmentNotStartedFailure>());
+      expect(failure!.message,
+          'No se puede completar una cita que aún no ha empezado');
     });
 
     test('PATCH :id/complete; ya cancelada → InvalidStateTransitionFailure',

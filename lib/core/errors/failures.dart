@@ -212,3 +212,22 @@ class DuplicatePhoneFailure extends ConflictFailure {
           code: ApiErrorCode.duplicatePhone,
         );
 }
+
+/// `EMAIL_DELIVERY_FAILED` (503, 7.03): el correo con el código no se pudo
+/// enviar (SMTP caído o rechazado). Es temporal y no es culpa de la petición:
+/// la app ofrece reintentar (decide por el tipo); pedir otro código lo
+/// reinicia.
+/// Lo usan la verificación de email (auth, employees) y la recuperación de
+/// contraseña.
+class EmailDeliveryFailure extends ServerFailure {
+  static const defaultMessage =
+      'No pudimos enviar el correo con el código. Intenta de nuevo en unos minutos.';
+
+  const EmailDeliveryFailure({
+    String? message,
+    super.statusCode,
+    super.details,
+  }) : super(
+            message: message ?? defaultMessage,
+            code: ApiErrorCode.emailDeliveryFailed);
+}

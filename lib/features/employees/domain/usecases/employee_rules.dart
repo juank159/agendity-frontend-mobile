@@ -1,6 +1,6 @@
 import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 
 /// Reglas de los datos de un profesional: las del DTO del backend
 /// (`CreateAuthDto`, `AssignServiceDto`) más un horario coherente. Las usan
@@ -41,6 +41,7 @@ abstract final class EmployeeRules {
         phone: normalizePhone(input.phone),
         password: input.password,
         services: input.services,
+        commissionPercentage: input.commissionPercentage,
         schedule: {
           for (final entry in input.schedule.entries)
             entry.key: WorkHours(
@@ -75,7 +76,10 @@ abstract final class EmployeeRules {
       if (!_phone.hasMatch(input.phone)) phoneInvalid,
       if (requirePassword && !input.hasPassword) passwordRequired,
       if (input.hasPassword && !isStrongPassword(input.password!)) passwordWeak,
-      if (input.services.values.any(_badCommission)) commissionInvalid,
+      if (!isValidCommission(input.commissionPercentage) ||
+          input.services.values
+              .any((s) => !isValidCommission(s.commissionPercentage)))
+        commissionInvalid,
       if (input.services.values.any(_badCustomPrice)) customPriceInvalid,
       if (!_isValidSchedule(input.schedule)) scheduleInvalid,
     ];
@@ -87,8 +91,12 @@ abstract final class EmployeeRules {
   static bool _isValidPersonName(String value) =>
       value.length >= 2 && value.length <= 50 && _personName.hasMatch(value);
 
-  static bool _badCommission(ServiceAssignment service) =>
-      service.commissionPercentage < 0 || service.commissionPercentage > 100;
+  /// `null` (sin valor) o de 0 a 100 % con hasta 2 decimales (DTO del backend).
+  static bool isValidCommission(double? percentage) =>
+      percentage == null ||
+      (percentage >= 0 &&
+          percentage <= 100 &&
+          ((percentage * 100) - (percentage * 100).round()).abs() < 1e-6);
 
   static bool _badCustomPrice(ServiceAssignment service) =>
       service.customPrice != null && service.customPrice! < 0;

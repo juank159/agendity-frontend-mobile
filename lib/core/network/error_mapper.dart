@@ -90,6 +90,12 @@ abstract final class ErrorMapper {
     ApiErrorCode.ownerNotDeletable: _conflict,
     ApiErrorCode.categoryHasServices: _conflict,
     ApiErrorCode.appointmentInPast: _validation,
+    ApiErrorCode.serviceNotOfferedByProfessional: _conflict,
+    ApiErrorCode.appointmentNotStarted: _conflict,
+    ApiErrorCode.outsideBusinessHours: _conflict,
+    ApiErrorCode.bookingLimitReached: _conflict,
+    ApiErrorCode.onlineBookingUnavailable: _conflict,
+    ApiErrorCode.emailDeliveryFailed: _emailDelivery,
     ApiErrorCode.invalidVerificationCode: _invalidVerificationCode,
     ApiErrorCode.trialLimitReached: _paymentRequired,
     ApiErrorCode.subscriptionInactive: _paymentRequired,
@@ -133,6 +139,8 @@ abstract final class ErrorMapper {
   static Failure _tooManyRequests(
           String? m, String? c, int? s, List<String> d) =>
       TooManyRequestsFailure(message: m, code: c, statusCode: s, details: d);
+  static Failure _emailDelivery(String? m, String? c, int? s, List<String> d) =>
+      EmailDeliveryFailure(message: m, statusCode: s, details: d);
   static Failure _server(String? m, String? c, int? s, List<String> d) =>
       ServerFailure(message: m, code: c, statusCode: s, details: d);
 

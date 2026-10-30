@@ -5,7 +5,7 @@ import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
@@ -51,7 +51,9 @@ abstract class EmployeeFormController extends GetxController {
   final catalogError = RxnString();
 
   /// Servicios elegidos → comisión (0–100).
-  final commissions = <String, double>{}.obs;
+  /// Servicios elegidos → excepción de comisión (`null` = usa la general,
+  /// D-16; 8.03 FP: la UI de la general y de "usar la general").
+  final commissions = <String, double?>{}.obs;
 
   /// Precio propio de los servicios que ya lo tenían (no se edita aquí, pero
   /// se conserva al guardar).
@@ -108,7 +110,7 @@ abstract class EmployeeFormController extends GetxController {
     if (commissions.containsKey(serviceId)) {
       commissions.remove(serviceId);
     } else {
-      commissions[serviceId] = 0;
+      commissions[serviceId] = null;
     }
   }
 

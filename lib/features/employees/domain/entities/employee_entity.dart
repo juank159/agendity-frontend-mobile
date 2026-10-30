@@ -1,7 +1,7 @@
 import 'package:login_signup/core/utils/deep_equality.dart';
 import 'package:login_signup/features/employees/domain/entities/role_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 
 /// Estado de un profesional para el negocio (CLAUDE.md §1).
 enum EmployeeStatus {
@@ -44,6 +44,11 @@ class EmployeeEntity {
   /// Horario semanal por día (`WorkHours.weekdays`). Vacío = sin horario.
   final Map<String, WorkHours> schedule;
 
+  /// Comisión general (0–100 %, D-16): la de cada servicio que atiende salvo
+  /// excepción en [serviceAssignments]. El Owner no la usa (todo es del
+  /// negocio).
+  final double commissionPercentage;
+
   /// Fecha de la baja (soft-delete); `null` si no está borrado.
   final DateTime? deletedAt;
   final String? deletionReason;
@@ -61,6 +66,7 @@ class EmployeeEntity {
     this.roles = const [],
     this.serviceAssignments = const {},
     this.schedule = const {},
+    this.commissionPercentage = 0,
     this.deletedAt,
     this.deletionReason,
   });
@@ -70,6 +76,21 @@ class EmployeeEntity {
   List<String> get serviceIds => serviceAssignments.keys.toList();
 
   bool get isDeleted => deletedAt != null;
+
+  /// Hace el servicio [serviceId] (7.03, misma regla que el backend
+  /// `SERVICE_NOT_OFFERED_BY_PROFESSIONAL`): el Owner hace todos los del
+  /// negocio; un empleado, los que tiene asignados y activos.
+  bool offersService(String serviceId) =>
+      isOwner || (serviceAssignments[serviceId]?.isActive ?? false);
+
+  /// Hace todos los de [serviceIds]. Para filtrar el catálogo del formulario
+  /// de citas: `catalog.where((s) => professional.offersService(s.id!))`.
+  bool offersAll(Iterable<String> serviceIds) => serviceIds.every(offersService);
+
+  /// Comisión que aplica al servicio [serviceId] (su excepción o la general).
+  double commissionFor(String serviceId) =>
+      serviceAssignments[serviceId]?.effectiveCommission(commissionPercentage) ??
+      commissionPercentage;
 
   /// Se le pueden agendar citas: activo y sin baja. Un inactivo da
   /// `PROFESSIONAL_INACTIVE` y uno borrado, `NOT_FOUND` (ARQUITECTURA §3).
@@ -102,6 +123,7 @@ class EmployeeEntity {
         roles: roles,
         serviceAssignments: serviceAssignments,
         schedule: schedule,
+        commissionPercentage: commissionPercentage,
         deletedAt: at,
         deletionReason: reason,
       );
@@ -121,6 +143,7 @@ class EmployeeEntity {
         roles: roles,
         serviceAssignments: serviceAssignments,
         schedule: schedule,
+        commissionPercentage: commissionPercentage,
       );
 
   /// Los opcionales no se pueden poner a `null` con [copyWith]: para la baja y
@@ -138,6 +161,7 @@ class EmployeeEntity {
     List<RoleEntity>? roles,
     Map<String, ServiceAssignment>? serviceAssignments,
     Map<String, WorkHours>? schedule,
+    double? commissionPercentage,
     DateTime? deletedAt,
     String? deletionReason,
   }) =>
@@ -154,6 +178,7 @@ class EmployeeEntity {
         roles: roles ?? this.roles,
         serviceAssignments: serviceAssignments ?? this.serviceAssignments,
         schedule: schedule ?? this.schedule,
+        commissionPercentage: commissionPercentage ?? this.commissionPercentage,
         deletedAt: deletedAt ?? this.deletedAt,
         deletionReason: deletionReason ?? this.deletionReason,
       );
@@ -174,6 +199,7 @@ class EmployeeEntity {
           DeepEquality.lists(other.roles, roles) &&
           DeepEquality.maps(other.serviceAssignments, serviceAssignments) &&
           DeepEquality.maps(other.schedule, schedule) &&
+          other.commissionPercentage == commissionPercentage &&
           other.deletedAt == deletedAt &&
           other.deletionReason == deletionReason;
 
@@ -191,6 +217,7 @@ class EmployeeEntity {
         Object.hashAll(roles),
         DeepEquality.mapHash(serviceAssignments),
         DeepEquality.mapHash(schedule),
+        commissionPercentage,
         deletedAt,
         deletionReason,
       );

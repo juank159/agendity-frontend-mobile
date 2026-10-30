@@ -96,3 +96,48 @@ class ReminderUnavailableFailure extends ConflictFailure {
 class InvalidAppointmentDataFailure extends ValidationFailure {
   const InvalidAppointmentDataFailure({super.message});
 }
+
+/// `SERVICE_NOT_OFFERED_BY_PROFESSIONAL` (409, 7.03): el empleado no tiene
+/// asignado (y activo) alguno de los servicios elegidos. El Owner como
+/// profesional hace todos. Al agendar, mover o pedir horas libres.
+class ServiceNotOfferedFailure extends ConflictFailure {
+  static const defaultMessage =
+      'El profesional no realiza uno o más de los servicios elegidos';
+
+  const ServiceNotOfferedFailure({
+    String? message,
+    super.statusCode,
+    super.details,
+  }) : super(
+            message: message ?? defaultMessage,
+            code: ApiErrorCode.serviceNotOfferedByProfessional);
+}
+
+/// `APPOINTMENT_NOT_STARTED` (409, 7.03): completar una cita cuya hora de
+/// inicio aún no llega.
+class AppointmentNotStartedFailure extends ConflictFailure {
+  static const defaultMessage =
+      'No se puede completar una cita que aún no ha empezado';
+
+  const AppointmentNotStartedFailure({
+    String? message,
+    super.statusCode,
+    super.details,
+  }) : super(
+            message: message ?? defaultMessage,
+            code: ApiErrorCode.appointmentNotStarted);
+}
+
+/// `OUTSIDE_BUSINESS_HOURS` (409, 8.01): agendar o mover fuera del horario
+/// de apertura del negocio (si lo tiene configurado).
+class OutsideBusinessHoursFailure extends ConflictFailure {
+  static const defaultMessage = 'El negocio está cerrado a esa hora';
+
+  const OutsideBusinessHoursFailure({
+    String? message,
+    super.statusCode,
+    super.details,
+  }) : super(
+            message: message ?? defaultMessage,
+            code: ApiErrorCode.outsideBusinessHours);
+}

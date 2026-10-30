@@ -24,6 +24,15 @@ abstract final class ApiErrorCode {
   static const duplicatePhone = 'DUPLICATE_PHONE';
   static const trialLimitReached = 'TRIAL_LIMIT_REACHED';
   static const subscriptionInactive = 'SUBSCRIPTION_INACTIVE';
+  static const serviceNotOfferedByProfessional =
+      'SERVICE_NOT_OFFERED_BY_PROFESSIONAL';
+  static const appointmentNotStarted = 'APPOINTMENT_NOT_STARTED';
+  static const outsideBusinessHours = 'OUTSIDE_BUSINESS_HOURS';
+  static const emailDeliveryFailed = 'EMAIL_DELIVERY_FAILED';
+
+  /// Solo de la agenda pública (9.01): la app no llama esas rutas.
+  static const bookingLimitReached = 'BOOKING_LIMIT_REACHED';
+  static const onlineBookingUnavailable = 'ONLINE_BOOKING_UNAVAILABLE';
   static const tooManyRequests = 'TOO_MANY_REQUESTS';
   static const internalError = 'INTERNAL_ERROR';
 }

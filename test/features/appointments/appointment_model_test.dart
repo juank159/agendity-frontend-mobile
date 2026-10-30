@@ -39,6 +39,7 @@ Map<String, dynamic> backendAppointment({
   bool reminderSent = false,
   String? phone = '3001234567',
   String? timeZone = 'America/Bogota',
+  String? source,
 }) =>
     {
       'id': id,
@@ -47,6 +48,7 @@ Map<String, dynamic> backendAppointment({
       'date': date,
       // Zona guardada en la cita (backend 6.03).
       if (timeZone != null) 'timezone': timeZone,
+      if (source != null) 'source': source,
       'status': status,
       'payment_status': paymentStatus,
       'total_price': total,
@@ -208,6 +210,34 @@ void main() {
       });
       expect(reminder.phone, '3001234567');
       expect(reminder.whatsappUrl, startsWith('https://wa.me/57'));
+    });
+  });
+
+  group('origen y "ya empezó" (9.01, 7.03)', () {
+    tearDown(() => BusinessTimeZone.clock = DateTime.now);
+
+    test('source WEB/APP; sin el campo o desconocido, APP', () {
+      AppointmentEntity read(String? source) =>
+          AppointmentModel.fromJson(backendAppointment(source: source))
+              .toEntity();
+      expect(read('WEB').source, AppointmentSource.WEB);
+      expect(read('WEB').isWebBooking, true);
+      expect(read(' app ').source, AppointmentSource.APP);
+      expect(read(null).source, AppointmentSource.APP);
+      expect(read('KIOSKO').source, AppointmentSource.APP);
+    });
+
+    test('canCompleteAt: pendiente o confirmada y ya empezada', () {
+      final appointment = AppointmentModel.fromJson(
+              backendAppointment(date: '2026-11-03T10:00:00.000-05:00'))
+          .toEntity();
+      expect(appointment.canCompleteAt(DateTime(2026, 11, 3, 9, 59)), false);
+      expect(appointment.canCompleteAt(DateTime(2026, 11, 3, 10)), true);
+      expect(appointment.hasStartedAt(DateTime(2026, 11, 3, 11)), true);
+      final cancelled = AppointmentModel.fromJson(backendAppointment(
+              date: '2026-11-03T10:00:00.000-05:00', status: 'CANCELLED'))
+          .toEntity();
+      expect(cancelled.canCompleteAt(DateTime(2026, 11, 3, 11)), false);
     });
   });
 }

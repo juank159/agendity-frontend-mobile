@@ -6,7 +6,7 @@ import 'package:login_signup/features/employees/data/models/employee_restoration
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 
 /// Empleado como lo devuelve `GET /auth/employees` (usuario sin secretos +
 /// `roles`, `isOwner`, `services` y `schedule` ya transformados).
@@ -249,7 +249,8 @@ void main() {
       });
       expect(json['services'], [
         {'serviceId': 'svc-1', 'commissionPercentage': 40.0, 'customPrice': 35000.0},
-        {'serviceId': 'svc-2', 'commissionPercentage': 0.0},
+        // 8.02: sin excepción no se envía (un 0 % taparía la general).
+        {'serviceId': 'svc-2'},
       ]);
       expect(json['schedule'], {
         'monday': {'start': '09:00', 'end': '18:00'}

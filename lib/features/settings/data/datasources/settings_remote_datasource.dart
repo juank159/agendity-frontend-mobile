@@ -7,8 +7,10 @@ abstract class SettingsRemoteDataSource {
   /// `GET /settings`.
   Future<BusinessSettingsModel> getSettings();
 
-  /// `PATCH /settings {timezone}` (solo Owner).
-  Future<BusinessSettingsModel> updateTimeZone(String timeZone);
+  /// `PATCH /settings` con solo los campos que cambian (solo Owner). El
+  /// cuerpo lo arma `BusinessSettingsModel` (`timeZoneUpdate`, `nameUpdate`,
+  /// `openingHoursUpdate`).
+  Future<BusinessSettingsModel> update(Map<String, dynamic> changes);
 }
 
 class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
@@ -23,9 +25,9 @@ class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
   }
 
   @override
-  Future<BusinessSettingsModel> updateTimeZone(String timeZone) async {
-    final response = await _dio.patch<Map<String, dynamic>>('/settings',
-        data: BusinessSettingsModel.timeZoneUpdate(timeZone));
+  Future<BusinessSettingsModel> update(Map<String, dynamic> changes) async {
+    final response =
+        await _dio.patch<Map<String, dynamic>>('/settings', data: changes);
     return BusinessSettingsModel.fromJson(response.data);
   }
 }

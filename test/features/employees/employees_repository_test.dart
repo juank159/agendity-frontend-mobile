@@ -9,7 +9,7 @@ import 'package:login_signup/features/employees/data/repositories/employees_repo
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/features/employees/domain/failures/employee_failures.dart';
 import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/delete_employee_usecase.dart';

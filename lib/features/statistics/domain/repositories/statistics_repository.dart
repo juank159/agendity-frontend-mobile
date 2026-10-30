@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
 import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
@@ -33,6 +34,12 @@ abstract class StatisticsRepository {
   /// El Employee recibe siempre las suyas ([professionalId] se ignora). El
   /// Owner debe indicar [professionalId]; sin él, `ValidationFailure` (400).
   Future<Either<Failure, EmployeeStatsEntity>> getEmployeeStats(
+      StatsRange range,
+      {String? professionalId});
+
+  /// `GET /payments/stats/commissions` (Owner y Employee; el Employee recibe
+  /// solo la suya y pedir otra da `ForbiddenFailure`).
+  Future<Either<Failure, CommissionSettlement>> getCommissionSettlement(
       StatsRange range,
       {String? professionalId});
 }

@@ -3,11 +3,13 @@ import 'package:login_signup/common/enums/appointment_status_enum.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/deep_equality.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_client.dart';
+import 'package:login_signup/features/appointments/domain/entities/appointment_source.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_service_line.dart';
 
 export 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
 export 'package:login_signup/common/enums/appointment_status_enum.dart';
 export 'package:login_signup/features/appointments/domain/entities/appointment_client.dart';
+export 'package:login_signup/features/appointments/domain/entities/appointment_source.dart';
 export 'package:login_signup/features/appointments/domain/entities/appointment_service_line.dart';
 
 /// Cita (backend: `appointments`). Pura: sin colores ni textos de UI (los
@@ -54,6 +56,9 @@ class AppointmentEntity {
   /// negocio si este cambió de zona después.
   final String? timeZone;
 
+  /// `WEB` = reserva del link público (D-17). Sin el campo, `APP`.
+  final AppointmentSource source;
+
   const AppointmentEntity({
     required this.id,
     required this.client,
@@ -71,6 +76,7 @@ class AppointmentEntity {
     this.reminderSentAt,
     this.createdAt,
     this.timeZone,
+    this.source = AppointmentSource.APP,
   })  : _recordStart = startTime,
         _recordEnd = endTime;
 
@@ -117,8 +123,19 @@ class AppointmentEntity {
   /// Ocupa su hueco en la agenda (solo una cancelada lo libera).
   bool get blocksSlot => !isCancelled;
 
-  /// Se puede completar (también sin pagar, 2.15).
+  /// Se puede completar (también sin pagar, 2.15). Además debe haber
+  /// empezado: ver [canCompleteAt].
   bool get canComplete => isPending || isConfirmed;
+
+  bool get isWebBooking => source == AppointmentSource.WEB;
+
+  /// Ya empezó en [now] (hora de pared del negocio, `BusinessTimeZone.now()`).
+  bool hasStartedAt(DateTime now) =>
+      !startInstant.isAfter(BusinessTimeZone.toInstant(now));
+
+  /// Se puede completar en [now]: pendiente o confirmada y ya empezada
+  /// (7.03: si no, el backend responde `APPOINTMENT_NOT_STARTED`).
+  bool canCompleteAt(DateTime now) => canComplete && hasStartedAt(now);
 
   /// Se puede cancelar: no es final y no le queda nada pagado (si no, el
   /// backend responde `APPOINTMENT_PAID`).
@@ -167,6 +184,7 @@ class AppointmentEntity {
     DateTime? reminderSentAt,
     DateTime? createdAt,
     String? timeZone,
+    AppointmentSource? source,
   }) =>
       AppointmentEntity(
         id: id ?? this.id,
@@ -185,6 +203,7 @@ class AppointmentEntity {
         reminderSentAt: reminderSentAt ?? this.reminderSentAt,
         createdAt: createdAt ?? this.createdAt,
         timeZone: timeZone ?? this.timeZone,
+        source: source ?? this.source,
       );
 
   @override
@@ -206,7 +225,8 @@ class AppointmentEntity {
           other.reminderSent == reminderSent &&
           other.reminderSentAt == reminderSentAt &&
           other.createdAt == createdAt &&
-          other.timeZone == timeZone;
+          other.timeZone == timeZone &&
+          other.source == source;
 
   @override
   int get hashCode => Object.hash(
@@ -226,6 +246,7 @@ class AppointmentEntity {
         reminderSentAt,
         createdAt,
         timeZone,
+        source,
       );
 
   @override

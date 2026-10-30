@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/features/statistics/data/models/commission_settlement_model.dart';
 import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
+import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
 import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_stats_model.dart';
@@ -30,6 +32,9 @@ abstract class StatisticsRemoteDataSource {
       {required int limit});
 
   Future<EmployeeStatsModel> getEmployeeStats(StatsRange range,
+      {String? professionalId});
+
+  Future<CommissionSettlement> getCommissionSettlement(StatsRange range,
       {String? professionalId});
 }
 
@@ -81,6 +86,15 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
           {String? professionalId}) async =>
       EmployeeStatsModel.fromJson(await _getObject(
         '/payments/employee-stats',
+        range,
+        {if (professionalId != null) 'professionalId': professionalId},
+      ));
+
+  @override
+  Future<CommissionSettlement> getCommissionSettlement(StatsRange range,
+          {String? professionalId}) async =>
+      CommissionSettlementModel.fromJson(await _getObject(
+        '/payments/stats/commissions',
         range,
         {if (professionalId != null) 'professionalId': professionalId},
       ));

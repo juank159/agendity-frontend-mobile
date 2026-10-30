@@ -10,6 +10,10 @@ class RegisterOwnerInput {
   /// dispositivo; si tampoco hay, el backend usa la suya por defecto.
   final String? timeZone;
 
+  /// Nombre del negocio (8.00, opcional): de él sale el slug del link
+  /// público. Vacío = sin nombre.
+  final String? businessName;
+
   const RegisterOwnerInput({
     required this.name,
     required this.lastname,
@@ -17,6 +21,7 @@ class RegisterOwnerInput {
     required this.phone,
     required this.password,
     this.timeZone,
+    this.businessName,
   });
 
   /// Sin espacios sobrantes (la contraseña se envía tal cual).
@@ -26,8 +31,14 @@ class RegisterOwnerInput {
         email: email.trim(),
         phone: phone.trim(),
         password: password,
-        timeZone: timeZone?.trim().isEmpty ?? true ? null : timeZone!.trim(),
+        timeZone: _blankToNull(timeZone),
+        businessName: _blankToNull(businessName),
       );
+
+  static String? _blankToNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 
   RegisterOwnerInput withTimeZone(String? zone) => RegisterOwnerInput(
         name: name,
@@ -36,5 +47,6 @@ class RegisterOwnerInput {
         phone: phone,
         password: password,
         timeZone: zone,
+        businessName: businessName,
       );
 }

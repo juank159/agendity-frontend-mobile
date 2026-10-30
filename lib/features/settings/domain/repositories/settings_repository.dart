@@ -13,4 +13,11 @@ abstract class SettingsRepository {
   /// `ForbiddenFailure`). Devuelve la configuración guardada, con el nombre
   /// canónico de la zona.
   Future<Either<Failure, BusinessSettings>> updateTimeZone(String timeZone);
+
+  /// `PATCH /settings {name}` (solo Owner).
+  Future<Either<Failure, BusinessSettings>> updateName(String name);
+
+  /// `PATCH /settings {opening_hours}` (solo Owner). `null` = sin horario.
+  Future<Either<Failure, BusinessSettings>> updateOpeningHours(
+      OpeningHours? hours);
 }

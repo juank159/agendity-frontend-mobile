@@ -108,6 +108,19 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
             message: failure.message,
             statusCode: failure.statusCode,
             details: failure.details),
+        ApiErrorCode.serviceNotOfferedByProfessional =>
+          ServiceNotOfferedFailure(
+              message: failure.message,
+              statusCode: failure.statusCode,
+              details: failure.details),
+        ApiErrorCode.appointmentNotStarted => AppointmentNotStartedFailure(
+            message: failure.message,
+            statusCode: failure.statusCode,
+            details: failure.details),
+        ApiErrorCode.outsideBusinessHours => OutsideBusinessHoursFailure(
+            message: failure.message,
+            statusCode: failure.statusCode,
+            details: failure.details),
         _ => refineSubscriptionFailure(failure),
       };
 }

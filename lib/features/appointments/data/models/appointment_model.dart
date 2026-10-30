@@ -28,6 +28,9 @@ class AppointmentModel {
   /// `timezone` de la cita (6.03): sus fechas se leen en esa zona.
   final String? timeZone;
 
+  /// `source` (9.01): `APP` o `WEB`; sin él, `APP`.
+  final AppointmentSource source;
+
   const AppointmentModel({
     required this.id,
     required this.client,
@@ -44,6 +47,7 @@ class AppointmentModel {
     this.reminderSentAt,
     this.createdAt,
     this.timeZone,
+    this.source = AppointmentSource.APP,
   });
 
   /// Sin `id` o sin `date` no es una cita: lanza `FormatException` (el
@@ -94,6 +98,7 @@ class AppointmentModel {
           timeZone: timeZone),
       createdAt: DateCodec.tryDecode(json['created_at'], timeZone: timeZone),
       timeZone: timeZone,
+      source: AppointmentSource.fromApi(json['source']) ?? AppointmentSource.APP,
     );
   }
 
@@ -134,6 +139,7 @@ class AppointmentModel {
         reminderSentAt: reminderSentAt,
         createdAt: createdAt,
         timeZone: timeZone,
+        source: source,
       );
 }
 

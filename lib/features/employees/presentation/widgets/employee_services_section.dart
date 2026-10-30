@@ -64,7 +64,7 @@ class EmployeeServicesSection extends StatelessWidget {
 class _CategoryCard extends StatelessWidget {
   final String category;
   final List<ServiceEntity> services;
-  final Map<String, double> selected;
+  final Map<String, double?> selected;
   final EmployeeFormController controller;
 
   const _CategoryCard({
@@ -105,7 +105,7 @@ class _CategoryCard extends StatelessWidget {
                       const Text('Comisión'),
                       Expanded(
                         child: Slider(
-                          value: selected[service.id]!,
+                          value: selected[service.id] ?? 0,
                           max: 100,
                           divisions: 20,
                           label: formatPercent(selected[service.id]),

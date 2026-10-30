@@ -6,7 +6,9 @@ import 'package:login_signup/features/settings/data/datasources/settings_remote_
 import 'package:login_signup/features/settings/data/repositories/settings_repository_impl.dart';
 import 'package:login_signup/features/settings/domain/repositories/settings_repository.dart';
 import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
+import 'package:login_signup/features/settings/domain/usecases/update_business_name_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_time_zone_usecase.dart';
+import 'package:login_signup/features/settings/domain/usecases/update_opening_hours_usecase.dart';
 
 /// Datasource, repositorio y use cases de la configuración del negocio
 /// (ARQUITECTURA §4; zona horaria, D-15). El binding de la ruta (FP)
@@ -24,10 +26,15 @@ abstract final class SettingsDependencies {
       ),
       fenix: true,
     );
-    Get.lazyPut(() => GetBusinessSettingsUseCase(Get.find<SettingsRepository>()),
+    Get.lazyPut(
+        () => GetBusinessSettingsUseCase(Get.find<SettingsRepository>()),
         fenix: true);
     Get.lazyPut(
         () => UpdateBusinessTimeZoneUseCase(Get.find<SettingsRepository>()),
+        fenix: true);
+    Get.lazyPut(() => UpdateBusinessNameUseCase(Get.find<SettingsRepository>()),
+        fenix: true);
+    Get.lazyPut(() => UpdateOpeningHoursUseCase(Get.find<SettingsRepository>()),
         fenix: true);
   }
 }

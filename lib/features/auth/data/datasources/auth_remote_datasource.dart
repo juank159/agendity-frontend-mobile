@@ -66,6 +66,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'phone': input.phone,
         'password': input.password,
         if (input.timeZone != null) 'timezone': input.timeZone,
+        if (input.businessName != null) 'business_name': input.businessName,
       });
 
   @override

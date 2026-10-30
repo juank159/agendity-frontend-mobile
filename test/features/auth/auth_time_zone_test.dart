@@ -131,4 +131,31 @@ void main() {
     expect(owner.withTimeZone(' America/Bogota ').normalized().timeZone,
         'America/Bogota');
   });
+
+  group('nombre del negocio (8.00)', () {
+    test('el alta envía business_name si lo hay', () async {
+      rightOf(await repository.registerOwner(const RegisterOwnerInput(
+        name: 'Ana',
+        lastname: 'Pérez',
+        email: 'ana@example.com',
+        phone: '3001234567',
+        password: 'Clave#2026',
+        businessName: '  Estudio Ana ',
+      ).normalized()));
+      expect(bodyOf('/auth/register/owner')['business_name'], 'Estudio Ana');
+    });
+
+    test('sin nombre no se envía', () async {
+      rightOf(await repository.registerOwner(owner));
+      expect(bodyOf('/auth/register/owner').containsKey('business_name'),
+          false);
+    });
+
+    test('/auth/me trae business_name', () {
+      final user = UserModel.fromJson(
+          {...backendUser(), 'business_name': 'Estudio Ana'}).toEntity();
+      expect(user.businessName, 'Estudio Ana');
+      expect(UserModel.fromJson(backendUser()).toEntity().businessName, isNull);
+    });
+  });
 }

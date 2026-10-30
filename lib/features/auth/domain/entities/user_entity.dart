@@ -20,6 +20,9 @@ class UserEntity {
   /// Zona IANA del negocio (solo en `GET /auth/me`; D-15).
   final String? timeZone;
 
+  /// Nombre del negocio (solo en `GET /auth/me`, 8.00); `null` sin nombre.
+  final String? businessName;
+
   const UserEntity({
     required this.id,
     required this.name,
@@ -30,6 +33,7 @@ class UserEntity {
     this.roles = const [],
     this.isEmailVerified = false,
     this.timeZone,
+    this.businessName,
   });
 
   String get fullName => [name, lastname].where((p) => p.isNotEmpty).join(' ');
@@ -46,9 +50,10 @@ class UserEntity {
           other.image == image &&
           other.isEmailVerified == isEmailVerified &&
           other.timeZone == timeZone &&
+          other.businessName == businessName &&
           DeepEquality.lists(other.roles, roles);
 
   @override
   int get hashCode => Object.hash(id, name, lastname, email, phone, image,
-      isEmailVerified, timeZone, Object.hashAll(roles));
+      isEmailVerified, timeZone, businessName, Object.hashAll(roles));
 }

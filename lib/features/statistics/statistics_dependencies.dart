@@ -4,6 +4,7 @@ import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
 import 'package:login_signup/features/statistics/data/repositories/statistics_repository_impl.dart';
 import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_commission_settlement_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_comparison_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_method_usecase.dart';
@@ -41,6 +42,9 @@ abstract final class StatisticsDependencies {
         () => GetPaymentStatsByServiceUseCase(Get.find<StatisticsRepository>()),
         fenix: true);
     Get.lazyPut(() => GetTopClientsUseCase(Get.find<StatisticsRepository>()),
+        fenix: true);
+    Get.lazyPut(
+        () => GetCommissionSettlementUseCase(Get.find<StatisticsRepository>()),
         fenix: true);
     Get.lazyPut(() => GetEmployeeStatsUseCase(Get.find<StatisticsRepository>()),
         fenix: true);

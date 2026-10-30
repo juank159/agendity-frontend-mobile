@@ -1,6 +1,6 @@
 import 'package:login_signup/core/utils/deep_equality.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 
 /// Datos del formulario para crear o editar un profesional.
 ///
@@ -18,6 +18,10 @@ class EmployeeInput {
   final Map<String, ServiceAssignment> services;
   final Map<String, WorkHours> schedule;
 
+  /// Comisión general (0–100 %, D-16). `null` = no se envía (al crear, el
+  /// backend pone 0; al editar, no cambia).
+  final double? commissionPercentage;
+
   const EmployeeInput({
     required this.name,
     required this.lastname,
@@ -26,6 +30,7 @@ class EmployeeInput {
     this.password,
     this.services = const {},
     this.schedule = const {},
+    this.commissionPercentage,
   });
 
   bool get hasPassword => password != null && password!.isNotEmpty;
@@ -38,6 +43,7 @@ class EmployeeInput {
     String? password,
     Map<String, ServiceAssignment>? services,
     Map<String, WorkHours>? schedule,
+    double? commissionPercentage,
   }) =>
       EmployeeInput(
         name: name ?? this.name,
@@ -47,6 +53,7 @@ class EmployeeInput {
         password: password ?? this.password,
         services: services ?? this.services,
         schedule: schedule ?? this.schedule,
+        commissionPercentage: commissionPercentage ?? this.commissionPercentage,
       );
 
   @override
@@ -59,11 +66,13 @@ class EmployeeInput {
           other.phone == phone &&
           other.password == password &&
           DeepEquality.maps(other.services, services) &&
-          DeepEquality.maps(other.schedule, schedule);
+          DeepEquality.maps(other.schedule, schedule) &&
+          other.commissionPercentage == commissionPercentage;
 
   @override
   int get hashCode => Object.hash(name, lastname, email, phone, password,
-      DeepEquality.mapHash(services), DeepEquality.mapHash(schedule));
+      DeepEquality.mapHash(services), DeepEquality.mapHash(schedule),
+      commissionPercentage);
 
   /// Sin la contraseña.
   @override

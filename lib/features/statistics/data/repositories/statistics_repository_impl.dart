@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
+import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
 import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
@@ -65,4 +66,11 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
       safeCall(() async => (await _remote.getEmployeeStats(range,
               professionalId: professionalId))
           .toEntity());
+
+  @override
+  Future<Either<Failure, CommissionSettlement>> getCommissionSettlement(
+          StatsRange range,
+          {String? professionalId}) =>
+      safeCall(() => _remote.getCommissionSettlement(range,
+          professionalId: professionalId));
 }

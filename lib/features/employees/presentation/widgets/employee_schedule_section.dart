@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/features/employees/domain/entities/work_hours.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employee_form_controller.dart';
 
 /// Nombre en español de los días del horario (`WorkHours.weekdays`).

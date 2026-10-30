@@ -66,7 +66,8 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
 
   Future<void> _pickServices() async {
     final ids =
-        await ServiceSelectorDialog.show(c.catalog, selectedIds: c.serviceIds);
+        await ServiceSelectorDialog.show(c.offeredCatalog,
+        selectedIds: c.serviceIds);
     if (ids != null) c.setServices(ids);
   }
 
@@ -258,6 +259,7 @@ class _FieldTile extends StatelessWidget {
 Future<void> startNewAppointment(AppointmentsController agenda,
     {DateTime? at}) async {
   if (!await agenda.canStartAppointment()) return;
-  final created = await AppointmentFormDialog.create(initialStart: at);
+  final created = await AppointmentFormDialog.create(
+      initialStart: at ?? agenda.newAppointmentStart);
   if (created != null) agenda.focusOn(created);
 }

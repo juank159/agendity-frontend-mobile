@@ -36,6 +36,28 @@ class AppointmentsController extends GetxController {
   final isLoading = false.obs;
   final error = Rxn<Failure>();
 
+  /// Las canceladas no ocupan columnas en el calendario (7.04-7): se ocultan
+  /// salvo que el usuario pida verlas.
+  final showCancelled = false.obs;
+
+  /// Citas que pinta el calendario: sin las canceladas, salvo [showCancelled].
+  List<AppointmentEntity> get visibleAppointments => showCancelled.value
+      ? appointments.toList()
+      : appointments.where((a) => !a.isCancelled).toList();
+
+  void toggleShowCancelled() => showCancelled.toggle();
+
+  /// Inicio sugerido para una cita nueva desde el botón "+": el día visible
+  /// de la agenda (7.04-6); si es hoy, ahora.
+  DateTime get newAppointmentStart {
+    final now = _now();
+    final visible = selectedDate.value;
+    final sameDay = visible.year == now.year &&
+        visible.month == now.month &&
+        visible.day == now.day;
+    return sameDay ? now : DateTime(visible.year, visible.month, visible.day);
+  }
+
   /// Cambia cuando la app (no el usuario deslizando) mueve el calendario a
   /// otra vista o fecha: el calendario se vuelve a montar en esa fecha.
   final navigation = 0.obs;
@@ -183,8 +205,9 @@ class AppointmentsController extends GetxController {
     return false;
   }
 
-  /// Citas que empiezan el día de [date] (contador de la vista de mes).
-  int countOn(DateTime date) => appointments
+  /// Citas que empiezan el día de [date] (contador de la vista de mes; las
+  /// canceladas cuentan solo si se muestran).
+  int countOn(DateTime date) => visibleAppointments
       .where((a) =>
           a.startTime.year == date.year &&
           a.startTime.month == date.month &&

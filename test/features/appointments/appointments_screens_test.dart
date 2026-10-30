@@ -10,6 +10,7 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/services/notification_service.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
@@ -42,6 +43,7 @@ import 'package:login_signup/features/clients/domain/entities/paginated_list.dar
 import 'package:login_signup/features/clients/domain/repositories/clients_repository.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
 import 'package:login_signup/features/employees/domain/repositories/employees_repository.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
@@ -187,7 +189,7 @@ class FakeEmployeesRepository implements EmployeesRepository {
   @override
   Future<Either<Failure, List<EmployeeEntity>>> getEmployees() async {
     calls++;
-    return const Right([ana]);
+    return const Right([ana, bea]);
   }
 
   @override
@@ -280,6 +282,21 @@ const ana = EmployeeEntity(
   email: 'ana@mail.com',
   isActive: true,
   isEmailVerified: true,
+  // Hace los dos servicios (el formulario filtra por offersService).
+  serviceAssignments: {
+    's1': ServiceAssignment(serviceId: 's1'),
+    's2': ServiceAssignment(serviceId: 's2'),
+  },
+);
+/// Solo hace "Corte".
+const bea = EmployeeEntity(
+  id: 'e3',
+  name: 'Bea',
+  lastname: 'Soto',
+  email: 'bea@mail.com',
+  isActive: true,
+  isEmailVerified: true,
+  serviceAssignments: {'s1': ServiceAssignment(serviceId: 's1')},
 );
 const carla =
     ClientEntity(id: 'c1', name: 'Carla', lastname: 'Díaz', phone: '3001234567');
@@ -460,6 +477,28 @@ void main() {
       expect(find.text('Nueva cita'), findsNothing);
       expect(find.text('Cita agendada'), findsOneWidget);
       await expireSnackbar(tester);
+    });
+
+    testWidgets('el catálogo solo ofrece lo que hace el profesional (7.04-5)',
+        (tester) async {
+      signInAs('Owner');
+      await pumpLauncher(
+          tester, () => AppointmentFormDialog.create(initialStart: nineAm));
+      await tapKey(tester, 'appointment-professional');
+      await tapText(tester, 'Ana Pérez');
+      await tapKey(tester, 'appointment-services');
+      await tapText(tester, 'Tinte');
+      await tapText(tester, 'Listo');
+
+      // Bea no hace Tinte: se quita y se avisa.
+      await tapKey(tester, 'appointment-professional');
+      await tapText(tester, 'Bea Soto');
+      expect(find.text('Servicios ajustados'), findsOneWidget);
+      await expireSnackbar(tester);
+
+      await tapKey(tester, 'appointment-services');
+      expect(find.text('Corte'), findsWidgets);
+      expect(find.text('Tinte'), findsNothing);
     });
 
     testWidgets('Employee: el profesional es él mismo y no se puede cambiar',
@@ -696,6 +735,10 @@ void main() {
     testWidgets('completar sin pagar: confirma y deja el pago pendiente',
         (tester) async {
       signInAs('Employee', userId: 'e1');
+      // 10:30 del negocio: la cita de las 10:00 ya empezó (7.03).
+      BusinessTimeZone.clock =
+          () => BusinessTimeZone.toInstant(DateTime(2030, 1, 7, 10, 30));
+      addTearDown(() => BusinessTimeZone.clock = DateTime.now);
       await openDetail(tester, appointment());
 
       // El Employee no paga ni edita, pero sí completa y cancela.
@@ -714,6 +757,26 @@ void main() {
           Get.find<AppointmentsController>().appointments.single.isCompleted,
           isTrue);
       await expireSnackbar(tester);
+    });
+
+    testWidgets('una cita que aún no empieza no se puede completar',
+        (tester) async {
+      signInAs('Owner');
+      BusinessTimeZone.clock =
+          () => BusinessTimeZone.toInstant(DateTime(2030, 1, 7, 9));
+      addTearDown(() => BusinessTimeZone.clock = DateTime.now);
+      await openDetail(tester, appointment());
+      final button = tester.widget<OutlinedButton>(find.ancestor(
+          of: find.text('Completar (cuando empiece)'),
+          matching: find.byWidgetPredicate((w) => w is OutlinedButton)));
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('reserva web: marca en el detalle', (tester) async {
+      signInAs('Owner');
+      await openDetail(
+          tester, appointment().copyWith(source: AppointmentSource.WEB));
+      expect(find.text('Reserva web'), findsOneWidget);
     });
 
     testWidgets('pago parcial: propone el saldo y refresca la cita',

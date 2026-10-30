@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
@@ -106,6 +107,8 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
     final statusColors = a.status.colorsOf(context);
     final canPay = AppointmentAccess.canPay() && a.canBePaid;
     final canEdit = AppointmentAccess.canEdit() && !a.isFinal;
+    // Solo se completa una cita que ya empezó (7.03, APPOINTMENT_NOT_STARTED).
+    final hasStarted = a.canCompleteAt(BusinessTimeZone.now());
 
     return Dialog(
       clipBehavior: Clip.antiAlias,
@@ -165,6 +168,13 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                           style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant),
                         ),
+                      ),
+                    if (a.isWebBooking)
+                      const _InfoRow(
+                        icon: Icons.public,
+                        title: 'Reserva web',
+                        subtitle: 'El cliente la agendó desde el link público '
+                            'del negocio.',
                       ),
                     if (!AppointmentAccess.professionalIsFixed())
                       _InfoRow(
@@ -231,9 +241,13 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                             ),
                           if (a.canComplete)
                             OutlinedButton.icon(
-                              onPressed: busy ? null : () => _complete(context),
+                              onPressed: busy || !hasStarted
+                                  ? null
+                                  : () => _complete(context),
                               icon: const Icon(Icons.task_alt),
-                              label: const Text('Completar'),
+                              label: Text(hasStarted
+                                  ? 'Completar'
+                                  : 'Completar (cuando empiece)'),
                             ),
                           if (canEdit)
                             OutlinedButton.icon(

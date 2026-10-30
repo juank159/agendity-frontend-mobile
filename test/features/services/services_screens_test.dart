@@ -31,6 +31,7 @@ import 'package:login_signup/features/services/presentation/screens/categories_s
 import 'package:login_signup/features/services/presentation/screens/new_category_screen.dart';
 import 'package:login_signup/features/services/presentation/screens/new_service_screen.dart';
 import 'package:login_signup/features/services/presentation/screens/services_screen.dart';
+import 'package:login_signup/features/services/presentation/widgets/duration_picker.dart';
 import 'package:login_signup/shared/utils/color_hex.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 
@@ -350,8 +351,23 @@ void main() {
       expect(saved.priceType, ServicePriceType.variable);
       expect(saved.color, '#4caf50');
       expect(saved.categoryId, 'cat-1'); // única categoría: elegida sola
+      // Nace sin reserva en línea, como en el backend (7.04-9).
+      expect(saved.onlineBooking, isFalse);
       expect(results, [true]);
       await expireSnackbar(tester);
+    });
+
+    testWidgets('duración de 5 en 5 minutos: se puede elegir 20 min (7.04-4)',
+        (tester) async {
+      await pump(tester, const Scaffold(body: SizedBox()));
+      final result = DurationPicker.show(const Duration(minutes: 30));
+      await tester.pumpAndSettle();
+      expect(find.text('25 min'), findsOneWidget);
+      await tester.drag(find.byType(ListWheelScrollView), const Offset(0, 100));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Aceptar'));
+      await tester.pumpAndSettle();
+      expect((await result)!.inMinutes, 20);
     });
 
     testWidgets('nombre duplicado: avisa y se queda en el formulario',

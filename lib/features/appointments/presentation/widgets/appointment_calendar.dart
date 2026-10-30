@@ -57,7 +57,7 @@ class AppointmentCalendar extends GetView<AppointmentsController> {
             view: view,
             initialDisplayDate: controller.selectedDate.value,
             dataSource:
-                AppointmentCalendarDataSource(controller.appointments.toList()),
+                AppointmentCalendarDataSource(controller.visibleAppointments),
             onViewChanged: (details) =>
                 Future.microtask(() => controller.onViewChanged(details)),
             onTap: _onTap,

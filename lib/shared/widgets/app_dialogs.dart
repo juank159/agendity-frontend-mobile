@@ -39,6 +39,20 @@ abstract final class AppDialogs {
     return result ?? false;
   }
 
+  /// Fallo temporal que se arregla repitiendo (p. ej. `EmailDeliveryFailure`:
+  /// el correo con el código no salió). `true` si se pulsa "Reintentar".
+  static Future<bool> retry({
+    required String title,
+    required String message,
+  }) =>
+      confirm(
+        title: title,
+        message: message,
+        confirmLabel: 'Reintentar',
+        cancelLabel: 'Ahora no',
+        icon: Icons.refresh,
+      );
+
   /// Error que el usuario debe leer antes de seguir (lo pasajero va en
   /// `AppSnackbar.error`).
   static Future<void> error({

@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/auth/domain/usecases/request_verification_code_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/verify_email_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'auth_feedback.dart';
 import 'auth_navigation.dart';
@@ -67,10 +69,18 @@ class EmailVerificationController extends GetxController {
     final result = await _requestCode(email);
     if (isClosed) return;
     isSending.value = false;
-    result.fold(
-      (failure) => errorMessage.value =
-          'No se pudo enviar el código: ${AuthFeedback.messageFor(failure)}',
-      (_) {
+    await result.fold(
+      (failure) async {
+        errorMessage.value =
+            'No se pudo enviar el código: ${AuthFeedback.messageFor(failure)}';
+        if (failure is EmailDeliveryFailure &&
+            await AppDialogs.retry(
+                title: 'No se envió el correo', message: failure.message) &&
+            !isClosed) {
+          return requestVerificationCode();
+        }
+      },
+      (_) async {
         countdown.start();
         AppSnackbar.info('Enviamos un código de 6 dígitos a $email',
             title: 'Código enviado');

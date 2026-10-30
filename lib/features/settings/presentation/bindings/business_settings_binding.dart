@@ -10,6 +10,8 @@ class BusinessSettingsBinding implements Bindings {
       () => BusinessSettingsController(
         getBusinessSettingsUseCase: Get.find(),
         updateBusinessTimeZoneUseCase: Get.find(),
+        updateBusinessNameUseCase: Get.find(),
+        updateOpeningHoursUseCase: Get.find(),
         session: Get.find(),
       ),
     );

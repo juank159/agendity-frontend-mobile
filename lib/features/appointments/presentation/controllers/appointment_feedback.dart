@@ -53,6 +53,23 @@ abstract final class AppointmentFeedback {
       case ProfessionalInactiveFailure():
         AppDialogs.error(
             title: 'Profesional no disponible', message: failure.message);
+      case OutsideBusinessHoursFailure():
+        AppDialogs.info(
+          title: 'Fuera del horario del negocio',
+          message: failure.message,
+          detail: 'Elige una hora dentro del horario de apertura o cámbialo '
+              'en "Mi negocio".',
+          tone: AppTone.warning,
+          icon: Icons.storefront_outlined,
+        );
+      case ServiceNotOfferedFailure():
+        AppDialogs.info(
+          title: 'Servicio no disponible',
+          message: failure.message,
+          detail: 'Quita ese servicio o elige otro profesional.',
+          tone: AppTone.warning,
+          icon: Icons.content_cut,
+        );
       case ValidationFailure():
         AppSnackbar.warning(failure.message);
       default:
@@ -73,6 +90,8 @@ abstract final class AppointmentFeedback {
         );
       case InvalidStateTransitionFailure():
         AppDialogs.error(title: 'La cita cambió', message: failure.message);
+      case AppointmentNotStartedFailure():
+        AppSnackbar.warning(failure.message, title: 'Aún no empieza');
       case ValidationFailure():
         AppSnackbar.warning(failure.message);
       default:

@@ -28,6 +28,7 @@ class PaymentComparisonCard extends StatelessWidget {
           current: formatCop(current.totalAmount),
           previous: formatCop(previous.totalAmount),
           percentage: change.amountPercentage,
+          difference: change.amountDifference,
         ),
         const SizedBox(height: 16),
         _ComparisonRow(
@@ -35,6 +36,7 @@ class PaymentComparisonCard extends StatelessWidget {
           current: '${current.paymentCount}',
           previous: '${previous.paymentCount}',
           percentage: change.countPercentage,
+          difference: change.countDifference.toDouble(),
         ),
         const SizedBox(height: 16),
         _ComparisonRow(
@@ -42,6 +44,7 @@ class PaymentComparisonCard extends StatelessWidget {
           current: formatCop(current.averageAmount),
           previous: formatCop(previous.averageAmount),
           percentage: change.averagePercentage,
+          difference: change.averageDifference,
         ),
       ],
     );
@@ -58,14 +61,23 @@ class _ComparisonRow extends StatelessWidget {
   final String label;
   final String current;
   final String previous;
-  final double percentage;
+  /// `null` = sin base (el período anterior en 0).
+  final double? percentage;
+  final double difference;
 
   const _ComparisonRow({
     required this.label,
     required this.current,
     required this.previous,
     required this.percentage,
+    required this.difference,
   });
+
+  /// Texto del cambio: `12,5 %`, "nuevo" (sin base y hubo algo) o "—".
+  static String changeLabel(double? percentage, double difference) {
+    if (percentage != null) return formatPercent(percentage.abs());
+    return difference > 0 ? 'nuevo' : '—';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +86,11 @@ class _ComparisonRow extends StatelessWidget {
     final tokens = context.tokens;
     final Color color;
     final IconData icon;
-    if (percentage > 0) {
+    final trend = percentage ?? difference;
+    if (trend > 0) {
       color = tokens.success.color;
       icon = Icons.arrow_upward;
-    } else if (percentage < 0) {
+    } else if (trend < 0) {
       color = tokens.error.color;
       icon = Icons.arrow_downward;
     } else {
@@ -114,7 +127,7 @@ class _ComparisonRow extends StatelessWidget {
               Icon(icon, color: color, size: 16),
               const SizedBox(width: 4),
               Text(
-                formatPercent(percentage.abs()),
+                changeLabel(percentage, difference),
                 style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
             ],

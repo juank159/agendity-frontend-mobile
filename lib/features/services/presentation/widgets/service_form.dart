@@ -105,6 +105,9 @@ class ServiceForm extends StatelessWidget {
         Obx(() => SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Se puede reservar en línea'),
+              subtitle: const Text(
+                  'Aparece en el link público de reservas del negocio para '
+                  'que tus clientes lo agenden solos.'),
               value: controller.onlineBooking.value,
               onChanged: (value) => controller.onlineBooking.value = value,
             )),

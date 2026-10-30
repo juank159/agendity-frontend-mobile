@@ -51,6 +51,14 @@ class ViewSelectorBottomSheet extends StatelessWidget {
                 if (view != current) controller.changeView(view);
               },
             ),
+          const Divider(),
+          Obx(() => SwitchListTile(
+                secondary: const Icon(Icons.event_busy_outlined),
+                title: const Text('Mostrar canceladas'),
+                subtitle: const Text('Ocultas, no ocupan espacio en la agenda'),
+                value: controller.showCancelled.value,
+                onChanged: (_) => controller.toggleShowCancelled(),
+              )),
           const SizedBox(height: 8),
         ],
       ),

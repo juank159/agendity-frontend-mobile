@@ -48,6 +48,9 @@ class FakeAuthRepository implements AuthRepository {
 
   final logins = <(String, String)>[];
   final registered = <RegisterOwnerInput>[];
+
+  /// Fallos de `requestPasswordReset`, en orden (luego, éxito).
+  final resetRequestFailures = <Failure>[];
   final codeRequests = <String>[];
   final verifications = <(String, String)>[];
   final resetRequests = <String>[];
@@ -118,6 +121,9 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<Either<Failure, Unit>> requestPasswordReset(String email) async {
     resetRequests.add(email);
+    if (resetRequestFailures.isNotEmpty) {
+      return Left(resetRequestFailures.removeAt(0));
+    }
     return const Right(unit);
   }
 
@@ -411,6 +417,23 @@ void main() {
       await expireSnackbar(tester);
     });
 
+    testWidgets('nombre del negocio: opcional, se envía y se valida',
+        (tester) async {
+      await pumpApp(tester, GetRoutes.register);
+      await fillRegister(tester);
+      await tester.enterText(field('Nombre del negocio (opcional)'), 'L');
+      await tapText(tester, 'Crear cuenta');
+      expect(repo.registered, isEmpty);
+      expect(find.textContaining('entre 2 y 100 caracteres'), findsOneWidget);
+      await expireSnackbar(tester);
+
+      await tester.enterText(
+          field('Nombre del negocio (opcional)'), 'Cejas Luna');
+      await tapAndPump(tester, 'Crear cuenta');
+      expect(repo.registered.single.businessName, 'Cejas Luna');
+      await expireSnackbarOnCodeScreen(tester);
+    });
+
     testWidgets('correcto: pasa a verificar el email y pide el código',
         (tester) async {
       await pumpApp(tester, GetRoutes.register);
@@ -505,6 +528,22 @@ void main() {
       expect(Get.currentRoute, GetRoutes.login);
       expect(find.text('Contraseña actualizada'), findsOneWidget);
       await expireSnackbar(tester);
+    });
+
+    testWidgets('el correo no salió (503): ofrece reintentar', (tester) async {
+      repo.resetRequestFailures.add(const EmailDeliveryFailure());
+      await pumpApp(tester, GetRoutes.login);
+      await tapText(tester, '¿Olvidaste tu contraseña?');
+      await tester.enterText(field('Correo electrónico'), 'olga@mail.com');
+      await tapText(tester, 'Enviar código');
+
+      expect(find.text('No se envió el correo'), findsOneWidget);
+      expect(find.text(EmailDeliveryFailure.defaultMessage), findsOneWidget);
+      await tapAndPump(tester, 'Reintentar');
+
+      expect(repo.resetRequests, ['olga@mail.com', 'olga@mail.com']);
+      expect(Get.currentRoute, GetRoutes.resetPassword);
+      await expireSnackbarOnCodeScreen(tester);
     });
 
     testWidgets('las contraseñas deben coincidir', (tester) async {

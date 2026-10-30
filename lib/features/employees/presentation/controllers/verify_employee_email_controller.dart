@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/employees/domain/usecases/request_employee_verification_code_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/verify_employee_email_usecase.dart';
 import 'package:login_signup/shared/controllers/code_countdown.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'employee_feedback.dart';
 import 'employee_navigation.dart';
@@ -80,10 +82,16 @@ class VerifyEmployeeEmailController extends GetxController {
     final result = await _requestCode(email);
     if (isClosed) return;
     isSending.value = false;
-    result.fold((failure) {
+    await result.fold((failure) async {
       errorMessage.value = 'No se pudo enviar el código: '
           '${EmployeeFeedback.messageFor(failure)}';
-    }, (_) {
+      if (failure is EmailDeliveryFailure &&
+          await AppDialogs.retry(
+              title: 'No se envió el correo', message: failure.message) &&
+          !isClosed) {
+        return requestCode();
+      }
+    }, (_) async {
       expiry.start();
       resend.start();
       AppSnackbar.info('Enviamos un código de 6 dígitos a $email',

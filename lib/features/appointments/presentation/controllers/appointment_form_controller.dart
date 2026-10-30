@@ -170,7 +170,35 @@ class AppointmentFormController extends GetxController {
     if (professionalIsFixed) return;
     professional.value =
         SelectedProfessional(id: employee.id, name: employee.fullName);
+    // Fuera los servicios que el nuevo profesional no hace (7.04-5).
+    final dropped =
+        serviceIds.where((id) => !employee.offersService(id)).toList();
+    if (dropped.isNotEmpty) {
+      serviceIds.removeWhere(dropped.contains);
+      AppSnackbar.info(
+          'Se quitaron servicios que ${employee.fullName} no realiza: '
+          '${dropped.map(nameOf).join(', ')}',
+          title: 'Servicios ajustados');
+    }
     loadSlots();
+  }
+
+  /// Ficha del profesional elegido, si se conoce. El Employee no la tiene
+  /// (no puede leer el equipo): su catálogo no se filtra y el backend
+  /// responde `SERVICE_NOT_OFFERED_BY_PROFESSIONAL` si hace falta.
+  EmployeeEntity? get selectedEmployee {
+    final id = professional.value?.id;
+    return id == null ? null : professionals.firstWhereOrNull((e) => e.id == id);
+  }
+
+  /// Servicios que se pueden elegir: los activos que hace el profesional
+  /// elegido (`offersService`, la misma regla del backend, 7.03).
+  List<ServiceEntity> get offeredCatalog {
+    final employee = selectedEmployee;
+    if (employee == null) return catalog.toList();
+    return catalog
+        .where((s) => s.id != null && employee.offersService(s.id!))
+        .toList();
   }
 
   void setServices(List<String> ids) {

@@ -56,14 +56,15 @@ class PeriodStatsEntity {
 }
 
 /// Diferencias (actual − anterior) y su porcentaje sobre el anterior, con 2
-/// decimales. Si el anterior es 0, el porcentaje es 100 (hubo algo) o 0.
+/// decimales. Sin base (el anterior es 0) el porcentaje es `null` (7.04-8):
+/// la UI muestra "nuevo" (hubo algo) o "—".
 class ChangeStatsEntity {
   final double amountDifference;
-  final double amountPercentage;
+  final double? amountPercentage;
   final int countDifference;
-  final double countPercentage;
+  final double? countPercentage;
   final double averageDifference;
-  final double averagePercentage;
+  final double? averagePercentage;
 
   const ChangeStatsEntity({
     required this.amountDifference,

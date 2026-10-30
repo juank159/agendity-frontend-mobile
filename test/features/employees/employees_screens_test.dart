@@ -49,6 +49,7 @@ class FakeEmployeesRepository implements EmployeesRepository {
   Failure? statusFailure;
 
   final created = <EmployeeInput>[];
+  final updated = <EmployeeInput>[];
   final statusCalls = <(String, bool)>[];
   final deletions = <(String, String?)>[];
   final restored = <String>[];
@@ -89,6 +90,7 @@ class FakeEmployeesRepository implements EmployeesRepository {
   @override
   Future<Either<Failure, EmployeeEntity>> updateEmployee(
       String id, EmployeeInput input) async {
+    updated.add(input);
     final index = team.indexWhere((e) => e.id == id);
     team[index] = team[index].copyWith(name: input.name);
     return Right(team[index]);
@@ -536,6 +538,59 @@ void main() {
       expect(await controller.setActive(owner, false), isFalse);
       expect(repo.deletions, isEmpty);
       expect(repo.statusCalls, isEmpty);
+    });
+  });
+
+  group('Comisiones (8.03)', () {
+    testWidgets('alta: general y "usar la general" (null) por servicio',
+        (tester) async {
+      await pumpList(tester);
+      await tester.tap(find.byTooltip('Agregar profesional'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Nombre *'), 'Sara');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Apellido *'), 'Mora');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Email *'), 'sara@mail.com');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Teléfono *'), '3109876543');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Contraseña *'), 'Clave@2026');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Comisión general (%)'), '35');
+      await tester.tap(find.text('Corte'));
+      await tester.pumpAndSettle();
+
+      // Sin excepción: no hay slider con 0 %, se usa la general.
+      expect(find.text('Usar la general (35 %)'), findsOneWidget);
+      expect(find.byKey(const Key('commission-own-s1')), findsNothing);
+
+      await tester.tap(find.text('Crear profesional'));
+      await pumpFor(tester);
+      expect(repo.created.single.commissionPercentage, 35);
+      expect(repo.created.single.services['s1']!.commissionPercentage, isNull);
+    });
+
+    testWidgets('edición: la excepción propia se ve y se puede quitar',
+        (tester) async {
+      await pumpList(tester);
+      await openOptions(tester, ana);
+      await tapText(tester, 'Editar');
+
+      final slider = tester.widget<Slider>(
+          find.byKey(const Key('commission-own-s1')));
+      expect(slider.value, 10);
+
+      await tester.ensureVisible(
+          find.byKey(const Key('commission-general-s1')));
+      await tester.tap(find.byKey(const Key('commission-general-s1')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('commission-own-s1')), findsNothing);
+
+      await tapText(tester, 'Guardar cambios');
+      expect(repo.updated.single.services['s1']!.commissionPercentage, isNull);
+      await expireSnackbar(tester);
     });
   });
 

@@ -67,4 +67,29 @@ void main() {
     expect(find.text('segundo'), findsOneWidget);
     await _expire(tester);
   });
+
+  testWidgets('con un diálogo abierto se ve y se toca por encima (7.04-3)',
+      (tester) async {
+    await _pumpApp(tester);
+    Get.dialog<void>(const AlertDialog(content: Text('Formulario')));
+    await tester.pumpAndSettle();
+
+    AppSnackbar.error('El negocio está cerrado a esa hora');
+    await tester.pumpAndSettle();
+    // Encima de la barrera del diálogo: se puede tocar.
+    expect(find.text('El negocio está cerrado a esa hora').hitTestable(),
+        findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+
+    await tester.tap(find.byTooltip('Cerrar aviso'));
+    await tester.pumpAndSettle();
+    expect(find.text('El negocio está cerrado a esa hora'), findsNothing);
+    expect(find.text('Formulario'), findsOneWidget, reason: 'el diálogo sigue');
+
+    AppSnackbar.info('Se va solo');
+    await tester.pumpAndSettle();
+    expect(find.text('Se va solo'), findsOneWidget);
+    await _expire(tester);
+    expect(find.text('Se va solo'), findsNothing);
+  });
 }

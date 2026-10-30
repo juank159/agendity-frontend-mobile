@@ -80,11 +80,11 @@ class PeriodStatsModel {
 
 class ChangeStatsModel {
   final double amountDifference;
-  final double amountPercentage;
+  final double? amountPercentage;
   final int countDifference;
-  final double countPercentage;
+  final double? countPercentage;
   final double averageDifference;
-  final double averagePercentage;
+  final double? averagePercentage;
 
   const ChangeStatsModel({
     required this.amountDifference,
@@ -98,12 +98,16 @@ class ChangeStatsModel {
   factory ChangeStatsModel.fromJson(Map<String, dynamic> json) =>
       ChangeStatsModel(
         amountDifference: JsonRead.asDouble(json['amount_difference']),
-        amountPercentage: JsonRead.asDouble(json['amount_percentage']),
+        amountPercentage: _percentage(json['amount_percentage']),
         countDifference: JsonRead.asInt(json['count_difference']),
-        countPercentage: JsonRead.asDouble(json['count_percentage']),
+        countPercentage: _percentage(json['count_percentage']),
         averageDifference: JsonRead.asDouble(json['average_difference']),
-        averagePercentage: JsonRead.asDouble(json['average_percentage']),
+        averagePercentage: _percentage(json['average_percentage']),
       );
+
+  /// `null` (sin base) se conserva: no es un 0 %.
+  static double? _percentage(Object? value) =>
+      value == null ? null : JsonRead.asDouble(value);
 
   ChangeStatsEntity toEntity() => ChangeStatsEntity(
         amountDifference: amountDifference,

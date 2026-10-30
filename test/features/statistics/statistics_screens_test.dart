@@ -18,6 +18,7 @@ import 'package:login_signup/features/statistics/domain/entities/service_stats_e
 import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
 import 'package:login_signup/features/statistics/domain/entities/top_client_entity.dart';
 import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_commission_settlement_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_comparison_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_method_usecase.dart';
@@ -26,10 +27,13 @@ import 'package:login_signup/features/statistics/domain/usecases/get_payment_sta
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_top_clients_usecase.dart';
 import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
+import 'package:login_signup/features/statistics/presentation/controllers/commissions_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/statistics_controller.dart';
+import 'package:login_signup/features/statistics/presentation/screens/commissions_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/employee_stats_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
 import 'package:login_signup/features/statistics/presentation/widgets/date_range_selector.dart';
+import 'package:login_signup/features/statistics/presentation/widgets/payment_comparison_card.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 
 import '../../core/session/memory_token_store.dart';
@@ -37,6 +41,10 @@ import '../../core/session/memory_token_store.dart';
 /// Repositorio falso: pantallas, controllers y use cases son los reales.
 /// Cuenta las llamadas por endpoint para comprobar qué pide cada rol.
 class FakeStatisticsRepository implements StatisticsRepository {
+  Either<Failure, CommissionSettlement> commissionResult =
+      const Right(CommissionSettlement(totals: CommissionAmounts()));
+  final commissionRequests = <String?>[];
+
   Either<Failure, PaymentStatsEntity> statsResult = const Right(
       PaymentStatsEntity(
           totalAmount: 150000, paymentCount: 3, averageAmount: 50000));
@@ -150,7 +158,8 @@ class FakeStatisticsRepository implements StatisticsRepository {
       StatsRange range,
       {String? professionalId}) async {
     _count('commissions', range);
-    return const Right(CommissionSettlement(totals: CommissionAmounts()));
+    commissionRequests.add(professionalId);
+    return commissionResult;
   }
 }
 
@@ -433,5 +442,116 @@ void main() {
               StatsRange(start: DateTime(2026, 1, 1), end: tuesday), tuesday),
           isNull);
     });
+  });
+
+  group('Comisiones (8.03)', () {
+    final settlement = CommissionSettlement(
+      totals: const CommissionAmounts(
+          servicesTotal: 150000, professionalTotal: 52500, businessTotal: 97500),
+      appointmentCount: 2,
+      professionals: [
+        ProfessionalCommission(
+          professionalId: 'e1',
+          professionalName: 'Ana Pérez',
+          appointmentCount: 2,
+          amounts: const CommissionAmounts(
+              servicesTotal: 150000,
+              professionalTotal: 52500,
+              businessTotal: 97500),
+          appointments: [
+            CommissionAppointment(
+              appointmentId: 'a1',
+              date: DateTime(2026, 10, 27, 9),
+              clientName: 'Carla Díaz',
+              amounts: const CommissionAmounts(
+                  servicesTotal: 100000,
+                  professionalTotal: 40000,
+                  businessTotal: 60000),
+              lines: const [
+                CommissionLine(
+                    serviceId: 's1',
+                    serviceName: 'Laminado de cejas',
+                    price: 100000,
+                    commissionPercentage: 40,
+                    commission: 40000),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    Future<CommissionsController> pumpCommissions(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final controller = Get.put(CommissionsController(
+        getCommissionSettlementUseCase: GetCommissionSettlementUseCase(repo),
+        session: Get.find<SessionController>(),
+        clock: clock,
+      ));
+      await pump(tester, const CommissionsScreen());
+      return controller;
+    }
+
+    testWidgets('Owner: totales, una fila por profesional y detalle por cita',
+        (tester) async {
+      signInAs('Owner');
+      repo.commissionResult = Right(settlement);
+      await pumpCommissions(tester);
+
+      expect(find.text('Comisiones'), findsOneWidget);
+      expect(repo.commissionRequests, [null]);
+      expect(find.textContaining('2 citas completadas'), findsOneWidget);
+      expect(find.text('\$ 97.500'), findsNWidgets(2));
+      expect(find.text('Ana Pérez'), findsOneWidget);
+      expect(find.textContaining('Carla Díaz'), findsNothing);
+
+      await tester.tap(find.text('Ana Pérez'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Carla Díaz'), findsOneWidget);
+      expect(find.textContaining('Laminado de cejas: \$ 100.000 × 40 %'),
+          findsOneWidget);
+    });
+
+    testWidgets('Employee: "Mis comisiones" con su detalle abierto',
+        (tester) async {
+      signInAs('Employee', userId: 'e1');
+      repo.commissionResult = Right(settlement);
+      await pumpCommissions(tester);
+      expect(find.text('Mis comisiones'), findsOneWidget);
+      expect(find.textContaining('Carla Díaz'), findsOneWidget);
+    });
+
+    testWidgets('sin citas completadas: estado vacío', (tester) async {
+      signInAs('Owner');
+      await pumpCommissions(tester);
+      expect(find.text('Sin citas completadas en este período'),
+          findsOneWidget);
+    });
+  });
+
+  testWidgets('comparación sin base: "nuevo" o "—", nunca 0 %',
+      (tester) async {
+    await pump(
+        tester,
+        Scaffold(
+          body: PaymentComparisonCard(
+            comparison: PaymentComparisonEntity(
+              currentPeriod: comparison.currentPeriod,
+              previousPeriod: comparison.previousPeriod,
+              change: const ChangeStatsEntity(
+                  amountDifference: 150000,
+                  amountPercentage: null,
+                  countDifference: 0,
+                  countPercentage: null,
+                  averageDifference: 0,
+                  averagePercentage: 0),
+            ),
+          ),
+        ));
+    expect(find.text('nuevo'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('0 %'), findsOneWidget); // promedio con base: 0 %
   });
 }

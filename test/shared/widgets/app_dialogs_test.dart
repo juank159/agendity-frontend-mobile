@@ -21,6 +21,22 @@ Future<void> _pumpApp(WidgetTester tester) async {
 void main() {
   tearDown(Get.reset);
 
+  testWidgets('AppDialogs.retry: "Reintentar" → true, "Ahora no" → false',
+      (tester) async {
+    await _pumpApp(tester);
+    var result = AppDialogs.retry(title: 'No se envió', message: 'SMTP');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+    expect(await result, isTrue);
+
+    result = AppDialogs.retry(title: 'No se envió', message: 'SMTP');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ahora no'));
+    await tester.pumpAndSettle();
+    expect(await result, isFalse);
+  });
+
   group('AppDialogs.confirm', () {
     testWidgets('devuelve true al confirmar', (tester) async {
       await _pumpApp(tester);

@@ -71,6 +71,17 @@ class EmployeeFormSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const _SectionTitle(icon: Icons.spa_outlined, title: 'Servicios'),
+          _Field(
+            label: 'Comisión general (%)',
+            controller: controller.generalCommissionController,
+            icon: Icons.percent,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            formatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            helper: 'La que gana en cada servicio, salvo los que tengan una '
+                'propia. De 0 a 100.',
+          ),
           EmployeeServicesSection(controller: controller),
           const SizedBox(height: 8),
           const _SectionTitle(icon: Icons.schedule, title: 'Horario'),

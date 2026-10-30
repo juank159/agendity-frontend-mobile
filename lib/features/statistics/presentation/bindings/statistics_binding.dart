@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import '../controllers/commissions_controller.dart';
 import '../controllers/employee_stats_controller.dart';
 import '../controllers/statistics_controller.dart';
 
@@ -30,6 +31,19 @@ class EmployeeStatsBinding extends Bindings {
     Get.lazyPut<EmployeeStatsController>(
       () => EmployeeStatsController(
         getEmployeeStatsUseCase: Get.find(),
+        session: Get.find<SessionController>(),
+      ),
+    );
+  }
+}
+
+/// Liquidación de comisiones (`/commissions`, Owner y Employee).
+class CommissionsBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<CommissionsController>(
+      () => CommissionsController(
+        getCommissionSettlementUseCase: Get.find(),
         session: Get.find<SessionController>(),
       ),
     );

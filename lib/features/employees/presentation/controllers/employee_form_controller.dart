@@ -45,14 +45,20 @@ abstract class EmployeeFormController extends GetxController {
   final phoneController = TextEditingController();
   final passwordController = TextEditingController();
 
+  /// Comisión general en % (D-16): la de todo servicio sin excepción.
+  final generalCommissionController = TextEditingController(text: '0');
+
+  /// Lo escrito en [generalCommissionController], para pintar "Usar la
+  /// general (X %)". `NaN` si no es un número.
+  final generalCommission = 0.0.obs;
+
   /// Catálogo de servicios para elegir.
   final catalog = <ServiceEntity>[].obs;
   final catalogStatus = EmployeeLoadStatus.loading.obs;
   final catalogError = RxnString();
 
-  /// Servicios elegidos → comisión (0–100).
   /// Servicios elegidos → excepción de comisión (`null` = usa la general,
-  /// D-16; 8.03 FP: la UI de la general y de "usar la general").
+  /// D-16).
   final commissions = <String, double?>{}.obs;
 
   /// Precio propio de los servicios que ya lo tenían (no se edita aquí, pero
@@ -66,7 +72,29 @@ abstract class EmployeeFormController extends GetxController {
   final isSaving = false.obs;
 
   @override
+  void onInit() {
+    super.onInit();
+    generalCommissionController.addListener(_onGeneralChanged);
+  }
+
+  void _onGeneralChanged() =>
+      generalCommission.value = parsePercentage(generalCommissionController.text);
+
+  /// `12,5` o `12.5` → 12.5; vacío → 0; otra cosa → `NaN` (el use case la
+  /// rechaza con "La comisión debe estar entre 0 y 100 %").
+  static double parsePercentage(String text) {
+    final clean = text.trim().replaceAll(',', '.');
+    if (clean.isEmpty) return 0;
+    return double.tryParse(clean) ?? double.nan;
+  }
+
+  /// 12.0 → "12"; 12.5 → "12.5".
+  static String percentageText(double value) =>
+      value == value.roundToDouble() ? value.toInt().toString() : '$value';
+
+  @override
   void onClose() {
+    generalCommissionController.dispose();
     nameController.dispose();
     lastnameController.dispose();
     emailController.dispose();
@@ -119,6 +147,16 @@ abstract class EmployeeFormController extends GetxController {
     commissions[serviceId] = percentage.clamp(0, 100).toDouble();
   }
 
+  /// El servicio usa la comisión general (`null`) o una propia, que arranca
+  /// en el valor de la general.
+  void useGeneralCommission(String serviceId, bool useGeneral) {
+    if (!commissions.containsKey(serviceId)) return;
+    final general = generalCommission.value;
+    commissions[serviceId] = useGeneral
+        ? null
+        : (general.isNaN ? 0.0 : general.clamp(0, 100).toDouble());
+  }
+
   // ------------------------------------------------------------- Horario
 
   bool isWorkDay(String day) => schedule.containsKey(day);
@@ -165,6 +203,8 @@ abstract class EmployeeFormController extends GetxController {
     emailController.text = employee.email;
     phoneController.text = employee.phone;
     passwordController.clear();
+    generalCommissionController.text =
+        percentageText(employee.commissionPercentage);
     commissions.assignAll({
       for (final entry in employee.serviceAssignments.entries)
         entry.key: entry.value.commissionPercentage,
@@ -197,6 +237,8 @@ abstract class EmployeeFormController extends GetxController {
             ),
         },
         schedule: Map.of(schedule),
+        commissionPercentage:
+            parsePercentage(generalCommissionController.text),
       );
 
   /// Guarda con [save] (devuelve el failure o `null`). Exige al menos un

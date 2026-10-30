@@ -28,6 +28,9 @@ class RegisterController extends GetxController {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  /// Opcional (8.00): de él sale el link público de reservas.
+  final businessNameController = TextEditingController();
+
   final isLoading = false.obs;
   final isPasswordHidden = true.obs;
 
@@ -36,6 +39,11 @@ class RegisterController extends GetxController {
   final phoneError = ''.obs;
   final emailError = ''.obs;
   final passwordError = ''.obs;
+  final businessNameError = ''.obs;
+
+  /// Largo del nombre del negocio (regla del backend, `UpdateSettingsDto`).
+  static const businessNameMin = 2;
+  static const businessNameMax = 100;
 
   /// Estado de cada requisito; vacío hasta que se escribe la contraseña.
   final passwordChecks = <PasswordRequirement, bool>{}.obs;
@@ -47,6 +55,7 @@ class RegisterController extends GetxController {
     phoneController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    businessNameController.dispose();
     super.onClose();
   }
 
@@ -89,9 +98,22 @@ class RegisterController extends GetxController {
         : (GetUtils.isEmail(email) ? '' : 'Ingresa un correo válido');
     passwordChecks.assignAll(PasswordPolicy.check(password));
     passwordError.value = PasswordPolicy.validate(password) ?? '';
+    final business = businessNameController.text.trim();
+    businessNameError.value = business.isEmpty ||
+            (business.length >= businessNameMin &&
+                business.length <= businessNameMax)
+        ? ''
+        : 'El nombre del negocio debe tener entre $businessNameMin y '
+            '$businessNameMax caracteres';
 
-    return [nameError, lastnameError, phoneError, emailError, passwordError]
-        .every((error) => error.value.isEmpty);
+    return [
+      nameError,
+      lastnameError,
+      phoneError,
+      emailError,
+      passwordError,
+      businessNameError,
+    ].every((error) => error.value.isEmpty);
   }
 
   Future<void> registerUser() async {
@@ -110,6 +132,7 @@ class RegisterController extends GetxController {
       email: email,
       phone: phoneController.text,
       password: passwordController.text,
+      businessName: businessNameController.text,
     ));
     if (isClosed) return;
     isLoading.value = false;

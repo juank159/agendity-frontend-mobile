@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import '../../domain/entities/payment_method_stats_entity.dart';
@@ -39,6 +40,11 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
       appBar: AppBar(
         title: const Text('Estadísticas'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.percent),
+            tooltip: 'Comisiones',
+            onPressed: () => Get.toNamed(GetRoutes.commissions),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualizar',

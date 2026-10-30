@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 
-/// Rueda de duraciones (de 15 en 15 minutos, hasta 6 horas). Devuelve la
+/// Rueda de duraciones (de 5 en 5 minutos, hasta 6 horas; 7.04-4). Devuelve la
 /// duración elegida o `null` si se cancela.
 class DurationPicker extends StatefulWidget {
-  static const stepMinutes = 15;
-  static const steps = 24;
+  static const stepMinutes = 5;
+  static const steps = 72;
 
   final Duration initial;
 

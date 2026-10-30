@@ -4,6 +4,7 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:login_signup/features/auth/domain/usecases/reset_password_usecase.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'auth_feedback.dart';
 import 'auth_navigation.dart';
@@ -100,8 +101,16 @@ class ResetPasswordController extends GetxController {
     if (isClosed) return;
     isLoading.value = false;
     await result.fold(
-      (failure) => AuthFeedback.show(failure,
-          title: 'No se pudo enviar el código'),
+      (failure) async {
+        if (failure is EmailDeliveryFailure) {
+          if (await AppDialogs.retry(
+              title: 'No se envió el correo', message: failure.message)) {
+            return requestNewCode();
+          }
+          return;
+        }
+        await AuthFeedback.show(failure, title: 'No se pudo enviar el código');
+      },
       (_) async {
         codeError.value = null;
         countdown.start();

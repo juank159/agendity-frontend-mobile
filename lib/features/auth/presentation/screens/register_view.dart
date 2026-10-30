@@ -44,6 +44,15 @@ class RegisterView extends GetView<RegisterController> {
               ),
               _gap,
               AuthTextField(
+                controller: controller.businessNameController,
+                label: 'Nombre del negocio (opcional)',
+                hint: 'Ej.: Cejas y Pestañas Luna',
+                icon: Icons.storefront_outlined,
+                autofillHints: const [AutofillHints.organizationName],
+                error: controller.businessNameError,
+              ),
+              _gap,
+              AuthTextField(
                 controller: controller.phoneController,
                 label: 'Teléfono',
                 hint: '3001234567',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employee_form_controller.dart';
+import 'package:login_signup/shared/widgets/time_of_day_button.dart';
 
 /// Nombre en español de los días del horario (`WorkHours.weekdays`).
 const employeeDayLabels = {
@@ -84,7 +85,7 @@ class _DayRow extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: _TimeButton(
+                    child: TimeOfDayButton(
                       label: 'Inicio',
                       value: hours.start,
                       semantics: '$label, hora de inicio',
@@ -96,7 +97,7 @@ class _DayRow extends StatelessWidget {
                     child: Text('a'),
                   ),
                   Expanded(
-                    child: _TimeButton(
+                    child: TimeOfDayButton(
                       label: 'Fin',
                       value: hours.end,
                       semantics: '$label, hora de fin',
@@ -117,46 +118,6 @@ class _DayRow extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TimeButton extends StatelessWidget {
-  final String label;
-  final String value;
-  final String semantics;
-  final ValueChanged<String> onPicked;
-
-  const _TimeButton({
-    required this.label,
-    required this.value,
-    required this.semantics,
-    required this.onPicked,
-  });
-
-  TimeOfDay get _initial {
-    final parts = value.split(':');
-    return TimeOfDay(
-      hour: int.tryParse(parts.first) ?? 9,
-      minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: semantics,
-      child: OutlinedButton.icon(
-        icon: const Icon(Icons.access_time, size: 18),
-        label: Text('$label: $value'),
-        onPressed: () async {
-          final picked =
-              await showTimePicker(context: context, initialTime: _initial);
-          if (picked == null) return;
-          onPicked('${picked.hour.toString().padLeft(2, '0')}:'
-              '${picked.minute.toString().padLeft(2, '0')}');
-        },
       ),
     );
   }

@@ -17,6 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
+import 'package:login_signup/features/statistics/presentation/controllers/commissions_controller.dart';
 import 'package:login_signup/main.dart' as app;
 
 const _password = 'Clave@2026a';
@@ -272,11 +274,13 @@ void main() {
     await openDrawerItem(tester, 'Servicios');
     await shot(tester, 'servicios');
     dump('servicios');
-    // Duración de axilas (20 min) al editar: el selector va de 15 en 15.
+    // Duración de axilas (20 min) al editar: el selector va de 5 en 5 (7.04-4).
     if (find.text('Depilación de axilas').evaluate().isNotEmpty) {
       await tap(tester, find.text('Depilación de axilas'), wait: 1500);
       await shot(tester, 'editar_axilas');
       dump('editar axilas');
+      check(allText().contains('20 min'), 'axilas: 20 min al editar',
+          allText());
       await back(tester);
     }
     await tap(tester, find.widgetWithText(FloatingActionButton, 'Servicio'),
@@ -285,12 +289,19 @@ void main() {
     await type(tester, 'Nombre del servicio', serviceName);
     await type(tester, 'Precio', '90000');
     await tapText(tester, 'Duración');
-    // Rueda de 15 en 15: bajar tres posiciones desde la inicial.
+    // Rueda de 5 en 5: de 30 min, tres posiciones abajo = 45 min.
     await tester.drag(find.byType(ListWheelScrollView), const Offset(0, -150));
     await idle(tester, 1200);
     await shot(tester, 'servicio_duracion');
     dump('rueda duración');
     await tapText(tester, 'Aceptar');
+    check(allText().contains('45 min'), 'servicio nuevo: 45 min', allText());
+    // Nace sin reserva en línea (7.04-9).
+    final online = find.widgetWithText(SwitchListTile, 'Se puede reservar en línea');
+    check(
+        online.evaluate().isNotEmpty &&
+            (online.evaluate().first.widget as SwitchListTile).value == false,
+        'servicio nuevo: reserva en línea apagada por defecto');
     await tapText(tester, 'Categoría');
     await tapText(tester, 'Pestañas');
     final color = find.byKey(const ValueKey('service-color-#009688'));
@@ -331,6 +342,9 @@ void main() {
     await showDay(tester, DateTime(2026, 10, 31));
     await tap(tester, find.byTooltip('Nueva cita'), wait: 2500);
     await shot(tester, 'cita_nueva_vacia');
+    check(allText().toLowerCase().contains('31 octubre'),
+        'la cita nueva arranca en el día visible (31), no en hoy (7.04-6)',
+        allText());
     await tap(tester, find.byKey(const Key('appointment-professional')));
     await shot(tester, 'cita_profesionales');
     dump('profesionales');
@@ -460,13 +474,52 @@ void main() {
     dump('estadísticas abajo');
     await back(tester);
 
-    // ── Zona horaria ──
-    await openDrawerItem(tester, 'Zona horaria');
+    // ── Comisiones (8.03) ──
+    await openDrawerItem(tester, 'Comisiones');
+    await idle(tester, 3000);
+    // Las citas completadas de la demo son del 30 de octubre.
+    Get.find<CommissionsController>().setRange(
+        StatsRange(start: DateTime(2026, 10, 1), end: DateTime(2026, 10, 31)));
+    await idle(tester, 3000);
+    await shot(tester, 'comisiones');
+    dump('comisiones');
+    check(
+        texts().contains('Ana Gómez') && texts().contains('Laura Pérez'),
+        'comisiones del Owner: una fila por profesional',
+        allText());
+    await tap(tester, find.text('Ana Gómez'), wait: 1500);
+    await shot(tester, 'comisiones_detalle_ana');
+    dump('comisiones detalle Ana');
+    check(allText().contains('Valentina Castro'),
+        'comisiones: detalle por cita (Valentina)', allText());
+    await back(tester);
+
+    // ── Mi negocio: nombre, link, horario y zona (8.03, 9.03) ──
+    await openDrawerItem(tester, 'Mi negocio');
     await idle(tester, 2500);
-    await shot(tester, 'zona_horaria');
-    dump('zona horaria');
+    await shot(tester, 'mi_negocio');
+    dump('mi negocio');
     check(allText().contains('Bogota') || allText().contains('Bogotá'),
-        'la pantalla de zona muestra Bogotá', allText());
+        'Mi negocio muestra la zona de Bogotá', allText());
+    final nameField = find.byKey(const Key('business-name'));
+    if ((tester.widget<TextField>(nameField).controller?.text ?? '').isEmpty) {
+      await tester.enterText(nameField, 'Cejas y Pestañas Marcela');
+      await tapText(tester, 'Guardar nombre', wait: 2500);
+    }
+    final link = find.byKey(const Key('booking-link'));
+    final hasLink = await waitFor(tester, link);
+    final linkText =
+        hasLink ? (tester.widget<SelectableText>(link).data ?? '') : '';
+    check(linkText.contains('/reservar/') && !linkText.contains('/api/'),
+        'link público /reservar/<slug> fuera de /api', linkText);
+    // Horario: el editor se ve; no se guarda (no cambia la demo).
+    final hoursSwitch = find.byKey(const Key('opening-hours-enabled'));
+    final wasLimited = (tester.widget<SwitchListTile>(hoursSwitch).value);
+    if (!wasLimited) await tap(tester, hoursSwitch);
+    await shot(tester, 'mi_negocio_horario');
+    check(find.text('Sábado').evaluate().isNotEmpty,
+        'editor de horario con los días', allText());
+    if (!wasLimited) await tapText(tester, 'Descartar');
     await back(tester);
 
     await logout(tester);
@@ -505,7 +558,7 @@ void main() {
     dump('Ana menú');
     check(
         !menu.contains('Personal') &&
-            !menu.contains('Zona horaria') &&
+            !menu.contains('Mi negocio') &&
             !menu.contains('Planes y suscripción'),
         'menú de Ana sin opciones de Owner',
         menu);
@@ -516,6 +569,20 @@ void main() {
     await idle(tester, 3000);
     await shot(tester, 'ana_informes');
     dump('Ana informes');
+    await back(tester);
+    await openDrawerItem(tester, 'Comisiones');
+    await idle(tester, 3000);
+    Get.find<CommissionsController>().setRange(
+        StatsRange(start: DateTime(2026, 10, 1), end: DateTime(2026, 10, 31)));
+    await idle(tester, 3000);
+    await shot(tester, 'ana_comisiones');
+    dump('Ana comisiones');
+    check(
+        allText().contains('Mis comisiones') &&
+            allText().contains('Valentina Castro') &&
+            !allText().contains('Laura Pérez'),
+        'Ana ve solo sus comisiones',
+        allText());
     await back(tester);
     await logout(tester);
 

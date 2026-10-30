@@ -25,7 +25,7 @@ void main() {
   ];
   const ownerOnly = [
     'Personal',
-    'Zona horaria',
+    'Mi negocio',
     'WhatsApp',
     'Planes y suscripción',
   ];
@@ -33,6 +33,7 @@ void main() {
     'Servicios',
     'Clientela',
     'Informes',
+    'Comisiones',
     'Apariencia',
     'Cerrar sesión',
   ];

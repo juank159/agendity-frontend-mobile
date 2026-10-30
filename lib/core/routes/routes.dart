@@ -47,6 +47,7 @@ import 'package:login_signup/features/services/presentation/screens/new_service_
 import 'package:login_signup/features/settings/presentation/bindings/business_settings_binding.dart';
 import 'package:login_signup/features/settings/presentation/screens/business_settings_screen.dart';
 import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
+import 'package:login_signup/features/statistics/presentation/screens/commissions_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/employee_stats_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
 import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
@@ -95,6 +96,9 @@ class GetRoutes {
   // statistics Routes
   static const String statistics = '/statistics';
   static const String employeeStats = '/employee-statistics';
+
+  /// Liquidación de comisiones (Owner: el equipo; Employee: lo suyo).
+  static const String commissions = '/commissions';
 
   // config whatsapp Routes
   static const String configWhatsapp = '/whatsapp-config';
@@ -306,6 +310,15 @@ class GetRoutes {
       middlewares: RoleMiddleware.ownerOnly(),
       page: () => const StatisticsDashboardScreen(),
       binding: StatisticsBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+    ),
+    GetPage(
+      name: commissions,
+      middlewares: [AuthMiddleware()],
+      page: () => const CommissionsScreen(),
+      binding: CommissionsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,

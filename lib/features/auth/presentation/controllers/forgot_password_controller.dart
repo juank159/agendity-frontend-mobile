@@ -1,7 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/auth/domain/usecases/request_password_reset_usecase.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'auth_feedback.dart';
 import 'auth_navigation.dart';
@@ -38,8 +40,16 @@ class ForgotPasswordController extends GetxController {
     if (isClosed) return;
     isLoading.value = false;
     await result.fold(
-      (failure) => AuthFeedback.show(failure,
-          title: 'No se pudo enviar el código'),
+      (failure) async {
+        if (failure is EmailDeliveryFailure) {
+          if (await AppDialogs.retry(
+              title: 'No se envió el correo', message: failure.message)) {
+            return requestPasswordReset();
+          }
+          return;
+        }
+        await AuthFeedback.show(failure, title: 'No se pudo enviar el código');
+      },
       (_) async {
         AppSnackbar.success('Te enviamos un código de recuperación a $email',
             title: 'Código enviado');

@@ -15,6 +15,9 @@ class AppointmentTile extends StatelessWidget {
   /// Vista de semana: solo el color, sin textos.
   final bool compact;
 
+  /// Alto mínimo para pintar cliente y servicio en dos líneas.
+  static const twoLineMinHeight = 34.0;
+
   const AppointmentTile({
     super.key,
     required this.appointment,
@@ -40,48 +43,77 @@ class AppointmentTile extends StatelessWidget {
 
     final content = compact
         ? const SizedBox.expand()
-        : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (isFirst)
-                        Text(
-                          a.clientName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: foreground,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            decoration: a.isCancelled
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                        ),
-                      if (service.isNotEmpty)
-                        Text(
-                          service,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: foreground, fontSize: 10),
-                        ),
-                    ],
-                  ),
+        : LayoutBuilder(builder: (context, constraints) {
+            // Un bloque de 15 min no tiene alto para dos líneas (7.04-2):
+            // cliente y servicio van en una sola.
+            final oneLine = constraints.maxHeight < twoLineMinHeight;
+            final clientStyle = TextStyle(
+              color: foreground,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              decoration: a.isCancelled ? TextDecoration.lineThrough : null,
+            );
+            final serviceStyle = TextStyle(color: foreground, fontSize: 10);
+            final List<Widget> lines;
+            if (oneLine) {
+              lines = [
+                Text.rich(
+                  TextSpan(children: [
+                    if (isFirst) TextSpan(text: a.clientName, style: clientStyle),
+                    if (isFirst && service.isNotEmpty)
+                      TextSpan(text: ' · ', style: serviceStyle),
+                    if (service.isNotEmpty)
+                      TextSpan(text: service, style: serviceStyle),
+                  ]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (isFirst && a.isFullyPaid)
-                  Icon(Icons.check_circle,
-                      size: 14, color: foreground, semanticLabel: 'Pagada'),
-              ],
-            ),
-          );
+              ];
+            } else {
+              lines = [
+                if (isFirst)
+                  Text(a.clientName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: clientStyle),
+                if (service.isNotEmpty)
+                  Text(service,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: serviceStyle),
+              ];
+            }
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: 6, vertical: oneLine ? 0 : 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: lines,
+                    ),
+                  ),
+                  if (isFirst && a.isWebBooking)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Icon(Icons.public,
+                          size: 13,
+                          color: foreground,
+                          semanticLabel: 'Reserva web'),
+                    ),
+                  if (isFirst && a.isFullyPaid)
+                    Icon(Icons.check_circle,
+                        size: 14, color: foreground, semanticLabel: 'Pagada'),
+                ],
+              ),
+            );
+          });
 
     return Semantics(
-      label: '${a.clientName}, $service, ${a.status.label}',
+      label: '${a.clientName}, $service, ${a.status.label}'
+          '${a.isWebBooking ? ', reserva web' : ''}',
       child: Padding(
         padding:
             EdgeInsets.symmetric(horizontal: 1, vertical: blocks > 1 ? 0 : 1),

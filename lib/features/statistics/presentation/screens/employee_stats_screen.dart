@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import '../controllers/employee_stats_controller.dart';
 import '../widgets/date_range_selector.dart';
 import '../widgets/employee_stats_widget.dart';
@@ -15,6 +16,11 @@ class EmployeeStatsScreen extends GetView<EmployeeStatsController> {
       appBar: AppBar(
         title: const Text('Mis estadísticas'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.percent),
+            tooltip: 'Comisiones',
+            onPressed: () => Get.toNamed(GetRoutes.commissions),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualizar',

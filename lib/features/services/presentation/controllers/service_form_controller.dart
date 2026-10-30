@@ -32,7 +32,9 @@ abstract class ServiceFormController extends GetxController {
   final duration = const Duration(minutes: 30).obs;
   final selectedCategory = Rxn<CategoryEntity>();
   final color = servicePalette.first.obs;
-  final onlineBooking = true.obs;
+  /// Visible en el link público de reservas (9.01). Nace apagado, como en
+  /// el backend (7.04-9).
+  final onlineBooking = false.obs;
 
   /// Abono mínimo en porcentaje (0–100).
   final deposit = 0.0.obs;

@@ -23,6 +23,9 @@ DioException offlineError() => DioException(
 /// versiones crecientes al feed. Se le pueden forzar resultados y cortes.
 class FakeSyncServer implements SyncApi {
   final clients = <String, Map<String, dynamic>>{};
+
+  /// Registros de las demás entidades del feed (10.02b).
+  final docs = <String, Map<String, Map<String, dynamic>>>{};
   final _feed = <({int version, String entity, String id, String op})>[];
   final _results = <String, MutationResult>{};
   int _version = 0;
@@ -47,6 +50,20 @@ class FakeSyncServer implements SyncApi {
     clients[id] = {...?clients[id], ...data, 'id': id};
     _bump('clients', id, 'upsert');
   }
+
+  /// Cambio de otra entidad hecho en el servidor.
+  void serverUpsert(String entity, String id, Map<String, dynamic> data) {
+    (docs[entity] ??= {})[id] = {...?docs[entity]?[id], ...data, 'id': id};
+    _bump(entity, id, 'upsert');
+  }
+
+  void serverDelete(String entity, String id) {
+    docs[entity]?.remove(id);
+    _bump(entity, id, 'delete');
+  }
+
+  void serverLeaveScope(String entity, String id) =>
+      _bump(entity, id, 'leave_scope');
 
   void serverDeleteClient(String id) {
     clients.remove(id);
@@ -78,6 +95,7 @@ class FakeSyncServer implements SyncApi {
     final id = m.entityId!;
     switch (m.type) {
       case 'client.create':
+      case 'client.import':
         final existing = clients.entries
             .where((e) => e.value['phone'] == m.payload['phone'])
             .map((e) => e.key)
@@ -91,7 +109,7 @@ class FakeSyncServer implements SyncApi {
         serverUpsertClient(id, {
           ...m.payload,
           'isActive': true,
-          'isFromDevice': false,
+          'isFromDevice': m.type == 'client.import',
           'created_at': '2026-10-31T13:00:00.000Z',
         });
       case 'client.update':
@@ -124,7 +142,11 @@ class FakeSyncServer implements SyncApi {
             entity: c.entity,
             id: c.id,
             op: ChangeOp.fromApi(c.op)!,
-            data: c.op == 'upsert' ? clients[c.id] : null,
+            data: c.op != 'upsert'
+                ? null
+                : c.entity == 'clients'
+                    ? clients[c.id]
+                    : docs[c.entity]?[c.id],
           ),
       ],
       cursor: page.isEmpty ? cursor : '${page.last.version}',

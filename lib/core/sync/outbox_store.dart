@@ -85,7 +85,8 @@ class OutboxEntry {
 /// Operaciones sobre la tabla [Outbox]. Nada sale de ella sin un resultado
 /// del servidor, salvo que el usuario la descarte ([discard]).
 abstract final class OutboxStore {
-  static Future<void> enqueue(
+  /// Devuelve el `seq` asignado.
+  static Future<int> enqueue(
     AppDatabase db, {
     required String mutationId,
     required String type,

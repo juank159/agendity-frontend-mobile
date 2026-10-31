@@ -1,8 +1,12 @@
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/database/document_store.dart';
+import 'package:login_signup/core/database/local_database_holder.dart';
+import 'package:login_signup/core/database/shared_documents.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
 import 'package:login_signup/features/employees/data/repositories/employees_repository_impl.dart';
@@ -25,7 +29,8 @@ import 'package:login_signup/features/employees/domain/usecases/verify_employee_
 
 import '../../core/network/fake_http_client_adapter.dart';
 import '../../core/session/memory_token_store.dart';
-import 'employee_model_test.dart' show backendDeletedEmployee, backendEmployee;
+import '../../core/sync/fake_sync_api.dart';
+import 'employee_model_test.dart' show backendEmployee;
 
 Failure? leftOf(Either<Failure, Object?> result) =>
     result.fold((f) => f, (_) => null);
@@ -51,11 +56,14 @@ const form = EmployeeInput(
 void main() {
   late FakeHttpClientAdapter adapter;
   late EmployeesRepositoryImpl repository;
+  late LocalDatabaseHolder databases;
   late int expiredSessions;
+  late int refreshes;
 
   setUp(() {
     adapter = FakeHttpClientAdapter((_) => jsonBody(200, {}));
     expiredSessions = 0;
+    refreshes = 0;
     final dio = buildApiClient(
       baseUrl: 'http://api.test/api',
       tokenStore: MemoryTokenStore('jwt'),
@@ -64,65 +72,112 @@ void main() {
       retryDelay: (_) => Duration.zero,
       enableLogs: false,
     );
-    repository = EmployeesRepositoryImpl(EmployeesRemoteDataSourceImpl(dio));
+    databases = memoryDatabases();
+    repository = EmployeesRepositoryImpl(
+      EmployeesRemoteDataSourceImpl(dio),
+      store: OfflineStore(databases: databases),
+      refresh: () async => refreshes++,
+    );
   });
 
-  group('lectura', () {
-    test('GET /auth/employees: entidades, token del núcleo y sin tenant-id',
-        () async {
-      adapter.handler = (_) => jsonBody(200, [
-            backendEmployee(id: 'owner-1', isOwner: true),
-            backendEmployee(isActive: false, verified: false),
-          ]);
+  tearDown(() => databases.close());
 
+  /// Lo que baja la sincronización (feeds `users`, `user_services`,
+  /// `schedules`, `services`).
+  Future<void> seed() async {
+    final db = await databases.require();
+    await DocumentStore.put(db, SharedDocs.users, 'owner-1', {
+      'id': 'owner-1',
+      'name': 'Marcela',
+      'lastname': 'Rojas',
+      'isActive': true,
+      'roles': [
+        {'name': 'Owner'}
+      ],
+    });
+    await DocumentStore.put(db, SharedDocs.users, 'emp-1', {
+      'id': 'emp-1',
+      'name': 'Laura',
+      'lastname': 'Gómez',
+      'email': 'laura@example.com',
+      'isActive': false,
+      'is_email_verified': false,
+      'commission_percentage': '30.00',
+      'roles': [
+        {'name': 'Employee'}
+      ],
+    });
+    await DocumentStore.put(db, SharedDocs.users, 'emp-2', {
+      'id': 'emp-2',
+      'name': 'Ana',
+      'lastname': 'Baja',
+      'isActive': false,
+      'deletedAt': '2026-10-20T15:30:00.000-05:00',
+      'roles': [
+        {'name': 'Employee'}
+      ],
+    });
+    await DocumentStore.put(db, const DocumentKind('services'), 'svc-1',
+        {'id': 'svc-1', 'name': 'Cejas'});
+    await DocumentStore.put(db, SharedDocs.userServices, 'us-1', {
+      'id': 'us-1',
+      'userId': 'emp-1',
+      'serviceId': 'svc-1',
+      'commissionPercentage': null,
+      'isActive': true,
+    });
+    await DocumentStore.put(db, SharedDocs.schedules, 'sch-1', {
+      'id': 'sch-1',
+      'user': 'emp-1',
+      'day_of_week': 1,
+      'start_time': '09:00:00',
+      'end_time': '18:00:00',
+      'is_available': true,
+    });
+  }
+
+  group('lectura (local, sin red)', () {
+    setUp(seed);
+
+    test('profesionales con servicios, horario y comisión; el Owner incluido',
+        () async {
       final employees =
           rightOf(await GetEmployeesUseCase(repository)(NoParams()));
-      expect(employees.map((e) => e.isOwner), [true, false]);
-      expect(employees.last.status, EmployeeStatus.pendingVerification);
-
-      final request = adapter.requests.single;
-      expect(request.method, 'GET');
-      expect(request.uri.path, '/api/auth/employees');
-      expect(request.headers['Authorization'], 'Bearer jwt');
-      expect(request.headers.containsKey('tenant-id'), false);
+      expect(employees.map((e) => e.id), ['emp-1', 'owner-1']);
+      final laura = employees.first;
+      expect(laura.status, EmployeeStatus.pendingVerification);
+      expect(laura.commissionPercentage, 30);
+      expect(laura.serviceAssignments['svc-1']!.serviceName, 'Cejas');
+      expect(laura.commissionFor('svc-1'), 30);
+      expect(laura.schedule['monday'],
+          const WorkHours(start: '09:00', end: '18:00'));
+      expect(employees.last.isOwner, true);
+      expect(adapter.requests, isEmpty);
     });
 
-    test('GET /auth/employees/deleted', () async {
-      adapter.handler = (_) => jsonBody(200, [backendDeletedEmployee()]);
+    test('dados de baja aparte', () async {
       final deleted =
           rightOf(await GetDeletedEmployeesUseCase(repository)(NoParams()));
+      expect(deleted.single.id, 'emp-2');
       expect(deleted.single.isDeleted, true);
-      expect(adapter.requests.single.uri.path, '/api/auth/employees/deleted');
     });
 
-    test('GET /auth/employee/:id; ajeno o de baja → NotFoundFailure',
-        () async {
-      adapter.handler = (_) => jsonBody(200, backendEmployee());
+    test('por id; inexistente → NotFoundFailure', () async {
       expect(rightOf(await GetEmployeeByIdUseCase(repository)('emp-1')).id,
           'emp-1');
-      expect(adapter.requests.single.uri.path, '/api/auth/employee/emp-1');
-
-      adapter.handler =
-          (_) => errorBody(404, 'NOT_FOUND', 'Empleado no encontrado');
       expect(leftOf(await repository.getEmployeeById('emp-x')),
           isA<NotFoundFailure>());
     });
+  });
 
-    test('403 del Employee (rutas solo del Owner) → ForbiddenFailure',
-        () async {
-      adapter.handler = (_) => errorBody(403, 'FORBIDDEN', 'Acceso denegado');
-      final failure = leftOf(await repository.getEmployees());
-      expect(failure, isA<ForbiddenFailure>());
-      expect(failure!.code, 'FORBIDDEN');
-      expect(expiredSessions, 0);
-    });
-
-    test('sin conexión → NetworkFailure (tras los reintentos del GET)',
-        () async {
-      adapter.handler = connectionError;
-      expect(leftOf(await repository.getEmployees()), isA<NetworkFailure>());
-      expect(adapter.requests.length, greaterThan(1));
-    });
+  test('cada cambio con conexión que sale bien sincroniza; si falla, no',
+      () async {
+    adapter.handler = (_) => jsonBody(200, {});
+    rightOf(await repository.setEmployeeActive('emp-1', false));
+    expect(refreshes, 1);
+    adapter.handler = (_) => errorBody(403, 'FORBIDDEN', 'No');
+    leftOf(await repository.setEmployeeActive('emp-1', false));
+    expect(refreshes, 1);
   });
 
   group('alta', () {
@@ -438,7 +493,7 @@ void main() {
   test('un 401 normal (token vencido) sí avisa de la sesión expirada',
       () async {
     adapter.handler = (_) => errorBody(401, 'UNAUTHORIZED', 'No autorizado');
-    expect(leftOf(await repository.getEmployees()),
+    expect(leftOf(await repository.setEmployeeActive('emp-1', true)),
         isA<UnauthorizedFailure>());
     expect(expiredSessions, 1);
   });

@@ -14,7 +14,14 @@ import 'appointment_model_test.dart' show backendAppointment;
 import 'appointments_repository_test.dart' show leftOf;
 import '../../core/network/fake_http_client_adapter.dart';
 import '../../core/session/memory_token_store.dart';
+import '../../core/sync/fake_sync_api.dart';
+import 'package:login_signup/core/database/app_database.dart';
+import 'package:login_signup/core/database/document_store.dart';
+import 'package:login_signup/core/database/local_database_holder.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/outbox_store.dart';
+import 'package:login_signup/features/appointments/data/sync/appointments_sync.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
 import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
 import 'package:login_signup/features/appointments/domain/failures/appointment_failures.dart';
@@ -77,12 +84,11 @@ void main() {
       expect(adapter.requests.single.uri.queryParameters['date'], '2026-11-03');
       expect(slots, [DateTime(2026, 11, 3, 9), DateTime(2026, 11, 3, 9, 30)]);
 
-      adapter.handler = (_) => jsonBody(200, <Object>[]);
-      await remote.getAppointments(AppointmentsRange.day(DateTime(2026, 11, 3)));
-      expect(adapter.requests.last.uri.queryParameters, {
-        'startDate': '2026-11-03T04:00:00.000Z',
-        'endDate': '2026-11-04T04:00:00.000Z',
-      });
+      // El día del calendario del negocio, en instantes (lectura local).
+      final day = AppointmentsRange.day(DateTime(2026, 11, 3));
+      expect(BusinessTimeZone.toInstant(day.start),
+          DateTime.utc(2026, 11, 3, 4));
+      expect(BusinessTimeZone.toInstant(day.end), DateTime.utc(2026, 11, 4, 4));
     });
   });
 
@@ -132,21 +138,27 @@ void main() {
     });
   });
 
-  group('"ahora" del negocio en los use cases', () {
-    late FakeHttpClientAdapter adapter;
+  group('"ahora" del negocio en los use cases (citas locales)', () {
+    late LocalDatabaseHolder databases;
     late AppointmentsRepositoryImpl repository;
+    late AppDatabase db;
 
-    setUp(() {
-      adapter = FakeHttpClientAdapter((_) => jsonBody(201, backendAppointment()));
-      repository = AppointmentsRepositoryImpl(AppointmentsRemoteDataSourceImpl(
-          buildApiClient(
-              baseUrl: 'http://api.test/api',
-              tokenStore: MemoryTokenStore('jwt'),
-              httpClientAdapter: adapter,
-              enableLogs: false)));
+    setUp(() async {
+      databases = memoryDatabases();
+      repository = AppointmentsRepositoryImpl(
+        AppointmentsRemoteDataSourceImpl(buildApiClient(
+            baseUrl: 'http://api.test/api',
+            tokenStore: MemoryTokenStore('jwt'),
+            httpClientAdapter: FakeHttpClientAdapter((_) => jsonBody(200, {})),
+            enableLogs: false)),
+        store: OfflineStore(databases: databases),
+      );
+      db = await databases.require();
       // 2026-11-03 14:30Z: 09:30 en Bogotá, 10:30 en Caracas.
       BusinessTimeZone.clock = () => DateTime.utc(2026, 11, 3, 14, 30);
     });
+
+    tearDown(() => databases.close());
 
     NewAppointment at(DateTime start) => NewAppointment(
         clientId: 'cli-1',
@@ -160,31 +172,35 @@ void main() {
           leftOf(await CreateAppointmentUseCase(repository)(
               at(DateTime(2026, 11, 3, 10)))),
           isA<AppointmentInPastFailure>());
-      expect(adapter.requests, isEmpty);
+      expect(await OutboxStore.all(db), isEmpty);
 
       BusinessTimeZone.use('America/Bogota');
       expect(
           leftOf(await CreateAppointmentUseCase(repository)(
               at(DateTime(2026, 11, 3, 10)))),
           isNull);
-      expect(bodyDate(adapter), '2026-11-03T15:00:00.000Z');
+      expect((await OutboxStore.all(db)).single.payload['date'],
+          '2026-11-03T15:00:00.000Z');
     });
 
     test('próximas: el rango sale del ahora del negocio', () async {
       BusinessTimeZone.use('America/Caracas');
-      adapter.handler = (_) => jsonBody(200, [
-            backendAppointment(
-                id: 'ya-paso', date: '2026-11-03T10:00:00.000-04:00',
-                timeZone: 'America/Caracas'),
-            backendAppointment(
-                id: 'luego', date: '2026-11-03T11:00:00.000-04:00',
-                timeZone: 'America/Caracas'),
-          ]);
+      for (final json in [
+        backendAppointment(
+            id: 'ya-paso',
+            date: '2026-11-03T10:00:00.000-04:00',
+            timeZone: 'America/Caracas'),
+        backendAppointment(
+            id: 'luego',
+            date: '2026-11-03T11:00:00.000-04:00',
+            timeZone: 'America/Caracas'),
+      ]) {
+        await DocumentStore.put(
+            db, AppointmentsSync.kind, json['id'] as String, json);
+      }
       final result =
           await GetUpcomingAppointmentsUseCase(repository)(NoParams());
       expect(result.getOrElse(() => []).map((a) => a.id), ['luego']);
-      expect(adapter.requests.single.uri.queryParameters['startDate'],
-          '2026-11-03T14:30:00.000Z');
     });
   });
 
@@ -195,9 +211,4 @@ void main() {
     expect(wall.timeZoneOffset, DateTime(2026, 11, 3).timeZoneOffset,
         reason: 'es un DateTime "local" con los campos del negocio');
   });
-}
-
-String? bodyDate(FakeHttpClientAdapter adapter) {
-  final data = adapter.requests.last.data;
-  return data is Map ? data['date'] as String? : null;
 }

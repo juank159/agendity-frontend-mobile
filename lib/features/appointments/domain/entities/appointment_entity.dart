@@ -59,6 +59,15 @@ class AppointmentEntity {
   /// `WEB` = reserva del link público (D-17). Sin el campo, `APP`.
   final AppointmentSource source;
 
+  /// Conflicto al sincronizar lo hecho sin conexión (10.01b, D-18): la cita
+  /// se guardó pero hay que **moverla** (`SLOT_UNAVAILABLE`,
+  /// `OUTSIDE_BUSINESS_HOURS`, profesional inactivo…). Mientras tanto no
+  /// ocupa hueco. Moverla lo limpia.
+  final bool needsReschedule;
+
+  /// Código del conflicto ([needsReschedule]); `null` sin conflicto.
+  final String? syncConflict;
+
   const AppointmentEntity({
     required this.id,
     required this.client,
@@ -77,6 +86,8 @@ class AppointmentEntity {
     this.createdAt,
     this.timeZone,
     this.source = AppointmentSource.APP,
+    this.needsReschedule = false,
+    this.syncConflict,
   })  : _recordStart = startTime,
         _recordEnd = endTime;
 
@@ -120,8 +131,9 @@ class AppointmentEntity {
   /// `COMPLETED` o `CANCELLED`: no admite más cambios de estado.
   bool get isFinal => status.isFinal;
 
-  /// Ocupa su hueco en la agenda (solo una cancelada lo libera).
-  bool get blocksSlot => !isCancelled;
+  /// Ocupa su hueco en la agenda (una cancelada lo libera, y una que quedó
+  /// para mover tras sincronizar, D-18).
+  bool get blocksSlot => !isCancelled && !needsReschedule;
 
   /// Se puede completar (también sin pagar, 2.15). Además debe haber
   /// empezado: ver [canCompleteAt].
@@ -185,6 +197,8 @@ class AppointmentEntity {
     DateTime? createdAt,
     String? timeZone,
     AppointmentSource? source,
+    bool? needsReschedule,
+    String? syncConflict,
   }) =>
       AppointmentEntity(
         id: id ?? this.id,
@@ -204,6 +218,8 @@ class AppointmentEntity {
         createdAt: createdAt ?? this.createdAt,
         timeZone: timeZone ?? this.timeZone,
         source: source ?? this.source,
+        needsReschedule: needsReschedule ?? this.needsReschedule,
+        syncConflict: syncConflict ?? this.syncConflict,
       );
 
   @override
@@ -226,7 +242,9 @@ class AppointmentEntity {
           other.reminderSentAt == reminderSentAt &&
           other.createdAt == createdAt &&
           other.timeZone == timeZone &&
-          other.source == source;
+          other.source == source &&
+          other.needsReschedule == needsReschedule &&
+          other.syncConflict == syncConflict;
 
   @override
   int get hashCode => Object.hash(
@@ -247,6 +265,8 @@ class AppointmentEntity {
         createdAt,
         timeZone,
         source,
+        needsReschedule,
+        syncConflict,
       );
 
   @override

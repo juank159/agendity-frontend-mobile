@@ -1,7 +1,7 @@
-import 'package:dio/dio.dart';
 import 'package:get/get.dart';
-import 'package:login_signup/core/network/api_client.dart';
-import 'package:login_signup/features/payments/data/datasources/payment_remote_datasource.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/features/payments/data/sync/payments_sync.dart';
 import 'package:login_signup/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:login_signup/features/payments/domain/repositories/payment_repository.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
@@ -12,14 +12,12 @@ import 'package:login_signup/features/payments/domain/usecases/get_appointment_b
 /// El controller lo registra `AppointmentsBinding` (abre el diálogo de pago).
 abstract final class PaymentsDependencies {
   static void init() {
-    Get.lazyPut<PaymentRemoteDataSource>(
-      () => PaymentRemoteDataSourceImpl(Get.find<Dio>(tag: apiClientTag)),
-      fenix: true,
-    );
     Get.lazyPut<PaymentRepository>(
-      () => PaymentRepositoryImpl(Get.find<PaymentRemoteDataSource>()),
+      () => PaymentRepositoryImpl(Get.find<OfflineStore>()),
       fenix: true,
     );
+    // 10.02b: pagos (`payment.create`) y métodos propios (solo bajada).
+    PaymentsSync.handlers().forEach(Get.find<SyncEngine>().register);
     Get.lazyPut(() => CreatePaymentUseCase(Get.find<PaymentRepository>()),
         fenix: true);
     Get.lazyPut(

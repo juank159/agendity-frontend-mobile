@@ -97,8 +97,8 @@ class ServiceModel {
         isActive: isActive,
       );
 
-  /// Cuerpo de `POST /services` y `PATCH /services/:id` (`CreateServiceDto`):
-  /// sin `id` ni `isActive`, que el DTO no admite; `image` solo si hay.
+  /// Cuerpo de `POST /services` (`CreateServiceDto`): sin `id` ni
+  /// `isActive`, que el alta no admite; `image` solo si hay.
   Map<String, dynamic> toJson() => {
         'name': name,
         'description': description,
@@ -111,4 +111,8 @@ class ServiceModel {
         'onlineBooking': onlineBooking,
         'deposit': deposit,
       };
+
+  /// Cuerpo de `PATCH /services/:id` (`UpdateServiceDto`): lo del alta más
+  /// `isActive` (activar o desactivar sin borrar, 2026-10-31).
+  Map<String, dynamic> toUpdateJson() => {...toJson(), 'isActive': isActive};
 }

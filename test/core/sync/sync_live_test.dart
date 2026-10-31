@@ -4,7 +4,26 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/network/interceptors/auth_interceptor.dart';
+import 'package:login_signup/common/enums/payment_method_enum.dart';
+import 'package:login_signup/core/database/document_store.dart';
+import 'package:login_signup/core/database/shared_documents.dart';
+import 'package:login_signup/core/sync/document_sync_handler.dart';
 import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
+import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
+import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
+import 'package:login_signup/features/appointments/data/sync/appointments_sync.dart';
+import 'package:login_signup/features/appointments/domain/entities/new_appointment.dart';
+import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
+import 'package:login_signup/features/employees/data/repositories/employees_repository_impl.dart';
+import 'package:login_signup/features/employees/data/sync/employees_sync.dart';
+import 'package:login_signup/features/notifications/data/models/app_notification_model.dart';
+import 'package:login_signup/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:login_signup/features/payments/data/sync/payments_sync.dart';
+import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
+import 'package:login_signup/features/services/data/repositories/services_repository_impl.dart';
+import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
+import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/core/sync/outbox_store.dart';
 import 'package:login_signup/core/sync/sync_api.dart';
 import 'package:login_signup/core/sync/sync_engine.dart';
@@ -99,6 +118,119 @@ void main() {
     await engine.syncNow();
     expect(await OutboxStore.all(db), isEmpty);
     expect((await repository.getClientById(created.id!)).isLeft(), true);
+    await engine.dispose();
+    await databases.close();
+  }, skip: url == null ? 'Solo con SYNC_E2E_URL' : null);
+
+  test('10.02b: catálogo, cita, pago e importación sin red contra el '
+      'servidor real', () async {
+    final tokens = MemoryTokenStore();
+    final dio = buildApiClient(
+        baseUrl: url!, tokenStore: tokens, enableLogs: false);
+    final login = await dio.post<Map<String, dynamic>>('/auth/login',
+        data: {'email': 'marcela.rojas@example.com', 'password': 'Clave@2026a'},
+        options: Options(extra: {AuthInterceptor.publicKey: true}));
+    tokens.token = login.data!['token'] as String;
+
+    final databases = memoryDatabases();
+    final engine = SyncEngine(
+      databases: databases,
+      api: DioSyncApi(dio),
+      handlers: [
+        ClientsSyncHandler(
+            const ClientsLocalDataSource(), ClientsRemoteDataSourceImpl(dio)),
+        ...CatalogSync.handlers(),
+        ...EmployeesSync.handlers(),
+        ...AppointmentsSync.handlers(),
+        ...PaymentsSync.handlers(),
+        DocumentSyncHandler(SharedDocs.businessSettings),
+        DocumentSyncHandler(AppNotificationModel.kind),
+      ],
+    );
+    final store = OfflineStore(databases: databases);
+    final db = await databases.require();
+    await engine.syncNow();
+    expect(engine.current.lastError, isNull);
+
+    // Todo lo del negocio bajó.
+    final settings =
+        (await DocumentStore.list(db, SharedDocs.businessSettings.entity))
+            .single;
+    BusinessTimeZone.use(settings['timezone'] as String);
+    addTearDown(BusinessTimeZone.reset);
+    final employees = (await EmployeesRepositoryImpl(
+                EmployeesRemoteDataSourceImpl(dio),
+                store: store,
+                refresh: engine.syncNow)
+            .getEmployees())
+        .getOrElse(() => throw StateError('empleados'));
+    expect(employees, isNotEmpty);
+    final services = ServicesRepositoryImpl(store);
+    final pro = employees.firstWhere((e) => !e.isOwner && e.isActive);
+    final offered = (await services.getServicesOfferedBy(pro.id))
+        .getOrElse(() => throw StateError('servicios'));
+    expect(offered, isNotEmpty);
+
+    // Sin red: servicio nuevo, cita con un servicio de la profesional, pago e
+    // importación de un contacto.
+    final suffix = DateTime.now().millisecondsSinceEpoch % 1000000;
+    final service = (await services.createService(ServiceEntity(
+            name: 'Offline $suffix',
+            price: 10000,
+            duration: 30,
+            categoryId: offered.first.categoryId)))
+        .getOrElse(() => throw StateError('servicio'));
+    final clients = ClientsRepositoryImpl(
+        remote: ClientsRemoteDataSourceImpl(dio), store: store);
+    final client = (await clients.getClients(const ClientsQuery()))
+        .getOrElse(() => throw StateError('clientes'))
+        .items
+        .first;
+    final appointments = AppointmentsRepositoryImpl(
+        AppointmentsRemoteDataSourceImpl(dio),
+        store: store);
+    final day = BusinessTimeZone.today().add(Duration(days: 20 + suffix % 30));
+    final created = (await appointments.createAppointment(NewAppointment(
+            clientId: client.id!,
+            professionalId: pro.id,
+            serviceIds: [offered.first.id!],
+            start: DateTime(day.year, day.month, day.day, 10))))
+        .getOrElse(() => throw StateError('cita'));
+    final payment = (await PaymentRepositoryImpl(store).createPayment(
+            PaymentEntity(
+                appointmentId: created.id,
+                amount: 1000,
+                paymentMethod: PaymentMethod.CASH)))
+        .getOrElse(() => throw StateError('pago'));
+    final imported = await clients.importClients([
+      ClientEntity(name: 'Contacto', phone: '312${suffix.toString().padLeft(7, '0')}'),
+    ]);
+    expect(imported.isRight(), true);
+
+    await engine.syncNow();
+    expect(engine.current.lastError, isNull);
+    expect(await OutboxStore.all(db), isEmpty,
+        reason: 'cada mutación tuvo resultado');
+
+    // Lo que dice el servidor, ya en local.
+    final synced = (await appointments.getAppointment(created.id))
+        .getOrElse(() => throw StateError('cita sincronizada'));
+    expect(synced.services.single.serviceId, offered.first.id);
+    // Con hueco: confirmada por el pago; sin hueco: guardada para mover.
+    expect(synced.needsReschedule || synced.isConfirmed, true);
+    final payments = (await PaymentRepositoryImpl(store)
+            .getAppointmentPayments(created.id))
+        .getOrElse(() => []);
+    expect(payments.map((p) => p.id), contains(payment.id));
+    expect(
+        (await services.getAllServices())
+            .getOrElse(() => [])
+            .map((s) => s.id),
+        contains(service.id));
+    final importedClients = (await clients.getClients(
+            const ClientsQuery(source: ClientSourceFilter.imported)))
+        .getOrElse(() => throw StateError('importados'));
+    expect(importedClients.items.map((c) => c.name), contains('Contacto'));
     await engine.dispose();
     await databases.close();
   }, skip: url == null ? 'Solo con SYNC_E2E_URL' : null);

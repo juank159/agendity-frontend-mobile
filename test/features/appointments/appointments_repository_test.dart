@@ -3,13 +3,22 @@ import 'dart:convert';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:login_signup/core/utils/business_time_zone.dart';
+import 'package:login_signup/core/database/app_database.dart';
+import 'package:login_signup/core/database/document_store.dart';
+import 'package:login_signup/core/database/local_database_holder.dart';
+import 'package:login_signup/core/database/shared_documents.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/outbox_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/core/sync/sync_models.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
 import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
+import 'package:login_signup/features/appointments/data/sync/appointments_sync.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
@@ -29,6 +38,7 @@ import 'package:login_signup/features/appointments/domain/usecases/update_appoin
 
 import '../../core/network/fake_http_client_adapter.dart';
 import '../../core/session/memory_token_store.dart';
+import '../../core/sync/fake_sync_api.dart';
 import 'appointment_model_test.dart' show backendAppointment, backendService;
 
 Failure? leftOf(Either<Failure, Object?> result) =>
@@ -51,12 +61,19 @@ Map<String, dynamic> bodyOf(RequestOptions request) =>
 /// "Ahora" fijo de los tests (hora de pared del negocio, Bogotá).
 final now = DateTime(2026, 11, 1, 8);
 
+/// Citas sin conexión (10.02b): lectura local, escrituras a local + bandeja
+/// (`appointment.*`); horas libres y recordatorios con la red.
 void main() {
   late FakeHttpClientAdapter adapter;
+  late LocalDatabaseHolder databases;
+  late AppDatabase db;
   late AppointmentsRepositoryImpl repository;
+  var ids = 0;
 
-  setUp(() {
-    adapter = FakeHttpClientAdapter((_) => jsonBody(200, backendAppointment()));
+  setUp(() async {
+    BusinessTimeZone.use('America/Bogota');
+    BusinessTimeZone.clock = () => DateTime.utc(2026, 11, 1, 13); // 08:00
+    adapter = FakeHttpClientAdapter((_) => jsonBody(200, {}));
     final dio = buildApiClient(
       baseUrl: 'http://api.test/api',
       tokenStore: MemoryTokenStore('jwt'),
@@ -64,64 +81,84 @@ void main() {
       retryDelay: (_) => Duration.zero,
       enableLogs: false,
     );
-    repository =
-        AppointmentsRepositoryImpl(AppointmentsRemoteDataSourceImpl(dio));
+    databases = memoryDatabases();
+    ids = 0;
+    repository = AppointmentsRepositoryImpl(
+      AppointmentsRemoteDataSourceImpl(dio),
+      store: OfflineStore(
+        databases: databases,
+        newId: () => 'apt-new-${++ids}',
+        clock: () => DateTime.utc(2026, 11, 1, 13),
+      ),
+    );
+    db = await databases.require();
+
+    // Lo que bajó la sincronización: cliente, profesional y servicios.
+    await db.into(db.localClients).insert(LocalClientsCompanion.insert(
+        id: 'cli-1', name: 'Ana', phone: '3001234567'));
+    await db.into(db.localClients).insert(LocalClientsCompanion.insert(
+        id: 'cli-2', name: 'Beto', phone: '3007654321'));
+    await DocumentStore.put(db, SharedDocs.users, 'pro-1', {
+      'id': 'pro-1',
+      'name': 'Laura',
+      'lastname': 'Gómez',
+      'isActive': true,
+      'roles': [
+        {'name': 'Employee'}
+      ],
+    });
+    for (final service in [
+      backendService(), // svc-1, 45 min, 50.000
+      backendService(id: 'svc-2', name: 'Barba', duration: 30, price: '20000.00'),
+    ]) {
+      await DocumentStore.put(db, const DocumentKind('services'),
+          service['id'] as String,
+          {...service, 'isActive': true}..remove('appointment_price'));
+    }
+    for (final service in ['svc-1', 'svc-2']) {
+      await DocumentStore.put(db, SharedDocs.userServices, 'us-$service', {
+        'id': 'us-$service',
+        'userId': 'pro-1',
+        'serviceId': service,
+        'isActive': true,
+      });
+    }
   });
 
-  group('leer', () {
-    test(
-        'GET /appointments: token del núcleo, sin tenant-id, rango filtrado aquí '
-        '(el backend lo ignora) y ordenado', () async {
-      adapter.handler = (_) => jsonBody(200, [
-            backendAppointment(id: 'tarde', date: '2026-11-03T15:00:00Z'),
-            backendAppointment(id: 'fuera', date: '2026-11-05T15:00:00Z'),
-            backendAppointment(id: 'temprano', date: '2026-11-03T13:00:00Z'),
-          ]);
-      final range = AppointmentsRange(
-          start: DateTime.utc(2026, 11, 3), end: DateTime.utc(2026, 11, 4));
+  tearDown(() async {
+    BusinessTimeZone.reset();
+    BusinessTimeZone.clock = DateTime.now;
+    await databases.close();
+  });
 
-      final list =
-          rightOf(await GetAppointmentsUseCase(repository)(range));
+  Future<void> seed(Map<String, dynamic> json) =>
+      DocumentStore.put(db, AppointmentsSync.kind, json['id'] as String, json);
 
+  Future<List<OutboxEntry>> outbox() => OutboxStore.all(db);
+
+  group('leer (local)', () {
+    test('rango por instante, ordenado; sin red', () async {
+      await seed(backendAppointment(id: 'tarde', date: '2026-11-03T15:00:00Z'));
+      await seed(backendAppointment(id: 'fuera', date: '2026-11-05T15:00:00Z'));
+      await seed(
+          backendAppointment(id: 'temprano', date: '2026-11-03T13:00:00Z'));
+      final list = rightOf(await GetAppointmentsUseCase(repository)(
+          AppointmentsRange.day(DateTime(2026, 11, 3))));
       expect(list.map((a) => a.id), ['temprano', 'tarde']);
-      final request = adapter.requests.single;
-      expect(request.method, 'GET');
-      expect(request.uri.path, '/api/appointments');
-      expect(request.headers['Authorization'], 'Bearer jwt');
-      expect(request.headers.containsKey('tenant-id'), false);
-      expect(request.uri.queryParameters, {
-        'startDate': '2026-11-03T00:00:00.000Z',
-        'endDate': '2026-11-04T00:00:00.000Z',
-      });
-    });
-
-    test('rango invertido → failure sin llamar al backend', () async {
-      final failure = leftOf(await GetAppointmentsUseCase(repository)(
-          AppointmentsRange(start: now, end: now.subtract(const Duration(days: 1)))));
-      expect(failure, isA<InvalidAppointmentDataFailure>());
       expect(adapter.requests, isEmpty);
     });
 
-    test('GET /appointments/:id; ajena → NotFoundFailure', () async {
+    test('rango invertido → failure; por id; inexistente → NotFound',
+        () async {
+      expect(
+          leftOf(await GetAppointmentsUseCase(repository)(AppointmentsRange(
+              start: now, end: now.subtract(const Duration(days: 1))))),
+          isA<InvalidAppointmentDataFailure>());
+      await seed(backendAppointment());
       expect(rightOf(await GetAppointmentUseCase(repository)('apt-1')).id,
           'apt-1');
-      expect(adapter.requests.single.uri.path, '/api/appointments/apt-1');
-
-      adapter.handler =
-          (_) => errorBody(404, 'NOT_FOUND', 'Cita con ID x no encontrada');
-      expect(leftOf(await repository.getAppointment('x')),
+      expect(leftOf(await repository.getAppointment('otra')),
           isA<NotFoundFailure>());
-    });
-
-    test('respuesta que no es una cita → ServerFailure (no TypeError)',
-        () async {
-      adapter.handler = (_) => jsonBody(200, [
-            {'id': 'sin-fecha'}
-          ]);
-      expect(
-          leftOf(await repository.getAppointments(
-              AppointmentsRange(start: now, end: now))),
-          isA<ServerFailure>());
     });
   });
 
@@ -130,272 +167,202 @@ void main() {
       clientId: ' cli-1 ',
       professionalId: 'pro-1',
       serviceIds: const ['svc-1', 'svc-2'],
-      start: DateTime.utc(2026, 11, 3, 15),
+      start: DateTime(2026, 11, 3, 10),
       notes: '  ',
     );
 
     CreateAppointmentUseCase create() =>
         CreateAppointmentUseCase(repository, now: () => now);
 
-    test('201: POST /appointments con el DTO limpio y la cita del backend',
-        () async {
-      adapter.handler = (_) => jsonBody(201, backendAppointment());
+    test('se guarda en local con cliente, profesional, servicios y total; '
+        'appointment.create con el DTO', () async {
       final created = rightOf(await create()(newAppointment));
-      expect(created.id, 'apt-1');
+      expect(created.id, 'apt-new-1');
+      expect(created.client.name, 'Ana');
+      expect(created.professionalName, 'Laura Gómez');
+      expect(created.serviceNames, ['Corte', 'Barba']);
+      expect(created.totalPrice, 70000, reason: 'precios actuales');
+      expect(created.duration, const Duration(minutes: 75));
+      expect(created.status, AppointmentStatus.PENDING);
+      expect(created.startTime, DateTime(2026, 11, 3, 10));
+      expect(created.timeZone, 'America/Bogota');
 
-      final request = adapter.requests.single;
-      expect(request.method, 'POST');
-      expect(request.uri.path, '/api/appointments');
-      expect(bodyOf(request), {
+      final entry = (await outbox()).single;
+      expect(entry.type, 'appointment.create');
+      expect(entry.entityId, 'apt-new-1');
+      expect(entry.payload, {
         'client_id': 'cli-1',
         'professional_id': 'pro-1',
         'service_ids': ['svc-1', 'svc-2'],
         'date': '2026-11-03T15:00:00.000Z',
       });
-    });
-
-    test('reglas locales: sin servicios, repetidos, en el pasado → sin red',
-        () async {
-      Future<Failure?> failureOf(NewAppointment a) async =>
-          leftOf(await create()(a));
-
-      expect(
-          (await failureOf(NewAppointment(
-                  clientId: 'c', professionalId: 'p', serviceIds: const [],
-                  start: DateTime.utc(2027))))!
-              .message,
-          AppointmentRules.noServicesMessage);
-      expect(
-          (await failureOf(NewAppointment(
-                  clientId: 'c', professionalId: 'p',
-                  serviceIds: const ['s', 's'], start: DateTime.utc(2027))))!
-              .message,
-          AppointmentRules.repeatedServicesMessage);
-      expect(
-          await failureOf(NewAppointment(
-              clientId: 'c', professionalId: 'p', serviceIds: const ['s'],
-              start: now.subtract(const Duration(minutes: 1)))),
-          isA<AppointmentInPastFailure>());
       expect(adapter.requests, isEmpty);
     });
 
-    // HTTP legado 400 (D-11): se decide por `code`.
-    for (final (code, type) in [
-      ('SLOT_UNAVAILABLE', SlotUnavailableFailure),
-      ('PROFESSIONAL_INACTIVE', ProfessionalInactiveFailure),
-      ('APPOINTMENT_IN_PAST', AppointmentInPastFailure),
-      ('TRIAL_LIMIT_REACHED', TrialLimitReachedFailure),
-      ('SUBSCRIPTION_INACTIVE', SubscriptionInactiveFailure),
-    ]) {
-      test('400 $code → $type con el texto del backend', () async {
-        adapter.handler = (_) => errorBody(400, code, 'Texto de $code');
-        final failure = leftOf(await create()(newAppointment));
-        expect(failure.runtimeType, type);
-        expect(failure!.message, 'Texto de $code');
-        expect(failure.code, code);
-        expect(failure.statusCode, 400);
-      });
-    }
-
-    for (final (code, type) in [
-      ('SERVICE_NOT_OFFERED_BY_PROFESSIONAL', ServiceNotOfferedFailure),
-      ('OUTSIDE_BUSINESS_HOURS', OutsideBusinessHoursFailure),
-    ]) {
-      test('409 $code → $type (7.03, 8.01)', () async {
-        adapter.handler = (_) => errorBody(409, code, 'Texto de $code');
-        final failure = leftOf(await create()(newAppointment));
-        expect(failure.runtimeType, type);
-        expect(failure, isA<ConflictFailure>());
-        expect(failure!.message, 'Texto de $code');
-      });
-    }
-
-    test('HTTP definitivo (409/402) → mismo failure', () async {
-      adapter.handler =
-          (_) => errorBody(409, 'SLOT_UNAVAILABLE', 'Horario no disponible');
-      expect(leftOf(await create()(newAppointment)),
-          isA<SlotUnavailableFailure>());
-      adapter.handler = (_) => errorBody(402, 'TRIAL_LIMIT_REACHED', 'Límite');
-      expect(leftOf(await create()(newAppointment)),
-          isA<TrialLimitReachedFailure>());
-    });
-
-    test('403 (Employee para otro profesional) → ForbiddenFailure', () async {
-      adapter.handler = (_) => errorBody(403, 'FORBIDDEN', 'Solo para ti');
-      expect(leftOf(await create()(newAppointment)), isA<ForbiddenFailure>());
-    });
-
-    test('4xx con cuerpo HTML → failure por HTTP, sin TypeError', () async {
-      adapter.handler = (_) => textBody(400, '<html>Bad Request</html>');
-      expect(leftOf(await create()(newAppointment)), isA<ValidationFailure>());
-    });
-
-    test('red: POST no se reintenta (no duplica citas) → NetworkFailure',
+    test('reglas locales: sin servicios, repetidos, en el pasado → sin escribir',
         () async {
-      adapter.handler = connectionError;
-      expect(leftOf(await create()(newAppointment)), isA<NetworkFailure>());
-      expect(adapter.requests, hasLength(1));
+      expect(
+          leftOf(await create()(NewAppointment(
+              clientId: 'cli-1',
+              professionalId: 'pro-1',
+              serviceIds: const [],
+              start: DateTime(2026, 11, 3, 10)))),
+          isA<InvalidAppointmentDataFailure>());
+      expect(
+          leftOf(await create()(NewAppointment(
+              clientId: 'cli-1',
+              professionalId: 'pro-1',
+              serviceIds: const ['svc-1'],
+              start: DateTime(2026, 10, 31, 10)))),
+          isA<AppointmentInPastFailure>());
+      expect(await outbox(), isEmpty);
     });
 
-    test('500 → ServerFailure', () async {
-      adapter.handler =
-          (_) => errorBody(500, 'INTERNAL_ERROR', 'detalle interno');
-      expect(leftOf(await create()(newAppointment)), isA<ServerFailure>());
+    test('vuelve como conflict + saved: sale de la bandeja y la bajada la '
+        'marca para mover (no ocupa hueco)', () async {
+      final server = FakeSyncServer();
+      server.forced['appointment.create'] = (mid) => MutationResult(
+          mutationId: mid,
+          status: MutationStatus.conflict,
+          code: 'SLOT_UNAVAILABLE',
+          saved: true);
+      final engine = SyncEngine(
+          databases: databases,
+          api: server,
+          handlers: AppointmentsSync.handlers());
+      final created = rightOf(await create()(newAppointment));
+      await engine.syncNow();
+      expect(await outbox(), isEmpty);
+
+      // La bajada trae la cita guardada con su conflicto.
+      final doc = (await DocumentStore.get(db, 'appointments', created.id))!;
+      await AppointmentsSync.handlers().first.upsert(db, created.id, {
+        ...doc,
+        'needsReschedule': true,
+        'syncConflict': 'SLOT_UNAVAILABLE',
+      });
+      final marked = rightOf(await repository.getAppointment(created.id));
+      expect(marked.needsReschedule, true);
+      expect(marked.syncConflict, 'SLOT_UNAVAILABLE');
+      expect(marked.blocksSlot, false);
+
+      // Moverla limpia el conflicto en local (el servidor decide al subir).
+      final moved = rightOf(await UpdateAppointmentUseCase(repository,
+              now: () => now)(UpdateAppointmentParams(
+          original: marked,
+          changes: AppointmentChanges.between(marked,
+              start: DateTime(2026, 11, 3, 12)))));
+      expect(moved.needsReschedule, false);
+      expect(moved.syncConflict, isNull);
+      await engine.dispose();
     });
   });
 
   group('editar', () {
-    final original = entityOf(backendAppointment(
-      date: '2026-11-03T15:00:00Z',
-      services: [backendService(), backendService(id: 'svc-2', name: 'Barba')],
-    ));
+    setUp(() => seed(backendAppointment(
+          date: '2026-11-03T15:00:00Z',
+          services: [
+            backendService(),
+            backendService(id: 'svc-2', name: 'Barba'),
+          ],
+          reminderSent: true,
+        )));
 
     UpdateAppointmentUseCase update() =>
         UpdateAppointmentUseCase(repository, now: () => now);
 
-    test('PATCH solo con lo que cambió', () async {
+    test('solo lo que cambia; sin cambios no escribe', () async {
+      final original = rightOf(await repository.getAppointment('apt-1'));
       final changes = AppointmentChanges.between(
         original,
         clientId: 'cli-1',
         professionalId: 'pro-1',
-        serviceIds: const ['svc-2', 'svc-1'], // mismo conjunto
-        start: DateTime.utc(2026, 11, 3, 15), // mismo instante
+        serviceIds: const ['svc-2', 'svc-1'],
+        start: original.startTime,
         notes: ' Con prisa ',
       );
       rightOf(await update()(
           UpdateAppointmentParams(original: original, changes: changes)));
+      expect((await outbox()).single.payload, {'notes': 'Con prisa'});
 
-      final request = adapter.requests.single;
-      expect(request.method, 'PATCH');
-      expect(request.uri.path, '/api/appointments/apt-1');
-      expect(bodyOf(request), {'notes': 'Con prisa'});
-    });
-
-    test('sin cambios → devuelve la original sin llamar al backend', () async {
-      final result = await update()(UpdateAppointmentParams(
-        original: original,
-        changes: AppointmentChanges.between(original,
-            professionalId: 'pro-1', notes: 'Sin prisa'),
-      ));
-      expect(rightOf(result), same(original));
-      expect(adapter.requests, isEmpty);
-    });
-
-    test(
-        'carrera de editar: dos formularios abiertos sobre la misma cita no se '
-        'pisan (cada PATCH lleva solo su campo)', () async {
-      final moved = AppointmentChanges.between(original,
-          start: DateTime.utc(2026, 11, 4, 15), notes: 'Sin prisa');
-      final otherProfessional = AppointmentChanges.between(original,
-          professionalId: 'pro-2', start: original.startTime);
-
-      await update()(UpdateAppointmentParams(original: original, changes: moved));
-      await update()(UpdateAppointmentParams(
-          original: original, changes: otherProfessional));
-
-      expect(adapter.requests.map(bodyOf), [
-        {'date': '2026-11-04T15:00:00.000Z'},
-        {'professional_id': 'pro-2'},
-      ]);
-    });
-
-    test('mover al pasado → AppointmentInPastFailure sin red', () async {
-      final failure = leftOf(await update()(UpdateAppointmentParams(
-        original: original,
-        changes: AppointmentChanges(start: now.subtract(const Duration(hours: 1))),
-      )));
-      expect(failure, isA<AppointmentInPastFailure>());
-      expect(adapter.requests, isEmpty);
-    });
-
-    test('dejar sin servicios → failure sin red', () async {
-      final failure = leftOf(await update()(UpdateAppointmentParams(
+      final same = rightOf(await update()(UpdateAppointmentParams(
           original: original,
-          changes: AppointmentChanges.between(original, serviceIds: const []))));
-      expect(failure, isA<InvalidAppointmentDataFailure>());
-      expect(adapter.requests, isEmpty);
+          changes: AppointmentChanges.between(original, notes: 'Sin prisa'))));
+      expect(same.id, 'apt-1');
+      expect((await outbox()).length, 1);
     });
 
-    test('400 SLOT_UNAVAILABLE / PROFESSIONAL_INACTIVE al mover', () async {
-      final changes = AppointmentChanges(start: DateTime.utc(2026, 11, 5, 15));
-      adapter.handler =
-          (_) => errorBody(400, 'SLOT_UNAVAILABLE', 'Horario no disponible');
+    test('cambiar servicios conserva el precio de los que ya tenía; mover '
+        'reinicia el recordatorio manual', () async {
+      final original = rightOf(await repository.getAppointment('apt-1'));
+      final edited = rightOf(await update()(UpdateAppointmentParams(
+          original: original,
+          changes: AppointmentChanges.between(original,
+              clientId: 'cli-2',
+              serviceIds: const ['svc-1'],
+              start: DateTime(2026, 11, 4, 10)))));
+      expect(edited.client.name, 'Beto');
+      expect(edited.services.single.price, 45000,
+          reason: 'conserva el precio guardado en la cita, no el actual');
+      expect(edited.totalPrice, 45000);
+      expect(edited.startTime, DateTime(2026, 11, 4, 10));
+      expect(edited.reminderSent, false);
+    });
+
+    test('mover al pasado → AppointmentInPastFailure sin escribir', () async {
+      final original = rightOf(await repository.getAppointment('apt-1'));
       expect(
-          leftOf(await update()(
-              UpdateAppointmentParams(original: original, changes: changes))),
-          isA<SlotUnavailableFailure>());
-      adapter.handler = (_) =>
-          errorBody(400, 'PROFESSIONAL_INACTIVE', 'Profesional inactivo');
-      expect(
-          leftOf(await update()(
-              UpdateAppointmentParams(original: original, changes: changes))),
-          isA<ProfessionalInactiveFailure>());
+          leftOf(await update()(UpdateAppointmentParams(
+              original: original,
+              changes: AppointmentChanges.between(original,
+                  start: DateTime(2026, 10, 30, 10))))),
+          isA<AppointmentInPastFailure>());
+      expect(await outbox(), isEmpty);
     });
   });
 
   group('cancelar y completar', () {
-    test('PATCH :id/cancel con el motivo; sin motivo, cuerpo vacío', () async {
-      adapter.handler =
-          (_) => jsonBody(200, backendAppointment(status: 'CANCELLED'));
-      final cancel = CancelAppointmentUseCase(repository);
-
-      final cancelled = rightOf(await cancel(const CancelAppointmentParams(
-          appointmentId: 'apt-1', reason: ' No viene ')));
+    test('cancelar con motivo; con algo pagado → AppointmentPaidFailure',
+        () async {
+      await seed(backendAppointment());
+      final cancelled = rightOf(await CancelAppointmentUseCase(repository)(
+          const CancelAppointmentParams(appointmentId: 'apt-1', reason: ' Viaje ')));
       expect(cancelled.status, AppointmentStatus.CANCELLED);
-      await cancel(const CancelAppointmentParams(appointmentId: 'apt-1'));
+      expect(cancelled.cancellationReason, 'Viaje');
+      final entry = (await outbox()).single;
+      expect(entry.type, 'appointment.cancel');
+      expect(entry.payload, {'cancellation_reason': 'Viaje'});
 
-      expect(adapter.requests.map((r) => '${r.method} ${r.uri.path}'),
-          everyElement('PATCH /api/appointments/apt-1/cancel'));
-      expect(bodyOf(adapter.requests.first),
-          {'cancellation_reason': 'No viene'});
-      expect(bodyOf(adapter.requests.last), isEmpty);
+      await seed(backendAppointment(id: 'pagada', paymentStatus: 'PARTIAL'));
+      expect(leftOf(await repository.cancelAppointment('pagada')),
+          isA<AppointmentPaidFailure>());
     });
 
-    test('motivo de más de 500 caracteres → failure sin red', () async {
-      final failure = leftOf(await CancelAppointmentUseCase(repository)(
-          CancelAppointmentParams(appointmentId: 'a', reason: 'x' * 501)));
-      expect(failure, isA<InvalidAppointmentDataFailure>());
-      expect(adapter.requests, isEmpty);
+    test('motivo de más de 500 caracteres → failure sin escribir', () async {
+      await seed(backendAppointment());
+      expect(
+          leftOf(await CancelAppointmentUseCase(repository)(
+              CancelAppointmentParams(
+                  appointmentId: 'apt-1',
+                  reason: 'x' *
+                      (AppointmentRules.maxCancellationReasonLength + 1)))),
+          isA<InvalidAppointmentDataFailure>());
+      expect(await outbox(), isEmpty);
     });
 
-    test('409 APPOINTMENT_PAID (con un anticipo) → AppointmentPaidFailure',
-        () async {
-      adapter.handler = (_) => errorBody(409, 'APPOINTMENT_PAID',
-          'La cita tiene pagos registrados: reembólsalos por completo antes de cancelarla');
-      final failure = leftOf(await CancelAppointmentUseCase(repository)(
-          const CancelAppointmentParams(appointmentId: 'apt-1')));
-      expect(failure, isA<AppointmentPaidFailure>());
-      expect(failure, isA<ConflictFailure>());
-      expect(failure!.message, startsWith('La cita tiene pagos'));
-    });
-
-    test('completar antes de empezar → AppointmentNotStartedFailure (7.03)',
-        () async {
-      adapter.handler = (_) => errorBody(409, 'APPOINTMENT_NOT_STARTED',
-          'No se puede completar una cita que aún no ha empezado');
-      final failure =
-          leftOf(await CompleteAppointmentUseCase(repository)('apt-1'));
-      expect(failure, isA<AppointmentNotStartedFailure>());
-      expect(failure!.message,
-          'No se puede completar una cita que aún no ha empezado');
-    });
-
-    test('PATCH :id/complete; ya cancelada → InvalidStateTransitionFailure',
-        () async {
-      adapter.handler =
-          (_) => jsonBody(200, backendAppointment(status: 'COMPLETED'));
-      final complete = CompleteAppointmentUseCase(repository);
-      expect(rightOf(await complete('apt-1')).status,
+    test('completar: antes de empezar → AppointmentNotStarted; ya empezada → '
+        'COMPLETED; una cancelada → InvalidStateTransition', () async {
+      await seed(backendAppointment(date: '2026-11-03T15:00:00Z'));
+      expect(leftOf(await CompleteAppointmentUseCase(repository)('apt-1')),
+          isA<AppointmentNotStartedFailure>());
+      await seed(backendAppointment(id: 'ayer', date: '2026-10-31T15:00:00Z'));
+      expect(rightOf(await repository.completeAppointment('ayer')).status,
           AppointmentStatus.COMPLETED);
-      final request = adapter.requests.single;
-      expect('${request.method} ${request.uri.path}',
-          'PATCH /api/appointments/apt-1/complete');
-
-      adapter.handler = (_) => errorBody(409, 'INVALID_STATE_TRANSITION',
-          'No se puede pasar una cita cancelada a completada');
-      final failure = leftOf(await complete('apt-1'));
-      expect(failure, isA<InvalidStateTransitionFailure>());
-      expect(failure!.message, contains('cancelada'));
+      expect((await outbox()).single.type, 'appointment.complete');
+      await seed(backendAppointment(
+          id: 'cancelada', date: '2026-10-31T15:00:00Z', status: 'CANCELLED'));
+      expect(leftOf(await repository.completeAppointment('cancelada')),
+          isA<InvalidStateTransitionFailure>());
     });
   });
 
@@ -403,76 +370,103 @@ void main() {
     final query = AvailableSlotsQuery(
       professionalId: 'pro-1',
       day: DateTime(2026, 11, 3),
-      serviceIds: const ['svc-1', 'svc-2'],
+      serviceIds: const ['svc-1'],
       stepMinutes: 30,
     );
 
-    test('GET available-slots con día del negocio → instantes', () async {
-      adapter.handler = (_) => jsonBody(200,
-          ['2026-11-03T09:00:00.000-05:00', '2026-11-03T09:30:00.000-05:00']);
-      final slots = rightOf(await GetAvailableSlotsUseCase(repository)(query));
-      expect(slots, [
-        BusinessTimeZone.toWallClock(DateTime.parse('2026-11-03T14:00:00Z')),
-        BusinessTimeZone.toWallClock(DateTime.parse('2026-11-03T14:30:00Z')),
-      ]);
-      final request = adapter.requests.single;
-      expect(request.uri.path, '/api/appointments/available-slots');
-      expect(request.uri.queryParameters, {
-        'professional_id': 'pro-1',
-        'date': '2026-11-03',
-        'service_ids': 'svc-1,svc-2',
-        'step': '30',
-      });
+    test('con conexión: las del servidor', () async {
+      adapter.handler = (_) => jsonBody(200, [
+            '2026-11-03T09:00:00.000-05:00',
+            '2026-11-03T09:30:00.000-05:00',
+          ]);
+      expect(rightOf(await GetAvailableSlotsUseCase(repository)(query)),
+          [DateTime(2026, 11, 3, 9), DateTime(2026, 11, 3, 9, 30)]);
+      expect(adapter.requests.single.uri.path,
+          '/api/appointments/available-slots');
     });
 
-    test('sin servicios o paso fuera de rango → failure sin red', () async {
-      final slots = GetAvailableSlotsUseCase(repository);
-      expect(
-          leftOf(await slots(AvailableSlotsQuery(
-              professionalId: 'p', day: now, serviceIds: const []))),
-          isA<InvalidAppointmentDataFailure>());
-      expect(
-          leftOf(await slots(AvailableSlotsQuery(
-              professionalId: 'p',
-              day: now,
-              serviceIds: const ['s'],
-              stepMinutes: 1))),
-          isA<InvalidAppointmentDataFailure>());
-      expect(adapter.requests, isEmpty);
-    });
-
-    test('PROFESSIONAL_INACTIVE y 403 del Employee', () async {
-      adapter.handler =
-          (_) => errorBody(400, 'PROFESSIONAL_INACTIVE', 'Inactivo');
-      expect(leftOf(await GetAvailableSlotsUseCase(repository)(query)),
-          isA<ProfessionalInactiveFailure>());
-      adapter.handler = (_) => errorBody(403, 'FORBIDDEN', 'Solo tu agenda');
-      expect(leftOf(await GetAvailableSlotsUseCase(repository)(query)),
-          isA<ForbiddenFailure>());
-    });
-
-    test('red en un GET: se reintenta y acaba en NetworkFailure', () async {
+    test('sin conexión: calculadas en local (horario del negocio ∩ '
+        'profesional, citas, bloqueos y duración)', () async {
       adapter.handler = connectionError;
-      expect(leftOf(await GetAvailableSlotsUseCase(repository)(query)),
-          isA<NetworkFailure>());
-      expect(adapter.requests.length, greaterThan(1));
+      await DocumentStore.put(db, SharedDocs.businessSettings, 'owner-1', {
+        'tenant_id': 'owner-1',
+        'timezone': 'America/Bogota',
+        'opening_hours': [
+          {'day_of_week': 2, 'start_time': '09:00', 'end_time': '13:00'},
+        ],
+      });
+      await DocumentStore.put(db, SharedDocs.schedules, 'sch-1', {
+        'id': 'sch-1',
+        'user': 'pro-1',
+        'day_of_week': 2, // martes 3 de noviembre
+        'start_time': '10:00:00',
+        'end_time': '18:00:00',
+        'is_available': true,
+      });
+      // Cita de 10:30 a 11:15 y un bloqueo de 12:15 a 12:30.
+      await seed(backendAppointment(date: '2026-11-03T10:30:00.000-05:00'));
+      await seed(backendAppointment(
+          id: 'cancelada',
+          date: '2026-11-03T11:30:00.000-05:00',
+          status: 'CANCELLED'));
+      await DocumentStore.put(db, AppointmentsSync.timeBlocks, 'tb-1', {
+        'id': 'tb-1',
+        'user': 'pro-1',
+        'start_datetime': '2026-11-03T12:15:00.000-05:00',
+        'end_datetime': '2026-11-03T12:30:00.000-05:00',
+      });
+
+      final slots = rightOf(await GetAvailableSlotsUseCase(repository)(query));
+      // Ventana 10:00–13:00 (negocio ∩ profesional), 45 min cada 30.
+      expect(slots, [
+        DateTime(2026, 11, 3, 11, 30), // la cancelada no ocupa
+      ]);
+    });
+
+    test('sin conexión: servicio que no hace o desactivado', () async {
+      adapter.handler = connectionError;
+      await DocumentStore.put(db, SharedDocs.userServices, 'us-svc-2', {
+        'id': 'us-svc-2',
+        'userId': 'pro-1',
+        'serviceId': 'svc-2',
+        'isActive': false,
+      });
+      expect(
+          leftOf(await repository.getAvailableSlots(AvailableSlotsQuery(
+              professionalId: 'pro-1',
+              day: DateTime(2026, 11, 3),
+              serviceIds: const ['svc-2']))),
+          isA<ServiceNotOfferedFailure>());
+      await DocumentStore.merge(db, const DocumentKind('services'), 'svc-1',
+          {'isActive': false});
+      expect(leftOf(await repository.getAvailableSlots(query)),
+          isA<ServiceInactiveFailure>());
+    });
+
+    test('con conexión, el error del servidor manda (no se calcula local)',
+        () async {
+      adapter.handler = (_) => errorBody(409, 'SERVICE_INACTIVE', 'Inactivo');
+      expect(leftOf(await repository.getAvailableSlots(query)),
+          isA<ServiceInactiveFailure>());
     });
   });
 
   group('recordatorios', () {
-    test('próximas: sin canceladas, completadas, pasadas ni ya recordadas; '
-        'ordenadas', () async {
+    test('próximas (local): sin canceladas, completadas, pasadas ni ya '
+        'recordadas; ordenadas', () async {
       String iso(Duration fromNow) =>
           BusinessTimeZone.toInstant(now.add(fromNow)).toIso8601String();
-      adapter.handler = (_) => jsonBody(200, [
-            backendAppointment(id: 'confirmada', date: iso(const Duration(hours: 5)), status: 'CONFIRMED'),
-            backendAppointment(id: 'pendiente', date: iso(const Duration(hours: 2))),
-            backendAppointment(id: 'cancelada', date: iso(const Duration(hours: 3)), status: 'CANCELLED'),
-            backendAppointment(id: 'completada', date: iso(const Duration(hours: 4)), status: 'COMPLETED'),
-            backendAppointment(id: 'recordada', date: iso(const Duration(hours: 6)), reminderSent: true),
-            backendAppointment(id: 'pasada', date: iso(const Duration(hours: -1))),
-            backendAppointment(id: 'lejana', date: iso(const Duration(days: 8))),
-          ]);
+      for (final json in [
+        backendAppointment(id: 'confirmada', date: iso(const Duration(hours: 5)), status: 'CONFIRMED'),
+        backendAppointment(id: 'pendiente', date: iso(const Duration(hours: 2))),
+        backendAppointment(id: 'cancelada', date: iso(const Duration(hours: 3)), status: 'CANCELLED'),
+        backendAppointment(id: 'completada', date: iso(const Duration(hours: 4)), status: 'COMPLETED'),
+        backendAppointment(id: 'recordada', date: iso(const Duration(hours: 6)), reminderSent: true),
+        backendAppointment(id: 'pasada', date: iso(const Duration(hours: -1))),
+        backendAppointment(id: 'lejana', date: iso(const Duration(days: 8))),
+      ]) {
+        await seed(json);
+      }
       final upcoming = rightOf(await GetUpcomingAppointmentsUseCase(repository,
           now: () => now)(NoParams()));
       expect(upcoming.map((a) => a.id), ['pendiente', 'confirmada']);
@@ -512,8 +506,11 @@ void main() {
             'appointmentId': 'apt-1',
             'sentAt': '2026-11-01T09:00:00.000-05:00',
           });
+      await seed(backendAppointment());
       expect(rightOf(await MarkReminderSentUseCase(repository)('apt-1')),
           BusinessTimeZone.toWallClock(DateTime.parse('2026-11-01T14:00:00Z')));
+      expect(rightOf(await repository.getAppointment('apt-1')).reminderSent,
+          true, reason: 'queda también en local');
       final request = adapter.requests.single;
       expect('${request.method} ${request.uri.path}',
           'PATCH /api/appointments/apt-1/reminder/mark-sent');

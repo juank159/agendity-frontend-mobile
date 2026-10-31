@@ -53,7 +53,7 @@ class ClientsRepositoryImpl implements ClientsRepository {
 
   @override
   Future<Either<Failure, ClientEntity>> createClient(ClientEntity client) =>
-      _guarded(() async {
+      OfflineStore.guard(() async {
         final db = await _store.database();
         final duplicate = await _duplicate(db, client);
         if (duplicate != null) return Left(duplicate);
@@ -78,7 +78,7 @@ class ClientsRepositoryImpl implements ClientsRepository {
 
   @override
   Future<Either<Failure, ClientEntity>> updateClient(ClientEntity client) =>
-      _guarded(() async {
+      OfflineStore.guard(() async {
         final id = client.id;
         final db = await _store.database();
         final current = id == null ? null : await _local.byId(db, id);
@@ -113,7 +113,7 @@ class ClientsRepositoryImpl implements ClientsRepository {
   /// reseñas, o un Employee), la operación queda rechazada en la bandeja y el
   /// cliente vuelve a aparecer.
   @override
-  Future<Either<Failure, Unit>> deleteClient(String id) => _guarded(() async {
+  Future<Either<Failure, Unit>> deleteClient(String id) => OfflineStore.guard(() async {
         final db = await _store.database();
         final current = await _local.byId(db, id);
         if (current == null) return const Left(NotFoundFailure());
@@ -127,13 +127,14 @@ class ClientsRepositoryImpl implements ClientsRepository {
         return const Right(unit);
       });
 
-  /// Cada contacto es un `client.create` en la bandeja. Un teléfono ya
+  /// Cada contacto es un `client.import` en la bandeja (queda como
+  /// importado, `isFromDevice`). Un teléfono ya
   /// registrado (en local o repetido en la lista) se rechaza aquí; si otro
   /// dispositivo lo creó mientras tanto, el servidor lo fusiona.
   @override
   Future<Either<Failure, ClientImportResult>> importClients(
           List<ClientEntity> clients) =>
-      _guarded(() async {
+      OfflineStore.guard(() async {
         final db = await _store.database();
         final rejected = <ClientImportRejection>[];
         final accepted = <ClientEntity>[];
@@ -156,12 +157,12 @@ class ClientsRepositoryImpl implements ClientsRepository {
             await _local.upsertFields(db, id, {
               ...payload,
               'isActive': true,
-              'isFromDevice': false,
+              'isFromDevice': true,
               'created_at': _nowIso(),
               'updated_at': _nowIso(),
             });
             await sink.add(
-                type: ClientsSyncHandler.create,
+                type: ClientsSyncHandler.import,
                 entity: _entity,
                 entityId: id,
                 payload: payload);
@@ -204,12 +205,5 @@ class ClientsRepositoryImpl implements ClientsRepository {
   static String _phoneTaken(String phone) =>
       'Ya existe un cliente con el teléfono: $phone';
 
-  String _nowIso() => _store.now().toUtc().toIso8601String();
-
-  /// Errores locales (sin sesión, base dañada) como failure, sin lanzar.
-  static Future<Either<Failure, T>> _guarded<T>(
-      Future<Either<Failure, T>> Function() body) async {
-    final result = await safeCall(body);
-    return result.fold(Left.new, (inner) => inner);
-  }
+  String _nowIso() => _store.nowIso();
 }

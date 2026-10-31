@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart';
 import 'package:login_signup/core/database/tables/client_tables.dart';
+import 'package:login_signup/core/database/tables/document_tables.dart';
 import 'package:login_signup/core/database/tables/sync_tables.dart';
 
 export 'package:login_signup/core/database/tables/client_tables.dart';
+export 'package:login_signup/core/database/tables/document_tables.dart';
 export 'package:login_signup/core/database/tables/sync_tables.dart';
 
 part 'app_database.g.dart';
@@ -14,15 +16,25 @@ part 'app_database.g.dart';
 /// Esquema en `core/database/tables/` (lo comparten el motor y las
 /// features). Al cambiarlo: subir [schemaVersion], añadir el paso en
 /// [migration] y regenerar con `dart run build_runner build`.
-@DriftDatabase(tables: [Outbox, SyncMeta, IdRemaps, LocalClients])
+@DriftDatabase(
+    tables: [Outbox, SyncMeta, IdRemaps, LocalClients, LocalDocuments])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // 1 → 2 (10.02b): registros del resto de entidades.
+          if (from < 2) {
+            await m.createTable(localDocuments);
+            await m.createIndex(idxDocumentsRef1);
+            await m.createIndex(idxDocumentsRef2);
+            await m.createIndex(idxDocumentsAt);
+          }
+        },
       );
 }

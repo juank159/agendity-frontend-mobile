@@ -1,25 +1,32 @@
 import 'package:dartz/dartz.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/core/database/app_database.dart';
+import 'package:login_signup/core/database/document_store.dart';
+import 'package:login_signup/core/database/local_database_holder.dart';
+import 'package:login_signup/core/database/shared_documents.dart';
 import 'package:login_signup/core/errors/failures.dart';
-import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/outbox_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/core/sync/sync_models.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
-import 'package:login_signup/features/services/data/datasources/categories_remote_datasource.dart';
-import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/features/services/data/datasources/catalog_local_datasource.dart';
 import 'package:login_signup/features/services/data/repositories/categories_repository_impl.dart';
 import 'package:login_signup/features/services/data/repositories/services_repository_impl.dart';
+import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/failures/services_failures.dart';
 import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/create_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/delete_category_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/get_all_services_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/get_services_offered_by_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_status_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_service_usecase.dart';
 
-import '../../core/network/fake_http_client_adapter.dart';
-import '../../core/session/memory_token_store.dart';
+import '../../core/sync/fake_sync_api.dart';
 import 'services_models_test.dart' show backendCategory, backendService;
 
 Failure? leftOf(Either<Failure, Object?> result) =>
@@ -29,353 +36,216 @@ T rightOf<T>(Either<Failure, T> result) =>
     result.getOrElse(() => throw StateError('Left: ${leftOf(result)}'));
 
 const newService = ServiceEntity(
-  name: '  Corte  ',
-  price: 30000,
+  name: '  Corte ',
+  price: 20000,
   duration: 30,
   categoryId: 'cat-1',
-  color: '#1c94f4',
 );
 
-ResponseBody conflict(String code, String message) =>
-    jsonBody(409, {'statusCode': 409, 'code': code, 'message': message});
-
-ResponseBody forbidden() => jsonBody(403, {
-      'statusCode': 403,
-      'code': 'FORBIDDEN',
-      'message': 'No tienes permiso para realizar esta acción',
-    });
-
-ResponseBody validation() => jsonBody(400, {
-      'statusCode': 400,
-      'code': 'VALIDATION_ERROR',
-      'message': 'price must not be less than 0\nduration must be a number',
-      'details': ['price must not be less than 0', 'duration must be a number'],
-    });
-
+/// Catálogo sin conexión (10.02b): lectura local, escrituras a local +
+/// bandeja (`service.*`, `category.*`).
 void main() {
-  late FakeHttpClientAdapter adapter;
-  late Dio dio;
+  late LocalDatabaseHolder databases;
+  late AppDatabase db;
+  late ServicesRepositoryImpl services;
+  late CategoriesRepositoryImpl categories;
+  var ids = 0;
 
-  setUp(() {
-    adapter = FakeHttpClientAdapter((_) => jsonBody(200, []));
-    dio = buildApiClient(
-      baseUrl: 'http://api.test/api',
-      tokenStore: MemoryTokenStore('jwt'),
-      httpClientAdapter: adapter,
-      retryDelay: (_) => Duration.zero,
-      enableLogs: false,
-    );
+  setUp(() async {
+    databases = memoryDatabases();
+    ids = 0;
+    final store = OfflineStore(
+        databases: databases, newId: () => 'new-${++ids}');
+    services = ServicesRepositoryImpl(store);
+    categories = CategoriesRepositoryImpl(store);
+    db = await databases.require();
+    // Lo que bajó la sincronización: la categoría como id (`loadRelationIds`).
+    await DocumentStore.put(db, CatalogDocs.categories, 'cat-1',
+        backendCategory());
+    await DocumentStore.put(db, CatalogDocs.categories, 'cat-2',
+        backendCategory(id: 'cat-2', name: 'Pestañas'));
+    for (final (id, name, active) in [
+      ('srv-1', 'Cejas en hilo', true),
+      ('srv-2', 'Tinte', false),
+    ]) {
+      await DocumentStore.put(db, CatalogDocs.services, id, {
+        ...backendService(id: id, name: name, withCategory: false),
+        'category': 'cat-1',
+        'categoryId': 'cat-1',
+        'isActive': active,
+      });
+    }
   });
 
-  group('ServicesRepositoryImpl (Dio api + adaptador falso)', () {
-    late ServicesRepositoryImpl repository;
+  tearDown(() => databases.close());
 
-    setUp(() =>
-        repository = ServicesRepositoryImpl(ServicesRemoteDataSourceImpl(dio)));
+  Future<List<OutboxEntry>> outbox() => OutboxStore.all(db);
 
-    test('GET /services: entidades, token del núcleo y sin tenant-id',
+  group('servicios', () {
+    test('activos con su categoría; todos con los desactivados', () async {
+      final active = rightOf(await GetServicesUseCase(services)(NoParams()));
+      expect(active.map((s) => s.id), ['srv-1']);
+      expect(active.single.category!.name, 'Cejas');
+      final all = rightOf(await GetAllServicesUseCase(services)(NoParams()));
+      expect(all.map((s) => s.id), ['srv-1', 'srv-2']);
+    });
+
+    test('alta: recortada, en local y service.create sin isActive', () async {
+      final created =
+          rightOf(await CreateServiceUseCase(services)(newService));
+      expect(created.id, 'new-1');
+      expect(created.name, 'Corte');
+      expect(created.isActive, true);
+      final entry = (await outbox()).single;
+      expect(entry.type, 'service.create');
+      expect(entry.payload['name'], 'Corte');
+      expect(entry.payload.containsKey('isActive'), false);
+    });
+
+    test('nombre repetido (sin mayúsculas) → DuplicateServiceNameFailure',
         () async {
-      adapter.handler = (_) => jsonBody(200, [backendService()]);
-      final services = rightOf(await repository.getServices());
-      expect(services.single.price, 45000.0);
-      expect(services.single.category!.id, 'cat-1');
-
-      final request = adapter.requests.single;
-      expect(request.method, 'GET');
-      expect(request.uri.path, '/api/services');
-      expect(request.headers['Authorization'], 'Bearer jwt');
-      expect(request.headers.containsKey('tenant-id'), false);
+      expect(
+          leftOf(await services
+              .createService(newService.copyWith(name: 'CEJAS EN HILO'))),
+          isA<DuplicateServiceNameFailure>());
+      expect(await outbox(), isEmpty);
     });
 
-    test('POST /services (201): envía el DTO y devuelve el creado', () async {
-      adapter.handler =
-          (_) => jsonBody(201, backendService(withCategory: false));
-      final created = rightOf(await repository.createService(newService));
-      expect(created.id, 'srv-1');
-      final request = adapter.requests.single;
-      expect(request.method, 'POST');
-      expect(request.uri.path, '/api/services');
-      expect((request.data as Map)['categoryId'], 'cat-1');
-      expect((request.data as Map).containsKey('isActive'), false);
-    });
-
-    test('PATCH /services/:id (200) con el id de la entidad', () async {
-      adapter.handler = (_) => jsonBody(200, backendService());
-      final result = await repository
-          .updateService(newService.copyWith(id: 'srv-1', price: 35000));
-      expect(result.isRight(), true);
-      final request = adapter.requests.single;
-      expect(request.method, 'PATCH');
-      expect(request.uri.path, '/api/services/srv-1');
-      expect((request.data as Map)['price'], 35000.0);
-    });
-
-    test('DELETE /services/:id (200 sin cuerpo) → Right(unit)', () async {
-      adapter.handler = (_) => ResponseBody.fromString('', 200);
-      expect(await repository.deleteService('srv-1'), const Right(unit));
-      expect(adapter.requests.single.method, 'DELETE');
-      expect(adapter.requests.single.uri.path, '/api/services/srv-1');
-    });
-
-    test('409 nombre repetido (CONFLICT) → DuplicateServiceNameFailure',
+    test('edición: solo lo que cambia, también isActive (interruptor)',
         () async {
-      adapter.handler = (_) => conflict(
-          'CONFLICT', 'Ya existe un servicio con ese nombre en tu negocio');
-      for (final result in [
-        await repository.createService(newService),
-        await repository.updateService(newService.copyWith(id: 'srv-1')),
+      final current = rightOf(await GetServicesUseCase(services)(NoParams()))
+          .single;
+      final edited = rightOf(await UpdateServiceUseCase(services)(
+          current.copyWith(isActive: false, price: 50000)));
+      expect(edited.isActive, false);
+      expect((await outbox()).single.payload,
+          {'price': 50000.0, 'isActive': false});
+      expect(rightOf(await GetServicesUseCase(services)(NoParams())), isEmpty);
+    });
+
+    test('datos inválidos o sin id → sin escribir', () async {
+      expect(
+          leftOf(await CreateServiceUseCase(services)(
+              newService.copyWith(name: ' ', price: -1))),
+          isA<InvalidCatalogDataFailure>());
+      expect(leftOf(await UpdateServiceUseCase(services)(newService)),
+          isA<InvalidCatalogDataFailure>());
+      expect(await outbox(), isEmpty);
+    });
+
+    test('borrado: sale de la lista y queda service.delete', () async {
+      rightOf(await services.deleteService('srv-1'));
+      expect(rightOf(await services.getAllServices()).map((s) => s.id),
+          ['srv-2']);
+      expect((await outbox()).single.type, 'service.delete');
+    });
+
+    test('servicios que hace un profesional (7.04): Owner todos; empleada '
+        'los asignados y activos', () async {
+      await DocumentStore.put(db, CatalogDocs.services, 'srv-3',
+          {...backendService(id: 'srv-3', name: 'Lifting'), 'isActive': true});
+      await DocumentStore.put(db, SharedDocs.users, 'owner-1', {
+        'id': 'owner-1',
+        'roles': [
+          {'name': 'Owner'}
+        ],
+      });
+      await DocumentStore.put(db, SharedDocs.users, 'emp-1', {
+        'id': 'emp-1',
+        'roles': [
+          {'name': 'Employee'}
+        ],
+      });
+      for (final (id, service, active) in [
+        ('us-1', 'srv-1', true),
+        ('us-2', 'srv-3', false),
+        ('us-3', 'srv-2', true), // servicio desactivado
       ]) {
-        final failure = leftOf(result);
-        expect(failure, isA<DuplicateServiceNameFailure>());
-        expect(failure, isA<ConflictFailure>());
-        expect(failure!.message,
-            'Ya existe un servicio con ese nombre en tu negocio');
-        expect(failure.statusCode, 409);
+        await DocumentStore.put(db, SharedDocs.userServices, id, {
+          'id': id,
+          'userId': 'emp-1',
+          'serviceId': service,
+          'isActive': active,
+        });
       }
-    });
-
-    test('403 del Employee al escribir → ForbiddenFailure', () async {
-      adapter.handler = (_) => forbidden();
-      expect(leftOf(await repository.createService(newService)),
-          isA<ForbiddenFailure>());
-      expect(
-          leftOf(
-              await repository.updateService(newService.copyWith(id: 'srv-1'))),
-          isA<ForbiddenFailure>());
-      expect(leftOf(await repository.deleteService('srv-1')),
-          isA<ForbiddenFailure>());
-    });
-
-    test('400 VALIDATION_ERROR → ValidationFailure con details', () async {
-      adapter.handler = (_) => validation();
-      final failure = leftOf(await repository.createService(newService));
-      expect(failure, isA<ValidationFailure>());
-      expect(failure!.details,
-          ['price must not be less than 0', 'duration must be a number']);
-    });
-
-    test('sin red: GET reintenta y da NetworkFailure; POST no reintenta',
-        () async {
-      adapter.handler = connectionError;
-      expect(leftOf(await repository.getServices()), isA<NetworkFailure>());
-      expect(adapter.requests, hasLength(4));
-      adapter.requests.clear();
-      expect(leftOf(await repository.createService(newService)),
-          isA<NetworkFailure>());
-      expect(adapter.requests, hasLength(1));
-    });
-
-    // Hallazgo crítico de la revisión inicial: con el Dio viejo
-    // (`validateStatus < 600`) crear, editar y borrar no miraban el estado y
-    // un 4xx/5xx se informaba como éxito.
-    test('falsos éxitos corregidos: 4xx/5xx al escribir → Left', () async {
-      for (final status in [400, 404, 409, 500]) {
-        adapter.handler = (_) => jsonBody(status, {'statusCode': status});
-        expect(leftOf(await repository.createService(newService)), isNotNull,
-            reason: 'POST $status');
-        expect(
-            leftOf(await repository
-                .updateService(newService.copyWith(id: 'srv-1'))),
-            isNotNull,
-            reason: 'PATCH $status');
-        expect(leftOf(await repository.deleteService('srv-1')), isNotNull,
-            reason: 'DELETE $status');
-      }
-      adapter.handler = (_) => textBody(502, '<html>Bad gateway</html>');
-      final failure = leftOf(await repository.createService(newService));
-      expect(failure, isA<ServerFailure>());
-      expect(failure!.message, ServerFailure.defaultMessage);
-    });
-
-    test('respuesta que no es lista → ServerFailure, sin excepción', () async {
-      adapter.handler = (_) => jsonBody(200, {'unexpected': true});
-      expect(leftOf(await repository.getServices()), isA<ServerFailure>());
+      final useCase = GetServicesOfferedByUseCase(services);
+      expect(rightOf(await useCase('owner-1')).map((s) => s.id),
+          ['srv-1', 'srv-3']);
+      expect(rightOf(await useCase('emp-1')).map((s) => s.id), ['srv-1']);
     });
   });
 
-  group('CategoriesRepositoryImpl (Dio api + adaptador falso)', () {
-    late CategoriesRepositoryImpl repository;
-
-    setUp(() => repository =
-        CategoriesRepositoryImpl(CategoriesRemoteDataSourceImpl(dio)));
-
-    test('GET /categories → entidades con serviceCount', () async {
-      adapter.handler = (_) => jsonBody(200, [
-            backendCategory(services: [backendService(withCategory: false)]),
-            backendCategory(id: 'cat-2', name: 'Uñas', services: []),
-          ]);
-      final categories = rightOf(await repository.getCategories());
-      expect(categories.map((c) => c.serviceCount), [1, 0]);
-      expect(adapter.requests.single.uri.path, '/api/categories');
+  group('categorías', () {
+    test('todas con serviceCount local', () async {
+      final list = rightOf(await categories.getCategories());
+      expect(list.map((c) => (c.name, c.serviceCount)),
+          [('Cejas', 2), ('Pestañas', 0)]);
     });
 
-    test('POST /categories (201) con name y description', () async {
-      adapter.handler = (_) => jsonBody(201, backendCategory(name: 'Uñas'));
-      final created = rightOf(await repository.createCategory(
-          name: 'Uñas', description: 'Manicure'));
+    test('alta, edición (solo lo que cambia) y estado', () async {
+      final created = rightOf(await CreateCategoryUseCase(categories)(
+          const CategoryParams(name: ' Uñas ')));
       expect(created.name, 'Uñas');
-      expect(adapter.requests.single.data,
-          {'name': 'Uñas', 'description': 'Manicure'});
+      rightOf(await UpdateCategoryUseCase(categories)(UpdateCategoryParams(
+          id: created.id, name: 'Uñas', description: ' acrílicas ')));
+      rightOf(await UpdateCategoryStatusUseCase(categories)(
+          UpdateCategoryStatusParams(id: created.id, isActive: false)));
+      final entries = await outbox();
+      expect(entries.map((e) => e.type),
+          ['category.create', 'category.update', 'category.update']);
+      expect(entries[1].payload, {'description': 'acrílicas'});
+      expect(entries[2].payload, {'isActive': false});
     });
 
-    test('PATCH /categories/:id: editar y cambiar estado (parcial)', () async {
-      adapter.handler = (_) => jsonBody(200, backendCategory(isActive: false));
-      rightOf(await repository.updateCategory(
-          id: 'cat-1', name: 'Cejas', description: ''));
-      final status = rightOf(
-          await repository.updateCategoryStatus(id: 'cat-1', isActive: false));
-      expect(status.isActive, false);
-
-      expect(adapter.requests.map((r) => '${r.method} ${r.uri.path}'),
-          ['PATCH /api/categories/cat-1', 'PATCH /api/categories/cat-1']);
-      expect(adapter.requests.first.data, {'name': 'Cejas', 'description': ''});
-      // Antes: GET + PATCH con todo; ahora un solo PATCH con el estado.
-      expect(adapter.requests.last.data, {'isActive': false});
-    });
-
-    test('DELETE /categories/:id (200) → Right(unit)', () async {
-      adapter.handler = (_) => ResponseBody.fromString('', 200);
-      expect(await repository.deleteCategory('cat-1'), const Right(unit));
-      expect(adapter.requests.single.method, 'DELETE');
-    });
-
-    test('409 CATEGORY_HAS_SERVICES → CategoryHasServicesFailure', () async {
-      const message = 'No se puede eliminar la categoría porque tiene '
-          'servicios. Muévelos a otra categoría o elimínalos primero.';
-      adapter.handler = (_) => conflict('CATEGORY_HAS_SERVICES', message);
-      final failure = leftOf(await repository.deleteCategory('cat-1'));
-      expect(failure, isA<CategoryHasServicesFailure>());
-      expect(failure, isA<ConflictFailure>());
-      expect(failure!.code, ApiErrorCode.categoryHasServices);
-      expect(failure.message, message);
-    });
-
-    test('409 CONFLICT al borrar (FK RESTRICT) → CategoryHasServicesFailure',
+    test('nombre repetido, o borrar una con servicios → failures locales',
         () async {
-      adapter.handler = (_) => conflict('CONFLICT', 'Conflicto');
-      expect(leftOf(await repository.deleteCategory('cat-1')),
-          isA<CategoryHasServicesFailure>());
-    });
-
-    test('409 nombre repetido al crear o editar → DuplicateCategoryName',
-        () async {
-      adapter.handler = (_) => conflict('CONFLICT',
-          "Ya tienes una categoría con el nombre 'Cejas'. Por favor, usa un nombre diferente.");
-      expect(leftOf(await repository.createCategory(name: 'Cejas')),
+      expect(leftOf(await categories.createCategory(name: 'cejas')),
           isA<DuplicateCategoryNameFailure>());
-      expect(
-          leftOf(await repository.updateCategory(id: 'cat-2', name: 'Cejas')),
-          isA<DuplicateCategoryNameFailure>());
-    });
-
-    test('403 del Employee al escribir → ForbiddenFailure', () async {
-      adapter.handler = (_) => forbidden();
-      expect(leftOf(await repository.createCategory(name: 'X')),
-          isA<ForbiddenFailure>());
-      expect(
-          leftOf(await repository.updateCategoryStatus(
-              id: 'cat-1', isActive: true)),
-          isA<ForbiddenFailure>());
-      expect(leftOf(await repository.deleteCategory('cat-1')),
-          isA<ForbiddenFailure>());
-    });
-
-    test('400 VALIDATION_ERROR → ValidationFailure con details', () async {
-      adapter.handler = (_) => validation();
-      final failure = leftOf(await repository.createCategory(name: 'X'));
-      expect(failure, isA<ValidationFailure>());
-      expect(failure!.details, hasLength(2));
-    });
-
-    test('sin red → NetworkFailure', () async {
-      adapter.handler = connectionError;
-      expect(leftOf(await repository.getCategories()), isA<NetworkFailure>());
-      expect(leftOf(await repository.deleteCategory('cat-1')),
-          isA<NetworkFailure>());
-    });
-
-    test('falso éxito corregido: 500 al cambiar el estado → Left', () async {
-      adapter.handler = (_) => jsonBody(500, {'statusCode': 500});
-      expect(
-          leftOf(await repository.updateCategoryStatus(
-              id: 'cat-1', isActive: false)),
-          isA<ServerFailure>());
-    });
-  });
-
-  group('Use cases (sobre el repositorio real y el adaptador falso)', () {
-    late ServicesRepositoryImpl services;
-    late CategoriesRepositoryImpl categories;
-
-    setUp(() {
-      services = ServicesRepositoryImpl(ServicesRemoteDataSourceImpl(dio));
-      categories =
-          CategoriesRepositoryImpl(CategoriesRemoteDataSourceImpl(dio));
-    });
-
-    test('GetServicesUseCase devuelve lo del repositorio', () async {
-      adapter.handler = (_) => jsonBody(200, [backendService()]);
-      expect(rightOf(await GetServicesUseCase(services)(NoParams())),
-          hasLength(1));
-    });
-
-    test('CreateServiceUseCase recorta el nombre antes de enviarlo', () async {
-      adapter.handler = (_) => jsonBody(201, backendService());
-      await CreateServiceUseCase(services)(newService);
-      expect((adapter.requests.single.data as Map)['name'], 'Corte');
-    });
-
-    test('CreateServiceUseCase: datos inválidos → sin llamar al backend',
-        () async {
-      final failure = leftOf(await CreateServiceUseCase(services)(
-          newService.copyWith(
-              name: ' ',
-              price: -1,
-              duration: 0,
-              categoryId: '',
-              color: 'red')));
-      expect(failure, isA<InvalidCatalogDataFailure>());
-      expect(failure, isA<ValidationFailure>());
-      expect(failure!.details, hasLength(5));
-      expect(adapter.requests, isEmpty);
-    });
-
-    test('UpdateServiceUseCase sin id → InvalidCatalogDataFailure', () async {
-      final failure = leftOf(await UpdateServiceUseCase(services)(newService));
-      expect(failure, isA<InvalidCatalogDataFailure>());
-      expect(failure!.message, UpdateServiceUseCase.missingIdMessage);
-      expect(adapter.requests, isEmpty);
-    });
-
-    test('CreateCategoryUseCase: nombre vacío o > 100 → sin backend', () async {
-      final useCase = CreateCategoryUseCase(categories);
-      expect(leftOf(await useCase(const CategoryParams(name: '  '))),
-          isA<InvalidCatalogDataFailure>());
-      expect(leftOf(await useCase(CategoryParams(name: 'x' * 101))),
-          isA<InvalidCatalogDataFailure>());
-      expect(adapter.requests, isEmpty);
-    });
-
-    test('UpdateCategoryUseCase recorta y envía', () async {
-      adapter.handler = (_) => jsonBody(200, backendCategory());
-      await UpdateCategoryUseCase(categories)(const UpdateCategoryParams(
-          id: 'cat-1', name: ' Cejas ', description: ' d '));
-      expect(
-          adapter.requests.single.data, {'name': 'Cejas', 'description': 'd'});
-    });
-
-    test('UpdateCategoryStatus y DeleteCategory delegan', () async {
-      adapter.handler = (_) => jsonBody(200, backendCategory());
-      expect(
-          (await UpdateCategoryStatusUseCase(categories)(
-                  const UpdateCategoryStatusParams(
-                      id: 'cat-1', isActive: true)))
-              .isRight(),
-          true);
-      adapter.handler =
-          (_) => conflict('CATEGORY_HAS_SERVICES', 'No se puede eliminar');
       expect(leftOf(await DeleteCategoryUseCase(categories)('cat-1')),
           isA<CategoryHasServicesFailure>());
+      rightOf(await DeleteCategoryUseCase(categories)('cat-2'));
+      expect((await outbox()).single.type, 'category.delete');
+    });
+  });
+
+  group('sincronización', () {
+    test('handler: la bajada guarda; un rechazo vuelve a la versión del '
+        'servidor', () async {
+      final server = FakeSyncServer();
+      server.forced['service.update'] = (mid) => MutationResult(
+          mutationId: mid,
+          status: MutationStatus.rejected,
+          code: 'FORBIDDEN',
+          message: 'Solo el dueño');
+      final engine = SyncEngine(
+          databases: databases, api: server, handlers: CatalogSync.handlers());
+      final current = rightOf(await services.getAllServices()).first;
+      rightOf(await services.updateService(current.copyWith(price: 1)));
+      expect(rightOf(await services.getAllServices()).first.price, 1);
+
+      await engine.syncNow();
+      expect(rightOf(await services.getAllServices()).first.price, 45000,
+          reason: 'vuelve a la copia del servidor');
+      expect((await outbox()).single.status, OutboxStatus.rejected);
+      await engine.dispose();
+    });
+
+    test('un alta rechazada desaparece de local (no existe en el servidor)',
+        () async {
+      final server = FakeSyncServer();
+      server.forced['category.create'] = (mid) => MutationResult(
+          mutationId: mid,
+          status: MutationStatus.rejected,
+          code: 'VALIDATION_ERROR');
+      final engine = SyncEngine(
+          databases: databases, api: server, handlers: CatalogSync.handlers());
+      final created =
+          rightOf(await categories.createCategory(name: 'Nueva'));
+      await engine.syncNow();
+      expect(
+          rightOf(await categories.getCategories()).map((c) => c.id),
+          isNot(contains(created.id)));
+      await engine.dispose();
     });
   });
 }

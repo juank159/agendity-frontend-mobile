@@ -31,7 +31,8 @@ class GetAppointmentBalanceUseCase
     final result = await repository.getAppointmentPayments(params.appointmentId);
     return result.map((payments) {
       final paidCents = payments
-          .where((p) => p.status == PaymentStatus.COMPLETED)
+          // Un pago en revisión (D-18) no cuenta hasta resolverlo.
+          .where((p) => p.status == PaymentStatus.COMPLETED && !p.needsReview)
           .fold<int>(0, (sum, p) => sum + (p.netAmount * 100).round());
       return AppointmentBalance(total: params.total, paid: paidCents / 100);
     });

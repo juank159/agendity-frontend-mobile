@@ -22,6 +22,9 @@ class PaymentModel {
   /// `timezone` del pago (6.03): sus fechas se leen en esa zona.
   final String? timeZone;
 
+  /// `reviewRequired` (10.01b).
+  final String? reviewRequired;
+
   const PaymentModel({
     this.id,
     required this.appointmentId,
@@ -35,6 +38,7 @@ class PaymentModel {
     this.createdAt,
     this.updatedAt,
     this.timeZone,
+    this.reviewRequired,
   });
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
@@ -42,8 +46,11 @@ class PaymentModel {
     final timeZone = JsonRead.asOptionalString(json['timezone']);
     return PaymentModel(
       id: _string(json['id']),
+      // `appointment` es la relación (respuesta HTTP) o solo su id (feed de
+      // sincronización, `loadRelationIds`).
       appointmentId: _string(json['appointment_id']) ??
           _string(JsonRead.asMap(json['appointment'])?['id']) ??
+          (json['appointment'] is String ? _string(json['appointment']) : null) ??
           '',
       amount: JsonRead.asDouble(json['amount']),
       paymentMethod: _parsePaymentMethod(json['payment_method'], customId),
@@ -56,6 +63,8 @@ class PaymentModel {
       createdAt: DateCodec.tryDecode(json['created_at'], timeZone: timeZone),
       updatedAt: DateCodec.tryDecode(json['updated_at'], timeZone: timeZone),
       timeZone: timeZone,
+      reviewRequired: JsonRead.asOptionalString(
+          json['reviewRequired'] ?? json['review_required']),
     );
   }
 
@@ -87,6 +96,7 @@ class PaymentModel {
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
         timeZone: entity.timeZone,
+        reviewRequired: entity.reviewRequired,
       );
 
   PaymentEntity toEntity() => PaymentEntity(
@@ -102,6 +112,7 @@ class PaymentModel {
         createdAt: createdAt,
         updatedAt: updatedAt,
         timeZone: timeZone,
+        reviewRequired: reviewRequired,
       );
 
   /// Estándar → su valor; con método propio del negocio (o un valor que no

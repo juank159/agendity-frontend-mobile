@@ -141,3 +141,18 @@ class OutsideBusinessHoursFailure extends ConflictFailure {
             message: message ?? defaultMessage,
             code: ApiErrorCode.outsideBusinessHours);
 }
+
+/// `SERVICE_INACTIVE` (409, 2026-10-31): agendar, pedir horas libres o
+/// añadir a una cita un servicio desactivado.
+class ServiceInactiveFailure extends ConflictFailure {
+  static const defaultMessage =
+      'Uno de los servicios elegidos está desactivado';
+
+  const ServiceInactiveFailure({
+    String? message,
+    super.statusCode,
+    super.details,
+  }) : super(
+            message: message ?? defaultMessage,
+            code: ApiErrorCode.serviceInactive);
+}

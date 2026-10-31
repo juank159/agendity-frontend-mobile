@@ -154,6 +154,15 @@ class FakeServicesRepository implements ServicesRepository {
       const Right([corte]);
 
   @override
+  Future<Either<Failure, List<ServiceEntity>>> getAllServices() =>
+      getServices();
+
+  @override
+  Future<Either<Failure, List<ServiceEntity>>> getServicesOfferedBy(
+          String professionalId) =>
+      getServices();
+
+  @override
   Future<Either<Failure, ServiceEntity>> createService(
           ServiceEntity service) async =>
       Right(service);

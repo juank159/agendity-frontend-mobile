@@ -1,11 +1,17 @@
 import 'package:dartz/dartz.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/common/enums/payment_status_enum.dart';
+import 'package:login_signup/core/database/app_database.dart';
+import 'package:login_signup/core/database/document_store.dart';
+import 'package:login_signup/core/database/local_database_holder.dart';
+import 'package:login_signup/core/database/shared_documents.dart';
 import 'package:login_signup/core/errors/failures.dart';
-import 'package:login_signup/core/network/api_client.dart';
-import 'package:login_signup/features/payments/data/datasources/payment_remote_datasource.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/outbox_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/core/sync/sync_models.dart';
+import 'package:login_signup/features/payments/data/sync/payments_sync.dart';
 import 'package:login_signup/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:login_signup/features/payments/data/models/custom_payment_method_model.dart';
 import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
@@ -18,8 +24,7 @@ import 'package:login_signup/features/payments/domain/usecases/get_appointment_b
 import 'package:login_signup/features/payments/domain/entities/appointment_balance.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 
-import '../../core/network/fake_http_client_adapter.dart';
-import '../../core/session/memory_token_store.dart';
+import '../../core/sync/fake_sync_api.dart';
 import 'payment_model_test.dart' show backendPayment;
 
 const newPayment = PaymentEntity(
@@ -66,109 +71,114 @@ const backendCustomMethod = {
 };
 
 void main() {
-  group('PaymentRepositoryImpl (Dio api + adaptador falso)', () {
-    late FakeHttpClientAdapter adapter;
-    late PaymentRepositoryImpl repository;
+  late LocalDatabaseHolder databases;
+  late AppDatabase db;
+  late PaymentRepositoryImpl repository;
+  var ids = 0;
 
-    setUp(() {
-      adapter = FakeHttpClientAdapter((_) => jsonBody(201, backendPayment()));
-      final dio = buildApiClient(
-        baseUrl: 'http://api.test/api',
-        tokenStore: MemoryTokenStore('jwt'),
-        httpClientAdapter: adapter,
-        retryDelay: (_) => Duration.zero,
-        enableLogs: false,
-      );
-      repository = PaymentRepositoryImpl(PaymentRemoteDataSourceImpl(dio));
-    });
-
-    test('éxito (201): POST /payments con token del núcleo y el DTO',
-        () async {
-      final result = await repository.createPayment(newPayment);
-      final payment = result.getOrElse(() => throw StateError('Left'));
-      expect(payment.id, 'p1');
-      expect(payment.appointmentId, 'a1');
-      expect(payment.status, PaymentStatus.COMPLETED);
-
-      final request = adapter.requests.single;
-      expect(request.method, 'POST');
-      expect(request.uri.path, '/api/payments');
-      expect(request.headers['Authorization'], 'Bearer jwt');
-      expect(request.headers.containsKey('tenant-id'), false);
-      expect(request.data, {
-        'appointment_id': 'a1',
-        'amount': 50000.0,
-        'payment_method': 'CASH',
+  /// Cita PENDING de 100.000 que bajó de la sincronización.
+  Future<void> seedAppointment({String status = 'PENDING'}) =>
+      DocumentStore.put(db, SharedDocs.appointments, 'a1', {
+        'id': 'a1',
+        'professionalId': 'pro-1',
+        'client': {'id': 'cli-1', 'name': 'Ana'},
+        'date': '2026-11-03T10:00:00.000-05:00',
+        'status': status,
+        'payment_status': 'PENDING',
+        'total_price': '100000.00',
+        'services': [],
       });
-    });
 
-    test('409 INVALID_STATE_TRANSITION (cita cancelada) → AppointmentNotPayable',
+  setUp(() async {
+    databases = memoryDatabases();
+    ids = 0;
+    repository = PaymentRepositoryImpl(
+        OfflineStore(databases: databases, newId: () => 'p-${++ids}'));
+    db = await databases.require();
+  });
+
+  tearDown(() => databases.close());
+
+  Future<Map<String, dynamic>> appointment() async =>
+      (await DocumentStore.get(db, 'appointments', 'a1'))!;
+
+  group('registrar un pago (local + bandeja)', () {
+    setUp(seedAppointment);
+
+    test('anticipo: payment.create, la cita pasa a CONFIRMED y PARTIAL',
         () async {
-      adapter.handler = (_) => jsonBody(409, {
-            'statusCode': 409,
-            'code': 'INVALID_STATE_TRANSITION',
-            'message': 'No se puede registrar un pago en una cita cancelada',
-          });
-      final failure = leftOf(await repository.createPayment(newPayment));
-      expect(failure, isA<AppointmentNotPayableFailure>());
-      expect(failure, isA<ConflictFailure>());
-      expect(failure!.message,
-          'No se puede registrar un pago en una cita cancelada');
-      expect(failure.statusCode, 409);
+      final payment = (await repository.createPayment(newPayment))
+          .getOrElse(() => throw StateError('Left'));
+      expect(payment.id, 'p-1');
+      expect(payment.status, PaymentStatus.COMPLETED);
+      expect(payment.appointmentId, 'a1');
+      final entry = (await OutboxStore.all(db)).single;
+      expect(entry.type, 'payment.create');
+      expect(entry.payload,
+          {'appointment_id': 'a1', 'amount': 50000.0, 'payment_method': 'CASH'});
+      expect((await appointment())['status'], 'CONFIRMED');
+      expect((await appointment())['payment_status'], 'PARTIAL');
     });
 
-    test('409 CONFLICT genérico → ConflictFailure (sin refinar)', () async {
-      adapter.handler = (_) => jsonBody(
-          409, {'statusCode': 409, 'code': 'CONFLICT', 'message': 'Conflicto'});
+    test('el resto: COMPLETED; otro pago más → ya pagada', () async {
+      await repository.createPayment(newPayment);
+      await repository.createPayment(newPayment);
+      expect((await appointment())['payment_status'], 'COMPLETED');
       final failure = leftOf(await repository.createPayment(newPayment));
       expect(failure, isA<ConflictFailure>());
-      expect(failure, isNot(isA<AppointmentNotPayableFailure>()));
-    });
-
-    test('400 VALIDATION_ERROR → ValidationFailure con details', () async {
-      adapter.handler = (_) => jsonBody(400, {
-            'statusCode': 400,
-            'code': 'VALIDATION_ERROR',
-            'message': 'amount must be a positive number',
-            'details': ['amount must be a positive number'],
-          });
-      final failure = leftOf(await repository.createPayment(newPayment));
-      expect(failure, isA<ValidationFailure>());
-      expect(failure!.details, ['amount must be a positive number']);
-    });
-
-    test('409 PAYMENT_ALREADY_EXISTS (cita ya pagada) → ConflictFailure',
-        () async {
-      adapter.handler = (_) => jsonBody(409, {
-            'statusCode': 409,
-            'code': 'PAYMENT_ALREADY_EXISTS',
-            'message': 'La cita ya está pagada por completo',
-          });
-      final failure = leftOf(await repository.createPayment(newPayment));
-      expect(failure, isA<ConflictFailure>());
-      expect(failure, isNot(isA<AppointmentNotPayableFailure>()));
       expect(failure!.code, ApiErrorCode.paymentAlreadyExists);
-      expect(failure.message, 'La cita ya está pagada por completo');
     });
 
-    test('403 (Employee) → ForbiddenFailure', () async {
-      adapter.handler =
-          (_) => jsonBody(403, {'statusCode': 403, 'code': 'FORBIDDEN'});
+    test('más que el saldo → ValidationFailure; cita cancelada → no pagable',
+        () async {
+      expect(
+          leftOf(await repository
+              .createPayment(newPayment.copyWith(amount: 100000.01))),
+          isA<ValidationFailure>());
+      await seedAppointment(status: 'CANCELLED');
       expect(leftOf(await repository.createPayment(newPayment)),
-          isA<ForbiddenFailure>());
+          isA<AppointmentNotPayableFailure>());
+      expect(await OutboxStore.all(db), isEmpty);
     });
 
-    test('sin red → NetworkFailure, sin reintentar el POST', () async {
-      adapter.handler = connectionError;
-      expect(leftOf(await repository.createPayment(newPayment)),
-          isA<NetworkFailure>());
-      expect(adapter.requests, hasLength(1));
+    test('cita que no está en local → NotFoundFailure', () async {
+      expect(
+          leftOf(await repository
+              .createPayment(newPayment.copyWith(appointmentId: 'otra'))),
+          isA<NotFoundFailure>());
     });
 
-    test('respuesta vacía → ServerFailure, sin excepción', () async {
-      adapter.handler = (_) => ResponseBody.fromString('', 201);
-      expect(leftOf(await repository.createPayment(newPayment)),
-          isA<ServerFailure>());
+    test('vuelve con reviewRequired (conflict + saved): sale de la bandeja y '
+        'la bajada lo trae en revisión, sin contar para el saldo', () async {
+      final server = FakeSyncServer();
+      server.forced['payment.create'] = (mid) => MutationResult(
+          mutationId: mid,
+          status: MutationStatus.conflict,
+          code: 'OVERPAID',
+          saved: true,
+          message: 'El pago quedó en revisión');
+      final engine = SyncEngine(
+          databases: databases,
+          api: server,
+          handlers: PaymentsSync.handlers());
+      await repository.createPayment(newPayment);
+      await engine.syncNow();
+      expect(await OutboxStore.all(db), isEmpty);
+
+      // La bajada trae el pago guardado en revisión.
+      final payment = (await DocumentStore.get(db, 'payments', 'p-1'))!;
+      await PaymentsSync.handlers().first.upsert(db, 'p-1',
+          {...payment, 'reviewRequired': 'OVERPAID'});
+      final saved = (await repository.getAppointmentPayments('a1'))
+          .getOrElse(() => throw StateError('Left'))
+          .single;
+      expect(saved.reviewRequired, 'OVERPAID');
+      expect(saved.needsReview, true);
+      final balance = (await GetAppointmentBalanceUseCase(repository)(
+              const AppointmentBalanceParams(appointmentId: 'a1', total: 100000)))
+          .getOrElse(() => throw StateError('Left'));
+      expect(balance.paid, 0, reason: 'en revisión no cuenta');
+      await engine.dispose();
     });
   });
 
@@ -284,110 +294,46 @@ void main() {
     });
   });
 
-  group('getActiveCustomPaymentMethods (repositorio)', () {
-    late FakeHttpClientAdapter adapter;
-    late PaymentRepositoryImpl repository;
 
-    setUp(() {
-      adapter =
-          FakeHttpClientAdapter((_) => jsonBody(200, [backendCustomMethod]));
-      repository = PaymentRepositoryImpl(PaymentRemoteDataSourceImpl(
-          buildApiClient(
-        baseUrl: 'http://api.test/api',
-        tokenStore: MemoryTokenStore('jwt'),
-        httpClientAdapter: adapter,
-        retryDelay: (_) => Duration.zero,
-        enableLogs: false,
-      )));
-    });
-
-    test('éxito: GET /custom-payment-methods/active → entidades', () async {
-      final result = await repository.getActiveCustomPaymentMethods();
-      expect(result.getOrElse(() => []),
-          const [CustomPaymentMethod(id: 'cm-1', name: 'Nequi', icon: 'phone')]);
-      final request = adapter.requests.single;
-      expect(request.method, 'GET');
-      expect(request.uri.path, '/api/custom-payment-methods/active');
-      expect(request.headers['Authorization'], 'Bearer jwt');
-    });
-
-    test('lista vacía → Right([])', () async {
-      adapter.handler = (_) => jsonBody(200, []);
-      final result = await repository.getActiveCustomPaymentMethods();
-      expect(result.isRight(), true);
-      expect(result.getOrElse(() => [const CustomPaymentMethod(id: 'x', name: 'x')]),
-          isEmpty);
-    });
-
-    test('403 (Employee) → ForbiddenFailure', () async {
-      adapter.handler = (_) => jsonBody(403, {
-            'statusCode': 403,
-            'code': 'FORBIDDEN',
-            'message': 'No tienes permiso'
-          });
-      expect(leftOf(await repository.getActiveCustomPaymentMethods()),
-          isA<ForbiddenFailure>());
-    });
-
-    test('use case delega en el repositorio', () async {
-      final result = await GetActiveCustomPaymentMethodsUseCase(
-              _RecordingRepository())
-          .call(NoParams());
-      expect(result.getOrElse(() => []).single.name, 'Nequi');
+  group('métodos propios (locales)', () {
+    test('solo los activos, por nombre', () async {
+      await DocumentStore.put(db, PaymentsSync.customMethods, 'cm-2',
+          {...backendCustomMethod, 'id': 'cm-2', 'name': 'Daviplata'});
+      await DocumentStore.put(
+          db, PaymentsSync.customMethods, 'cm-1', backendCustomMethod);
+      await DocumentStore.put(db, PaymentsSync.customMethods, 'cm-3',
+          {...backendCustomMethod, 'id': 'cm-3', 'isActive': false});
+      final methods = (await GetActiveCustomPaymentMethodsUseCase(repository)(
+              NoParams()))
+          .getOrElse(() => throw StateError('Left'));
+      expect(methods.map((m) => m.name), ['Daviplata', 'Nequi']);
     });
   });
 
   group('saldo de una cita (anticipos, 2.24)', () {
-    late FakeHttpClientAdapter adapter;
-    late GetAppointmentBalanceUseCase balance;
-
-    setUp(() {
-      adapter = FakeHttpClientAdapter((_) => jsonBody(200, []));
-      balance = GetAppointmentBalanceUseCase(PaymentRepositoryImpl(
-          PaymentRemoteDataSourceImpl(buildApiClient(
-        baseUrl: 'http://api.test/api',
-        tokenStore: MemoryTokenStore('jwt'),
-        httpClientAdapter: adapter,
-        retryDelay: (_) => Duration.zero,
-        enableLogs: false,
-      ))));
-    });
-
     const params = AppointmentBalanceParams(appointmentId: 'a1', total: 100000);
 
-    test('GET /payments/appointment/:id: solo COMPLETED, netos de reembolsos',
-        () async {
-      adapter.handler = (_) => jsonBody(200, [
-            backendPayment(), // 50.000 pagados
-            backendPayment(refund: '10000.00'), // 50.000 − 10.000
-            backendPayment(status: 'REFUNDED', refund: '50000.00'),
-            backendPayment(status: 'FAILED'),
-          ]);
-      final result = (await balance(params))
+    test('solo COMPLETED, netos de reembolsos (pagos del feed)', () async {
+      for (final (i, json) in [
+        backendPayment(), // 50.000 pagados
+        backendPayment(refund: '10000.00'), // 50.000 − 10.000
+        backendPayment(status: 'REFUNDED', refund: '50000.00'),
+        backendPayment(status: 'FAILED'),
+      ].indexed) {
+        await DocumentStore.put(db, PaymentsSync.payments, 'p$i',
+            {...json, 'id': 'p$i', 'appointment': 'a1'});
+      }
+      final result = (await GetAppointmentBalanceUseCase(repository)(params))
           .getOrElse(() => throw StateError('Left'));
       expect(result, const AppointmentBalance(total: 100000, paid: 90000));
       expect(result.outstanding, 10000);
-      expect(result.isFullyPaid, false);
-      final request = adapter.requests.single;
-      expect(request.method, 'GET');
-      expect(request.uri.path, '/api/payments/appointment/a1');
     });
 
-    test('sin pagos → falta el total; pagada de más → saldo 0', () async {
-      expect((await balance(params)).getOrElse(() => throw StateError('L')),
+    test('sin pagos → falta el total', () async {
+      expect(
+          (await GetAppointmentBalanceUseCase(repository)(params))
+              .getOrElse(() => throw StateError('L')),
           const AppointmentBalance(total: 100000, paid: 0));
-      adapter.handler = (_) =>
-          jsonBody(200, [backendPayment(), backendPayment(), backendPayment()]);
-      final full =
-          (await balance(params)).getOrElse(() => throw StateError('L'));
-      expect(full.outstanding, 0);
-      expect(full.isFullyPaid, true);
-    });
-
-    test('403 (Employee) → ForbiddenFailure', () async {
-      adapter.handler = (_) =>
-          jsonBody(403, {'statusCode': 403, 'code': 'FORBIDDEN'});
-      expect(leftOf(await balance(params)), isA<ForbiddenFailure>());
     });
   });
 }

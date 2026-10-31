@@ -1,7 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/database/shared_documents.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/core/sync/document_sync_handler.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
 import 'package:login_signup/features/settings/data/datasources/settings_remote_datasource.dart';
 import 'package:login_signup/features/settings/data/repositories/settings_repository_impl.dart';
 import 'package:login_signup/features/settings/domain/repositories/settings_repository.dart';
@@ -23,9 +27,13 @@ abstract final class SettingsDependencies {
       () => SettingsRepositoryImpl(
         remote: Get.find<SettingsRemoteDataSource>(),
         session: Get.find<SessionService>(),
+        store: Get.find<OfflineStore>(),
       ),
       fenix: true,
     );
+    // 10.02b: la configuración baja con la sincronización (solo bajada).
+    Get.find<SyncEngine>()
+        .register(DocumentSyncHandler(SharedDocs.businessSettings));
     Get.lazyPut(
         () => GetBusinessSettingsUseCase(Get.find<SettingsRepository>()),
         fenix: true);

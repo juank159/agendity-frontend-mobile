@@ -1,33 +1,46 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
-import 'package:login_signup/features/services/data/datasources/categories_remote_datasource.dart';
-import 'package:login_signup/features/services/data/models/category_model.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/features/services/data/datasources/catalog_local_datasource.dart';
+import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/failures/services_failures.dart';
 import 'package:login_signup/features/services/domain/repositories/categories_repository.dart';
 
+/// Categorías sin conexión (10.02b): lectura local; escrituras a local +
+/// bandeja (`category.*`). Nombre repetido y "tiene servicios" se avisan
+/// con lo local.
 class CategoriesRepositoryImpl implements CategoriesRepository {
-  final CategoriesRemoteDataSource _remote;
+  final OfflineStore _store;
+  final CatalogLocalDataSource _local;
 
-  CategoriesRepositoryImpl(this._remote);
+  CategoriesRepositoryImpl(this._store,
+      {CatalogLocalDataSource local = const CatalogLocalDataSource()})
+      : _local = local;
+
+  static const _entity = 'categories';
 
   @override
   Future<Either<Failure, List<CategoryEntity>>> getCategories() =>
-      safeCall(() async =>
-          (await _remote.getCategories()).map((m) => m.toEntity()).toList());
+      safeCall(() async => _local.categories(await _store.database()));
 
   @override
   Future<Either<Failure, CategoryEntity>> createCategory({
     required String name,
     String description = '',
   }) =>
-      safeCall(
-        () async => (await _remote.createCategory(
-                CategoryModel(id: '', name: name, description: description)))
-            .toEntity(),
-        refine: _refineSave,
-      );
+      OfflineStore.guard(() async {
+        final db = await _store.database();
+        if (await _local.nameTaken(db, _entity, name)) {
+          return const Left(DuplicateCategoryNameFailure());
+        }
+        final id = _store.newId();
+        await _write(CatalogSync.categoryCreate, id,
+            {'name': name, 'description': description},
+            extra: {'createdAt': _store.nowIso(), 'updatedAt': _store.nowIso()});
+        return Right((await _local.category(db, id))!);
+      });
 
   @override
   Future<Either<Failure, CategoryEntity>> updateCategory({
@@ -35,52 +48,57 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
     required String name,
     String description = '',
   }) =>
-      safeCall(
-        () async => (await _remote.updateCategory(id,
-                CategoryModel(id: id, name: name, description: description)))
-            .toEntity(),
-        refine: _refineSave,
-      );
+      OfflineStore.guard(() async {
+        final db = await _store.database();
+        final current = await _local.category(db, id);
+        if (current == null) return const Left(NotFoundFailure());
+        if (await _local.nameTaken(db, _entity, name, exceptId: id)) {
+          return const Left(DuplicateCategoryNameFailure());
+        }
+        final changes = {
+          if (current.name != name) 'name': name,
+          if (current.description != description) 'description': description,
+        };
+        if (changes.isEmpty) return Right(current);
+        await _write(CatalogSync.categoryUpdate, id, changes,
+            extra: {'updatedAt': _store.nowIso()});
+        return Right((await _local.category(db, id))!);
+      });
 
   @override
   Future<Either<Failure, CategoryEntity>> updateCategoryStatus({
     required String id,
     required bool isActive,
   }) =>
-      safeCall(() async =>
-          (await _remote.updateCategoryStatus(id, isActive)).toEntity());
+      OfflineStore.guard(() async {
+        final db = await _store.database();
+        final current = await _local.category(db, id);
+        if (current == null) return const Left(NotFoundFailure());
+        if (current.isActive == isActive) return Right(current);
+        await _write(CatalogSync.categoryUpdate, id, {'isActive': isActive},
+            extra: {'updatedAt': _store.nowIso()});
+        return Right((await _local.category(db, id))!);
+      });
 
+  /// Con servicios (activos o no) no se borra: FK RESTRICT en el servidor.
   @override
-  Future<Either<Failure, Unit>> deleteCategory(String id) => safeCall(
-        () async {
-          await _remote.deleteCategory(id);
-          return unit;
-        },
-        refine: _refineDelete,
-      );
+  Future<Either<Failure, Unit>> deleteCategory(String id) =>
+      OfflineStore.guard(() async {
+        final db = await _store.database();
+        final current = await _local.category(db, id);
+        if (current == null) return const Left(NotFoundFailure());
+        if ((current.serviceCount ?? 0) > 0) {
+          return const Left(CategoryHasServicesFailure());
+        }
+        await _write(CatalogSync.categoryDelete, id, const {});
+        return const Right(unit);
+      });
 
-  /// Al crear o renombrar, el 409 `CONFLICT` es el nombre repetido.
-  static Failure _refineSave(Failure failure) =>
-      failure.code == ApiErrorCode.conflict
-          ? DuplicateCategoryNameFailure(
-              message: failure.message,
-              code: failure.code,
-              statusCode: failure.statusCode,
-              details: failure.details,
-            )
-          : failure;
-
-  /// `CATEGORY_HAS_SERVICES`, o `CONFLICT` si la FK RESTRICT frenó el borrado
-  /// (un servicio creado a la vez): en los dos casos la categoría tiene
-  /// servicios.
-  static Failure _refineDelete(Failure failure) =>
-      failure.code == ApiErrorCode.categoryHasServices ||
-              failure.code == ApiErrorCode.conflict
-          ? CategoryHasServicesFailure(
-              message: failure.message,
-              code: failure.code,
-              statusCode: failure.statusCode,
-              details: failure.details,
-            )
-          : failure;
+  Future<void> _write(String type, String id, Map<String, dynamic> payload,
+          {Map<String, dynamic> extra = const {}}) =>
+      _store.write((db, sink) async {
+        final entry = await sink.add(
+            type: type, entity: _entity, entityId: id, payload: payload);
+        await CatalogSync.apply(db, entry, extra: extra);
+      });
 }

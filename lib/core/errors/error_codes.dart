@@ -27,6 +27,7 @@ abstract final class ApiErrorCode {
   static const serviceNotOfferedByProfessional =
       'SERVICE_NOT_OFFERED_BY_PROFESSIONAL';
   static const appointmentNotStarted = 'APPOINTMENT_NOT_STARTED';
+  static const serviceInactive = 'SERVICE_INACTIVE';
   static const outsideBusinessHours = 'OUTSIDE_BUSINESS_HOURS';
   static const emailDeliveryFailed = 'EMAIL_DELIVERY_FAILED';
 

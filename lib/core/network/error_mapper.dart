@@ -92,6 +92,7 @@ abstract final class ErrorMapper {
     ApiErrorCode.appointmentInPast: _validation,
     ApiErrorCode.serviceNotOfferedByProfessional: _conflict,
     ApiErrorCode.appointmentNotStarted: _conflict,
+    ApiErrorCode.serviceInactive: _conflict,
     ApiErrorCode.outsideBusinessHours: _conflict,
     ApiErrorCode.bookingLimitReached: _conflict,
     ApiErrorCode.onlineBookingUnavailable: _conflict,

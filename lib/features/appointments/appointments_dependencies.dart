@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/features/appointments/data/sync/appointments_sync.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
 import 'package:login_signup/features/appointments/data/repositories/appointments_repository_impl.dart';
 import 'package:login_signup/features/appointments/domain/repositories/appointments_repository.dart';
@@ -24,9 +27,14 @@ abstract final class AppointmentsDependencies {
       fenix: true,
     );
     Get.lazyPut<AppointmentsRepository>(
-      () => AppointmentsRepositoryImpl(Get.find<AppointmentsRemoteDataSource>()),
+      () => AppointmentsRepositoryImpl(
+        Get.find<AppointmentsRemoteDataSource>(),
+        store: Get.find<OfflineStore>(),
+      ),
       fenix: true,
     );
+    // 10.02b: citas (`appointment.*`) y bloqueos (solo bajada).
+    AppointmentsSync.handlers().forEach(Get.find<SyncEngine>().register);
 
     AppointmentsRepository repository() => Get.find<AppointmentsRepository>();
     Get.lazyPut(() => GetAppointmentsUseCase(repository()), fenix: true);

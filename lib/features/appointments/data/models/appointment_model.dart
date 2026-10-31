@@ -31,6 +31,10 @@ class AppointmentModel {
   /// `source` (9.01): `APP` o `WEB`; sin él, `APP`.
   final AppointmentSource source;
 
+  /// `needsReschedule`/`syncConflict` (10.01b): guardada con conflicto.
+  final bool needsReschedule;
+  final String? syncConflict;
+
   const AppointmentModel({
     required this.id,
     required this.client,
@@ -48,6 +52,8 @@ class AppointmentModel {
     this.createdAt,
     this.timeZone,
     this.source = AppointmentSource.APP,
+    this.needsReschedule = false,
+    this.syncConflict,
   });
 
   /// Sin `id` o sin `date` no es una cita: lanza `FormatException` (el
@@ -99,6 +105,11 @@ class AppointmentModel {
       createdAt: DateCodec.tryDecode(json['created_at'], timeZone: timeZone),
       timeZone: timeZone,
       source: AppointmentSource.fromApi(json['source']) ?? AppointmentSource.APP,
+      needsReschedule: JsonRead.asBool(
+          json['needsReschedule'] ?? json['needs_reschedule'],
+          fallback: false),
+      syncConflict: JsonRead.asOptionalString(
+          json['syncConflict'] ?? json['sync_conflict']),
     );
   }
 
@@ -140,6 +151,8 @@ class AppointmentModel {
         createdAt: createdAt,
         timeZone: timeZone,
         source: source,
+        needsReschedule: needsReschedule,
+        syncConflict: syncConflict,
       );
 }
 

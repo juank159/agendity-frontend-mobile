@@ -6,10 +6,15 @@ import 'package:login_signup/core/sync/sync_entity_handler.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_local_datasource.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
 
-/// Entidad `clients` del feed y sus mutaciones `client.create/update/delete`.
+/// Entidad `clients` del feed y sus mutaciones `client.create/import/update/
+/// delete`.
 class ClientsSyncHandler extends SyncEntityHandler {
   static const entityName = 'clients';
   static const create = 'client.create';
+
+  /// Contacto importado del teléfono (backend `0c3b0af`): como una fila de
+  /// `POST /clients/batch`, queda con `isFromDevice: true`.
+  static const import = 'client.import';
   static const update = 'client.update';
   static const remove = 'client.delete';
 
@@ -38,6 +43,9 @@ class ClientsSyncHandler extends SyncEntityHandler {
       case create:
       case update:
         await _local.upsertFields(db, id, entry.payload);
+      case import:
+        await _local.upsertFields(
+            db, id, {...entry.payload, 'isFromDevice': true});
       case remove:
         await _local.delete(db, id);
     }

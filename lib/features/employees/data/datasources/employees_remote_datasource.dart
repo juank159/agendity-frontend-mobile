@@ -5,19 +5,11 @@ import 'package:login_signup/features/employees/data/models/employee_input_model
 import 'package:login_signup/features/employees/data/models/employee_model.dart';
 import 'package:login_signup/features/employees/data/models/employee_restoration_model.dart';
 
-/// Rutas de profesionales en `/auth` (todas solo para el Owner, salvo
-/// `verify/request-code`, que es pública). Los errores (400/401/403/404/409,
-/// red) salen como `DioException` y los traduce `safeCall` en el repositorio.
+/// Escrituras de profesionales en `/auth` (todas solo para el Owner, salvo
+/// `verify/request-code`, que es pública), con conexión. Las lecturas son
+/// locales desde 10.02b (`EmployeesLocalDataSource`). Los errores salen como
+/// `DioException` y los traduce `safeCall` en el repositorio.
 abstract class EmployeesRemoteDataSource {
-  /// `GET /auth/employees`: el Owner y sus empleados sin baja.
-  Future<List<EmployeeModel>> getEmployees();
-
-  /// `GET /auth/employees/deleted`.
-  Future<List<EmployeeModel>> getDeletedEmployees();
-
-  /// `GET /auth/employee/:id`.
-  Future<EmployeeModel> getEmployeeById(String id);
-
   /// `POST /auth/register/employee`. Responde 201 `{user}` (sin token).
   Future<EmployeeModel> createEmployee(EmployeeInputModel body);
 
@@ -43,26 +35,12 @@ abstract class EmployeesRemoteDataSource {
 }
 
 class EmployeesRemoteDataSourceImpl implements EmployeesRemoteDataSource {
-  static const _employees = '/auth/employees';
   static const _employee = '/auth/employee';
 
   final Dio _dio;
 
   /// Debe ser el Dio `tag: apiClientTag` (token y errores del núcleo).
   EmployeesRemoteDataSourceImpl(this._dio);
-
-  @override
-  Future<List<EmployeeModel>> getEmployees() => _list(_employees);
-
-  @override
-  Future<List<EmployeeModel>> getDeletedEmployees() =>
-      _list('$_employees/deleted');
-
-  @override
-  Future<EmployeeModel> getEmployeeById(String id) async {
-    final response = await _dio.get<Map<String, dynamic>>('$_employee/$id');
-    return EmployeeModel.fromJson(response.data!);
-  }
 
   @override
   Future<EmployeeModel> createEmployee(EmployeeInputModel body) async {
@@ -119,12 +97,5 @@ class EmployeesRemoteDataSourceImpl implements EmployeesRemoteDataSource {
       '/auth/verify/employee-email',
       data: {'employee_id': employeeId, 'code': code},
     );
-  }
-
-  Future<List<EmployeeModel>> _list(String path) async {
-    final response = await _dio.get<List<dynamic>>(path);
-    return JsonRead.asMapList(response.data)
-        .map(EmployeeModel.fromJson)
-        .toList();
   }
 }

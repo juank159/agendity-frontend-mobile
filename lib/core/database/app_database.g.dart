@@ -1730,6 +1730,343 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
   }
 }
 
+class $LocalDocumentsTable extends LocalDocuments
+    with TableInfo<$LocalDocumentsTable, LocalDocumentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalDocumentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  @override
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+      'entity', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+      'data', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _ref1Meta = const VerificationMeta('ref1');
+  @override
+  late final GeneratedColumn<String> ref1 = GeneratedColumn<String>(
+      'ref1', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ref2Meta = const VerificationMeta('ref2');
+  @override
+  late final GeneratedColumn<String> ref2 = GeneratedColumn<String>(
+      'ref2', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<String> at = GeneratedColumn<String>(
+      'at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [entity, id, data, ref1, ref2, at];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_documents';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalDocumentRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('entity')) {
+      context.handle(_entityMeta,
+          entity.isAcceptableOrUnknown(data['entity']!, _entityMeta));
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+          _dataMeta, this.data.isAcceptableOrUnknown(data['data']!, _dataMeta));
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    if (data.containsKey('ref1')) {
+      context.handle(
+          _ref1Meta, ref1.isAcceptableOrUnknown(data['ref1']!, _ref1Meta));
+    }
+    if (data.containsKey('ref2')) {
+      context.handle(
+          _ref2Meta, ref2.isAcceptableOrUnknown(data['ref2']!, _ref2Meta));
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {entity, id};
+  @override
+  LocalDocumentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalDocumentRow(
+      entity: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}entity'])!,
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      data: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}data'])!,
+      ref1: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ref1']),
+      ref2: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ref2']),
+      at: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}at']),
+    );
+  }
+
+  @override
+  $LocalDocumentsTable createAlias(String alias) {
+    return $LocalDocumentsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalDocumentRow extends DataClass
+    implements Insertable<LocalDocumentRow> {
+  final String entity;
+  final String id;
+  final String data;
+  final String? ref1;
+  final String? ref2;
+  final String? at;
+  const LocalDocumentRow(
+      {required this.entity,
+      required this.id,
+      required this.data,
+      this.ref1,
+      this.ref2,
+      this.at});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['entity'] = Variable<String>(entity);
+    map['id'] = Variable<String>(id);
+    map['data'] = Variable<String>(data);
+    if (!nullToAbsent || ref1 != null) {
+      map['ref1'] = Variable<String>(ref1);
+    }
+    if (!nullToAbsent || ref2 != null) {
+      map['ref2'] = Variable<String>(ref2);
+    }
+    if (!nullToAbsent || at != null) {
+      map['at'] = Variable<String>(at);
+    }
+    return map;
+  }
+
+  LocalDocumentsCompanion toCompanion(bool nullToAbsent) {
+    return LocalDocumentsCompanion(
+      entity: Value(entity),
+      id: Value(id),
+      data: Value(data),
+      ref1: ref1 == null && nullToAbsent ? const Value.absent() : Value(ref1),
+      ref2: ref2 == null && nullToAbsent ? const Value.absent() : Value(ref2),
+      at: at == null && nullToAbsent ? const Value.absent() : Value(at),
+    );
+  }
+
+  factory LocalDocumentRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalDocumentRow(
+      entity: serializer.fromJson<String>(json['entity']),
+      id: serializer.fromJson<String>(json['id']),
+      data: serializer.fromJson<String>(json['data']),
+      ref1: serializer.fromJson<String?>(json['ref1']),
+      ref2: serializer.fromJson<String?>(json['ref2']),
+      at: serializer.fromJson<String?>(json['at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'entity': serializer.toJson<String>(entity),
+      'id': serializer.toJson<String>(id),
+      'data': serializer.toJson<String>(data),
+      'ref1': serializer.toJson<String?>(ref1),
+      'ref2': serializer.toJson<String?>(ref2),
+      'at': serializer.toJson<String?>(at),
+    };
+  }
+
+  LocalDocumentRow copyWith(
+          {String? entity,
+          String? id,
+          String? data,
+          Value<String?> ref1 = const Value.absent(),
+          Value<String?> ref2 = const Value.absent(),
+          Value<String?> at = const Value.absent()}) =>
+      LocalDocumentRow(
+        entity: entity ?? this.entity,
+        id: id ?? this.id,
+        data: data ?? this.data,
+        ref1: ref1.present ? ref1.value : this.ref1,
+        ref2: ref2.present ? ref2.value : this.ref2,
+        at: at.present ? at.value : this.at,
+      );
+  LocalDocumentRow copyWithCompanion(LocalDocumentsCompanion data) {
+    return LocalDocumentRow(
+      entity: data.entity.present ? data.entity.value : this.entity,
+      id: data.id.present ? data.id.value : this.id,
+      data: data.data.present ? data.data.value : this.data,
+      ref1: data.ref1.present ? data.ref1.value : this.ref1,
+      ref2: data.ref2.present ? data.ref2.value : this.ref2,
+      at: data.at.present ? data.at.value : this.at,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalDocumentRow(')
+          ..write('entity: $entity, ')
+          ..write('id: $id, ')
+          ..write('data: $data, ')
+          ..write('ref1: $ref1, ')
+          ..write('ref2: $ref2, ')
+          ..write('at: $at')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(entity, id, data, ref1, ref2, at);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalDocumentRow &&
+          other.entity == this.entity &&
+          other.id == this.id &&
+          other.data == this.data &&
+          other.ref1 == this.ref1 &&
+          other.ref2 == this.ref2 &&
+          other.at == this.at);
+}
+
+class LocalDocumentsCompanion extends UpdateCompanion<LocalDocumentRow> {
+  final Value<String> entity;
+  final Value<String> id;
+  final Value<String> data;
+  final Value<String?> ref1;
+  final Value<String?> ref2;
+  final Value<String?> at;
+  final Value<int> rowid;
+  const LocalDocumentsCompanion({
+    this.entity = const Value.absent(),
+    this.id = const Value.absent(),
+    this.data = const Value.absent(),
+    this.ref1 = const Value.absent(),
+    this.ref2 = const Value.absent(),
+    this.at = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalDocumentsCompanion.insert({
+    required String entity,
+    required String id,
+    required String data,
+    this.ref1 = const Value.absent(),
+    this.ref2 = const Value.absent(),
+    this.at = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : entity = Value(entity),
+        id = Value(id),
+        data = Value(data);
+  static Insertable<LocalDocumentRow> custom({
+    Expression<String>? entity,
+    Expression<String>? id,
+    Expression<String>? data,
+    Expression<String>? ref1,
+    Expression<String>? ref2,
+    Expression<String>? at,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (entity != null) 'entity': entity,
+      if (id != null) 'id': id,
+      if (data != null) 'data': data,
+      if (ref1 != null) 'ref1': ref1,
+      if (ref2 != null) 'ref2': ref2,
+      if (at != null) 'at': at,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalDocumentsCompanion copyWith(
+      {Value<String>? entity,
+      Value<String>? id,
+      Value<String>? data,
+      Value<String?>? ref1,
+      Value<String?>? ref2,
+      Value<String?>? at,
+      Value<int>? rowid}) {
+    return LocalDocumentsCompanion(
+      entity: entity ?? this.entity,
+      id: id ?? this.id,
+      data: data ?? this.data,
+      ref1: ref1 ?? this.ref1,
+      ref2: ref2 ?? this.ref2,
+      at: at ?? this.at,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (ref1.present) {
+      map['ref1'] = Variable<String>(ref1.value);
+    }
+    if (ref2.present) {
+      map['ref2'] = Variable<String>(ref2.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<String>(at.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalDocumentsCompanion(')
+          ..write('entity: $entity, ')
+          ..write('id: $id, ')
+          ..write('data: $data, ')
+          ..write('ref1: $ref1, ')
+          ..write('ref2: $ref2, ')
+          ..write('at: $at, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1737,12 +2074,27 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncMetaTable syncMeta = $SyncMetaTable(this);
   late final $IdRemapsTable idRemaps = $IdRemapsTable(this);
   late final $LocalClientsTable localClients = $LocalClientsTable(this);
+  late final $LocalDocumentsTable localDocuments = $LocalDocumentsTable(this);
+  late final Index idxDocumentsRef1 = Index('idx_documents_ref1',
+      'CREATE INDEX idx_documents_ref1 ON local_documents (entity, ref1)');
+  late final Index idxDocumentsRef2 = Index('idx_documents_ref2',
+      'CREATE INDEX idx_documents_ref2 ON local_documents (entity, ref2)');
+  late final Index idxDocumentsAt = Index('idx_documents_at',
+      'CREATE INDEX idx_documents_at ON local_documents (entity, at)');
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [outbox, syncMeta, idRemaps, localClients];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        outbox,
+        syncMeta,
+        idRemaps,
+        localClients,
+        localDocuments,
+        idxDocumentsRef1,
+        idxDocumentsRef2,
+        idxDocumentsAt
+      ];
   @override
   DriftDatabaseOptions get options =>
       const DriftDatabaseOptions(storeDateTimeAsText: true);
@@ -2593,6 +2945,195 @@ typedef $$LocalClientsTableProcessedTableManager = ProcessedTableManager<
     ),
     LocalClientRow,
     PrefetchHooks Function()>;
+typedef $$LocalDocumentsTableCreateCompanionBuilder = LocalDocumentsCompanion
+    Function({
+  required String entity,
+  required String id,
+  required String data,
+  Value<String?> ref1,
+  Value<String?> ref2,
+  Value<String?> at,
+  Value<int> rowid,
+});
+typedef $$LocalDocumentsTableUpdateCompanionBuilder = LocalDocumentsCompanion
+    Function({
+  Value<String> entity,
+  Value<String> id,
+  Value<String> data,
+  Value<String?> ref1,
+  Value<String?> ref2,
+  Value<String?> at,
+  Value<int> rowid,
+});
+
+class $$LocalDocumentsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalDocumentsTable> {
+  $$LocalDocumentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get entity => $composableBuilder(
+      column: $table.entity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get data => $composableBuilder(
+      column: $table.data, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ref1 => $composableBuilder(
+      column: $table.ref1, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ref2 => $composableBuilder(
+      column: $table.ref2, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get at => $composableBuilder(
+      column: $table.at, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalDocumentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalDocumentsTable> {
+  $$LocalDocumentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get entity => $composableBuilder(
+      column: $table.entity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get data => $composableBuilder(
+      column: $table.data, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ref1 => $composableBuilder(
+      column: $table.ref1, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ref2 => $composableBuilder(
+      column: $table.ref2, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get at => $composableBuilder(
+      column: $table.at, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalDocumentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalDocumentsTable> {
+  $$LocalDocumentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<String> get ref1 =>
+      $composableBuilder(column: $table.ref1, builder: (column) => column);
+
+  GeneratedColumn<String> get ref2 =>
+      $composableBuilder(column: $table.ref2, builder: (column) => column);
+
+  GeneratedColumn<String> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+}
+
+class $$LocalDocumentsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalDocumentsTable,
+    LocalDocumentRow,
+    $$LocalDocumentsTableFilterComposer,
+    $$LocalDocumentsTableOrderingComposer,
+    $$LocalDocumentsTableAnnotationComposer,
+    $$LocalDocumentsTableCreateCompanionBuilder,
+    $$LocalDocumentsTableUpdateCompanionBuilder,
+    (
+      LocalDocumentRow,
+      BaseReferences<_$AppDatabase, $LocalDocumentsTable, LocalDocumentRow>
+    ),
+    LocalDocumentRow,
+    PrefetchHooks Function()> {
+  $$LocalDocumentsTableTableManager(
+      _$AppDatabase db, $LocalDocumentsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalDocumentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalDocumentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalDocumentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> entity = const Value.absent(),
+            Value<String> id = const Value.absent(),
+            Value<String> data = const Value.absent(),
+            Value<String?> ref1 = const Value.absent(),
+            Value<String?> ref2 = const Value.absent(),
+            Value<String?> at = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalDocumentsCompanion(
+            entity: entity,
+            id: id,
+            data: data,
+            ref1: ref1,
+            ref2: ref2,
+            at: at,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String entity,
+            required String id,
+            required String data,
+            Value<String?> ref1 = const Value.absent(),
+            Value<String?> ref2 = const Value.absent(),
+            Value<String?> at = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalDocumentsCompanion.insert(
+            entity: entity,
+            id: id,
+            data: data,
+            ref1: ref1,
+            ref2: ref2,
+            at: at,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalDocumentsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalDocumentsTable,
+    LocalDocumentRow,
+    $$LocalDocumentsTableFilterComposer,
+    $$LocalDocumentsTableOrderingComposer,
+    $$LocalDocumentsTableAnnotationComposer,
+    $$LocalDocumentsTableCreateCompanionBuilder,
+    $$LocalDocumentsTableUpdateCompanionBuilder,
+    (
+      LocalDocumentRow,
+      BaseReferences<_$AppDatabase, $LocalDocumentsTable, LocalDocumentRow>
+    ),
+    LocalDocumentRow,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2605,4 +3146,6 @@ class $AppDatabaseManager {
       $$IdRemapsTableTableManager(_db, _db.idRemaps);
   $$LocalClientsTableTableManager get localClients =>
       $$LocalClientsTableTableManager(_db, _db.localClients);
+  $$LocalDocumentsTableTableManager get localDocuments =>
+      $$LocalDocumentsTableTableManager(_db, _db.localDocuments);
 }

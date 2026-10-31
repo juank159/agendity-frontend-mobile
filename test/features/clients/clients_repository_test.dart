@@ -308,7 +308,10 @@ void main() {
         'Ya existe un cliente con el teléfono: 3000000002',
       ]);
       final entries = await OutboxStore.all(db);
-      expect(entries.map((e) => e.type), ['client.create', 'client.create']);
+      expect(entries.map((e) => e.type), ['client.import', 'client.import']);
+      final imported = rightOf(await repository.getClients(
+          const ClientsQuery(source: ClientSourceFilter.imported)));
+      expect(imported.total, 2, reason: 'quedan como importados');
       expect(entries.first.payload['email'], 'uno@correo.co');
       expect(adapter.requests, isEmpty);
     });

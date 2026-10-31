@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/features/employees/data/sync/employees_sync.dart';
 import 'package:login_signup/features/employees/data/datasources/employees_remote_datasource.dart';
 import 'package:login_signup/features/employees/data/repositories/employees_repository_impl.dart';
 import 'package:login_signup/features/employees/domain/repositories/employees_repository.dart';
@@ -24,9 +27,15 @@ abstract final class EmployeesDependencies {
       fenix: true,
     );
     Get.lazyPut<EmployeesRepository>(
-      () => EmployeesRepositoryImpl(Get.find<EmployeesRemoteDataSource>()),
+      () => EmployeesRepositoryImpl(
+        Get.find<EmployeesRemoteDataSource>(),
+        store: Get.find<OfflineStore>(),
+        refresh: Get.find<SyncEngine>().syncNow,
+      ),
       fenix: true,
     );
+    // 10.02b: profesionales, sus servicios y sus horarios (solo bajada).
+    EmployeesSync.handlers().forEach(Get.find<SyncEngine>().register);
 
     Get.lazyPut(() => GetEmployeesUseCase(Get.find<EmployeesRepository>()),
         fenix: true);

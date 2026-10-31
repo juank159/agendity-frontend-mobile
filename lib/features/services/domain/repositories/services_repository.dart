@@ -8,6 +8,15 @@ abstract class ServicesRepository {
   /// Servicios activos del negocio, con su categoría.
   Future<Either<Failure, List<ServiceEntity>>> getServices();
 
+  /// Todos, también los desactivados (gestión del catálogo, 2026-10-31).
+  Future<Either<Failure, List<ServiceEntity>>> getAllServices();
+
+  /// Servicios activos que hace [professionalId] (7.04, como
+  /// `GET /auth/me/services`): el Owner, todos; un empleado, los asignados y
+  /// activos. Para el catálogo del formulario de cita.
+  Future<Either<Failure, List<ServiceEntity>>> getServicesOfferedBy(
+      String professionalId);
+
   /// Nombre repetido en el negocio → `DuplicateServiceNameFailure`.
   Future<Either<Failure, ServiceEntity>> createService(ServiceEntity service);
 

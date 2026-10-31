@@ -1,4 +1,7 @@
+import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/database/app_database.dart';
+import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/core/database/local_database_holder.dart';
 import 'package:login_signup/core/sync/outbox_store.dart';
 import 'package:uuid/uuid.dart';
@@ -32,6 +35,17 @@ class OfflineStore {
 
   DateTime now() => _clock();
 
+  /// Instante actual en ISO UTC (para `created_at`/`updated_at` locales).
+  String nowIso() => _clock().toUtc().toIso8601String();
+
+  /// Ejecuta un cuerpo que ya devuelve `Either` y convierte en failure lo
+  /// que lance (sin sesión, base dañada…), sin propagar la excepción.
+  static Future<Either<Failure, T>> guard<T>(
+      Future<Either<Failure, T>> Function() body) async {
+    final result = await safeCall(body);
+    return result.fold(Left.new, (inner) => inner);
+  }
+
   Future<AppDatabase> database() => databases.require();
 
   /// [body] escribe en local y anota sus mutaciones con `sink`; todo o nada.
@@ -53,19 +67,33 @@ class MutationSink {
 
   MutationSink._(this._db, this._newId, this._clock);
 
-  Future<void> add({
+  /// Anota la mutación y la devuelve (para aplicarla en local con el mismo
+  /// código que la reaplica tras una bajada).
+  Future<OutboxEntry> add({
     required String type,
     required String entity,
     String? entityId,
     Map<String, dynamic> payload = const {},
-  }) =>
-      OutboxStore.enqueue(
-        _db,
-        mutationId: _newId(),
-        type: type,
-        entity: entity,
-        entityId: entityId,
-        payload: payload,
-        clientTime: _clock(),
-      );
+  }) async {
+    final mutationId = _newId();
+    final clientTime = _clock();
+    final seq = await OutboxStore.enqueue(
+      _db,
+      mutationId: mutationId,
+      type: type,
+      entity: entity,
+      entityId: entityId,
+      payload: payload,
+      clientTime: clientTime,
+    );
+    return OutboxEntry(
+      seq: seq,
+      mutationId: mutationId,
+      type: type,
+      entity: entity,
+      entityId: entityId,
+      payload: payload,
+      clientTime: clientTime.toUtc().toIso8601String(),
+    );
+  }
 }

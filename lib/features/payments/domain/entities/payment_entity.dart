@@ -30,6 +30,12 @@ class PaymentEntity {
   /// ella. `null` = la del negocio. La pone el backend: no se envía.
   final String? timeZone;
 
+  /// Pago guardado para revisar al sincronizar (10.01b, D-18):
+  /// `APPOINTMENT_CANCELLED` (la cita estaba cancelada) u `OVERPAID` (pasa
+  /// del total). No cuenta para el estado de pago de la cita hasta que el
+  /// Owner lo resuelva (reembolso). `null` = normal.
+  final String? reviewRequired;
+
   const PaymentEntity({
     this.id,
     required this.appointmentId,
@@ -43,7 +49,10 @@ class PaymentEntity {
     this.createdAt,
     this.updatedAt,
     this.timeZone,
+    this.reviewRequired,
   });
+
+  bool get needsReview => reviewRequired != null;
 
   /// Lo que cuenta como ingreso (igual que las estadísticas del backend).
   double get netAmount => amount - refundAmount;
@@ -61,6 +70,7 @@ class PaymentEntity {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? timeZone,
+    String? reviewRequired,
   }) =>
       PaymentEntity(
         id: id ?? this.id,
@@ -76,6 +86,7 @@ class PaymentEntity {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         timeZone: timeZone ?? this.timeZone,
+        reviewRequired: reviewRequired ?? this.reviewRequired,
       );
 
   @override
@@ -93,7 +104,8 @@ class PaymentEntity {
           other.refundReason == refundReason &&
           other.createdAt == createdAt &&
           other.updatedAt == updatedAt &&
-          other.timeZone == timeZone;
+          other.timeZone == timeZone &&
+          other.reviewRequired == reviewRequired;
 
   @override
   int get hashCode => Object.hash(
@@ -109,5 +121,6 @@ class PaymentEntity {
         createdAt,
         updatedAt,
         timeZone,
+        reviewRequired,
       );
 }

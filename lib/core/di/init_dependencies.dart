@@ -25,6 +25,7 @@ import 'package:login_signup/features/payments/payments_dependencies.dart';
 import 'package:login_signup/features/statistics/statistics_dependencies.dart';
 import 'package:login_signup/features/subscriptions/subscriptions_dependencies.dart';
 import 'package:login_signup/features/services/services_dependencies.dart';
+import 'package:login_signup/features/notifications/notifications_dependencies.dart';
 import 'package:login_signup/features/settings/settings_dependencies.dart';
 import 'package:login_signup/features/whatsapp/whatsapp_dependencies.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
@@ -135,6 +136,7 @@ class DependencyInjection {
       StatisticsDependencies.init();
       SubscriptionsDependencies.init();
       SettingsDependencies.init();
+      NotificationsDependencies.init();
       WhatsappDependencies.init();
 
       AppLogger.debug('Features initialized successfully');

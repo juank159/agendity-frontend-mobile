@@ -74,4 +74,12 @@ class BusinessSettingsModel {
         slug: slug,
         openingHours: openingHours,
       );
+
+  /// Forma de la API (para guardar en local la respuesta de un PATCH).
+  Map<String, dynamic> toJson() => {
+        'timezone': timeZone,
+        'name': name,
+        'slug': slug,
+        ...openingHoursUpdate(openingHours),
+      };
 }

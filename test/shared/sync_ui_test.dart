@@ -232,6 +232,10 @@ void main() {
 
       expect(find.text('Requieren atención'), findsOneWidget);
       expect(find.text('Cliente nuevo'), findsOneWidget);
+      // Rechazada: "Descartar" y "Reintentar"; sin el "Sincronizar" de la
+      // tarjeta (solo el de la cabecera).
+      expect(find.text('Reintentar'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Sincronizar ahora'), findsNothing);
       expect(find.text('Ana Ruiz'), findsOneWidget);
       expect(find.textContaining('El teléfono no es válido'), findsOneWidget);
 
@@ -257,5 +261,47 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
     });
+
+    testWidgets('Pendiente sin respuesta: sin "Descartar"; "Sincronizar ahora"',
+        (tester) async {
+      await tester.runAsync(() async {
+        server.offline = true;
+        await createClient('Ana', '3001112233');
+        await engine.syncNow();
+      });
+      await pumpApp(tester, const SyncPendingScreen());
+      await tester.runAsync(sync.loadEntries);
+      await tester.pump();
+
+      expect(find.text('Esperando envío'), findsOneWidget);
+      expect(find.text('Cliente nuevo'), findsOneWidget);
+      expect(find.text('Descartar'), findsNothing);
+      expect(find.text('Reintentar'), findsNothing);
+      final cardSync = find.widgetWithText(TextButton, 'Sincronizar ahora');
+      expect(cardSync, findsOneWidget);
+
+      server.offline = false;
+      await tester.runAsync(() async {
+        await tester.tap(cardSync);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await sync.loadEntries();
+      });
+      await tester.pump();
+      expect(sync.entries, isEmpty);
+      expect(server.clients, hasLength(1));
+      expect(find.text('Todo está en el servidor'), findsOneWidget);
+    });
+  });
+
+  test('descartar una pendiente no hace nada (sin respuesta del servidor)',
+      () async {
+    sync.onInit();
+    server.offline = true;
+    await createClient('Ana', '3001112233');
+    await engine.syncNow();
+    await sync.loadEntries();
+    expect(await sync.discard(sync.pendingEntries.single), isFalse);
+    expect(sync.pendingEntries, hasLength(1));
+    sync.onClose();
   });
 }

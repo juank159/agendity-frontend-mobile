@@ -107,10 +107,13 @@ class SyncController extends GetxController with WidgetsBindingObserver {
   }
 
   /// Sin confirmación: la pide la pantalla (es lo único que pierde datos).
-  Future<void> discard(OutboxEntry entry) async {
-    await _engine.discard(entry.mutationId);
+  /// `false` si no se descartó: una operación **pendiente** aún no tiene
+  /// respuesta del servidor y no se puede descartar (podría estar aplicada).
+  Future<bool> discard(OutboxEntry entry) async {
+    final discarded = await _engine.discard(entry.mutationId);
     await loadEntries();
-    dataVersion.value++;
+    if (discarded) dataVersion.value++;
+    return discarded;
   }
 
   /// Tras cerrar o iniciar sesión: la bandeja es de otra base.

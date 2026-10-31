@@ -37,9 +37,15 @@ class _SyncPendingScreenState extends State<SyncPendingScreen> {
       destructive: true,
     );
     if (!confirmed) return;
-    await sync.discard(entry);
-    AppSnackbar.info('Se descartó "${SyncEntryText.action(entry)}"',
-        title: 'Cambio descartado');
+    if (await sync.discard(entry)) {
+      AppSnackbar.info('Se descartó "${SyncEntryText.action(entry)}"',
+          title: 'Cambio descartado');
+    } else {
+      AppSnackbar.warning(
+          'Ya se está enviando y aún no hay respuesta del servidor. '
+          'Sincroniza y, si lo rechaza, podrás descartarlo.',
+          title: 'No se descartó');
+    }
   }
 
   Future<void> _retry(OutboxEntry entry) async {
@@ -74,7 +80,10 @@ class _SyncPendingScreenState extends State<SyncPendingScreen> {
               ],
               if (pending.isNotEmpty) ...[
                 const _Title('Esperando envío'),
-                for (final entry in pending) _EntryCard(entry: entry),
+                // Sin respuesta del servidor: no se descartan; solo se
+                // puede pedir que se envíen ya.
+                for (final entry in pending)
+                  _EntryCard(entry: entry, onSyncNow: sync.syncNow),
               ],
               if (attention.isEmpty && pending.isEmpty)
                 const SizedBox(
@@ -163,7 +172,11 @@ class _EntryCard extends StatelessWidget {
   final VoidCallback? onRetry;
   final VoidCallback? onDiscard;
 
-  const _EntryCard({required this.entry, this.onRetry, this.onDiscard});
+  /// Solo en las pendientes, en lugar de "Reintentar".
+  final VoidCallback? onSyncNow;
+
+  const _EntryCard(
+      {required this.entry, this.onRetry, this.onDiscard, this.onSyncNow});
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +217,17 @@ class _EntryCard extends StatelessWidget {
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             ),
+            if (!needsUser && onSyncNow != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Obx(() => TextButton.icon(
+                      onPressed: Get.find<SyncController>().isSyncing
+                          ? null
+                          : onSyncNow,
+                      icon: const Icon(Icons.sync),
+                      label: const Text('Sincronizar ahora'),
+                    )),
+              ),
             if (needsUser)
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,

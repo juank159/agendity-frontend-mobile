@@ -3,41 +3,24 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:image/image.dart' as img;
-import 'package:login_signup/features/clients/data/models/client_import_result_model.dart';
-import 'package:login_signup/features/clients/data/models/client_model.dart';
-import 'package:login_signup/features/clients/data/models/client_page_model.dart';
-import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
 
-/// Rutas `/clients` y `POST /upload/image`. Owner y Employee (los clientes son
-/// del negocio). Los errores (400/403/404/409, red) salen como `DioException`
-/// y los traduce `safeCall` en el repositorio.
+/// Lo que de clientes sigue yendo directo al servidor (10.02): la foto
+/// (`POST /upload/image`, solo con conexión) y la lectura de un cliente para
+/// deshacer en local una operación rechazada (`GET /clients/:id`). Altas,
+/// ediciones, borrados e importación van por la bandeja de salida
+/// (`client.*`, `SyncEngine`) y las lecturas, a la base local. Los errores
+/// salen como `DioException` (los traduce `safeCall`/`ErrorMapper`).
 abstract class ClientsRemoteDataSource {
-  /// `GET /clients` con paginación, filtros y orden.
-  Future<ClientPageModel> getClients(ClientsQuery query);
-
-  /// `GET /clients/:id`.
-  Future<ClientModel> getClientById(String id);
-
-  /// `POST /clients`. Responde 201 con el cliente creado.
-  Future<ClientModel> createClient(ClientModel client);
-
-  /// `PATCH /clients/:id`. Responde 200 con el cliente.
-  Future<ClientModel> updateClient(String id, ClientModel client);
-
-  /// `DELETE /clients/:id`. Responde 200 sin cuerpo.
-  Future<void> deleteClient(String id);
-
-  /// `POST /clients/batch`. Responde 201 con el resultado parcial.
-  Future<ClientImportResultModel> importClients(List<ClientModel> clients);
+  /// `GET /clients/:id`: el cliente con la forma de la API.
+  Future<Map<String, dynamic>> fetchClient(String id);
 
   /// `POST /upload/image?folder=clients` (multipart `file`, JPEG comprimido).
-  /// Responde `{url, message}`. Archivo inexistente →
-  /// `InvalidClientDataFailure` sin llamar al backend.
+  /// Responde `{url, message}`.
   Future<String> uploadImage(String filePath);
 }
 
 class ClientsRemoteDataSourceImpl implements ClientsRemoteDataSource {
-  /// Subidas e importación en lote: timeout largo por petición (el Dio es
+  /// Subidas: timeout largo por petición (el Dio es
   /// compartido y no se mutan sus `options`).
   static const Duration longTimeout = Duration(seconds: 60);
 
@@ -52,61 +35,9 @@ class ClientsRemoteDataSourceImpl implements ClientsRemoteDataSource {
   ClientsRemoteDataSourceImpl(this._dio);
 
   @override
-  Future<ClientPageModel> getClients(ClientsQuery query) async {
-    final search = query.normalizedSearch;
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/clients',
-      queryParameters: {
-        'page': query.page,
-        'limit': query.limit,
-        if (search != null) 'search': search,
-        'sortBy': query.sortBy.apiValue,
-        'sortOrder': query.direction.apiValue,
-        'status': query.status.apiValue,
-        'source': query.source.apiValue,
-      },
-    );
-    return ClientPageModel.fromJson(response.data!);
-  }
-
-  @override
-  Future<ClientModel> getClientById(String id) async {
+  Future<Map<String, dynamic>> fetchClient(String id) async {
     final response = await _dio.get<Map<String, dynamic>>('/clients/$id');
-    return ClientModel.fromJson(response.data!);
-  }
-
-  @override
-  Future<ClientModel> createClient(ClientModel client) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      '/clients',
-      data: client.toJson(),
-    );
-    return ClientModel.fromJson(response.data!);
-  }
-
-  @override
-  Future<ClientModel> updateClient(String id, ClientModel client) async {
-    final response = await _dio.patch<Map<String, dynamic>>(
-      '/clients/$id',
-      data: client.toJson(),
-    );
-    return ClientModel.fromJson(response.data!);
-  }
-
-  @override
-  Future<void> deleteClient(String id) async {
-    await _dio.delete<void>('/clients/$id');
-  }
-
-  @override
-  Future<ClientImportResultModel> importClients(
-      List<ClientModel> clients) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      '/clients/batch',
-      data: {'clients': clients.map((c) => c.toImportJson()).toList()},
-      options: Options(sendTimeout: longTimeout, receiveTimeout: longTimeout),
-    );
-    return ClientImportResultModel.fromJson(response.data!);
+    return response.data ?? const {};
   }
 
   @override

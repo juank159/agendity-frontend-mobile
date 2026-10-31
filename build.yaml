@@ -1,0 +1,12 @@
+# Generación de código (10.02): solo drift, y solo para la base local
+# (`lib/core/database/`: la base y sus tablas).
+targets:
+  $default:
+    sources:
+      - lib/core/database/**
+      - pubspec.*
+      - $package$
+    builders:
+      drift_dev:
+        options:
+          store_date_time_values_as_text: true

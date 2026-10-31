@@ -34,6 +34,10 @@ class SessionService {
   /// Lo asigna la DI de auth (lee `GET /auth/me` con el token ya guardado).
   TimeZoneLoader? loadTimeZone;
 
+  /// Hay sesión lista (tras `start` o un `restore` con sesión). La DI lo
+  /// conecta con el motor de sincronización (10.02).
+  void Function()? onSessionReady;
+
   String? _timeZone;
 
   SessionService({
@@ -63,6 +67,7 @@ class SessionService {
     // `/auth/me` pudo responder 401 (cuenta desactivada): entonces
     // `handleSessionExpired` ya borró el token y no hay sesión que devolver.
     if (await _tokenStore.readToken() != session.token) return null;
+    onSessionReady?.call();
     return session.withTimeZone(_timeZone);
   }
 
@@ -81,6 +86,7 @@ class SessionService {
     }
     await _tokenStore.saveToken(token);
     await _refreshTimeZone();
+    onSessionReady?.call();
     return session.withTimeZone(_timeZone);
   }
 

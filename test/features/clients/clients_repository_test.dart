@@ -4,10 +4,17 @@ import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:login_signup/core/database/app_database.dart';
+import 'package:login_signup/core/database/local_database_holder.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/outbox_store.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/features/clients/data/datasources/clients_local_datasource.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
 import 'package:login_signup/features/clients/data/repositories/client_repository_impl.dart';
+import 'package:login_signup/features/clients/data/sync/clients_sync_handler.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
 import 'package:login_signup/features/clients/domain/failures/client_failures.dart';
@@ -22,7 +29,8 @@ import 'package:login_signup/features/clients/domain/usecases/upload_client_imag
 
 import '../../core/network/fake_http_client_adapter.dart';
 import '../../core/session/memory_token_store.dart';
-import 'client_model_test.dart' show backendClient, backendPage;
+import '../../core/sync/fake_sync_api.dart';
+import 'client_model_test.dart' show backendClient;
 
 Failure? leftOf(Either<Failure, Object?> result) =>
     result.fold((f) => f, (_) => null);
@@ -47,31 +55,17 @@ ClientEntity contact(int i, {String? email}) => ClientEntity(
       email: email,
     );
 
-/// Respuesta de `POST /clients/batch` que importa todo lo enviado salvo los
-/// teléfonos de [existing].
-ResponseBody batchResponse(RequestOptions options,
-    {Set<String> existing = const {}}) {
-  final rows =
-      ((options.data as Map)['clients'] as List).cast<Map<String, dynamic>>();
-  final errors = [
-    for (final row in rows)
-      if (existing.contains(row['phone']))
-        {'data': row, 'error': 'Cliente con teléfono ${row['phone']} ya existe'}
-  ];
-  return jsonBody(201, {
-    'imported': [],
-    'errors': errors,
-    'success': rows.length - errors.length,
-    'failed': errors.length,
-    'total': rows.length,
-  });
-}
-
+/// Repositorio de clientes sin conexión (10.02): lee la base local, escribe
+/// en local + bandeja. La red solo se usa para la foto.
 void main() {
   late FakeHttpClientAdapter adapter;
+  late LocalDatabaseHolder databases;
   late ClientsRepositoryImpl repository;
+  late AppDatabase db;
+  late int writes;
+  var ids = 0;
 
-  setUp(() {
+  setUp(() async {
     adapter = FakeHttpClientAdapter((_) => jsonBody(200, {}));
     final dio = buildApiClient(
       baseUrl: 'http://api.test/api',
@@ -80,55 +74,96 @@ void main() {
       retryDelay: (_) => Duration.zero,
       enableLogs: false,
     );
-    repository = ClientsRepositoryImpl(ClientsRemoteDataSourceImpl(dio));
+    databases = memoryDatabases();
+    writes = 0;
+    ids = 0;
+    repository = ClientsRepositoryImpl(
+      remote: ClientsRemoteDataSourceImpl(dio),
+      store: OfflineStore(
+        databases: databases,
+        clock: () => DateTime.utc(2026, 10, 31, 15),
+        newId: () => '0192d000-0000-7000-8000-${(++ids).toString().padLeft(12, '0')}',
+        onWrite: () => writes++,
+      ),
+    );
+    db = await databases.require();
   });
 
-  group('lectura', () {
-    test(
-        'GET /clients: página tipada, query del PaginationDto, token del núcleo',
-        () async {
-      adapter.handler = (_) => jsonBody(200,
-          backendPage([backendClient(), backendClient(id: 'cli-2')], page: 2));
-      final page =
-          rightOf(await GetClientsPageUseCase(repository)(const ClientsQuery(
-        page: 2,
-        search: '  ana ',
-        sortBy: ClientSortField.name,
-        direction: SortDirection.asc,
-        source: ClientSourceFilter.imported,
-      )));
-      expect(page.items.length, 2);
-      expect(page.items.first, isA<ClientEntity>());
-      expect(page.hasNextPage, true);
+  tearDown(() => databases.close());
 
-      final request = adapter.requests.single;
-      expect(request.method, 'GET');
-      expect(request.uri.path, '/api/clients');
-      expect(request.uri.queryParameters, {
-        'page': '2',
-        'limit': '20',
-        'search': 'ana',
-        'sortBy': 'name',
-        'sortOrder': 'ASC',
-        'status': 'all',
-        'source': 'imported',
-      });
-      expect(request.headers['Authorization'], 'Bearer jwt');
-      expect(request.headers.containsKey('tenant-id'), false);
+  /// Clientes que bajaron del servidor.
+  Future<void> seed(List<Map<String, dynamic>> rows) async {
+    for (final row in rows) {
+      await const ClientsLocalDataSource()
+          .upsertFields(db, row['id'] as String, row);
+    }
+  }
+
+  group('lectura (siempre local, sin red)', () {
+    setUp(() => seed([
+          backendClient(id: 'c1', name: 'Ana', phone: '3000000001'),
+          {
+            ...backendClient(id: 'c2', name: 'Beto', phone: '3000000002'),
+            'isFromDevice': true,
+            'created_at': '2026-10-22T08:00:00.000-05:00',
+          },
+          {
+            ...backendClient(id: 'c3', name: 'Carla', phone: '3000000003'),
+            'isActive': false,
+            'email': 'carla@correo.co',
+            'created_at': '2026-10-23T08:00:00.000-05:00',
+          },
+        ]));
+
+    test('por defecto: más recientes primero, con metadatos de página',
+        () async {
+      final page = rightOf(
+          await GetClientsPageUseCase(repository)(const ClientsQuery()));
+      expect(page.items.map((c) => c.id), ['c3', 'c2', 'c1']);
+      expect(page.total, 3);
+      expect(page.totalPages, 1);
+      expect(adapter.requests, isEmpty);
     });
 
-    test('sin búsqueda no se envía search; por defecto created_at DESC',
-        () async {
-      adapter.handler = (_) => jsonBody(200, backendPage([]));
-      await repository.getClients(const ClientsQuery(search: '   '));
-      final query = adapter.requests.single.uri.queryParameters;
-      expect(query.containsKey('search'), false);
-      expect(query['sortBy'], 'created_at');
-      expect(query['sortOrder'], 'DESC');
+    test('búsqueda en nombre, email y teléfono (sin mayúsculas)', () async {
+      Future<List<String?>> search(String text) async =>
+          rightOf(await repository.getClients(ClientsQuery(search: text)))
+              .items
+              .map((c) => c.id)
+              .toList();
+      expect(await search('CARLA@'), ['c3']);
+      expect(await search('0000002'), ['c2']);
+      expect(await search(' BETO '), ['c2']);
+      expect(await search('beto pérez'), ['c2'], reason: 'nombre completo');
+      expect(await search('100%'), isEmpty, reason: 'comodines escapados');
     });
 
-    test('página o tamaño fuera de rango → ValidationFailure sin red',
-        () async {
+    test('filtros de estado y origen, orden y paginación', () async {
+      expect(
+          rightOf(await repository.getClients(
+                  const ClientsQuery(status: ClientStatusFilter.inactive)))
+              .items
+              .single
+              .id,
+          'c3');
+      expect(
+          rightOf(await repository.getClients(
+                  const ClientsQuery(source: ClientSourceFilter.imported)))
+              .items
+              .single
+              .id,
+          'c2');
+      final page2 = rightOf(await repository.getClients(const ClientsQuery(
+          page: 2,
+          limit: 2,
+          sortBy: ClientSortField.name,
+          direction: SortDirection.asc)));
+      expect(page2.items.map((c) => c.name), ['Carla']);
+      expect(page2.hasPrevPage, true);
+      expect(page2.hasNextPage, false);
+    });
+
+    test('página o tamaño fuera de rango → ValidationFailure', () async {
       final useCase = GetClientsPageUseCase(repository);
       for (final query in const [
         ClientsQuery(page: 0),
@@ -137,163 +172,122 @@ void main() {
       ]) {
         expect(leftOf(await useCase(query)), isA<ValidationFailure>());
       }
-      expect(adapter.requests, isEmpty);
     });
 
-    test(
-        'GET /clients/:id; id mal formado → 400 BAD_REQUEST → ValidationFailure',
-        () async {
-      adapter.handler = (_) => jsonBody(200, backendClient());
-      expect(
-          rightOf(await GetClientByIdUseCase(repository)('cli-1')).id, 'cli-1');
-      expect(adapter.requests.single.uri.path, '/api/clients/cli-1');
-
-      adapter.handler =
-          (_) => errorBody(400, 'BAD_REQUEST', 'Formato de dato inválido');
-      final failure = leftOf(await repository.getClientById('no-uuid'));
-      expect(failure, isA<ValidationFailure>());
-      expect(failure!.statusCode, 400);
-    });
-
-    test('cliente de otro negocio → NotFoundFailure', () async {
-      adapter.handler =
-          (_) => errorBody(404, 'NOT_FOUND', 'Cliente no encontrado');
-      expect(leftOf(await repository.getClientById('cli-x')),
+    test('por id; inexistente → NotFoundFailure', () async {
+      expect(rightOf(await GetClientByIdUseCase(repository)('c1')).name, 'Ana');
+      expect(leftOf(await repository.getClientById('no-existe')),
           isA<NotFoundFailure>());
     });
 
-    test('403 → ForbiddenFailure', () async {
-      adapter.handler = (_) => errorBody(403, 'FORBIDDEN', 'Sin permiso');
-      expect(leftOf(await repository.getClients(const ClientsQuery())),
-          isA<ForbiddenFailure>());
-    });
-
-    test('sin conexión → NetworkFailure (tras los reintentos del GET)',
-        () async {
-      adapter.handler = connectionError;
-      expect(leftOf(await repository.getClients(const ClientsQuery())),
-          isA<NetworkFailure>());
-      expect(adapter.requests.length, greaterThan(1));
+    test('sin sesión → failure, sin lanzar', () async {
+      final none = ClientsRepositoryImpl(
+        remote: ClientsRemoteDataSourceImpl(Dio()),
+        store: OfflineStore(databases: memoryDatabases(userId: () => null)),
+      );
+      expect(leftOf(await none.getClients(const ClientsQuery())),
+          isA<Failure>());
     });
   });
 
-  group('alta y edición', () {
-    test('POST /clients sin email: normalizado y con email ""', () async {
-      adapter.handler = (_) => jsonBody(201, backendClient(email: null));
+  group('alta, edición y borrado (local + bandeja)', () {
+    test('alta: id UUID v7 de la app, normalizada, en local y en la bandeja',
+        () async {
       final created = rightOf(await CreateClientUseCase(repository)(newClient));
+      expect(created.id, startsWith('0192d000'));
+      expect(created.name, 'Ana');
+      expect(created.phone, '+573001234567');
       expect(created.email, isNull);
+      expect(created.createdAt, isNotNull);
 
-      final request = adapter.requests.single;
-      expect(request.method, 'POST');
-      expect(request.uri.path, '/api/clients');
-      final body = request.data as Map;
-      expect(body['name'], 'Ana');
-      expect(body['lastname'], 'Pérez');
-      expect(body['email'], '');
-      expect(body['phone'], '+573001234567');
-      expect(body.containsKey('ownerId'), false);
-      expect(body.containsKey('id'), false);
+      final entry = (await OutboxStore.all(db)).single;
+      expect(entry.type, 'client.create');
+      expect(entry.entity, 'clients');
+      expect(entry.entityId, created.id);
+      expect(entry.payload['phone'], '+573001234567');
+      expect(entry.payload.containsKey('id'), false);
+      expect(entry.clientTime, '2026-10-31T15:00:00.000Z');
+      expect(writes, 1, reason: 'avisa al motor');
+      expect(adapter.requests, isEmpty, reason: 'nada va a la red');
+      expect(rightOf(await repository.getClientById(created.id!)).name, 'Ana');
     });
 
-    test('datos inválidos → InvalidClientDataFailure sin llamar al backend',
+    test('teléfono o email repetidos en local → failures de duplicado',
         () async {
-      final failure = leftOf(await CreateClientUseCase(repository)(
-          const ClientEntity(
-              name: ' ', phone: '300 12', email: 'no-es-email')));
-      expect(failure, isA<InvalidClientDataFailure>());
-      expect(failure!.details, [
-        ClientRules.nameRequired,
-        ClientRules.phoneTooShort,
-        ClientRules.invalidEmail,
+      await seed([
+        {...backendClient(id: 'c1', phone: '+573001234567'), 'email': 'a@b.co'}
       ]);
-      expect(adapter.requests, isEmpty);
+      final phone = leftOf(await repository.createClient(
+          const ClientEntity(name: 'X', phone: '+573001234567')));
+      expect(phone, isA<DuplicateClientPhoneFailure>());
+      expect(phone!.message, 'Ya existe un cliente con el teléfono: +573001234567');
+      expect(
+          leftOf(await repository.createClient(const ClientEntity(
+              name: 'X', phone: '3110000000', email: 'A@B.CO'))),
+          isA<DuplicateClientFailure>());
+      expect(await OutboxStore.all(db), isEmpty);
     });
 
-    test('409 DUPLICATE_EMAIL → DuplicateClientFailure con el texto del backend',
+    test('datos inválidos → InvalidClientDataFailure sin escribir', () async {
+      expect(
+          leftOf(await CreateClientUseCase(repository)(
+              const ClientEntity(name: '', phone: '12'))),
+          isA<InvalidClientDataFailure>());
+      expect(await OutboxStore.all(db), isEmpty);
+    });
+
+    test('edición: solo los campos que cambian; sin cambios no encola',
         () async {
-      adapter.handler = (_) => errorBody(409, 'DUPLICATE_EMAIL',
-          'Ya existe un cliente con el email: ana@example.com');
-      for (final result in [
-        await CreateClientUseCase(repository)(newClient),
-        await UpdateClientUseCase(repository)(newClient.copyWith(id: 'cli-1')),
-      ]) {
-        final failure = leftOf(result);
-        expect(failure, isA<DuplicateClientFailure>());
-        expect(failure, isNot(isA<DuplicateClientPhoneFailure>()));
-        expect(failure, isA<ConflictFailure>());
-        expect(failure!.message,
-            'Ya existe un cliente con el email: ana@example.com');
-        expect(failure.code, ApiErrorCode.duplicateEmail);
-        expect(failure.statusCode, 409);
-      }
+      await seed([backendClient(id: 'c1', name: 'Ana', phone: '3000000001')]);
+      final current = rightOf(await repository.getClientById('c1'));
+      final edited = rightOf(await UpdateClientUseCase(repository)(
+          current.copyWith(name: 'Ana María', notes: 'VIP')));
+      expect(edited.name, 'Ana María');
+      final entry = (await OutboxStore.all(db)).single;
+      expect(entry.type, 'client.update');
+      expect(entry.payload, {'name': 'Ana María', 'notes': 'VIP'});
+
+      rightOf(await repository.updateClient(edited));
+      expect((await OutboxStore.all(db)).length, 1);
     });
 
-    test(
-        '409 DUPLICATE_PHONE → DuplicateClientPhoneFailure con el texto del backend',
-        () async {
-      adapter.handler = (_) => errorBody(409, 'DUPLICATE_PHONE',
-          'Ya existe un cliente con el teléfono: 3001234567');
-      for (final result in [
-        await CreateClientUseCase(repository)(newClient),
-        await UpdateClientUseCase(repository)(newClient.copyWith(id: 'cli-1')),
-      ]) {
-        final failure = leftOf(result);
-        expect(failure, isA<DuplicateClientPhoneFailure>());
-        expect(failure, isA<DuplicateClientFailure>());
-        expect(failure!.code, ApiErrorCode.duplicatePhone);
-        expect(failure.message,
-            'Ya existe un cliente con el teléfono: 3001234567');
-      }
+    test('edición de uno inexistente → NotFoundFailure', () async {
+      expect(
+          leftOf(await repository.updateClient(
+              const ClientEntity(id: 'nada', name: 'X', phone: '3000000009'))),
+          isA<NotFoundFailure>());
     });
 
-    test('409 CONFLICT al guardar ya no es un duplicado: ConflictFailure genérico',
-        () async {
-      adapter.handler = (_) => errorBody(409, 'CONFLICT', 'Conflicto');
-      final failure = leftOf(await repository.createClient(newClient));
-      expect(failure, isA<ConflictFailure>());
-      expect(failure, isNot(isA<DuplicateClientFailure>()));
-      expect(failure!.code, ApiErrorCode.conflict);
+    test('borrado: desaparece en local y queda client.delete', () async {
+      await seed([backendClient(id: 'c1', phone: '3000000001')]);
+      rightOf(await DeleteClientUseCase(repository)('c1'));
+      expect(leftOf(await repository.getClientById('c1')),
+          isA<NotFoundFailure>());
+      expect((await OutboxStore.all(db)).single.type, 'client.delete');
     });
 
-    test('PATCH /clients/:id: email vacío lo quita; sin id → failure local',
-        () async {
-      adapter.handler = (_) => jsonBody(200, backendClient(email: null));
-      final updated = rightOf(await UpdateClientUseCase(repository)(
-          newClient.copyWith(id: 'cli-1')));
-      expect(updated.email, isNull);
-      final request = adapter.requests.single;
-      expect(request.method, 'PATCH');
-      expect(request.uri.path, '/api/clients/cli-1');
-      expect((request.data as Map)['email'], '');
-
-      final failure = leftOf(await UpdateClientUseCase(repository)(newClient));
-      expect(failure, isA<InvalidClientDataFailure>());
-      expect(adapter.requests.length, 1);
-    });
-  });
-
-  group('borrado', () {
-    test('DELETE /clients/:id (200 sin cuerpo) → Right(unit)', () async {
-      adapter.handler = (_) => ResponseBody.fromString('', 200);
-      expect(await DeleteClientUseCase(repository)('cli-1'), const Right(unit));
-      expect(adapter.requests.single.method, 'DELETE');
-      expect(adapter.requests.single.uri.path, '/api/clients/cli-1');
-    });
-
-    test('409 CONFLICT (FK de citas) → ClientHasHistoryFailure', () async {
-      adapter.handler = (_) => errorBody(409, 'CONFLICT',
-          'No se puede realizar la operación porque hay registros relacionados');
-      final failure = leftOf(await repository.deleteClient('cli-1'));
-      expect(failure, isA<ClientHasHistoryFailure>());
-      expect(failure!.message, ClientHasHistoryFailure.defaultMessage);
+    test('de punta a punta con el motor: sube y lo local queda igual al '
+        'servidor', () async {
+      final server = FakeSyncServer();
+      final engine = SyncEngine(
+          databases: databases,
+          api: server,
+          handlers: [ClientsSyncHandler(const ClientsLocalDataSource())]);
+      final created = rightOf(await repository.createClient(
+          const ClientEntity(name: 'Ana', phone: '3001112222')));
+      await engine.syncNow();
+      expect(server.clients.keys, [created.id]);
+      expect(await OutboxStore.all(db), isEmpty);
+      final local = rightOf(await repository.getClientById(created.id!));
+      expect(local.isActive, true);
+      await engine.dispose();
     });
   });
 
   group('importación', () {
-    test('resultado parcial: rechazados locales y del backend, sin email',
+    test('rechazos locales (reglas y teléfonos ya registrados), sin red',
         () async {
-      adapter.handler =
-          (options) => batchResponse(options, existing: {'3000000002'});
+      await seed([backendClient(id: 'c1', phone: '3000000002')]);
       final result = rightOf(await ImportClientsUseCase(repository)([
         contact(1, email: 'uno@correo.co'),
         contact(2),
@@ -311,47 +305,22 @@ void main() {
         ImportClientsUseCase.repeatedPhone,
         ClientRules.phoneTooShort,
         ClientRules.nameRequired,
-        'Cliente con teléfono 3000000002 ya existe',
+        'Ya existe un cliente con el teléfono: 3000000002',
       ]);
-
-      final rows = ((adapter.requests.single.data as Map)['clients'] as List)
-          .cast<Map<String, dynamic>>();
-      expect(adapter.requests.single.uri.path, '/api/clients/batch');
-      expect(rows.length, 3);
-      expect(rows[0]['email'], 'uno@correo.co');
-      expect(rows[1].containsKey('email'), false);
-      expect(rows[2].containsKey('email'), false,
-          reason: 'email inválido fuera');
-      expect(rows.any((r) => r['email'] == 'no-email@example.com'), false);
+      final entries = await OutboxStore.all(db);
+      expect(entries.map((e) => e.type), ['client.create', 'client.create']);
+      expect(entries.first.payload['email'], 'uno@correo.co');
+      expect(adapter.requests, isEmpty);
     });
 
-    test('lotes de 50; si falla un lote posterior se detiene con lo importado',
+    test('lotes de 50: todos en la bandeja; lista vacía → failure local',
         () async {
-      var calls = 0;
-      adapter.handler = (options) {
-        calls++;
-        if (calls == 2) connectionError(options);
-        return batchResponse(options);
-      };
-      final contacts = [for (var i = 0; i < 120; i++) contact(i)];
-      final result = rightOf(await ImportClientsUseCase(repository)(contacts));
-      expect(adapter.requests.length, 2, reason: 'POST no se reintenta');
-      expect(result.requested, 120);
-      expect(result.imported, 50);
-      expect(result.notSent, 70);
-      expect(result.failed, 70);
-      expect(result.isComplete, false);
-      expect(result.interruption, isA<NetworkFailure>());
-    });
-
-    test('si falla el primer lote → Left; lista vacía → failure local',
-        () async {
-      adapter.handler = (_) => errorBody(403, 'FORBIDDEN', 'Sin permiso');
-      expect(leftOf(await ImportClientsUseCase(repository)([contact(1)])),
-          isA<ForbiddenFailure>());
+      final result = rightOf(await ImportClientsUseCase(repository)(
+          [for (var i = 0; i < 120; i++) contact(i)]));
+      expect(result.imported, 120);
+      expect((await OutboxStore.all(db)).length, 120);
       expect(leftOf(await ImportClientsUseCase(repository)(const [])),
           isA<InvalidClientDataFailure>());
-      expect(adapter.requests.length, 1);
     });
   });
 
@@ -395,6 +364,7 @@ void main() {
       expect(failure!.message, 'Tipo de archivo no permitido');
     });
   });
+
 
   group('ClientRules', () {
     test('normalizePhone conserva el + inicial y quita lo demás', () {

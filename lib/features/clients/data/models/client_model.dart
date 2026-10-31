@@ -125,14 +125,4 @@ class ClientModel {
         'birthday': birthday == null ? null : DateCodec.encodeDay(birthday!),
         'showNotes': showNotes,
       };
-
-  /// Una fila de `POST /clients/batch`: solo lo que trae un contacto; sin
-  /// email si no tiene (el backend ya no lo exige, 2.20).
-  Map<String, dynamic> toImportJson() => {
-        'name': name,
-        'lastname': lastname,
-        if (email != null) 'email': email,
-        'phone': phone,
-        if (deviceContactId != null) 'deviceContactId': deviceContactId,
-      };
 }

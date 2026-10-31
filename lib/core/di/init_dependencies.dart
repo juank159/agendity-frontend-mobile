@@ -4,7 +4,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 
+import 'package:login_signup/core/database/local_database_holder.dart';
 import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/sync_api.dart';
+import 'package:login_signup/core/sync/sync_engine.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/core/session/time_zone_store.dart';
@@ -84,11 +88,35 @@ class DependencyInjection {
         permanent: true,
       );
 
+      _initOffline();
+
       AppLogger.debug('Core dependencies initialized successfully');
     } catch (e) {
       AppLogger.error('Error initializing core dependencies', e);
       rethrow;
     }
+  }
+
+  /// Sin conexión (10.02, D-18): base local por usuario, motor de
+  /// sincronización y el almacén que usan los repositorios. Cada feature
+  /// registra su `SyncEntityHandler` en el motor.
+  static void _initOffline() {
+    final session = Get.find<SessionService>();
+    final databases = LocalDatabaseHolder(
+        currentUserId: () async => (await session.current())?.userId);
+    final engine = SyncEngine(
+      databases: databases,
+      api: DioSyncApi(Get.find<Dio>(tag: apiClientTag)),
+    );
+    Get.put<LocalDatabaseHolder>(databases, permanent: true);
+    Get.put<SyncEngine>(engine, permanent: true);
+    Get.put<OfflineStore>(
+      OfflineStore(databases: databases, onWrite: engine.requestSync),
+      permanent: true,
+    );
+    // Al iniciar sesión (o el auto-login) sincroniza ya; luego, periódico.
+    session.onSessionReady = () => engine.requestSync(immediate: true);
+    engine.start();
   }
 
   static Future<void> _initFeatures() async {

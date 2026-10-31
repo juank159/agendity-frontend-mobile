@@ -88,6 +88,7 @@ class SyncEngine {
   static const cursorKey = 'cursor';
   static const deviceKey = 'device_id';
   static const entitiesKey = 'entities';
+  static const epochKey = 'server_epoch';
 
   SyncEngine({
     required LocalDatabaseHolder databases,
@@ -275,20 +276,73 @@ class SyncEngine {
 
   Future<void> _pull(AppDatabase db) async {
     var cursor = await _meta(db, cursorKey) ?? '0';
+    var rebuilding = false;
     while (true) {
       final page = await _api.changes(cursor, limit: pullPageSize);
+      if (!rebuilding && await _isStale(db, cursor, page)) {
+        // La base local es de otro servidor o de antes de una restauración:
+        // se baja todo de nuevo (la bandeja no se toca).
+        await _resetLocalData(db, page.epoch);
+        cursor = '0';
+        rebuilding = true;
+        continue;
+      }
+      if (page.epoch != null && await _meta(db, epochKey) == null) {
+        await _setMeta(db, epochKey, page.epoch!);
+      }
       await db.transaction(() async {
         for (final change in page.changes) {
-          await _applyChange(db, change);
+          await _applyChange(db, change, replayPending: !rebuilding);
         }
         await _setMeta(db, cursorKey, page.cursor);
       });
       cursor = page.cursor;
-      if (!page.hasMore) return;
+      if (!page.hasMore) break;
     }
+    if (rebuilding) await _replayAllPending(db);
   }
 
-  Future<void> _applyChange(AppDatabase db, SyncChange change) async {
+  /// ¿Lo local no corresponde a este servidor? Otra base ([ChangesPage.epoch]
+  /// distinto del guardado) o un cursor por delante de su última versión
+  /// ([ChangesPage.head]).
+  Future<bool> _isStale(AppDatabase db, String cursor, ChangesPage page) async {
+    final stored = await _meta(db, epochKey);
+    if (page.epoch != null && stored != null && page.epoch != stored) {
+      return true;
+    }
+    final head = BigInt.tryParse(page.head ?? '');
+    final local = BigInt.tryParse(cursor);
+    return head != null && local != null && local > head;
+  }
+
+  /// Borra los datos bajados (no la bandeja) y deja el cursor en 0.
+  Future<void> _resetLocalData(AppDatabase db, String? epoch) async {
+    AppLogger.debug('Base local de otro servidor: se baja todo de nuevo');
+    await db.transaction(() async {
+      await db.delete(db.localDocuments).go();
+      await db.delete(db.localClients).go();
+      await db.delete(db.idRemaps).go();
+      await _setMeta(db, cursorKey, '0');
+      if (epoch != null) await _setMeta(db, epochKey, epoch);
+    });
+  }
+
+  /// Tras bajar todo de nuevo: lo local = servidor + lo pendiente de subir,
+  /// en orden (lo rechazado sigue en la bandeja, como siempre, sin aplicar).
+  Future<void> _replayAllPending(AppDatabase db) async {
+    await db.transaction(() async {
+      for (final entry in await OutboxStore.all(db)) {
+        if (entry.status != OutboxStatus.pending &&
+            !entry.isTransientRejection) {
+          continue;
+        }
+        await _handlers[entry.entity]?.replay(db, entry);
+      }
+    });
+  }
+
+  Future<void> _applyChange(AppDatabase db, SyncChange change,
+      {bool replayPending = true}) async {
     final handler = _handlers[change.entity];
     if (handler == null) return; // entidad que esta versión aún no guarda
     switch (change.op) {
@@ -296,6 +350,7 @@ class SyncEngine {
         final data = change.data;
         if (data == null) return;
         await handler.upsert(db, change.id, data);
+        if (!replayPending) return;
         // Lo local = servidor + lo que aún no se ha subido.
         for (final entry
             in await OutboxStore.pendingFor(db, change.entity, change.id)) {
@@ -348,18 +403,32 @@ class SyncEngine {
   /// Vuelve a enviar una rechazada o en conflicto y sincroniza ya. Va como
   /// una mutación **nueva** (el servidor recuerda el rechazo de la anterior)
   /// y se vuelve a aplicar en local, porque el rechazo la había deshecho.
+  ///
+  /// Nunca puede duplicar algo que el servidor ya aplicó o guardó: solo se
+  /// renueva una operación con un resultado del servidor que dice que **no**
+  /// la aplicó (`rejected` o `conflict` sin guardar; los `applied`,
+  /// `merged` y `conflict` guardados ya salieron de la bandeja). Una
+  /// pendiente (sin respuesta: pudo aplicarse a mitad de un lote) o un
+  /// rechazo transitorio (se reenvía solo, con su mismo `mutation_id`)
+  /// conservan el id: solo se pide sincronizar.
   Future<void> retry(String mutationId) async {
     final db = await _databases.current();
     if (db == null) return;
+    // Que no haya un envío en curso con esta operación.
+    await _running;
     final entry = (await OutboxStore.all(db))
         .where((e) => e.mutationId == mutationId)
         .firstOrNull;
     if (entry == null) return;
+    if (!canRenew(entry)) {
+      requestSync(immediate: true);
+      return;
+    }
     final newId = const Uuid().v7();
     await OutboxStore.retryAsNew(db, mutationId,
         newMutationId: newId, clientTime: DateTime.now());
     final handler = _handlers[entry.entity];
-    if (handler != null && !entry.isTransientRejection) {
+    if (handler != null) {
       try {
         await handler.replay(db, (await OutboxStore.all(db))
             .firstWhere((e) => e.mutationId == newId));
@@ -372,16 +441,25 @@ class SyncEngine {
     requestSync(immediate: true);
   }
 
-  /// Renuncia a una operación (lo único que pierde datos): sale de la bandeja
-  /// y el registro local vuelve a la versión del servidor (un alta hecha sin
-  /// conexión desaparece).
-  Future<void> discard(String mutationId) async {
+  /// ¿Se puede reenviar [entry] con un `mutation_id` nuevo? Solo si el
+  /// servidor respondió que no la aplicó y no la va a reevaluar sola.
+  static bool canRenew(OutboxEntry entry) =>
+      entry.status != OutboxStatus.pending && !entry.isTransientRejection;
+
+  /// Renuncia a una operación rechazada o en conflicto (lo único que pierde
+  /// datos, por decisión del usuario): sale de la bandeja y el registro
+  /// local vuelve a la versión del servidor (un alta hecha sin conexión
+  /// desaparece). Una **pendiente** no se puede descartar: aún no tiene
+  /// respuesta del servidor y pudo aplicarse (D-18). Devuelve `false` si no
+  /// se descartó.
+  Future<bool> discard(String mutationId) async {
     final db = await _databases.current();
-    if (db == null) return;
+    if (db == null) return false;
+    await _running;
     final entry = (await OutboxStore.all(db))
         .where((e) => e.mutationId == mutationId)
         .firstOrNull;
-    if (entry == null) return;
+    if (entry == null || entry.status == OutboxStatus.pending) return false;
     await OutboxStore.discard(db, mutationId);
     // Otras pendientes del mismo registro siguen: solo se restaura si no
     // queda ninguna.
@@ -392,6 +470,7 @@ class SyncEngine {
       await _restore(db, entry);
     }
     await _refreshCounts(db);
+    return true;
   }
 
   // ------------------------------------------------------------------ Estado
@@ -417,8 +496,10 @@ class SyncEngine {
     if (!_status.isClosed) _status.add(status);
   }
 
+  /// Detiene los disparadores y espera la pasada en curso.
   Future<void> dispose() async {
     stop();
+    await _running;
     await _status.close();
   }
 }

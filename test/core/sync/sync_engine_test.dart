@@ -368,10 +368,161 @@ void main() {
     expect(failing.current.online, true);
     await failing.dispose();
   });
+
+  group('reintentar y descartar (10.03)', () {
+    test('rechazada: se reenvía con un mutation_id nuevo y se vuelve a '
+        'aplicar en local', () async {
+      server.forced['client.create'] = (mid) => MutationResult(
+          mutationId: mid,
+          status: MutationStatus.rejected,
+          code: 'VALIDATION_ERROR');
+      await createLocal('a', '3001112222');
+      await engine.syncNow();
+      final rejected = (await OutboxStore.all(db)).single;
+      server.forced.clear();
+      await engine.retry(rejected.mutationId);
+      await engine.syncNow();
+      expect(await OutboxStore.all(db), isEmpty);
+      expect(server.clients.keys, ['a']);
+      expect(server.pushedBatches.last.single.mutationId,
+          isNot(rejected.mutationId));
+    });
+
+    test('pendiente (sin respuesta: pudo aplicarse): conserva su id, no se '
+        'duplica', () async {
+      for (var i = 0; i < 2; i++) {
+        await createLocal('c$i', '310000000$i');
+      }
+      // El servidor aplica las dos pero la respuesta no llega.
+      server.cutAfter = 2;
+      await updateLocal('c0', {'notes': 'x'});
+      await engine.syncNow();
+      final pending = (await OutboxStore.all(db)).first;
+      expect(pending.status, OutboxStatus.pending);
+      expect(SyncEngine.canRenew(pending), false);
+      await engine.retry(pending.mutationId);
+      await engine.syncNow();
+      expect((await OutboxStore.all(db)), isEmpty);
+      expect(server.version, 3, reason: 'cada operación, una sola vez');
+      expect(
+          server.pushedBatches
+              .expand((b) => b)
+              .map((m) => m.mutationId)
+              .toSet()
+              .length,
+          3,
+          reason: 'mismos mutation_id al reenviar');
+    });
+
+    test('un rechazo transitorio no se renueva (se reevalúa solo)', () async {
+      server.forced['client.create'] = (mid) => MutationResult(
+          mutationId: mid,
+          status: MutationStatus.rejected,
+          code: 'TRIAL_LIMIT_REACHED');
+      await createLocal('a', '3001112222');
+      await engine.syncNow();
+      final entry = (await OutboxStore.all(db)).single;
+      expect(SyncEngine.canRenew(entry), false);
+      await engine.retry(entry.mutationId);
+      expect((await OutboxStore.all(db)).single.mutationId, entry.mutationId);
+    });
+
+    test('descartar: solo rechazadas o en conflicto; una pendiente no',
+        () async {
+      server.offline = true;
+      await createLocal('a', '3001112222');
+      await engine.syncNow();
+      final pending = (await OutboxStore.all(db)).single;
+      expect(await engine.discard(pending.mutationId), false);
+      expect((await OutboxStore.all(db)), hasLength(1));
+
+      server.offline = false;
+      server.forced['client.create'] = (mid) => MutationResult(
+          mutationId: mid,
+          status: MutationStatus.rejected,
+          code: 'VALIDATION_ERROR');
+      await engine.syncNow();
+      expect(await engine.discard(pending.mutationId), true);
+      expect(await OutboxStore.all(db), isEmpty);
+    });
+  });
+
+  group('base local de otro servidor', () {
+    test('cambia el epoch: se baja todo de nuevo sin perder la bandeja',
+        () async {
+      server.epoch = 'base-1';
+      server.serverUpsertClient('viejo', {'name': 'Viejo', 'phone': '3000000001'});
+      await engine.syncNow();
+      expect(await localNames(), ['Viejo']);
+
+      // Sin conexión, algo pendiente; mientras, la app apunta a otro servidor.
+      server.offline = true;
+      await createLocal('nuevo-local', '3009990000', name: 'Pendiente');
+      await engine.syncNow();
+      final other = FakeSyncServer()
+        ..epoch = 'base-2'
+        ..serverUpsertClient('otro', {'name': 'Otro', 'phone': '3000000002'});
+      final moved = SyncEngine(
+          databases: databases,
+          api: _OfflineFirst(other),
+          handlers: [ClientsSyncHandler(local)]);
+      await moved.syncNow();
+
+      expect(await localNames(), ['Otro', 'Pendiente'],
+          reason: 'lo del servidor viejo se fue; lo pendiente se reaplicó');
+      expect(await SyncEngine.cursorOf(db), '1');
+      expect((await OutboxStore.all(db)).single.entityId, 'nuevo-local',
+          reason: 'la bandeja no se toca');
+      await moved.dispose();
+    });
+
+    test('servidor restaurado (cursor por delante de head): bajada completa',
+        () async {
+      server.reportHead = true;
+      for (var i = 0; i < 3; i++) {
+        server.serverUpsertClient('s$i', {'name': 'C$i', 'phone': '30000000$i'});
+      }
+      await engine.syncNow();
+      expect(await SyncEngine.cursorOf(db), '3');
+      server
+        ..clients.remove('s2')
+        ..restoreTo(2);
+      await engine.syncNow();
+      expect(await localNames(), ['C0', 'C1']);
+      expect(await SyncEngine.cursorOf(db), '2');
+    });
+
+    test('sin epoch ni head (backend actual): no reinicia', () async {
+      server.serverUpsertClient('a', {'name': 'Ana', 'phone': '3000000001'});
+      await engine.syncNow();
+      await engine.syncNow();
+      expect(await localNames(), ['Ana']);
+    });
+  });
 }
 
 class _Unauthorized extends FakeSyncServer {
   @override
   Future<ChangesPage> changes(String cursor, {int limit = 500}) =>
       throw StateError('respuesta rara');
+}
+
+
+/// El servidor "nuevo" aún no acepta la subida (`retry`), para probar solo
+/// la bajada.
+class _OfflineFirst extends FakeSyncServer {
+  final FakeSyncServer inner;
+  _OfflineFirst(this.inner);
+
+  @override
+  Future<List<MutationResult>> push(
+          String deviceId, List<PushMutation> mutations) async =>
+      [
+        for (final m in mutations)
+          MutationResult(mutationId: m.mutationId, status: MutationStatus.retry),
+      ];
+
+  @override
+  Future<ChangesPage> changes(String cursor, {int limit = 500}) =>
+      inner.changes(cursor, limit: limit);
 }

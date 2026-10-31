@@ -30,6 +30,19 @@ class FakeSyncServer implements SyncApi {
   final _results = <String, MutationResult>{};
   int _version = 0;
 
+  /// Identificador de la base (pedido al backend); `null` = no lo envía.
+  String? epoch;
+
+  /// Envía `head` (última versión del negocio).
+  bool reportHead = false;
+
+  /// Simula restaurar un respaldo: olvida los cambios con versión mayor
+  /// que [version] (los registros no se tocan: solo el feed).
+  void restoreTo(int version) {
+    _feed.removeWhere((c) => c.version > version);
+    _version = version;
+  }
+
   /// Sin red: toda llamada lanza un error de conexión.
   bool offline = false;
 
@@ -151,6 +164,8 @@ class FakeSyncServer implements SyncApi {
       ],
       cursor: page.isEmpty ? cursor : '${page.last.version}',
       hasMore: pending.length > page.length,
+      epoch: epoch,
+      head: reportHead ? '$_version' : null,
     );
   }
 }

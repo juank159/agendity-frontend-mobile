@@ -98,10 +98,20 @@ class ChangesPage {
   final String cursor;
   final bool hasMore;
 
+  /// Identificador de la base del servidor (pedido al backend): si cambia,
+  /// la base local es de otro servidor y hay que bajar todo de nuevo.
+  final String? epoch;
+
+  /// Última versión del negocio en el servidor (pedido al backend): un
+  /// cursor local mayor = el servidor se restauró a un punto anterior.
+  final String? head;
+
   const ChangesPage({
     required this.changes,
     required this.cursor,
     required this.hasMore,
+    this.epoch,
+    this.head,
   });
 
   factory ChangesPage.fromJson(Map<String, dynamic> json, String previous) =>
@@ -115,6 +125,8 @@ class ChangesPage {
         ],
         cursor: json['cursor']?.toString() ?? previous,
         hasMore: json['has_more'] == true,
+        epoch: json['epoch']?.toString(),
+        head: json['head']?.toString(),
       );
 }
 

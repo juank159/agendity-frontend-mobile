@@ -11,7 +11,10 @@ import 'package:login_signup/core/sync/offline_store.dart';
 import 'package:login_signup/core/sync/outbox_store.dart';
 import 'package:login_signup/core/sync/sync_engine.dart';
 import 'package:login_signup/core/sync/sync_models.dart';
+import 'package:login_signup/features/appointments/data/sync/appointments_sync.dart';
+import 'package:login_signup/features/payments/data/models/payment_model.dart';
 import 'package:login_signup/features/payments/data/sync/payments_sync.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_payments_in_review_usecase.dart';
 import 'package:login_signup/features/payments/data/repositories/payment_repository_impl.dart';
 import 'package:login_signup/features/payments/data/models/custom_payment_method_model.dart';
 import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
@@ -298,6 +301,121 @@ void main() {
     });
   });
 
+
+  group('cobertura recuperada y reembolsos (10.02b/10.03, local)', () {
+    setUp(seedAppointment);
+
+    test('pago rechazado por el servidor (403 de una empleada): queda en la '
+        'bandeja con el motivo y la cita vuelve a la del servidor', () async {
+      final server = FakeSyncServer()
+        ..forced['payment.create'] = (mid) => MutationResult(
+            mutationId: mid,
+            status: MutationStatus.rejected,
+            code: 'FORBIDDEN',
+            message: 'Solo el dueño registra pagos');
+      final engine = SyncEngine(
+          databases: databases,
+          api: server,
+          handlers: [
+            ...PaymentsSync.handlers(),
+            ...AppointmentsSync.handlers(),
+          ]);
+      await repository.createPayment(newPayment);
+      await engine.syncNow();
+      final entry = (await OutboxStore.all(db)).single;
+      expect(entry.status, OutboxStatus.rejected);
+      expect(entry.message, 'Solo el dueño registra pagos');
+      expect(await DocumentStore.get(db, 'payments', 'p-1'), isNull,
+          reason: 'el alta rechazada desaparece de local');
+      await engine.dispose();
+    });
+
+    test('reembolso parcial: el pago sigue COMPLETED y la cita PARTIAL; total: '
+        'REFUNDED y la cita REFUNDED (como el backend)', () async {
+      final paid = (await repository
+              .createPayment(newPayment.copyWith(amount: 100000)))
+          .getOrElse(() => throw StateError('pago'));
+      expect((await appointment())['payment_status'], 'COMPLETED');
+
+      final partial = (await repository.refundPayment(paid.id!,
+              amount: 30000, reason: 'Ajuste'))
+          .getOrElse(() => throw StateError('reembolso'));
+      expect(partial.status, PaymentStatus.COMPLETED);
+      expect(partial.refundAmount, 30000);
+      expect((await appointment())['payment_status'], 'PARTIAL');
+      expect((await appointment())['status'], 'CONFIRMED',
+          reason: 'un reembolso no cambia el estado de la cita');
+
+      final full = (await repository.refundPayment(paid.id!,
+              amount: 70000, reason: 'Ajuste'))
+          .getOrElse(() => throw StateError('reembolso'));
+      expect(full.status, PaymentStatus.REFUNDED);
+      expect((await appointment())['payment_status'], 'REFUNDED');
+      final entries = await OutboxStore.all(db);
+      expect(entries.map((e) => e.type),
+          ['payment.create', 'payment.refund', 'payment.refund']);
+      expect(entries[1].payload,
+          {'refund_amount': 30000.0, 'refund_reason': 'Ajuste'});
+    });
+
+    test('pago en revisión: aparece en "por revisar" con el reembolso sugerido '
+        'y sale de la revisión al devolver lo que sobra', () async {
+      await DocumentStore.put(db, PaymentsSync.payments, 'p-ok', {
+        ...backendPayment(),
+        'id': 'p-ok',
+        'appointment': 'a1',
+        'amount': '80000.00',
+      });
+      await DocumentStore.put(db, PaymentsSync.payments, 'p-rev', {
+        ...backendPayment(),
+        'id': 'p-rev',
+        'appointment': 'a1',
+        'amount': '50000.00',
+        'reviewRequired': 'OVERPAID',
+      });
+      final review = (await GetPaymentsInReviewUseCase(repository)(NoParams()))
+          .getOrElse(() => throw StateError('revisión'))
+          .single;
+      expect(review.payment.id, 'p-rev');
+      expect(review.suggestedRefund, 30000);
+      expect(review.clientName, 'Ana');
+
+      await repository.refundPayment('p-rev', amount: 30000, reason: 'De más');
+      final resolved = PaymentModel.fromJson(
+              (await DocumentStore.get(db, 'payments', 'p-rev'))!)
+          .toEntity();
+      expect(resolved.needsReview, false);
+      expect((await appointment())['payment_status'], 'COMPLETED');
+    });
+
+    test('reembolso de un pago que no está en local → NotFoundFailure',
+        () async {
+      expect(
+          leftOf(await repository.refundPayment('nada',
+              amount: 1, reason: 'x')),
+          isA<NotFoundFailure>());
+    });
+
+    test('sin métodos propios (o Employee, que no los recibe) → Right([])',
+        () async {
+      expect(
+          (await repository.getActiveCustomPaymentMethods())
+              .getOrElse(() => throw StateError('L')),
+          isEmpty);
+    });
+
+    test('saldo: pagada de más → saldo 0', () async {
+      for (var i = 0; i < 3; i++) {
+        await DocumentStore.put(db, PaymentsSync.payments, 'x$i',
+            {...backendPayment(), 'id': 'x$i', 'appointment': 'a1'});
+      }
+      final full = (await GetAppointmentBalanceUseCase(repository)(
+              const AppointmentBalanceParams(appointmentId: 'a1', total: 100000)))
+          .getOrElse(() => throw StateError('L'));
+      expect(full.outstanding, 0);
+      expect(full.isFullyPaid, true);
+    });
+  });
 
   group('métodos propios (locales)', () {
     test('solo los activos, por nombre', () async {

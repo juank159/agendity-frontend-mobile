@@ -27,6 +27,9 @@ class LocalDatabaseHolder {
   static QueryExecutor _defaultOpener(String userId) =>
       driftDatabase(name: 'agendity_$userId');
 
+  /// Usuario de la sesión (`null` sin sesión).
+  Future<String?> currentUserId() => _currentUserId();
+
   /// Base del usuario de la sesión, o `null` sin sesión.
   Future<AppDatabase?> current() async {
     final userId = await _currentUserId();

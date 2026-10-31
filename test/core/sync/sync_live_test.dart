@@ -23,6 +23,18 @@ import 'package:login_signup/features/payments/data/sync/payments_sync.dart';
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 import 'package:login_signup/features/services/data/repositories/services_repository_impl.dart';
 import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
+import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
+import 'package:login_signup/features/statistics/data/local/statistics_local_datasource.dart';
+import 'package:login_signup/features/statistics/data/models/commission_settlement_model.dart';
+import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
+import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/payment_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/professional_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/service_stats_model.dart';
+import 'package:login_signup/features/statistics/data/models/top_client_model.dart';
+import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
+import 'package:login_signup/features/statistics/domain/entities/top_client_entity.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/core/sync/outbox_store.dart';
 import 'package:login_signup/core/sync/sync_api.dart';
@@ -231,6 +243,94 @@ void main() {
             const ClientsQuery(source: ClientSourceFilter.imported)))
         .getOrElse(() => throw StateError('importados'));
     expect(importedClients.items.map((c) => c.name), contains('Contacto'));
+    await engine.dispose();
+    await databases.close();
+  }, skip: url == null ? 'Solo con SYNC_E2E_URL' : null);
+
+  test('10.02c: estadísticas locales = las del servidor sobre los mismos '
+      'datos', () async {
+    final tokens = MemoryTokenStore();
+    final dio = buildApiClient(
+        baseUrl: url!, tokenStore: tokens, enableLogs: false);
+    final login = await dio.post<Map<String, dynamic>>('/auth/login',
+        data: {'email': 'marcela.rojas@example.com', 'password': 'Clave@2026a'},
+        options: Options(extra: {AuthInterceptor.publicKey: true}));
+    tokens.token = login.data!['token'] as String;
+    final databases = memoryDatabases();
+    final engine = SyncEngine(
+      databases: databases,
+      api: DioSyncApi(dio),
+      handlers: [
+        ClientsSyncHandler(const ClientsLocalDataSource()),
+        ...CatalogSync.handlers(),
+        ...EmployeesSync.handlers(),
+        ...AppointmentsSync.handlers(),
+        ...PaymentsSync.handlers(),
+        DocumentSyncHandler(SharedDocs.businessSettings),
+      ],
+    );
+    await engine.syncNow();
+    final db = await databases.require();
+    final settings =
+        (await DocumentStore.list(db, SharedDocs.businessSettings.entity))
+            .single;
+    BusinessTimeZone.use(settings['timezone'] as String);
+    addTearDown(BusinessTimeZone.reset);
+
+    final remote = StatisticsRemoteDataSourceImpl(dio);
+    final local = await const StatisticsLocalDataSource().load(db);
+    final from = DateTime(2026, 10, 1);
+    final to = DateTime(2026, 12, 31);
+    final range = StatsRange(start: from, end: to);
+
+    expect(PaymentStatsModel.fromJson(local.paymentStats(from, to)).toEntity(),
+        (await remote.getPaymentStats(range)).toEntity());
+    expect(
+        PaymentComparisonModel.fromJson(local.comparison(from, to)).toEntity(),
+        (await remote.getPaymentComparison(range)).toEntity());
+    expect([
+      for (final r in local.byMethod(from, to))
+        PaymentMethodStatsModel.fromJson(r).toEntity()
+    ], [
+      for (final m in await remote.getPaymentStatsByMethod(range)) m.toEntity()
+    ]);
+    expect([
+      for (final r in local.byService(from, to))
+        ServiceStatsModel.fromJson(r).toEntity()
+    ], [
+      for (final m in await remote.getPaymentStatsByService(range)) m.toEntity()
+    ]);
+    expect([
+      for (final r in local.byProfessional(from, to))
+        ProfessionalStatsModel.fromJson(r).toEntity()
+    ], [
+      for (final m in await remote.getPaymentStatsByProfessional(range))
+        m.toEntity()
+    ]);
+    // Mejores clientes: el SQL no desempata (empates en otro orden), así que
+    // se comparan todos, ordenados igual.
+    int byTotalThenId(TopClientEntity a, TopClientEntity b) {
+      final byTotal = b.totalSpent.compareTo(a.totalSpent);
+      return byTotal != 0 ? byTotal : a.clientId.compareTo(b.clientId);
+    }
+    expect([
+      for (final r in local.topClients(from, to, limit: 1000))
+        TopClientModel.fromJson(r).toEntity()
+    ]..sort(byTotalThenId), [
+      for (final m in await remote.getTopClients(range, limit: 1000))
+        m.toEntity()
+    ]..sort(byTotalThenId));
+    final pro = (await remote.getPaymentStatsByProfessional(range))
+        .first
+        .toEntity()
+        .professionalId;
+    expect(
+        EmployeeStatsModel.fromJson(local.employeeStats(from, to, pro))
+            .toEntity(),
+        (await remote.getEmployeeStats(range, professionalId: pro))
+            .toEntity());
+    expect(CommissionSettlementModel.fromJson(local.commissions(from, to)),
+        await remote.getCommissionSettlement(range));
     await engine.dispose();
     await databases.close();
   }, skip: url == null ? 'Solo con SYNC_E2E_URL' : null);

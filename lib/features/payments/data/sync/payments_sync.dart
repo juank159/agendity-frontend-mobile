@@ -53,7 +53,7 @@ abstract final class PaymentsSync {
       'created_at': entry.clientTime,
       'updated_at': entry.clientTime,
     });
-    await refreshAppointment(db, appointmentId);
+    await refreshAppointment(db, appointmentId, newPayment: true);
   }
 
   /// Reembolso en local, con las cuentas del backend (`applyRefund` y la
@@ -96,38 +96,53 @@ abstract final class PaymentsSync {
   }
 
   /// Pagado neto (centavos) de una cita según los pagos locales.
-  static Future<int> paidCents(AppDatabase db, String appointmentId) async {
+  static Future<int> paidCents(AppDatabase db, String appointmentId) async =>
+      (await paidSummary(db, appointmentId)).paidCents;
+
+  /// `loadPaidSummary` del backend: pagos `COMPLETED` netos de reembolsos y
+  /// si alguno tuvo reembolsos; los que están en revisión no cuentan.
+  static Future<({int paidCents, bool hasRefunds})> paidSummary(
+      AppDatabase db, String appointmentId) async {
     var cents = 0;
+    var hasRefunds = false;
     for (final payment
         in await DocumentStore.list(db, payments.entity, ref1: appointmentId)) {
-      if (payment['status'] != 'COMPLETED') continue;
       if (JsonRead.asOptionalString(payment['reviewRequired']) != null) {
         continue;
       }
-      cents += (JsonRead.asDouble(payment['amount']) * 100).round() -
+      final refunded =
           (JsonRead.asDouble(payment['refund_amount']) * 100).round();
+      if (payment['status'] == 'REFUNDED' || refunded > 0) hasRefunds = true;
+      if (payment['status'] != 'COMPLETED') continue;
+      cents += (JsonRead.asDouble(payment['amount']) * 100).round() - refunded;
     }
-    return cents;
+    return (paidCents: cents, hasRefunds: hasRefunds);
   }
 
-  /// Estado y estado de pago de la cita tras un pago (`statusAfterPayment` y
-  /// `appointmentPaymentStatus` del backend).
-  static Future<void> refreshAppointment(
-      AppDatabase db, String appointmentId) async {
+  /// `appointmentPaymentStatus` del backend.
+  static String paymentStatusFor(
+      int totalCents, ({int paidCents, bool hasRefunds}) summary) {
+    if (summary.paidCents > 0) {
+      return summary.paidCents >= totalCents ? 'COMPLETED' : 'PARTIAL';
+    }
+    return summary.hasRefunds ? 'REFUNDED' : 'PENDING';
+  }
+
+  /// Estado y estado de pago de la cita tras un pago o un reembolso
+  /// (`statusAfterPayment`: el primer pago confirma una PENDING; un
+  /// reembolso no cambia el estado).
+  static Future<void> refreshAppointment(AppDatabase db, String appointmentId,
+      {bool newPayment = false}) async {
     final kind = SharedDocs.appointments;
     final appointment = await DocumentStore.get(db, kind.entity, appointmentId);
     if (appointment == null) return;
     final total = (JsonRead.asDouble(appointment['total_price']) * 100).round();
-    final paid = await paidCents(db, appointmentId);
-    final paymentStatus = paid <= 0
-        ? appointment['payment_status']
-        : paid >= total
-            ? 'COMPLETED'
-            : 'PARTIAL';
+    final summary = await paidSummary(db, appointmentId);
     await DocumentStore.keepServerCopy(db, kind.entity, appointmentId);
     await DocumentStore.merge(db, kind, appointmentId, {
-      'payment_status': paymentStatus,
-      if (appointment['status'] == 'PENDING' && paid > 0) 'status': 'CONFIRMED',
+      'payment_status': paymentStatusFor(total, summary),
+      if (newPayment && appointment['status'] == 'PENDING')
+        'status': 'CONFIRMED',
     });
   }
 

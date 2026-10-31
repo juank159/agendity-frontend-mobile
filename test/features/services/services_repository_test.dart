@@ -248,4 +248,60 @@ void main() {
       await engine.dispose();
     });
   });
+
+  group('cobertura recuperada (10.02b → local): rechazos del servidor', () {
+    Future<SyncEngine> engineWith(String type, String code,
+        {String? message}) async {
+      final server = FakeSyncServer()
+        ..forced[type] = (mid) => MutationResult(
+            mutationId: mid,
+            status: MutationStatus.rejected,
+            code: code,
+            message: message);
+      return SyncEngine(
+          databases: databases, api: server, handlers: CatalogSync.handlers());
+    }
+
+    test('403 de una empleada al cambiar una categoría: vuelve a la del '
+        'servidor y queda el motivo', () async {
+      final engine = await engineWith('category.update', 'FORBIDDEN',
+          message: 'No tienes permiso para realizar esta acción');
+      rightOf(await categories.updateCategoryStatus(id: 'cat-1', isActive: false));
+      await engine.syncNow();
+      expect(
+          rightOf(await categories.getCategories())
+              .firstWhere((c) => c.id == 'cat-1')
+              .isActive,
+          true);
+      expect((await outbox()).single.message,
+          'No tienes permiso para realizar esta acción');
+      await engine.dispose();
+    });
+
+    test('409 CONFLICT al borrar (otro dispositivo le puso servicios): la '
+        'categoría vuelve', () async {
+      final engine = await engineWith('category.delete', 'CONFLICT');
+      rightOf(await categories.deleteCategory('cat-2'));
+      expect(rightOf(await categories.getCategories()).map((c) => c.id),
+          ['cat-1']);
+      await engine.syncNow();
+      expect(rightOf(await categories.getCategories()).map((c) => c.id),
+          ['cat-1', 'cat-2']);
+      await engine.dispose();
+    });
+
+    test('nombre repetido creado en otro dispositivo (409 CONFLICT): el alta '
+        'local desaparece y queda el motivo', () async {
+      final engine = await engineWith('service.create', 'CONFLICT',
+          message: 'Ya existe un servicio con ese nombre');
+      final created = rightOf(await services.createService(newService));
+      await engine.syncNow();
+      expect(rightOf(await services.getAllServices()).map((s) => s.id),
+          isNot(contains(created.id)));
+      final entry = (await outbox()).single;
+      expect(entry.status, OutboxStatus.rejected);
+      expect(entry.message, 'Ya existe un servicio con ese nombre');
+      await engine.dispose();
+    });
+  });
 }

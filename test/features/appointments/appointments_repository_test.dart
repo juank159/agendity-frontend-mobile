@@ -517,6 +517,142 @@ void main() {
     });
   });
 
+  group('cobertura recuperada (10.02b → local)', () {
+    test('registro local dañado (sin fecha): se omite y no rompe la lista',
+        () async {
+      await seed({'id': 'rota', 'professionalId': 'pro-1'});
+      await seed(backendAppointment(date: '2026-11-03T15:00:00Z'));
+      expect(
+          rightOf(await repository.getAppointments(
+                  AppointmentsRange.day(DateTime(2026, 11, 3))))
+              .map((a) => a.id),
+          ['apt-1']);
+      expect(leftOf(await repository.getAppointment('rota')),
+          isA<NotFoundFailure>());
+    });
+
+    for (final (code, status, type) in [
+      ('SLOT_UNAVAILABLE', 409, SlotUnavailableFailure),
+      ('PROFESSIONAL_INACTIVE', 409, ProfessionalInactiveFailure),
+      ('APPOINTMENT_IN_PAST', 400, AppointmentInPastFailure),
+      ('TRIAL_LIMIT_REACHED', 402, TrialLimitReachedFailure),
+      ('SUBSCRIPTION_INACTIVE', 402, SubscriptionInactiveFailure),
+      ('SERVICE_NOT_OFFERED_BY_PROFESSIONAL', 409, ServiceNotOfferedFailure),
+      ('OUTSIDE_BUSINESS_HOURS', 409, OutsideBusinessHoursFailure),
+      ('SERVICE_INACTIVE', 409, ServiceInactiveFailure),
+      ('FORBIDDEN', 403, ForbiddenFailure),
+      ('INTERNAL_ERROR', 500, ServerFailure),
+    ]) {
+      test('$status $code (con conexión) → $type con el texto del backend',
+          () async {
+        adapter.handler = (_) => errorBody(status, code, 'Texto de $code');
+        final failure = leftOf(await repository.getAvailableSlots(
+            AvailableSlotsQuery(
+                professionalId: 'pro-1',
+                day: DateTime(2026, 11, 3),
+                serviceIds: const ['svc-1'])));
+        expect(failure.runtimeType, type);
+        if (status < 500) expect(failure!.message, 'Texto de $code');
+      });
+    }
+
+    test('horas libres: sin servicios o paso fuera de rango → failure sin red',
+        () async {
+      final useCase = GetAvailableSlotsUseCase(repository);
+      for (final query in [
+        AvailableSlotsQuery(
+            professionalId: 'pro-1',
+            day: DateTime(2026, 11, 3),
+            serviceIds: const []),
+        AvailableSlotsQuery(
+            professionalId: 'pro-1',
+            day: DateTime(2026, 11, 3),
+            serviceIds: const ['svc-1'],
+            stepMinutes: 2),
+      ]) {
+        expect(leftOf(await useCase(query)), isA<InvalidAppointmentDataFailure>());
+      }
+      expect(adapter.requests, isEmpty);
+    });
+
+    test('agendar sin conexión funciona (antes: el POST no se reintentaba)',
+        () async {
+      adapter.handler = connectionError;
+      final created = rightOf(await CreateAppointmentUseCase(repository,
+          now: () => now)(NewAppointment(
+              clientId: 'cli-1',
+              professionalId: 'pro-1',
+              serviceIds: const ['svc-1'],
+              start: DateTime(2026, 11, 3, 10))));
+      expect(created.id, isNotEmpty);
+      expect(adapter.requests, isEmpty);
+      expect((await outbox()).single.type, 'appointment.create');
+    });
+
+    test('carrera de editar: dos formularios sobre la misma cita no se pisan',
+        () async {
+      await seed(backendAppointment(date: '2026-11-03T15:00:00Z'));
+      final original = rightOf(await repository.getAppointment('apt-1'));
+      final update = UpdateAppointmentUseCase(repository, now: () => now);
+      rightOf(await update(UpdateAppointmentParams(
+          original: original,
+          changes: AppointmentChanges.between(original, notes: 'Uno'))));
+      rightOf(await update(UpdateAppointmentParams(
+          original: original,
+          changes: AppointmentChanges.between(original, clientId: 'cli-2'))));
+      final entries = await outbox();
+      expect(entries.map((e) => e.payload), [
+        {'notes': 'Uno'},
+        {'client_id': 'cli-2'},
+      ]);
+      final both = rightOf(await repository.getAppointment('apt-1'));
+      expect((both.notes, both.client.id), ('Uno', 'cli-2'));
+    });
+
+    test('dejar sin servicios → failure sin escribir', () async {
+      await seed(backendAppointment(date: '2026-11-03T15:00:00Z'));
+      final original = rightOf(await repository.getAppointment('apt-1'));
+      expect(
+          leftOf(await UpdateAppointmentUseCase(repository, now: () => now)(
+              UpdateAppointmentParams(
+                  original: original,
+                  changes: const AppointmentChanges(serviceIds: [])))),
+          isA<InvalidAppointmentDataFailure>());
+      expect(await outbox(), isEmpty);
+    });
+
+    test('cancelar sin motivo: payload vacío', () async {
+      await seed(backendAppointment());
+      rightOf(await repository.cancelAppointment('apt-1'));
+      expect((await outbox()).single.payload, isEmpty);
+    });
+
+    test('editar rechazado por el servidor (403 de una empleada): queda en la '
+        'bandeja con el motivo y la cita vuelve a la del servidor', () async {
+      await seed(backendAppointment(date: '2026-11-03T15:00:00Z'));
+      final original = rightOf(await repository.getAppointment('apt-1'));
+      rightOf(await repository.updateAppointment('apt-1',
+          AppointmentChanges.between(original, notes: 'Otra')));
+      final server = FakeSyncServer()
+        ..forced['appointment.update'] = (mid) => MutationResult(
+            mutationId: mid,
+            status: MutationStatus.rejected,
+            code: 'FORBIDDEN',
+            message: 'Solo el dueño puede editar citas');
+      final engine = SyncEngine(
+          databases: databases,
+          api: server,
+          handlers: AppointmentsSync.handlers());
+      await engine.syncNow();
+      final entry = (await outbox()).single;
+      expect(entry.status, OutboxStatus.rejected);
+      expect(entry.message, 'Solo el dueño puede editar citas');
+      expect(rightOf(await repository.getAppointment('apt-1')).notes,
+          'Sin prisa');
+      await engine.dispose();
+    });
+  });
+
   group('AppointmentEntity (reglas puras)', () {
     AppointmentEntity withStates(String status, String payment) => entityOf(
         backendAppointment(status: status, paymentStatus: payment));

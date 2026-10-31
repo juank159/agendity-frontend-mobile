@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/sync/offline_store.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
 import 'package:login_signup/features/statistics/data/repositories/statistics_repository_impl.dart';
@@ -22,7 +23,8 @@ abstract final class StatisticsDependencies {
       fenix: true,
     );
     Get.lazyPut<StatisticsRepository>(
-      () => StatisticsRepositoryImpl(Get.find<StatisticsRemoteDataSource>()),
+      () => StatisticsRepositoryImpl(Get.find<StatisticsRemoteDataSource>(),
+          store: Get.find<OfflineStore>()),
       fenix: true,
     );
 

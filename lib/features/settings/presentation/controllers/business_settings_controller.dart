@@ -14,6 +14,7 @@ import 'package:login_signup/features/settings/domain/usecases/update_business_t
 import 'package:login_signup/features/settings/domain/usecases/update_opening_hours_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/utils/external_link.dart';
+import 'package:login_signup/shared/utils/share_text.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
@@ -51,6 +52,7 @@ class BusinessSettingsController extends GetxController {
   final List<String> _zones;
   final String Function() _apiUrl;
   final ExternalLinkOpener _openLink;
+  final TextSharer _share;
 
   BusinessSettingsController({
     required GetBusinessSettingsUseCase getBusinessSettingsUseCase,
@@ -61,6 +63,7 @@ class BusinessSettingsController extends GetxController {
     List<String>? zones,
     String Function()? apiUrl,
     ExternalLinkOpener? openLink,
+    TextSharer? share,
   })  : _getSettings = getBusinessSettingsUseCase,
         _updateTimeZone = updateBusinessTimeZoneUseCase,
         _updateName = updateBusinessNameUseCase,
@@ -68,7 +71,8 @@ class BusinessSettingsController extends GetxController {
         _session = session,
         _zones = zones ?? BusinessTimeZone.names,
         _apiUrl = apiUrl ?? (() => EnvConfig.apiUrl),
-        _openLink = openLink ?? openExternalLink;
+        _openLink = openLink ?? openExternalLink,
+        _share = share ?? shareText;
 
   final status = BusinessSettingsStatus.loading.obs;
   final loadError = RxnString();
@@ -222,13 +226,31 @@ class BusinessSettingsController extends GetxController {
         title: 'Link copiado');
   }
 
-  /// Comparte por WhatsApp (elige el chat en la app). El menú nativo de
-  /// compartir necesitaría una dependencia nueva.
-  Future<void> shareLink() async {
+  /// Texto que se comparte: invitación con el nombre del negocio y el link.
+  String? get shareMessage {
     final link = bookingLink;
-    if (link == null) return;
+    if (link == null) return null;
     final name = saved.value?.name;
-    final text = 'Reserva tu cita${name == null ? '' : ' en $name'}: $link';
+    return 'Reserva tu cita${name == null ? '' : ' en $name'}: $link';
+  }
+
+  /// Menú nativo de compartir del teléfono (`share_plus`). [origin]: dónde
+  /// anclarlo en iPad y macOS.
+  Future<void> shareLink({Rect? origin}) async {
+    final text = shareMessage;
+    if (text == null) return;
+    final shared = await _share(text,
+        subject: saved.value?.name ?? 'Link de reservas', origin: origin);
+    if (!shared) {
+      AppSnackbar.warning('No se pudo abrir el menú de compartir. Copia el '
+          'link y compártelo a mano.');
+    }
+  }
+
+  /// Directo a WhatsApp (elige el chat en la app).
+  Future<void> shareByWhatsapp() async {
+    final text = shareMessage;
+    if (text == null) return;
     final opened = await _openLink(
         Uri.https('wa.me', '/', {'text': text}));
     if (!opened) {

@@ -176,10 +176,19 @@ class _BookingLinkCard extends GetView<BusinessSettingsController> {
                   icon: const Icon(Icons.copy),
                   label: const Text('Copiar'),
                 ),
+                Builder(
+                  builder: (context) => FilledButton.icon(
+                    key: const Key('share-link'),
+                    onPressed: () =>
+                        controller.shareLink(origin: _originOf(context)),
+                    icon: const Icon(Icons.share_outlined),
+                    label: const Text('Compartir'),
+                  ),
+                ),
                 OutlinedButton.icon(
-                  onPressed: controller.shareLink,
-                  icon: const Icon(Icons.share_outlined),
-                  label: const Text('Compartir por WhatsApp'),
+                  onPressed: controller.shareByWhatsapp,
+                  icon: const Icon(Icons.chat_outlined),
+                  label: const Text('WhatsApp'),
                 ),
                 TextButton.icon(
                   onPressed: controller.openLink,
@@ -193,6 +202,13 @@ class _BookingLinkCard extends GetView<BusinessSettingsController> {
       }),
     );
   }
+}
+
+/// Rectángulo del botón en pantalla (ancla del menú en iPad y macOS).
+Rect? _originOf(BuildContext context) {
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.hasSize) return null;
+  return box.localToGlobal(Offset.zero) & box.size;
 }
 
 class _OpeningHoursCard extends GetView<BusinessSettingsController> {

@@ -95,6 +95,7 @@ void main() {
   late SessionController session;
   late FakeSettingsRepository repo;
   late List<Uri> opened;
+  late List<(String, String?)> shared;
 
   setUpAll(() => initializeDateFormatting('es'));
 
@@ -112,6 +113,7 @@ void main() {
     Get.put<SessionController>(session, permanent: true);
     repo = FakeSettingsRepository(service);
     opened = [];
+    shared = [];
   });
 
   tearDown(() {
@@ -130,6 +132,10 @@ void main() {
         apiUrl: () => 'https://api.agendity.co/api/',
         openLink: (uri) async {
           opened.add(uri);
+          return true;
+        },
+        share: (text, {subject, origin}) async {
+          shared.add((text, subject));
           return true;
         },
       );
@@ -219,6 +225,28 @@ void main() {
       c.onClose();
     });
 
+    test('compartir usa el menú nativo inyectado; si falla, avisa', () async {
+      repo.current = const BusinessSettings(
+          timeZone: 'America/Bogota', name: 'Cejas Luna', slug: 'cejas-luna');
+      final c = buildController()..onInit();
+      await Future<void>.delayed(Duration.zero);
+      await c.shareLink();
+      expect(shared.single.$1,
+          'Reserva tu cita en Cejas Luna: https://api.agendity.co/reservar/cejas-luna');
+      expect(shared.single.$2, 'Cejas Luna');
+      expect(opened, isEmpty, reason: 'WhatsApp es otra opción');
+      c.onClose();
+    });
+
+    test('sin nombre (sin slug) no hay nada que compartir', () async {
+      final c = buildController()..onInit();
+      await Future<void>.delayed(Duration.zero);
+      expect(c.shareMessage, isNull);
+      await c.shareLink();
+      expect(shared, isEmpty);
+      c.onClose();
+    });
+
     test('busca sin distinguir mayúsculas y con espacio en lugar de _',
         () async {
       final c = buildController()..onInit();
@@ -276,7 +304,11 @@ void main() {
       expect(find.text('Link copiado'), findsOneWidget);
       await expireSnackbar(tester);
 
-      await tap(tester, find.text('Compartir por WhatsApp'));
+      await tap(tester, find.byKey(const Key('share-link')));
+      expect(shared.single,
+          ('Reserva tu cita en Cejas Luna: ${c.bookingLink}', 'Cejas Luna'));
+
+      await tap(tester, find.text('WhatsApp'));
       expect(opened.single.host, 'wa.me');
       expect(opened.single.queryParameters['text'],
           'Reserva tu cita en Cejas Luna: ${c.bookingLink}');

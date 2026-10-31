@@ -37,7 +37,7 @@ Map<String, dynamic> line(String id, String name, String price,
       'name': name,
       'price': '99999.00', // precio actual del catálogo: no se usa
       'appointment_price': price,
-      'commission_percentage': percent,
+      'appointment_commission_percentage': percent,
     };
 
 Map<String, dynamic> payment(String id, String appointmentId, String amount,
@@ -80,6 +80,11 @@ final data = LocalStatsData(
     payment('p3', 'a1', '5000.00', '2026-10-20T11:00:00.000-05:00',
         status: 'REFUNDED', refund: '5000.00'),
     payment('p4', 'a2', '7000.00', '2026-10-19T12:00:00.000-05:00'),
+    // En revisión (pagado de más): no cuenta, como en el servidor.
+    {
+      ...payment('p5', 'a1', '9000.00', '2026-10-20T12:00:00.000-05:00'),
+      'reviewRequired': 'OVERPAID',
+    },
   ],
   clients: {
     'cli-1': (name: 'Ana', lastname: 'Pérez'),
@@ -182,6 +187,24 @@ void main() {
     ]);
     expect(const LocalStats(LocalStatsData()).byProfessional(from, to),
         isEmpty);
+  });
+
+  test('mejores clientes: empate → por id ascendente (ORDER BY total_spent '
+      'DESC, c.id ASC)', () {
+    final tie = LocalStats(LocalStatsData(
+      appointments: {
+        'x': appointment('x', 'pro-1', 'b-cli', 'COMPLETED',
+            '2026-10-20T10:00:00.000-05:00', const []),
+        'y': appointment('y', 'pro-1', 'a-cli', 'COMPLETED',
+            '2026-10-20T11:00:00.000-05:00', const []),
+      },
+      payments: [
+        payment('q1', 'x', '100.00', '2026-10-20T10:00:00.000-05:00'),
+        payment('q2', 'y', '100.00', '2026-10-20T11:00:00.000-05:00'),
+      ],
+    ));
+    expect(tie.topClients(from, to, limit: 5).map((c) => c['client_id']),
+        ['a-cli', 'b-cli']);
   });
 
   test('mejores clientes: nombre de la ficha local, visitas y gasto', () {

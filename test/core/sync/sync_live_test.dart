@@ -8,6 +8,7 @@ import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/core/database/document_store.dart';
 import 'package:login_signup/core/database/shared_documents.dart';
 import 'package:login_signup/core/sync/document_sync_handler.dart';
+import 'package:login_signup/core/sync/sync_models.dart';
 import 'package:login_signup/core/sync/offline_store.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointments_remote_datasource.dart';
@@ -22,6 +23,7 @@ import 'package:login_signup/features/payments/data/repositories/payment_reposit
 import 'package:login_signup/features/payments/data/sync/payments_sync.dart';
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 import 'package:login_signup/features/services/data/repositories/services_repository_impl.dart';
+import 'package:login_signup/features/services/data/datasources/catalog_local_datasource.dart';
 import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
 import 'package:login_signup/features/statistics/data/local/statistics_local_datasource.dart';
@@ -334,4 +336,99 @@ void main() {
     await engine.dispose();
     await databases.close();
   }, skip: url == null ? 'Solo con SYNC_E2E_URL' : null);
+
+  test('base restaurada (npm run sync:new-epoch sobre la copia): la app rehace '
+      'la bajada sin perder la bandeja', () async {
+    final backendDir = Platform.environment['SYNC_E2E_BACKEND_DIR']!;
+    final dbName = Platform.environment['SYNC_E2E_DB']!;
+    final tokens = MemoryTokenStore();
+    final dio = buildApiClient(
+        baseUrl: url!, tokenStore: tokens, enableLogs: false);
+    final login = await dio.post<Map<String, dynamic>>('/auth/login',
+        data: {'email': 'marcela.rojas@example.com', 'password': 'Clave@2026a'},
+        options: Options(extra: {AuthInterceptor.publicKey: true}));
+    tokens.token = login.data!['token'] as String;
+    final databases = memoryDatabases();
+    final handlers = [
+      ClientsSyncHandler(
+          const ClientsLocalDataSource(), ClientsRemoteDataSourceImpl(dio)),
+      ...CatalogSync.handlers(),
+      ...EmployeesSync.handlers(),
+      ...AppointmentsSync.handlers(),
+      ...PaymentsSync.handlers(),
+      DocumentSyncHandler(SharedDocs.businessSettings),
+    ];
+    final engine =
+        SyncEngine(databases: databases, api: DioSyncApi(dio), handlers: handlers);
+    await engine.syncNow();
+    final db = await databases.require();
+    final epochBefore =
+        await (db.select(db.syncMeta)..where((m) => m.key.equals('server_epoch')))
+            .getSingle();
+    // Algo que solo existe en la base vieja de la app (debe irse) y algo
+    // pendiente de subir (debe quedarse).
+    await DocumentStore.put(db, CatalogDocs.services, 'fantasma',
+        {'id': 'fantasma', 'name': 'Fantasma', 'isActive': true});
+    final clients = ClientsRepositoryImpl(
+        remote: ClientsRemoteDataSourceImpl(dio),
+        store: OfflineStore(databases: databases));
+    final suffix = DateTime.now().millisecondsSinceEpoch % 10000000;
+    final pending = (await clients.createClient(ClientEntity(
+            name: 'Pendiente',
+            phone: '313${suffix.toString().padLeft(7, '0')}')))
+        .getOrElse(() => throw StateError('alta'));
+
+    final result = await Process.run('npm', ['run', 'sync:new-epoch'],
+        workingDirectory: backendDir,
+        environment: {'DB_NAME': dbName});
+    expect(result.exitCode, 0, reason: '${result.stdout}${result.stderr}');
+
+    // El servidor aún no acepta la subida: solo la bajada (la bandeja sigue).
+    final holdPush = SyncEngine(
+        databases: databases, api: _HoldPush(DioSyncApi(dio)), handlers: handlers);
+    await holdPush.syncNow();
+    final epochAfter =
+        await (db.select(db.syncMeta)..where((m) => m.key.equals('server_epoch')))
+            .getSingle();
+    expect(epochAfter.value, isNot(epochBefore.value));
+    expect(await DocumentStore.get(db, 'services', 'fantasma'), isNull,
+        reason: 'lo de la base vieja se fue');
+    expect((await OutboxStore.all(db)).single.entityId, pending.id);
+    expect((await clients.getClientById(pending.id!)).isRight(), true,
+        reason: 'lo pendiente se reaplicó encima');
+    expect((await clients.getClients(const ClientsQuery())).getOrElse(
+            () => throw StateError('lista')).total,
+        greaterThan(1));
+    await holdPush.dispose();
+
+    // Con la subida normal, la bandeja se vacía.
+    await engine.syncNow();
+    expect(await OutboxStore.all(db), isEmpty);
+    await engine.dispose();
+    await databases.close();
+  },
+      skip: url == null ||
+              Platform.environment['SYNC_E2E_BACKEND_DIR'] == null ||
+              Platform.environment['SYNC_E2E_DB'] == null
+          ? 'Solo con SYNC_E2E_URL, SYNC_E2E_BACKEND_DIR y SYNC_E2E_DB (copia)'
+          : null);
+}
+
+/// La bajada va al servidor real; la subida responde `retry` (aún no se
+/// acepta), para ver la bajada completa con la bandeja intacta.
+class _HoldPush implements SyncApi {
+  final SyncApi inner;
+  _HoldPush(this.inner);
+
+  @override
+  Future<List<MutationResult>> push(
+          String deviceId, List<PushMutation> mutations) async =>
+      [
+        for (final m in mutations)
+          MutationResult(mutationId: m.mutationId, status: MutationStatus.retry),
+      ];
+
+  @override
+  Future<ChangesPage> changes(String cursor, {int limit = 500}) =>
+      inner.changes(cursor, limit: limit);
 }

@@ -41,8 +41,7 @@ class LocalStatsData {
 /// - Periodo: días completos del negocio, [00:00 del inicio, 23:59:59.999
 ///   del fin], en su zona actual.
 /// - Ingresos: pagos `COMPLETED` netos (`amount − refund_amount`) por su
-///   `created_at`. Como el backend, los pagos en revisión también cuentan
-///   aquí.
+///   `created_at`, sin los que están en revisión (`reviewRequired`).
 /// - Comisiones: citas `COMPLETED` por su fecha, con el precio y el %
 ///   guardados en cada línea, en centavos.
 class LocalStats {
@@ -80,6 +79,8 @@ class LocalStats {
     return [
       for (final p in data.payments)
         if (p['status'] == 'COMPLETED' &&
+            // Como el backend (80f5db5): un pago en revisión no cuenta.
+            JsonRead.asOptionalString(p['reviewRequired']) == null &&
             _within(_instant(p['created_at']), w) &&
             (professionalId == null ||
                 data.appointments[_appointmentId(p)]?['professionalId'] ==
@@ -416,10 +417,12 @@ class LocalStats {
 
   // ------------------------------------------------------------ Comisiones
 
-  /// % de la línea: el congelado si el registro lo trae; si no, el que
-  /// aplicaría hoy (excepción del servicio o la general del profesional).
+  /// % de la línea: el congelado en la cita
+  /// (`appointment_commission_percentage`, backend 80f5db5); si viene `null`
+  /// (cita hecha sin conexión que aún no sube), el que aplicaría hoy
+  /// (excepción del servicio o la general del profesional).
   double _linePercent(Map<String, dynamic> line, String professionalId) {
-    final frozen = line['commission_percentage'];
+    final frozen = line['appointment_commission_percentage'];
     if (frozen != null) return JsonRead.asDouble(frozen);
     final serviceId = JsonRead.asString(line['id']);
     final exception = data.userServices

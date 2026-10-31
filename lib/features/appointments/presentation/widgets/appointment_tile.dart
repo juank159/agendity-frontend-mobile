@@ -95,6 +95,14 @@ class AppointmentTile extends StatelessWidget {
                       children: lines,
                     ),
                   ),
+                  if (isFirst && a.needsReschedule)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Icon(Icons.report_problem_outlined,
+                          size: 14,
+                          color: foreground,
+                          semanticLabel: 'Por mover'),
+                    ),
                   if (isFirst && a.isWebBooking)
                     Padding(
                       padding: const EdgeInsets.only(left: 2),
@@ -113,7 +121,8 @@ class AppointmentTile extends StatelessWidget {
 
     return Semantics(
       label: '${a.clientName}, $service, ${a.status.label}'
-          '${a.isWebBooking ? ', reserva web' : ''}',
+          '${a.isWebBooking ? ', reserva web' : ''}'
+          '${a.needsReschedule ? ', por mover' : ''}',
       child: Padding(
         padding:
             EdgeInsets.symmetric(horizontal: 1, vertical: blocks > 1 ? 0 : 1),

@@ -6,6 +6,7 @@ import 'package:login_signup/features/clients/domain/entities/client_import_resu
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/import_clients_usecase.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'client_access.dart';
 
@@ -78,11 +79,25 @@ class ClientsController extends GetxController {
     debounce(searchQuery, (_) => loadClients(),
         time: const Duration(milliseconds: 500));
     scrollController.addListener(_onScroll);
+    if (Get.isRegistered<SyncController>()) {
+      _syncWorker = Get.find<SyncController>().onDataChanged(loadClients);
+    }
     loadClients();
+  }
+
+  Worker? _syncWorker;
+
+  /// Deslizar para refrescar (10.03): sincroniza y vuelve a leer.
+  Future<void> refreshFromServer() async {
+    if (Get.isRegistered<SyncController>()) {
+      await Get.find<SyncController>().syncNow();
+    }
+    await loadClients();
   }
 
   @override
   void onClose() {
+    _syncWorker?.dispose();
     scrollController.removeListener(_onScroll);
     scrollController.dispose();
     searchController.dispose();

@@ -116,7 +116,7 @@ class _EmployeesList extends GetView<EmployeesController> {
             );
           }
           return RefreshIndicator(
-            onRefresh: controller.refreshCurrent,
+            onRefresh: controller.refreshFromServer,
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
               itemCount: visible.length,

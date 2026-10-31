@@ -3,23 +3,27 @@
 //
 //   flutter test integration_test/salon_flow_test.dart -d macos
 //
-// Necesita el backend de demo en `API_URL` con los datos de 7.01 (Owner
+// Necesita el backend de demo en `API_URL` (o `--dart-define=API_URL=…`) con los datos de 7.01 (Owner
 // Marcela, empleadas Ana y Laura, citas del 30 y 31 de octubre de 2026).
 // Las capturas se guardan en el `tmp` del contenedor de la app (sandbox de
 // macOS): `~/Library/Containers/<bundle>/Data/tmp/shots/NN_paso.png`.
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:login_signup/core/network/api_client.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/commissions_controller.dart';
 import 'package:login_signup/main.dart' as app;
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 
 const _password = 'Clave@2026a';
 const _owner = 'marcela.rojas@example.com';
@@ -183,6 +187,116 @@ Future<bool> openDetail(WidgetTester tester, String client) async {
 
 Future<void> closeDialog(WidgetTester tester) async {
   await tap(tester, find.byTooltip('Cerrar'), wait: 800);
+}
+
+/// Red simulada: con [on], toda petición del Dio de la app falla como si no
+/// hubiera conexión (sin tocar el backend ni la máquina).
+class OfflineSwitch extends Interceptor {
+  bool on = false;
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    if (on) {
+      handler.reject(DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionError,
+          error: 'sin red (simulado)'));
+      return;
+    }
+    handler.next(options);
+  }
+}
+
+/// Corta la red, crea un cliente y una cita, comprueba que quedan
+/// pendientes en el teléfono, reconecta y comprueba que llegaron al servidor.
+Future<void> offlineStep(WidgetTester tester) async {
+  final dio = Get.find<Dio>(tag: apiClientTag);
+  final sync = Get.find<SyncController>();
+  final offline = OfflineSwitch();
+  dio.interceptors.insert(0, offline);
+  offline.on = true;
+  const name = 'Sinred';
+  final last = 'Prueba $_run';
+
+  await openDrawerItem(tester, 'Clientela');
+  await tap(tester, find.byTooltip('Agregar cliente'));
+  await tapText(tester, 'Nuevo cliente', wait: 1500);
+  await type(tester, 'Nombre *', name);
+  await type(tester, 'Apellido', last);
+  await type(tester, 'Teléfono móvil *', '321${_run.padLeft(7, '0')}');
+  await tapText(tester, 'Guardar cliente', wait: 2500);
+  check(await waitFor(tester, find.textContaining(last)),
+      'sin conexión: el cliente se guarda en el teléfono', allText());
+  await back(tester);
+
+  // Lunes 2 de noviembre, con Laura.
+  await showDay(tester, DateTime(2026, 11, 2));
+  await tap(tester, find.byTooltip('Nueva cita'), wait: 2500);
+  await tap(tester, find.byKey(const Key('appointment-professional')));
+  await tapText(tester, 'Laura Pérez');
+  await tap(tester, find.byKey(const Key('appointment-services')));
+  final bozo = find.widgetWithText(CheckboxListTile, 'Depilación de bozo');
+  await waitFor(tester, bozo);
+  await tap(tester, bozo, wait: 500);
+  await tapText(tester, 'Listo');
+  await tap(tester, find.byKey(const Key('appointment-client')));
+  await type(tester, 'Buscar por nombre o teléfono', last);
+  await idle(tester, 2000);
+  await tapText(tester, '$name $last');
+  await idle(tester, 2500);
+  final chips = find.byType(ChoiceChip);
+  final hasSlots = await waitFor(tester, chips, timeout: const Duration(seconds: 5));
+  check(hasSlots, 'sin conexión: horas libres calculadas en el teléfono',
+      allText());
+  if (hasSlots) await tap(tester, chips.first);
+  await shot(tester, 'sin_red_cita');
+  await tapText(tester, 'Agendar', wait: 3000);
+  if (find.text('Nueva cita').evaluate().isNotEmpty) {
+    await tapText(tester, 'Cancelar');
+  }
+  // Bloque de 15 min: cliente y servicio en una línea.
+  check(await waitFor(tester, find.textContaining('$name $last')),
+      'sin conexión: la cita aparece en la agenda', allText());
+
+  // El motor intenta sincronizar (debounce) y descubre que no hay red.
+  await sync.syncNow();
+  await idle(tester, 1500);
+  check(sync.isOffline && sync.pending >= 2,
+      'sin conexión: indicador y 2 pendientes',
+      'offline=${sync.isOffline} pendientes=${sync.pending}');
+  await shot(tester, 'sin_red_agenda');
+  await tap(tester, find.byKey(const Key('sync-status')), wait: 1500);
+  await shot(tester, 'sin_red_pendientes');
+  dump('pendientes sin red');
+  check(allText().contains('Esperando envío') &&
+          allText().contains('Cliente nuevo') &&
+          allText().contains('Cita nueva'),
+      'Pendientes: cliente y cita esperando envío', allText());
+
+  // Vuelve la red.
+  offline.on = false;
+  await sync.syncNow();
+  await idle(tester, 2500);
+  await shot(tester, 'con_red_pendientes');
+  check(sync.pending == 0 && sync.needsAttention == 0,
+      'al reconectar: la bandeja queda vacía',
+      'pendientes=${sync.pending} atención=${sync.needsAttention}');
+  await back(tester);
+
+  // En el servidor: la cita (con su cliente) del 2 de noviembre.
+  final response = await dio.get<List<dynamic>>('/appointments',
+      queryParameters: {
+        'startDate': DateCodec.encode(DateTime(2026, 11, 2)),
+        'endDate': DateCodec.encode(DateTime(2026, 11, 3)),
+      });
+  final names = [
+    for (final a in response.data ?? const [])
+      if (a is Map && a['client'] is Map)
+        '${a['client']['name']} ${a['client']['lastname']}',
+  ];
+  check(names.contains('$name $last'),
+      'al reconectar: el cliente y la cita están en el servidor', names);
+  dio.interceptors.remove(offline);
 }
 
 void main() {
@@ -521,6 +635,9 @@ void main() {
         'editor de horario con los días', allText());
     if (!wasLimited) await tapText(tester, 'Descartar');
     await back(tester);
+
+    // ── Sin conexión (10.03): cliente y cita sin red; al volver, suben ──
+    await offlineStep(tester);
 
     await logout(tester);
 

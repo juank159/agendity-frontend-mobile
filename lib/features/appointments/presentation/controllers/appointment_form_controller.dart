@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dartz/dartz.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -17,6 +19,7 @@ import 'package:login_signup/features/clients/domain/entities/client_entity.dart
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/domain/usecases/get_services_offered_by_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
@@ -44,7 +47,13 @@ class AppointmentFormController extends GetxController {
   final GetServicesUseCase _getServices;
   final GetEmployeesUseCase _getProfessionals;
   final SessionController _session;
+  final GetServicesOfferedByUseCase? _getOffered;
   final DateTime Function() _now;
+
+  /// Servicios activos que hace el profesional elegido (10.03,
+  /// `GetServicesOfferedByUseCase`; también para la empleada). `null` = aún
+  /// no se sabe.
+  final offered = Rxn<List<ServiceEntity>>();
 
   /// La cita que se edita; `null` = cita nueva.
   final AppointmentEntity? original;
@@ -59,6 +68,7 @@ class AppointmentFormController extends GetxController {
     required GetServicesUseCase getServicesUseCase,
     required GetEmployeesUseCase getProfessionalsUseCase,
     required SessionController session,
+    GetServicesOfferedByUseCase? getServicesOfferedByUseCase,
     this.original,
     DateTime? initialStart,
     DateTime Function()? now,
@@ -68,6 +78,7 @@ class AppointmentFormController extends GetxController {
         _getServices = getServicesUseCase,
         _getProfessionals = getProfessionalsUseCase,
         _session = session,
+        _getOffered = getServicesOfferedByUseCase,
         _now = now ?? BusinessTimeZone.now,
         _preferredStart = original?.startTime ?? initialStart;
 
@@ -83,6 +94,10 @@ class AppointmentFormController extends GetxController {
         getServicesUseCase: Get.find(),
         getProfessionalsUseCase: Get.find(),
         session: Get.find(),
+        getServicesOfferedByUseCase:
+            Get.isRegistered<GetServicesOfferedByUseCase>()
+                ? Get.find<GetServicesOfferedByUseCase>()
+                : null,
         original: original,
         initialStart: initialStart,
       );
@@ -145,6 +160,8 @@ class AppointmentFormController extends GetxController {
           title: 'No se cargaron los servicios'),
       (loaded) => catalog.assignAll(loaded.where((s) => s.isActive)),
     );
+    final pro = professional.value;
+    if (pro != null) await _loadOffered(pro.id);
     // Sin la lista (p. ej. sin red) el selector queda vacío y lo dice.
     team?.fold(
       (_) {},
@@ -170,9 +187,18 @@ class AppointmentFormController extends GetxController {
     if (professionalIsFixed) return;
     professional.value =
         SelectedProfessional(id: employee.id, name: employee.fullName);
+    unawaited(_afterProfessionalChanged(employee));
+  }
+
+  Future<void> _afterProfessionalChanged(EmployeeEntity employee) async {
+    await _loadOffered(employee.id);
+    final known = offered.value;
     // Fuera los servicios que el nuevo profesional no hace (7.04-5).
-    final dropped =
-        serviceIds.where((id) => !employee.offersService(id)).toList();
+    final dropped = serviceIds
+        .where((id) => known != null
+            ? !known.any((s) => s.id == id)
+            : !employee.offersService(id))
+        .toList();
     if (dropped.isNotEmpty) {
       serviceIds.removeWhere(dropped.contains);
       AppSnackbar.info(
@@ -183,17 +209,26 @@ class AppointmentFormController extends GetxController {
     loadSlots();
   }
 
-  /// Ficha del profesional elegido, si se conoce. El Employee no la tiene
-  /// (no puede leer el equipo): su catálogo no se filtra y el backend
-  /// responde `SERVICE_NOT_OFFERED_BY_PROFESSIONAL` si hace falta.
+  /// Ficha del profesional elegido, si se conoce (respaldo de [offered]).
   EmployeeEntity? get selectedEmployee {
     final id = professional.value?.id;
     return id == null ? null : professionals.firstWhereOrNull((e) => e.id == id);
   }
 
+  Future<void> _loadOffered(String professionalId) async {
+    final useCase = _getOffered;
+    if (useCase == null) return;
+    final result = await useCase(professionalId);
+    if (professional.value?.id != professionalId) return; // cambió
+    offered.value = result.fold((_) => null, (list) => list);
+  }
+
   /// Servicios que se pueden elegir: los activos que hace el profesional
-  /// elegido (`offersService`, la misma regla del backend, 7.03).
+  /// elegido (`GetServicesOfferedByUseCase`; si no se pudo leer, la regla
+  /// `offersService` sobre la ficha del profesional).
   List<ServiceEntity> get offeredCatalog {
+    final known = offered.value;
+    if (known != null) return known.where((s) => s.isActive).toList();
     final employee = selectedEmployee;
     if (employee == null) return catalog.toList();
     return catalog
@@ -283,7 +318,10 @@ class AppointmentFormController extends GetxController {
         final current = original?.startTime;
         // La hora actual de la cita que se edita está ocupada por ella misma:
         // se ofrece igualmente (el backend la excluye al comprobar).
+        // Una cita por mover (10.03) no puede quedarse en su hora: no se
+        // ofrece.
         if (current != null &&
+            !(original?.needsReschedule ?? false) &&
             _sameDay(current, day.value) &&
             !options.any((s) => s.isAtSameMomentAs(current))) {
           options.add(current);

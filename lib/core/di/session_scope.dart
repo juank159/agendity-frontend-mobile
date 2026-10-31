@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/reschedule_list_controller.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/sync_attention_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_notice_controller.dart';
 import 'package:login_signup/features/clients/presentation/controllers/clients_controller.dart';
@@ -11,7 +13,9 @@ import 'package:login_signup/features/employees/presentation/controllers/edit_em
 import 'package:login_signup/features/employees/presentation/controllers/employees_controller.dart';
 import 'package:login_signup/features/employees/presentation/controllers/new_employee_controller.dart';
 import 'package:login_signup/features/employees/presentation/controllers/verify_employee_email_controller.dart';
+import 'package:login_signup/features/notifications/presentation/controllers/notifications_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
+import 'package:login_signup/features/payments/presentation/controllers/payments_review_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/categories_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/edit_service_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/new_category_controller.dart';
@@ -62,6 +66,10 @@ abstract final class SessionScope {
     deleteSessionController<CommissionsController>,
     deleteSessionController<SubscriptionController>,
     deleteSessionController<WhatsappController>,
+    deleteSessionController<SyncAttentionController>,
+    deleteSessionController<RescheduleListController>,
+    deleteSessionController<PaymentsReviewController>,
+    deleteSessionController<NotificationsController>,
     deleteSessionController<BusinessSettingsController>,
   ];
 

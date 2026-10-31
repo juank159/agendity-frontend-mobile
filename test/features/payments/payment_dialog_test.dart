@@ -17,6 +17,9 @@ import 'package:login_signup/features/payments/presentation/widgets/payment_dial
 
 /// Repositorio falso: el diálogo, el controller y el use case son reales.
 class FakePaymentRepository implements PaymentRepository {
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
   Either<Failure, PaymentEntity>? result;
   final sent = <PaymentEntity>[];
 

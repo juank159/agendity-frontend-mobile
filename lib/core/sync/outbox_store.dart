@@ -171,6 +171,21 @@ abstract final class OutboxStore {
         message: Value(null),
       ));
 
+  /// "Reintentar" desde la pantalla de pendientes (10.03): el servidor
+  /// guarda el resultado de cada `mutation_id` (salvo los transitorios), así
+  /// que reenviar la misma devolvería el mismo rechazo. Vuelve a pendiente
+  /// con [newMutationId] y la hora de ahora.
+  static Future<void> retryAsNew(AppDatabase db, String mutationId,
+          {required String newMutationId, required DateTime clientTime}) =>
+      (db.update(db.outbox)..where((o) => o.mutationId.equals(mutationId)))
+          .write(OutboxCompanion(
+        mutationId: Value(newMutationId),
+        clientTime: Value(clientTime.toUtc().toIso8601String()),
+        status: const Value('pending'),
+        code: const Value(null),
+        message: const Value(null),
+      ));
+
   /// Decisión explícita del usuario: renunciar a una operación.
   static Future<int> discard(AppDatabase db, String mutationId) =>
       remove(db, mutationId);

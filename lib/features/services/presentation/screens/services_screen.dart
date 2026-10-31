@@ -39,10 +39,12 @@ class ServicesScreen extends GetView<ServicesController> {
           emptyActionIcon: Icons.add,
           onEmptyAction: canManage ? controller.openNewService : null,
           builder: (context, _) => RefreshIndicator(
-            onRefresh: controller.loadServices,
+            onRefresh: controller.refreshFromServer,
             child: _GroupedServices(
               groups: controller.getServicesGroupedByCategory(),
               onTap: canManage ? controller.openEditService : null,
+              onActiveChanged:
+                  controller.canToggleActive ? controller.setActive : null,
             ),
           ),
         );
@@ -61,8 +63,10 @@ class ServicesScreen extends GetView<ServicesController> {
 class _GroupedServices extends StatelessWidget {
   final Map<String, List<ServiceEntity>> groups;
   final ValueChanged<ServiceEntity>? onTap;
+  final void Function(ServiceEntity service, bool active)? onActiveChanged;
 
-  const _GroupedServices({required this.groups, required this.onTap});
+  const _GroupedServices(
+      {required this.groups, required this.onTap, this.onActiveChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +90,9 @@ class _GroupedServices extends StatelessWidget {
               ServiceCard(
                 service: service,
                 onTap: onTap == null ? null : () => onTap!(service),
+                onActiveChanged: onActiveChanged == null
+                    ? null
+                    : (active) => onActiveChanged!(service, active),
               ),
           ],
         );

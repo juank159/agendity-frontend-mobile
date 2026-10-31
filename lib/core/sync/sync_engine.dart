@@ -336,11 +336,74 @@ class SyncEngine {
   /// Cursor guardado (tests y diagnóstico).
   static Future<String?> cursorOf(AppDatabase db) => _meta(db, cursorKey);
 
+  // ------------------------------------------------- Decisiones del usuario
+
+  /// Bandeja de la sesión, en orden (vacía sin sesión). La pantalla
+  /// "Pendientes" (10.03) la muestra.
+  Future<List<OutboxEntry>> entries() async {
+    final db = await _databases.current();
+    return db == null ? const [] : OutboxStore.all(db);
+  }
+
+  /// Vuelve a enviar una rechazada o en conflicto y sincroniza ya. Va como
+  /// una mutación **nueva** (el servidor recuerda el rechazo de la anterior)
+  /// y se vuelve a aplicar en local, porque el rechazo la había deshecho.
+  Future<void> retry(String mutationId) async {
+    final db = await _databases.current();
+    if (db == null) return;
+    final entry = (await OutboxStore.all(db))
+        .where((e) => e.mutationId == mutationId)
+        .firstOrNull;
+    if (entry == null) return;
+    final newId = const Uuid().v7();
+    await OutboxStore.retryAsNew(db, mutationId,
+        newMutationId: newId, clientTime: DateTime.now());
+    final handler = _handlers[entry.entity];
+    if (handler != null && !entry.isTransientRejection) {
+      try {
+        await handler.replay(db, (await OutboxStore.all(db))
+            .firstWhere((e) => e.mutationId == newId));
+      } catch (error) {
+        AppLogger.debug('No se pudo reaplicar ${entry.entity}: '
+            '${error.runtimeType}');
+      }
+    }
+    await _refreshCounts(db);
+    requestSync(immediate: true);
+  }
+
+  /// Renuncia a una operación (lo único que pierde datos): sale de la bandeja
+  /// y el registro local vuelve a la versión del servidor (un alta hecha sin
+  /// conexión desaparece).
+  Future<void> discard(String mutationId) async {
+    final db = await _databases.current();
+    if (db == null) return;
+    final entry = (await OutboxStore.all(db))
+        .where((e) => e.mutationId == mutationId)
+        .firstOrNull;
+    if (entry == null) return;
+    await OutboxStore.discard(db, mutationId);
+    // Otras pendientes del mismo registro siguen: solo se restaura si no
+    // queda ninguna.
+    final id = entry.entityId;
+    if (id == null ||
+        (await OutboxStore.all(db))
+            .every((e) => e.entity != entry.entity || e.entityId != id)) {
+      await _restore(db, entry);
+    }
+    await _refreshCounts(db);
+  }
+
   // ------------------------------------------------------------------ Estado
 
   Future<void> refreshCounts() async {
     final db = await _databases.current();
-    if (db != null) await _refreshCounts(db);
+    if (db != null) {
+      await _refreshCounts(db);
+    } else {
+      // Sin sesión no hay bandeja que mostrar (la del usuario sigue en su base).
+      _emit(_current.copyWith(pending: 0, needsAttention: 0));
+    }
   }
 
   Future<void> _refreshCounts(AppDatabase db) async {

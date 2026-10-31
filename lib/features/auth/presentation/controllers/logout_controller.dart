@@ -4,6 +4,7 @@ import 'package:login_signup/core/di/session_scope.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
@@ -53,6 +54,10 @@ class LogoutController extends GetxController {
       Get.offAllNamed(GetRoutes.login);
       await _afterNavigation();
       await _resetScope();
+      // La bandeja del usuario queda en su base; el indicador vuelve a cero.
+      if (Get.isRegistered<SyncController>()) {
+        await Get.find<SyncController>().reloadCounts();
+      }
 
       if (expired) {
         AppSnackbar.warning('Tu sesión expiró. Inicia sesión de nuevo.',

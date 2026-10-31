@@ -14,6 +14,13 @@ import 'package:login_signup/core/utils/json_read.dart';
 abstract final class PaymentsSync {
   static const create = 'payment.create';
 
+  /// Reembolso (10.03): `{refund_amount, refund_reason}` sobre el pago.
+  static const refund = 'payment.refund';
+
+  /// Motivos de revisión (backend `PAYMENT_REVIEW`).
+  static const reviewCancelled = 'APPOINTMENT_CANCELLED';
+  static const reviewOverpaid = 'OVERPAID';
+
   static final payments = DocumentKind('payments',
       ref1: (d) => appointmentIdOf(d), at: (d) => d['created_at']);
   static const customMethods = DocumentKind('custom_payment_methods');
@@ -25,6 +32,7 @@ abstract final class PaymentsSync {
           : JsonRead.asOptionalString(payment['appointment']));
 
   static Future<void> apply(AppDatabase db, OutboxEntry entry) async {
+    if (entry.type == refund) return applyRefund(db, entry);
     final id = entry.entityId;
     if (id == null || entry.type != create) return;
     final p = entry.payload;
@@ -46,6 +54,45 @@ abstract final class PaymentsSync {
       'updated_at': entry.clientTime,
     });
     await refreshAppointment(db, appointmentId);
+  }
+
+  /// Reembolso en local, con las cuentas del backend (`applyRefund` y la
+  /// resolución de la revisión de `PaymentsService.refund`): se acumula; el
+  /// pago pasa a `REFUNDED` cuando se devuelve todo; uno en revisión deja de
+  /// estarlo cuando ya cabe (cita cancelada: devuelto entero; de más: lo
+  /// pagado de la cita con él no pasa del total).
+  static Future<void> applyRefund(AppDatabase db, OutboxEntry entry) async {
+    final id = entry.entityId;
+    if (id == null) return;
+    final payment = await DocumentStore.get(db, payments.entity, id);
+    if (payment == null) return;
+    final amountCents = (JsonRead.asDouble(payment['amount']) * 100).round();
+    final refundedCents =
+        (JsonRead.asDouble(payment['refund_amount']) * 100).round() +
+            (JsonRead.asDouble(entry.payload['refund_amount']) * 100).round();
+    final appointmentId = appointmentIdOf(payment);
+    var review = JsonRead.asOptionalString(payment['reviewRequired']);
+    if (review != null && appointmentId != null) {
+      final net = amountCents - refundedCents;
+      if (review == reviewCancelled) {
+        if (net <= 0) review = null;
+      } else {
+        final appointment = await DocumentStore.get(
+            db, SharedDocs.appointments.entity, appointmentId);
+        final total =
+            (JsonRead.asDouble(appointment?['total_price']) * 100).round();
+        if (await paidCents(db, appointmentId) + net <= total) review = null;
+      }
+    }
+    await DocumentStore.keepServerCopy(db, payments.entity, id);
+    await DocumentStore.merge(db, payments, id, {
+      'refund_amount': (refundedCents / 100).toStringAsFixed(2),
+      'refund_reason': entry.payload['refund_reason'],
+      'status': refundedCents >= amountCents ? 'REFUNDED' : payment['status'],
+      'reviewRequired': review,
+      'updated_at': entry.clientTime,
+    });
+    if (appointmentId != null) await refreshAppointment(db, appointmentId);
   }
 
   /// Pagado neto (centavos) de una cita según los pagos locales.

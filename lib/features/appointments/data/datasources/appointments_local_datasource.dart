@@ -28,6 +28,17 @@ class AppointmentsLocalDataSource {
     ]..sort((a, b) => a.startInstant.compareTo(b.startInstant));
   }
 
+  /// Las que hay que mover (`needsReschedule`), sin canceladas.
+  Future<List<AppointmentEntity>> toReschedule(AppDatabase db) async {
+    final docs = await DocumentStore.list(db, AppointmentsSync.kind.entity);
+    return [
+      for (final doc in docs)
+        if (_entity(doc) case final appointment?)
+          if (appointment.needsReschedule && !appointment.isCancelled)
+            appointment,
+    ]..sort((a, b) => a.startInstant.compareTo(b.startInstant));
+  }
+
   Future<AppointmentEntity?> appointment(AppDatabase db, String id) async {
     final doc = await DocumentStore.get(db, AppointmentsSync.kind.entity, id);
     return doc == null ? null : _entity(doc);

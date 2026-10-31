@@ -3,9 +3,12 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/features/services/domain/usecases/get_all_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/update_service_usecase.dart';
 import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
@@ -18,12 +21,22 @@ import 'package:login_signup/shared/widgets/app_snackbar.dart';
 class ServicesController extends GetxController {
   final GetServicesUseCase _getServices;
   final GetCategoriesUseCase _getCategories;
+  final GetAllServicesUseCase? _getAllServices;
+  final UpdateServiceUseCase? _updateService;
 
   ServicesController({
     required GetServicesUseCase getServicesUseCase,
     required GetCategoriesUseCase getCategoriesUseCase,
+    GetAllServicesUseCase? getAllServicesUseCase,
+    UpdateServiceUseCase? updateServiceUseCase,
   })  : _getServices = getServicesUseCase,
-        _getCategories = getCategoriesUseCase;
+        _getCategories = getCategoriesUseCase,
+        _getAllServices = getAllServicesUseCase,
+        _updateService = updateServiceUseCase;
+
+  /// Servicio cuyo interruptor de activo se está guardando.
+  final togglingId = RxnString();
+  Worker? _syncWorker;
 
   final services = <ServiceEntity>[].obs;
   final isLoading = false.obs;
@@ -35,10 +48,53 @@ class ServicesController extends GetxController {
 
   bool get canManage => CatalogAccess.canManage();
 
+  /// El Owner ve también los inactivos y los activa o desactiva (10.03).
+  bool get canToggleActive => canManage && _updateService != null;
+
   @override
   void onInit() {
     super.onInit();
+    if (Get.isRegistered<SyncController>()) {
+      _syncWorker = Get.find<SyncController>().onDataChanged(loadServices);
+    }
     loadServices();
+  }
+
+  @override
+  void onClose() {
+    _syncWorker?.dispose();
+    super.onClose();
+  }
+
+  /// Deslizar para refrescar: sincroniza (10.03) y vuelve a leer.
+  Future<void> refreshFromServer() async {
+    if (Get.isRegistered<SyncController>()) {
+      await Get.find<SyncController>().syncNow();
+    }
+    await loadServices();
+  }
+
+  /// Activa o desactiva [service]. Desactivado no se puede agendar
+  /// (`SERVICE_INACTIVE`); las citas que ya lo tienen no cambian.
+  Future<void> setActive(ServiceEntity service, bool active) async {
+    final update = _updateService;
+    if (update == null || !canManage || togglingId.value != null) return;
+    togglingId.value = service.id;
+    final result = await update(service.copyWith(isActive: active));
+    togglingId.value = null;
+    result.fold(
+      (failure) => AppSnackbar.error(CatalogAccess.messageFor(failure),
+          title: 'No se guardó el cambio'),
+      (saved) {
+        final index = services.indexWhere((s) => s.id == saved.id);
+        if (index >= 0) services[index] = saved;
+        AppSnackbar.success(
+            active
+                ? '${saved.name} se puede agendar de nuevo'
+                : '${saved.name} ya no se puede agendar',
+            title: active ? 'Servicio activado' : 'Servicio desactivado');
+      },
+    );
   }
 
   /// Carga la lista. Si ya hay una carga en curso, devuelve esa.
@@ -48,7 +104,10 @@ class ServicesController extends GetxController {
   Future<void> _load() async {
     isLoading.value = true;
     loadError.value = null;
-    final result = await _getServices(NoParams());
+    final all = _getAllServices;
+    final result = all != null && canManage
+        ? await all(NoParams())
+        : await _getServices(NoParams());
     isLoading.value = false;
     result.fold(
       (failure) {

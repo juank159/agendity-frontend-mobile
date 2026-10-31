@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
+import '../../domain/usecases/get_all_services_usecase.dart';
 import '../../domain/usecases/get_categories_usecase.dart';
+import '../../domain/usecases/update_service_usecase.dart';
 import '../../domain/usecases/get_services_usecase.dart';
 import '../controllers/services_controller.dart';
 
@@ -14,6 +16,13 @@ class ServicesBinding extends Bindings {
       () => ServicesController(
         getServicesUseCase: Get.find<GetServicesUseCase>(),
         getCategoriesUseCase: Get.find<GetCategoriesUseCase>(),
+        // Interruptor de activo del Owner (10.03).
+        getAllServicesUseCase: Get.isRegistered<GetAllServicesUseCase>()
+            ? Get.find<GetAllServicesUseCase>()
+            : null,
+        updateServiceUseCase: Get.isRegistered<UpdateServiceUseCase>()
+            ? Get.find<UpdateServiceUseCase>()
+            : null,
       ),
       fenix: true,
     );

@@ -30,7 +30,7 @@ class ClientList extends GetView<ClientsController> {
         onEmptyAction:
             filtered ? controller.clearAllFilters : controller.openNewClient,
         builder: (context, clients) => RefreshIndicator(
-          onRefresh: controller.loadClients,
+          onRefresh: controller.refreshFromServer,
           child: ListView.builder(
             controller: controller.scrollController,
             physics: const AlwaysScrollableScrollPhysics(),

@@ -47,6 +47,11 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
       safeCall(() async => _local.appointments(await _store.database(), range));
 
   @override
+  Future<Either<Failure, List<AppointmentEntity>>>
+      getAppointmentsToReschedule() => safeCall(
+          () async => _local.toReschedule(await _store.database()));
+
+  @override
   Future<Either<Failure, AppointmentEntity>> getAppointment(String id) =>
       OfflineStore.guard(() async {
         final found = await _local.appointment(await _store.database(), id);

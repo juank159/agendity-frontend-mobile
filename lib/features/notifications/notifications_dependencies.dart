@@ -7,7 +7,8 @@ import 'package:login_signup/features/notifications/data/repositories/notificati
 import 'package:login_signup/features/notifications/domain/repositories/notifications_repository.dart';
 import 'package:login_signup/features/notifications/domain/usecases/get_notifications_usecase.dart';
 
-/// Avisos del usuario (10.02b): solo bajada; aún sin pantalla (FP).
+/// Avisos del usuario (10.02b): solo bajada. Pantalla: pestaña "Avisos"
+/// de la campana (10.03).
 abstract final class NotificationsDependencies {
   static void init() {
     Get.find<SyncEngine>()

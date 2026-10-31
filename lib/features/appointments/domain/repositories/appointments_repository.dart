@@ -19,6 +19,11 @@ abstract class AppointmentsRepository {
   Future<Either<Failure, List<AppointmentEntity>>> getAppointments(
       AppointmentsRange range);
 
+  /// Citas guardadas con conflicto al sincronizar que hay que **mover**
+  /// (`needsReschedule`, 10.01b), sin las canceladas, por fecha. Owner:
+  /// todas; Employee: las suyas (solo baja lo suyo).
+  Future<Either<Failure, List<AppointmentEntity>>> getAppointmentsToReschedule();
+
   /// Una cita (p. ej. para refrescarla tras registrar un pago).
   Future<Either<Failure, AppointmentEntity>> getAppointment(String id);
 

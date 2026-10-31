@@ -22,6 +22,7 @@ import 'package:login_signup/features/appointments/domain/usecases/cancel_appoin
 import 'package:login_signup/features/appointments/domain/usecases/complete_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/create_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointment_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/get_appointments_to_reschedule_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_available_slots_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_upcoming_appointments_usecase.dart';
@@ -32,7 +33,10 @@ import 'package:login_signup/features/appointments/presentation/controllers/appo
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/reschedule_list_controller.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/sync_attention_controller.dart';
 import 'package:login_signup/features/appointments/presentation/screens/appointments_view.dart';
+import 'package:login_signup/features/appointments/presentation/screens/reschedule_list_screen.dart';
 import 'package:login_signup/features/appointments/presentation/screens/upcoming_appointments_screen.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar_data_source.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_detail_dialog.dart';
@@ -46,15 +50,25 @@ import 'package:login_signup/features/employees/domain/entities/employee_entity.
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
 import 'package:login_signup/features/employees/domain/repositories/employees_repository.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
+import 'package:login_signup/features/notifications/domain/entities/app_notification.dart';
+import 'package:login_signup/features/notifications/domain/repositories/notifications_repository.dart';
+import 'package:login_signup/features/notifications/domain/usecases/get_notifications_usecase.dart';
+import 'package:login_signup/features/notifications/presentation/controllers/notifications_controller.dart';
 import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
+import 'package:login_signup/features/payments/domain/entities/payment_review_item.dart';
 import 'package:login_signup/features/payments/domain/repositories/payment_repository.dart';
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_appointment_balance_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_payments_in_review_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/refund_payment_usecase.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
+import 'package:login_signup/features/payments/presentation/controllers/payments_review_controller.dart';
+import 'package:login_signup/features/payments/presentation/screens/payments_review_screen.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
+import 'package:login_signup/features/services/domain/usecases/get_services_offered_by_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
 import 'package:login_signup/features/subscriptions/domain/repositories/subscription_repository.dart';
@@ -67,8 +81,16 @@ import '../../core/session/memory_token_store.dart';
 // --- Repositorios falsos (pantallas, controllers y use cases son reales) ---
 
 class FakeAppointmentsRepository implements AppointmentsRepository {
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
   List<AppointmentEntity> agenda = [];
+  List<AppointmentEntity> toReschedule = [];
   Failure? listFailure;
+
+  @override
+  Future<Either<Failure, List<AppointmentEntity>>>
+      getAppointmentsToReschedule() async => Right(toReschedule);
   List<DateTime> freeSlots = [];
   Failure? saveFailure;
   Failure? cancelFailure;
@@ -179,6 +201,14 @@ class FakeServicesRepository implements ServicesRepository {
   Future<Either<Failure, List<ServiceEntity>>> getServices() async =>
       const Right([corte, tinte]);
 
+  /// Lo que hace cada profesional (`GetServicesOfferedByUseCase`).
+  Map<String, List<ServiceEntity>> offered = {};
+
+  @override
+  Future<Either<Failure, List<ServiceEntity>>> getServicesOfferedBy(
+          String professionalId) async =>
+      Right(offered[professionalId] ?? const [corte, tinte]);
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -227,8 +257,26 @@ class FakeSubscriptionRepository implements SubscriptionRepository {
 }
 
 class FakePaymentRepository implements PaymentRepository {
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
   List<PaymentEntity> previous = [];
   final sent = <PaymentEntity>[];
+  List<PaymentReviewItem> inReview = [];
+  final refunds = <(String, double, String)>[];
+
+  @override
+  Future<Either<Failure, List<PaymentReviewItem>>> getPaymentsInReview() async =>
+      Right(inReview);
+
+  @override
+  Future<Either<Failure, PaymentEntity>> refundPayment(String paymentId,
+      {required double amount, required String reason}) async {
+    refunds.add((paymentId, amount, reason));
+    final item = inReview.firstWhere((i) => i.payment.id == paymentId);
+    inReview = [for (final i in inReview) if (i.payment.id != paymentId) i];
+    return Right(item.payment.copyWith(refundAmount: amount));
+  }
 
   @override
   Future<Either<Failure, PaymentEntity>> createPayment(
@@ -916,4 +964,187 @@ void main() {
           (appointmentId: 'abc-1', serviceIndex: 0));
     });
   });
+
+  group('Sincronización (10.03)', () {
+    AppointmentEntity conflicted() => appointment().copyWith(
+        needsReschedule: true, syncConflict: 'SLOT_UNAVAILABLE');
+
+    final review = PaymentReviewItem(
+      payment: const PaymentEntity(
+        id: 'pr1',
+        appointmentId: 'a1',
+        amount: 60000,
+        paymentMethod: PaymentMethod.CASH,
+        status: PaymentStatus.COMPLETED,
+        reviewRequired: 'OVERPAID',
+      ),
+      clientName: 'Carla Díaz',
+      appointmentDate: tenAm,
+      appointmentTotal: 50000,
+      suggestedRefund: 10000,
+    );
+
+    void putReviewAwareActions() {
+      Get.delete<AppointmentActionsController>(force: true);
+      Get.put(AppointmentActionsController(
+        cancelAppointmentUseCase: CancelAppointmentUseCase(appts),
+        completeAppointmentUseCase: CompleteAppointmentUseCase(appts),
+        getAppointmentUseCase: GetAppointmentUseCase(appts),
+        getAppointmentBalanceUseCase: GetAppointmentBalanceUseCase(payments),
+        getPaymentsInReviewUseCase: GetPaymentsInReviewUseCase(payments),
+      ));
+    }
+
+    Future<void> pumpScreen(WidgetTester tester, Widget home) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+          GetMaterialApp(theme: ThemeConfig.lightTheme, home: home));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('agenda: aviso de citas por mover y pagos por revisar',
+        (tester) async {
+      signInAs('Owner');
+      appts.toReschedule = [conflicted()];
+      payments.inReview = [review];
+      Get.put(SyncAttentionController(
+        getAppointmentsToRescheduleUseCase:
+            GetAppointmentsToRescheduleUseCase(appts),
+        getPaymentsInReviewUseCase: GetPaymentsInReviewUseCase(payments),
+        session: Get.find(),
+      ));
+      await pumpScreen(tester, const AppointmentsView());
+      expect(find.text('1 cita por mover'), findsOneWidget);
+      expect(find.text('1 pago por revisar'), findsOneWidget);
+    });
+
+    testWidgets('el Employee no ve los pagos por revisar', (tester) async {
+      signInAs('Employee', userId: 'e1');
+      appts.toReschedule = [conflicted()];
+      payments.inReview = [review];
+      Get.put(SyncAttentionController(
+        getAppointmentsToRescheduleUseCase:
+            GetAppointmentsToRescheduleUseCase(appts),
+        getPaymentsInReviewUseCase: GetPaymentsInReviewUseCase(payments),
+        session: Get.find(),
+      ));
+      await pumpScreen(tester, const AppointmentsView());
+      expect(find.text('1 cita por mover'), findsOneWidget);
+      expect(find.text('1 pago por revisar'), findsNothing);
+    });
+
+    testWidgets('detalle (Owner): motivo, "Mover a otra hora" y pago en revisión',
+        (tester) async {
+      signInAs('Owner');
+      payments.inReview = [review];
+      putReviewAwareActions();
+      final a = conflicted();
+      appts.agenda = [a];
+      await pumpLauncher(tester, () => AppointmentDetailsDialog.show(a));
+      expect(find.textContaining('ya estaba ocupada'), findsOneWidget);
+      expect(find.text('Mover a otra hora'), findsOneWidget);
+      expect(find.text('1 pago en revisión: revisar'), findsOneWidget);
+    });
+
+    testWidgets('detalle (Employee): solo el propietario puede moverla',
+        (tester) async {
+      signInAs('Employee', userId: 'e1');
+      putReviewAwareActions();
+      await pumpLauncher(
+          tester, () => AppointmentDetailsDialog.show(conflicted()));
+      expect(find.textContaining('Solo el propietario puede moverla'),
+          findsOneWidget);
+      expect(find.text('Mover a otra hora'), findsNothing);
+      expect(find.textContaining('pago en revisión'), findsNothing);
+    });
+
+    testWidgets('mover: su hora no se ofrece como "(actual)"', (tester) async {
+      signInAs('Owner');
+      final a = conflicted();
+      appts.agenda = [a];
+      appts.freeSlots = [nineAm];
+      await pumpLauncher(tester, () => AppointmentFormDialog.edit(a));
+      expect(find.text('Editar cita'), findsOneWidget);
+      expect(find.textContaining('(actual)'), findsNothing);
+    });
+
+    testWidgets('"Citas por mover": lista con el motivo y la acción',
+        (tester) async {
+      signInAs('Owner');
+      appts.toReschedule = [conflicted()];
+      Get.put(RescheduleListController(
+          getAppointmentsToRescheduleUseCase:
+              GetAppointmentsToRescheduleUseCase(appts)));
+      await pumpScreen(tester, const RescheduleListScreen());
+      expect(find.text('Carla Díaz'), findsOneWidget);
+      expect(find.textContaining('ya estaba ocupada'), findsOneWidget);
+      expect(find.text('Mover'), findsOneWidget);
+    });
+
+    testWidgets('"Pagos por revisar": motivo y reembolso', (tester) async {
+      signInAs('Owner');
+      payments.inReview = [review];
+      Get.put(PaymentsReviewController(
+        getPaymentsInReviewUseCase: GetPaymentsInReviewUseCase(payments),
+        refundPaymentUseCase: RefundPaymentUseCase(payments),
+      ));
+      await pumpScreen(tester, const PaymentsReviewScreen());
+      expect(find.text('En revisión'), findsOneWidget);
+      expect(find.textContaining('pagada de más'), findsOneWidget);
+
+      await tapText(tester, 'Reembolsar \$ 10.000');
+      expect(find.text('Registrar reembolso'), findsOneWidget);
+      await tapText(tester, 'Reembolsar');
+      expect(payments.refunds.single, ('pr1', 10000.0, 'Pago de más'));
+      expect(find.text('No hay pagos por revisar'), findsOneWidget);
+      await expireSnackbar(tester);
+    });
+
+    testWidgets('Employee: el catálogo de la cita son sus servicios',
+        (tester) async {
+      signInAs('Employee', userId: 'e7', name: 'Eva Ruiz');
+      final services = FakeServicesRepository()..offered = {'e7': [tinte]};
+      Get.put(GetServicesOfferedByUseCase(services));
+      await pumpLauncher(
+          tester, () => AppointmentFormDialog.create(initialStart: nineAm));
+      await tapKey(tester, 'appointment-services');
+      expect(find.text('Tinte'), findsWidgets);
+      expect(find.text('Corte'), findsNothing);
+    });
+
+    testWidgets('la campana: pestaña "Avisos"', (tester) async {
+      signInAs('Owner');
+      Get.put(AppointmentReminderController(
+        getUpcomingAppointmentsUseCase: GetUpcomingAppointmentsUseCase(appts),
+        prepareReminderUseCase: PrepareReminderUseCase(appts),
+        markReminderSentUseCase: MarkReminderSentUseCase(appts),
+        notifications: () => notifications,
+      ));
+      Get.put(NotificationsController(
+          getNotificationsUseCase: GetNotificationsUseCase(_FakeNotices())));
+      await pumpScreen(tester, const UpcomingAppointmentsScreen());
+      expect(find.text('Recordatorio de cita'), findsOneWidget);
+      await tapText(tester, 'Recordatorios');
+      expect(find.text('No hay recordatorios pendientes'), findsOneWidget);
+    });
+  });
+}
+
+class _FakeNotices implements NotificationsRepository {
+  @override
+  Future<Either<Failure, List<AppNotification>>> getNotifications() async =>
+      Right([
+        AppNotification(
+          id: 'n1',
+          type: 'APPOINTMENT_REMINDER',
+          title: 'Recordatorio de cita',
+          message: 'Carla Díaz a las 10:00 a. m.',
+          createdAt: DateTime(2030, 1, 7, 9),
+        ),
+      ]);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

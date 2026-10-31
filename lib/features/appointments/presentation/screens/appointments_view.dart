@@ -5,9 +5,11 @@ import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_form_dialog.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/sync_attention_banner.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/view_selector_bottom_sheet.dart';
 import 'package:login_signup/shared/custom_drawer.dart';
 import 'package:login_signup/shared/widgets/business_time_zone_notice.dart';
+import 'package:login_signup/shared/widgets/sync_status_indicator.dart';
 
 /// Home: la agenda. El Owner ve las citas de todo el negocio; el Employee,
 /// "Mis citas" (filtra el backend). Los dos pueden agendar: el Employee,
@@ -21,6 +23,7 @@ class AppointmentsView extends GetView<AppointmentsController> {
       appBar: AppBar(
         title: Obx(() => Text(controller.title)),
         actions: [
+          const SyncStatusIndicator(),
           IconButton(
             icon: const Icon(Icons.calendar_view_day),
             tooltip: 'Cambiar vista',
@@ -28,7 +31,7 @@ class AppointmentsView extends GetView<AppointmentsController> {
           ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Recordatorios',
+            tooltip: 'Avisos y recordatorios',
             onPressed: () => Get.toNamed(GetRoutes.notifications),
           ),
         ],
@@ -38,6 +41,8 @@ class AppointmentsView extends GetView<AppointmentsController> {
         children: [
           // Solo si el dispositivo está en otra zona que el negocio (D-15).
           const BusinessTimeZoneNotice(),
+          // Citas por mover y pagos por revisar (10.03).
+          const SyncAttentionBanner(),
           Expanded(
             child: Obx(() {
               final failure = controller.error.value;

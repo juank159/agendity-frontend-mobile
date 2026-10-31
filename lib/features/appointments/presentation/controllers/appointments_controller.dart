@@ -8,6 +8,7 @@ import 'package:login_signup/features/appointments/domain/usecases/get_appointme
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
@@ -65,6 +66,7 @@ class AppointmentsController extends GetxController {
   AppointmentsRange? _range;
   int _request = 0;
   Worker? _timeZoneWorker;
+  Worker? _syncWorker;
 
   /// Employee que no es Owner: ve "Mis citas".
   bool get isEmployeeView => Get.isRegistered<SessionController>() &&
@@ -90,11 +92,16 @@ class AppointmentsController extends GetxController {
       _timeZoneWorker =
           Get.find<SessionController>().onTimeZoneChanged((_) => reload());
     }
+    // Lo que baja de la sincronización (10.03) se ve sin salir de la agenda.
+    if (Get.isRegistered<SyncController>()) {
+      _syncWorker = Get.find<SyncController>().onDataChanged(reload);
+    }
     _load(rangeFor(currentView.value, selectedDate.value));
   }
 
   @override
   void onClose() {
+    _syncWorker?.dispose();
     _timeZoneWorker?.dispose();
     super.onClose();
   }

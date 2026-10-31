@@ -52,7 +52,8 @@ void main() {
     // AppointmentActionsController (4.09) y EmailVerificationNoticeController
     // (4.08b: aviso "Verifica tu email" del menú), más
     // BusinessSettingsController (6.04: zona horaria del negocio), más
-    // CommissionsController (8.03: liquidación de comisiones).
-    expect(SessionScope.featureControllers, hasLength(24));
+    // CommissionsController (8.03: liquidación de comisiones), más
+    // SyncAttention, RescheduleList, PaymentsReview y Notifications (10.03).
+    expect(SessionScope.featureControllers, hasLength(28));
   });
 }

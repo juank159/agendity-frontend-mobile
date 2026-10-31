@@ -8,6 +8,7 @@ import 'package:login_signup/features/appointments/domain/entities/appointment_e
 import 'package:login_signup/features/appointments/domain/usecases/get_upcoming_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/mark_reminder_sent_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/prepare_reminder_usecase.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/utils/external_link.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
@@ -66,6 +67,14 @@ class AppointmentReminderController extends GetxController {
         appointments.forEach(_scheduleLocalNotice);
       },
     );
+  }
+
+  /// Deslizar para refrescar (10.03): sincroniza y vuelve a leer.
+  Future<void> refreshFromServer() async {
+    if (Get.isRegistered<SyncController>()) {
+      await Get.find<SyncController>().syncNow();
+    }
+    await fetch();
   }
 
   /// Quita de la lista las citas que ya empezaron (al enviar: la lista pudo

@@ -1,10 +1,12 @@
 import 'package:get/get.dart';
+import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/usecases/cancel_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/complete_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_feedback.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_appointment_balance_usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_payments_in_review_usecase.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 /// Acciones sobre una cita desde su detalle: cancelar, completar, saldo
@@ -16,8 +18,10 @@ class AppointmentActionsController extends GetxController {
   final CompleteAppointmentUseCase _complete;
   final GetAppointmentUseCase _getAppointment;
   final GetAppointmentBalanceUseCase _getBalance;
+  final GetPaymentsInReviewUseCase? _getInReview;
 
   AppointmentActionsController({
+    GetPaymentsInReviewUseCase? getPaymentsInReviewUseCase,
     required CancelAppointmentUseCase cancelAppointmentUseCase,
     required CompleteAppointmentUseCase completeAppointmentUseCase,
     required GetAppointmentUseCase getAppointmentUseCase,
@@ -25,7 +29,20 @@ class AppointmentActionsController extends GetxController {
   })  : _cancel = cancelAppointmentUseCase,
         _complete = completeAppointmentUseCase,
         _getAppointment = getAppointmentUseCase,
-        _getBalance = getAppointmentBalanceUseCase;
+        _getBalance = getAppointmentBalanceUseCase,
+        _getInReview = getPaymentsInReviewUseCase;
+
+  /// Pagos en revisión de [appointmentId] (10.03, solo Owner; sin el use
+  /// case o con error, ninguno).
+  Future<int> paymentsInReviewOf(String appointmentId) async {
+    final useCase = _getInReview;
+    if (useCase == null || !AppointmentAccess.canPay()) return 0;
+    final result = await useCase(NoParams());
+    return result.fold(
+        (_) => 0,
+        (items) =>
+            items.where((i) => i.payment.appointmentId == appointmentId).length);
+  }
 
   /// Id de la cita con una acción en curso (para deshabilitar botones).
   final busyId = RxnString();

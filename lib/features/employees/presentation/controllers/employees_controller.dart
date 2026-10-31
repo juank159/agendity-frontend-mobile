@@ -10,6 +10,7 @@ import 'package:login_signup/features/employees/domain/usecases/get_employees_us
 import 'package:login_signup/features/employees/domain/usecases/restore_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/toggle_employee_status_usecase.dart';
 import 'package:login_signup/features/employees/presentation/widgets/employee_dialogs.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'employee_feedback.dart';
 import 'employee_navigation.dart';
@@ -134,6 +135,14 @@ class EmployeesController extends GetxController {
   /// Recarga la vista actual (botón y "deslizar para actualizar").
   Future<void> refreshCurrent() =>
       showDeleted.value ? loadDeletedEmployees() : loadEmployees();
+
+  /// Deslizar para refrescar (10.03): sincroniza y vuelve a leer.
+  Future<void> refreshFromServer() async {
+    if (Get.isRegistered<SyncController>()) {
+      await Get.find<SyncController>().syncNow();
+    }
+    await refreshCurrent();
+  }
 
   void showDeletedView(bool value) {
     if (showDeleted.value == value) return;

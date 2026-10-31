@@ -1,7 +1,9 @@
 import 'package:get/get.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/sync_attention_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_notice_controller.dart';
+import 'package:login_signup/features/payments/domain/usecases/get_payments_in_review_usecase.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 
 /// Agenda (home). Los use cases los registran los `<feature>_dependencies`;
@@ -23,6 +25,7 @@ class AppointmentsBinding implements Bindings {
         completeAppointmentUseCase: Get.find(),
         getAppointmentUseCase: Get.find(),
         getAppointmentBalanceUseCase: Get.find(),
+        getPaymentsInReviewUseCase: Get.find<GetPaymentsInReviewUseCase>(),
       ),
       fenix: true,
     );
@@ -31,6 +34,15 @@ class AppointmentsBinding implements Bindings {
       () => PaymentController(
         createPaymentUseCase: Get.find(),
         getActiveCustomPaymentMethodsUseCase: Get.find(),
+      ),
+      fenix: true,
+    );
+    // Citas por mover y pagos por revisar tras sincronizar (10.03).
+    Get.lazyPut<SyncAttentionController>(
+      () => SyncAttentionController(
+        getAppointmentsToRescheduleUseCase: Get.find(),
+        getPaymentsInReviewUseCase: Get.find<GetPaymentsInReviewUseCase>(),
+        session: Get.find(),
       ),
       fenix: true,
     );

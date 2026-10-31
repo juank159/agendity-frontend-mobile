@@ -6,7 +6,9 @@ import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/appointments/presentation/bindings/appointment_reminder_binding.dart';
 
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
+import 'package:login_signup/features/appointments/presentation/bindings/reschedule_list_binding.dart';
 import 'package:login_signup/features/appointments/presentation/screens/appointments_view.dart';
+import 'package:login_signup/features/appointments/presentation/screens/reschedule_list_screen.dart';
 import 'package:login_signup/features/appointments/presentation/screens/upcoming_appointments_screen.dart';
 
 import 'package:login_signup/features/auth/presentation/bindings/email_verification_binding.dart';
@@ -34,6 +36,8 @@ import 'package:login_signup/features/employees/presentation/screens/employee_de
 import 'package:login_signup/features/employees/presentation/screens/employees_list_screen.dart';
 import 'package:login_signup/features/employees/presentation/screens/verify_employee_email_screen.dart';
 
+import 'package:login_signup/features/payments/presentation/bindings/payments_review_binding.dart';
+import 'package:login_signup/features/payments/presentation/screens/payments_review_screen.dart';
 import 'package:login_signup/features/services/presentation/bindings/categories_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/edit_service_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/new_category_binding.dart';
@@ -57,6 +61,7 @@ import 'package:login_signup/features/subscriptions/presentation/screens/subscri
 import 'package:login_signup/features/theme/presentation/screens/theme_settings_screen.dart';
 import 'package:login_signup/features/whatsapp/presentation/bindings/whatsapp_binding.dart';
 import 'package:login_signup/features/whatsapp/presentation/screens/whatsapp_config_screen.dart';
+import 'package:login_signup/shared/screens/sync_pending_screen.dart';
 
 class GetRoutes {
   // Auth Routes
@@ -116,6 +121,15 @@ class GetRoutes {
   static const String subscriptionPlans = '/subscription-plans';
   static const String paymentWebview = '/payment-webview';
   static const String paymentSuccess = '/payment-success';
+
+  /// Citas guardadas con conflicto al sincronizar (10.03).
+  static const String appointmentsToReschedule = '/appointments/to-reschedule';
+
+  /// Pagos en revisión tras sincronizar (10.03, solo Owner).
+  static const String paymentsReview = '/payments/review';
+
+  /// Cambios sin enviar y los que esperan al usuario (10.03).
+  static const String syncPending = '/sync-pending';
 
   // Ruta desconocida (GetMaterialApp.unknownRoute)
   static const String notFound = '/not-found';
@@ -352,6 +366,30 @@ class GetRoutes {
       binding: BusinessSettingsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
+      preventDuplicates: true,
+    ),
+
+    GetPage(
+      name: appointmentsToReschedule,
+      middlewares: [AuthMiddleware()],
+      page: () => const RescheduleListScreen(),
+      binding: RescheduleListBinding(),
+      transition: Transition.rightToLeft,
+      preventDuplicates: true,
+    ),
+    GetPage(
+      name: paymentsReview,
+      middlewares: RoleMiddleware.ownerOnly(),
+      page: () => const PaymentsReviewScreen(),
+      binding: PaymentsReviewBinding(),
+      transition: Transition.rightToLeft,
+      preventDuplicates: true,
+    ),
+    GetPage(
+      name: syncPending,
+      middlewares: [AuthMiddleware()],
+      page: () => const SyncPendingScreen(),
+      transition: Transition.rightToLeft,
       preventDuplicates: true,
     ),
 

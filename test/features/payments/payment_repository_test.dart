@@ -23,6 +23,7 @@ import 'package:login_signup/features/payments/domain/usecases/get_active_custom
 import 'package:login_signup/features/payments/domain/usecases/get_appointment_balance_usecase.dart';
 import 'package:login_signup/features/payments/domain/entities/appointment_balance.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/features/payments/domain/usecases/refund_payment_usecase.dart';
 
 import '../../core/sync/fake_sync_api.dart';
 import 'payment_model_test.dart' show backendPayment;
@@ -38,6 +39,9 @@ Failure? leftOf(Either<Failure, Object?> result) =>
 
 /// Repositorio falso para el use case: guarda lo recibido.
 class _RecordingRepository implements PaymentRepository {
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
   final List<PaymentEntity> received = [];
 
   @override
@@ -334,6 +338,108 @@ void main() {
           (await GetAppointmentBalanceUseCase(repository)(params))
               .getOrElse(() => throw StateError('L')),
           const AppointmentBalance(total: 100000, paid: 0));
+    });
+  });
+
+  group('pagos en revisión y reembolso (10.03)', () {
+    Future<void> seedReview(String id, String reason,
+        {String amount = '60000.00', String appointmentStatus = 'CONFIRMED'}) async {
+      await seedAppointment(status: appointmentStatus);
+      await DocumentStore.put(db, PaymentsSync.payments, id, {
+        'id': id,
+        'appointment': 'a1',
+        'amount': amount,
+        'payment_method': 'CASH',
+        'status': 'COMPLETED',
+        'refund_amount': null,
+        'reviewRequired': reason,
+        'created_at': '2026-11-03T15:00:00.000Z',
+      });
+    }
+
+    test('lista los pagos en revisión con su cita y lo que hay que devolver',
+        () async {
+      await seedReview('pr', 'OVERPAID');
+      await DocumentStore.put(db, PaymentsSync.payments, 'ok', {
+        'id': 'ok',
+        'appointment': 'a1',
+        'amount': '70000.00',
+        'payment_method': 'CASH',
+        'status': 'COMPLETED',
+        'created_at': '2026-11-03T14:00:00.000Z',
+      });
+      final items = (await repository.getPaymentsInReview())
+          .getOrElse(() => throw StateError('Left'));
+      final item = items.single;
+      expect(item.payment.id, 'pr');
+      expect(item.clientName, 'Ana');
+      expect(item.appointmentTotal, 100000);
+      // 70.000 ya pagados + 60.000 = 130.000: sobran 30.000.
+      expect(item.suggestedRefund, 30000);
+      expect(item.isForCancelledAppointment, isFalse);
+    });
+
+    test('reembolso de lo que sobra: sale de revisión y va a la bandeja',
+        () async {
+      await seedReview('pr', 'OVERPAID');
+      await DocumentStore.put(db, PaymentsSync.payments, 'ok', {
+        'id': 'ok',
+        'appointment': 'a1',
+        'amount': '70000.00',
+        'payment_method': 'CASH',
+        'status': 'COMPLETED',
+        'created_at': '2026-11-03T14:00:00.000Z',
+      });
+      final refunded = (await RefundPaymentUseCase(repository)(
+              RefundPaymentParams(
+                  payment: (await repository.getPaymentsInReview())
+                      .getOrElse(() => throw StateError('L'))
+                      .single
+                      .payment,
+                  amount: 30000,
+                  reason: 'Pago de más')))
+          .getOrElse(() => throw StateError('Left'));
+      expect(refunded.refundAmount, 30000);
+      expect(refunded.needsReview, isFalse);
+      expect(refunded.status, PaymentStatus.COMPLETED);
+      final entry = (await OutboxStore.all(db)).single;
+      expect(entry.type, 'payment.refund');
+      expect(entry.payload, {'refund_amount': 30000.0, 'refund_reason': 'Pago de más'});
+      expect((await appointment())['payment_status'], 'COMPLETED');
+    });
+
+    test('cita cancelada: devolver todo lo deja REFUNDED y fuera de revisión',
+        () async {
+      await seedReview('pr', 'APPOINTMENT_CANCELLED',
+          appointmentStatus: 'CANCELLED');
+      final item = (await repository.getPaymentsInReview())
+          .getOrElse(() => throw StateError('L'))
+          .single;
+      expect(item.suggestedRefund, 60000);
+      final partial = (await RefundPaymentUseCase(repository)(RefundPaymentParams(
+              payment: item.payment, amount: 10000, reason: 'Parcial')))
+          .getOrElse(() => throw StateError('Left'));
+      expect(partial.needsReview, isTrue, reason: 'aún no cabe');
+      final rest = (await RefundPaymentUseCase(repository)(RefundPaymentParams(
+              payment: partial, amount: 50000, reason: 'Cita cancelada')))
+          .getOrElse(() => throw StateError('Left'));
+      expect(rest.status, PaymentStatus.REFUNDED);
+      expect(rest.needsReview, isFalse);
+    });
+
+    test('monto inválido o sin motivo: no llega al repositorio', () async {
+      await seedReview('pr', 'OVERPAID');
+      final payment = (await repository.getPaymentsInReview())
+          .getOrElse(() => throw StateError('L'))
+          .single
+          .payment;
+      for (final (amount, reason) in [(0.0, 'x'), (70000.0, 'x'), (100.0, ' ')]) {
+        expect(
+            leftOf(await RefundPaymentUseCase(repository)(RefundPaymentParams(
+                payment: payment, amount: amount, reason: reason))),
+            isA<ValidationFailure>());
+      }
+      expect(await OutboxStore.all(db), isEmpty);
     });
   });
 }

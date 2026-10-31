@@ -17,10 +17,12 @@ import 'package:login_signup/features/services/domain/repositories/services_repo
 import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/create_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/delete_category_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/get_all_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_status_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/update_service_usecase.dart';
 import 'package:login_signup/features/services/presentation/bindings/services_binding.dart';
 import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
 import 'package:login_signup/features/services/presentation/controllers/categories_controller.dart';
@@ -51,8 +53,13 @@ class FakeServicesRepository implements ServicesRepository {
   }
 
   @override
-  Future<Either<Failure, List<ServiceEntity>>> getAllServices() =>
-      getServices();
+  Future<Either<Failure, List<ServiceEntity>>> getAllServices() {
+    allCalls++;
+    return getServices();
+  }
+
+  int allCalls = 0;
+  final updated = <ServiceEntity>[];
 
   @override
   Future<Either<Failure, List<ServiceEntity>>> getServicesOfferedBy(
@@ -68,8 +75,10 @@ class FakeServicesRepository implements ServicesRepository {
 
   @override
   Future<Either<Failure, ServiceEntity>> updateService(
-          ServiceEntity service) async =>
-      Right(service);
+      ServiceEntity service) async {
+    updated.add(service);
+    return Right(service);
+  }
 
   @override
   Future<Either<Failure, Unit>> deleteService(String id) async =>
@@ -213,6 +222,31 @@ void main() {
       expect(tile.onTap, isNull);
       // Las categorías siguen accesibles (en solo lectura).
       expect(find.byTooltip('Categorías'), findsOneWidget);
+    });
+
+    testWidgets('Owner: ve los inactivos atenuados y los activa o desactiva',
+        (tester) async {
+      signInAs('Owner');
+      services.listResult = Right([manicure, manicure.copyWith(
+          id: 'srv-2', name: 'Pedicure', isActive: false)]);
+      Get.put(ServicesController(
+        getServicesUseCase: GetServicesUseCase(services),
+        getCategoriesUseCase: GetCategoriesUseCase(categories),
+        getAllServicesUseCase: GetAllServicesUseCase(services),
+        updateServiceUseCase: UpdateServiceUseCase(services),
+      ));
+      await pump(tester, const ServicesScreen());
+
+      expect(services.allCalls, 1);
+      final dimmed = tester.widget<Opacity>(find.ancestor(
+          of: find.text('Pedicure'), matching: find.byType(Opacity)));
+      expect(dimmed.opacity, lessThan(1));
+
+      await tester.tap(find.byKey(const Key('service-active-srv-2')));
+      await tester.pumpAndSettle();
+      expect(services.updated.single.isActive, isTrue);
+      expect(find.text('Servicio activado'), findsOneWidget);
+      await expireSnackbar(tester);
     });
 
     testWidgets('el Owner tiene el botón de crear y puede abrir cada servicio',

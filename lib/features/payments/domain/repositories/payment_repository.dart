@@ -2,8 +2,17 @@ import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/payments/domain/entities/custom_payment_method.dart';
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
+import 'package:login_signup/features/payments/domain/entities/payment_review_item.dart';
 
 abstract class PaymentRepository {
+  /// Pagos en revisión (`reviewRequired`), con su cita (10.03, solo Owner).
+  Future<Either<Failure, List<PaymentReviewItem>>> getPaymentsInReview();
+
+  /// Reembolsa [amount] del pago [paymentId] (se acumula). Sin conexión,
+  /// en local + bandeja (`payment.refund`).
+  Future<Either<Failure, PaymentEntity>> refundPayment(String paymentId,
+      {required double amount, required String reason});
+
   /// Registra el pago de una cita (solo Owner: el Employee recibe
   /// `ForbiddenFailure`). Admite anticipos hasta el total. Cita cancelada →
   /// `AppointmentNotPayableFailure`; ya pagada del todo → `ConflictFailure`

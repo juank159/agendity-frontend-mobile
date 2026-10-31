@@ -11,6 +11,7 @@ import 'package:login_signup/features/appointments/domain/usecases/cancel_appoin
 import 'package:login_signup/features/appointments/domain/usecases/complete_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/create_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointment_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/get_appointments_to_reschedule_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_available_slots_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_upcoming_appointments_usecase.dart';
@@ -38,6 +39,8 @@ abstract final class AppointmentsDependencies {
 
     AppointmentsRepository repository() => Get.find<AppointmentsRepository>();
     Get.lazyPut(() => GetAppointmentsUseCase(repository()), fenix: true);
+    Get.lazyPut(() => GetAppointmentsToRescheduleUseCase(repository()),
+        fenix: true);
     Get.lazyPut(() => GetAppointmentUseCase(repository()), fenix: true);
     Get.lazyPut(() => CreateAppointmentUseCase(repository()), fenix: true);
     Get.lazyPut(() => UpdateAppointmentUseCase(repository()), fenix: true);

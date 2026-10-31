@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/email_verification_notice.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 
 /// Menú lateral de la home. Solo entradas con pantalla real; las de Owner
@@ -12,10 +14,22 @@ import 'package:login_signup/shared/widgets/app_dialogs.dart';
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
+  /// Mensaje del cierre de sesión: con cambios sin enviar (10.03), dice que
+  /// no se pierden.
+  static String logoutMessage(int unsent) => unsent == 0
+      ? '¿Seguro que quieres cerrar la sesión?'
+      : 'Tienes ${formatCount(unsent, 'cambio', 'cambios')} sin enviar al '
+          'servidor. No se pierden: quedan guardados en este teléfono, en los '
+          'datos de tu usuario, y se enviarán cuando vuelvas a iniciar sesión '
+          'aquí con conexión.';
+
   Future<void> _confirmLogout() async {
+    final unsent = Get.isRegistered<SyncController>()
+        ? Get.find<SyncController>().unsent
+        : 0;
     final confirmed = await AppDialogs.confirm(
-      title: '¿Cerrar sesión?',
-      message: '¿Seguro que quieres cerrar la sesión?',
+      title: unsent == 0 ? '¿Cerrar sesión?' : 'Hay cambios sin enviar',
+      message: logoutMessage(unsent),
       confirmLabel: 'Cerrar sesión',
       destructive: true,
       icon: Icons.logout_rounded,

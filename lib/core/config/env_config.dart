@@ -5,7 +5,12 @@ class EnvConfig {
     await dotenv.load(fileName: ".env");
   }
 
+  /// `--dart-define=API_URL=…` (pruebas contra otro backend sin tocar
+  /// `.env`); vacío = el de `.env`.
+  static const _definedApiUrl = String.fromEnvironment('API_URL');
+
   static String get apiUrl {
+    if (_definedApiUrl.isNotEmpty) return _definedApiUrl;
     final url = dotenv.env['API_URL'];
     if (url == null || url.isEmpty) {
       throw Exception('API_URL not found in environment variables');

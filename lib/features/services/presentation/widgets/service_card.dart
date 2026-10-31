@@ -9,7 +9,11 @@ class ServiceCard extends StatelessWidget {
   final ServiceEntity service;
   final VoidCallback? onTap;
 
-  const ServiceCard({super.key, required this.service, this.onTap});
+  /// Interruptor de activo (solo Owner); `null` = sin interruptor.
+  final ValueChanged<bool>? onActiveChanged;
+
+  const ServiceCard(
+      {super.key, required this.service, this.onTap, this.onActiveChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -21,27 +25,45 @@ class ServiceCard extends StatelessWidget {
         ServicePriceType.variable.apiValue,
       if (!service.isActive) 'Inactivo',
     ].join(' · ');
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: colorFromHex(service.color),
-            shape: BoxShape.circle,
+    final price = Text(
+      formatCop(service.price),
+      style: text.titleSmall?.copyWith(
+        color: scheme.primary,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    final toggle = onActiveChanged;
+    return Opacity(
+      // Inactivo: atenuado (no se puede agendar).
+      opacity: service.isActive ? 1 : 0.55,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          onTap: onTap,
+          leading: Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: colorFromHex(service.color),
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-        title: Text(service.name,
-            style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-        subtitle: Text(details),
-        trailing: Text(
-          formatCop(service.price),
-          style: text.titleSmall?.copyWith(
-            color: scheme.primary,
-            fontWeight: FontWeight.bold,
-          ),
+          title: Text(service.name,
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          subtitle: Text(details),
+          trailing: toggle == null
+              ? price
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    price,
+                    Switch(
+                      key: Key('service-active-${service.id}'),
+                      value: service.isActive,
+                      onChanged: toggle,
+                    ),
+                  ],
+                ),
         ),
       ),
     );

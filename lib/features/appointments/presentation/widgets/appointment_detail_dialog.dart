@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_feedback.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_conflict_ui.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_form_dialog.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/cancel_appointment_dialog.dart';
@@ -169,6 +171,34 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                               color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ),
+                    FutureBuilder<int>(
+                      future: controller.paymentsInReviewOf(a.id),
+                      builder: (context, snapshot) {
+                        final count = snapshot.data ?? 0;
+                        if (count == 0) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: OutlinedButton.icon(
+                            key: const Key('detail-review-payments'),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Get.toNamed(GetRoutes.paymentsReview);
+                            },
+                            icon: const Icon(Icons.flag_outlined),
+                            label: Text(
+                                '${formatCount(count, 'pago en revisión', 'pagos en revisión')}'
+                                ': revisar'),
+                          ),
+                        );
+                      },
+                    ),
+                    if (a.needsReschedule)
+                      _Note(
+                        '${a.rescheduleReason} Mientras tanto no ocupa la '
+                        'hora.${AppointmentAccess.canEdit() ? '' : ' Solo el '
+                            'propietario puede moverla.'}',
+                        tone: AppTone.warning,
+                      ),
                     if (a.isWebBooking)
                       const _InfoRow(
                         icon: Icons.public,
@@ -252,8 +282,12 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                           if (canEdit)
                             OutlinedButton.icon(
                               onPressed: busy ? null : () => _edit(context),
-                              icon: const Icon(Icons.edit_outlined),
-                              label: const Text('Editar'),
+                              icon: Icon(a.needsReschedule
+                                  ? Icons.edit_calendar
+                                  : Icons.edit_outlined),
+                              label: Text(a.needsReschedule
+                                  ? 'Mover a otra hora'
+                                  : 'Editar'),
                             ),
                           if (a.canCancel)
                             TextButton.icon(

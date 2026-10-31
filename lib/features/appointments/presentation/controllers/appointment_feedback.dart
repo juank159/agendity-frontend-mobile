@@ -62,6 +62,14 @@ abstract final class AppointmentFeedback {
           tone: AppTone.warning,
           icon: Icons.storefront_outlined,
         );
+      case ServiceInactiveFailure():
+        AppDialogs.info(
+          title: 'Servicio desactivado',
+          message: failure.message,
+          detail: 'Quítalo de la cita o actívalo de nuevo en Servicios.',
+          tone: AppTone.warning,
+          icon: Icons.block,
+        );
       case ServiceNotOfferedFailure():
         AppDialogs.info(
           title: 'Servicio no disponible',

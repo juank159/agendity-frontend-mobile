@@ -39,6 +39,10 @@ abstract class ClientFormController extends GetxController {
   final notesController = TextEditingController();
 
   final showNotes = false.obs;
+
+  /// Consentimiento de WhatsApp (Fase 11): el del cliente al editar; `null`
+  /// = sin tocar (nunca da de baja por accidente). La casilla la pone FP.
+  final whatsappOptIn = Rxn<bool>();
   final birthday = Rxn<DateTime>();
 
   /// URL de la foto ya subida (vacía = sin foto).
@@ -89,6 +93,7 @@ abstract class ClientFormController extends GetxController {
     addressController.text = client.address ?? '';
     notesController.text = client.notes ?? '';
     showNotes.value = client.showNotes;
+    whatsappOptIn.value = client.whatsappOptIn;
     birthday.value = client.birthday;
     imageUrl.value = client.image ?? '';
   }
@@ -105,6 +110,7 @@ abstract class ClientFormController extends GetxController {
         address: addressController.text,
         notes: notesController.text,
         showNotes: showNotes.value,
+        whatsappOptIn: whatsappOptIn.value,
         birthday: birthday.value,
         image: imageUrl.value,
         isFromDevice: base?.isFromDevice ?? false,

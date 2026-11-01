@@ -304,4 +304,51 @@ void main() {
       await engine.dispose();
     });
   });
+
+  group('días de mantenimiento (Fase 11)', () {
+    test('alta con días: van en service.create; sin días, no', () async {
+      rightOf(await CreateServiceUseCase(services)(
+          newService.copyWith(maintenanceDays: 21)));
+      rightOf(await CreateServiceUseCase(services)(
+          newService.copyWith(name: 'Otro')));
+      final entries = await outbox();
+      expect(entries.first.payload['maintenanceDays'], 21);
+      expect(entries.last.payload.containsKey('maintenanceDays'), false);
+      expect(
+          rightOf(await services.getAllServices())
+              .firstWhere((s) => s.name == 'Corte')
+              .maintenanceDays,
+          21);
+    });
+
+    test('editar: solo si cambia; quitarlos envía null', () async {
+      final current = rightOf(await services.getAllServices()).first;
+      final withDays = rightOf(await services
+          .updateService(current.copyWith(maintenanceDays: 30)));
+      expect((await outbox()).single.payload, {'maintenanceDays': 30});
+      rightOf(await services
+          .updateService(withDays.copyWith(clearMaintenanceDays: true)));
+      expect((await outbox()).last.payload, {'maintenanceDays': null});
+      expect(rightOf(await services.getAllServices()).first.maintenanceDays,
+          isNull);
+    });
+
+    test('fuera de 1–365 → InvalidCatalogDataFailure sin escribir', () async {
+      for (final days in [0, 366]) {
+        expect(
+            leftOf(await CreateServiceUseCase(services)(
+                newService.copyWith(maintenanceDays: days))),
+            isA<InvalidCatalogDataFailure>());
+      }
+      expect(await outbox(), isEmpty);
+    });
+
+    test('editar un servicio desactivado conservando su estado no lo '
+        'reactiva', () async {
+      final inactive = rightOf(await services.getAllServices())
+          .firstWhere((s) => !s.isActive);
+      rightOf(await services.updateService(inactive.copyWith(price: 1)));
+      expect((await outbox()).single.payload, {'price': 1.0});
+    });
+  });
 }

@@ -182,4 +182,18 @@ void main() {
       expect(ServicePriceType.fromApi(null), isNull);
     });
   });
+
+  test('maintenanceDays: se lee; el alta lo envía si hay; la edición siempre',
+      () {
+    final model =
+        ServiceModel.fromJson({...backendService(), 'maintenanceDays': 21});
+    expect(model.toEntity().maintenanceDays, 21);
+    expect(ServiceModel.fromJson(backendService()).maintenanceDays, isNull);
+    expect(model.toJson()['maintenanceDays'], 21);
+    final without = ServiceModel.fromJson(backendService());
+    expect(without.toJson().containsKey('maintenanceDays'), false);
+    expect(without.toUpdateJson()['maintenanceDays'], isNull);
+    expect(without.toUpdateJson().containsKey('maintenanceDays'), true);
+    expect(without.toUpdateJson()['isActive'], true);
+  });
 }

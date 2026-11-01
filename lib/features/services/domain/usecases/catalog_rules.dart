@@ -5,6 +5,10 @@ import 'package:login_signup/features/services/domain/failures/services_failures
 /// `CreateCategoryDto`), comprobadas antes de llamar al backend.
 abstract final class CatalogRules {
   static const maxNameLength = 100;
+
+  /// `maintenanceDays` del DTO (Fase 11).
+  static const minMaintenanceDays = 1;
+  static const maxMaintenanceDays = 365;
   static final _hexColor = RegExp(r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$');
 
   /// `null` si el servicio cumple las reglas.
@@ -18,6 +22,10 @@ abstract final class CatalogRules {
       if (!_hexColor.hasMatch(service.color))
         'El color debe ser hexadecimal (#RRGGBB)',
       if (service.deposit < 0) 'El abono no puede ser negativo',
+      if (service.maintenanceDays case final days?
+          when days < minMaintenanceDays || days > maxMaintenanceDays)
+        'Los días de mantenimiento van de $minMaintenanceDays a '
+            '$maxMaintenanceDays',
     ];
     return problems.isEmpty ? null : InvalidCatalogDataFailure.of(problems);
   }

@@ -39,6 +39,10 @@ abstract class ServiceFormController extends GetxController {
   /// Abono mínimo en porcentaje (0–100).
   final deposit = 0.0.obs;
 
+  /// Días de mantenimiento (Fase 11); `null` = sin mantenimiento. El campo
+  /// lo pone FP; al editar se conserva el del servicio.
+  final maintenanceDays = Rxn<int>();
+
   final categories = <CategoryEntity>[].obs;
   final isSaving = false.obs;
 
@@ -100,7 +104,9 @@ abstract class ServiceFormController extends GetxController {
   /// Entidad con lo que hay en el formulario, o `null` si el precio no es un
   /// número (ya avisado).
   @protected
-  ServiceEntity? buildService({String? id}) {
+  /// [isActive]: el estado actual al editar (el formulario no lo cambia; si
+  /// no, editar un servicio desactivado lo reactivaría).
+  ServiceEntity? buildService({String? id, bool isActive = true}) {
     final price = parsedPrice;
     if (price == null) {
       AppSnackbar.warning('Escribe el precio del servicio (solo números).');
@@ -119,6 +125,8 @@ abstract class ServiceFormController extends GetxController {
       color: colorToHex(color.value),
       onlineBooking: onlineBooking.value,
       deposit: deposit.value.round(),
+      isActive: isActive,
+      maintenanceDays: maintenanceDays.value,
     );
   }
 

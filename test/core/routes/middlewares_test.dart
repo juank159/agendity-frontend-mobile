@@ -97,7 +97,6 @@ void main() {
       GetRoutes.employees,
       GetRoutes.addEmployee,
       GetRoutes.statistics,
-      GetRoutes.configWhatsapp,
       GetRoutes.subscriptionPlans,
     ];
     const public = [

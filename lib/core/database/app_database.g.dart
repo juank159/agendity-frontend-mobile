@@ -1079,6 +1079,27 @@ class $LocalClientsTable extends LocalClients
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("show_notes" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _whatsappOptInMeta =
+      const VerificationMeta('whatsappOptIn');
+  @override
+  late final GeneratedColumn<bool> whatsappOptIn = GeneratedColumn<bool>(
+      'whatsapp_opt_in', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("whatsapp_opt_in" IN (0, 1))'));
+  static const VerificationMeta _whatsappOptInAtMeta =
+      const VerificationMeta('whatsappOptInAt');
+  @override
+  late final GeneratedColumn<String> whatsappOptInAt = GeneratedColumn<String>(
+      'whatsapp_opt_in_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _whatsappOptOutAtMeta =
+      const VerificationMeta('whatsappOptOutAt');
+  @override
+  late final GeneratedColumn<String> whatsappOptOutAt = GeneratedColumn<String>(
+      'whatsapp_opt_out_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1096,7 +1117,10 @@ class $LocalClientsTable extends LocalClients
         updatedAt,
         notes,
         birthday,
-        showNotes
+        showNotes,
+        whatsappOptIn,
+        whatsappOptInAt,
+        whatsappOptOutAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1181,6 +1205,24 @@ class $LocalClientsTable extends LocalClients
       context.handle(_showNotesMeta,
           showNotes.isAcceptableOrUnknown(data['show_notes']!, _showNotesMeta));
     }
+    if (data.containsKey('whatsapp_opt_in')) {
+      context.handle(
+          _whatsappOptInMeta,
+          whatsappOptIn.isAcceptableOrUnknown(
+              data['whatsapp_opt_in']!, _whatsappOptInMeta));
+    }
+    if (data.containsKey('whatsapp_opt_in_at')) {
+      context.handle(
+          _whatsappOptInAtMeta,
+          whatsappOptInAt.isAcceptableOrUnknown(
+              data['whatsapp_opt_in_at']!, _whatsappOptInAtMeta));
+    }
+    if (data.containsKey('whatsapp_opt_out_at')) {
+      context.handle(
+          _whatsappOptOutAtMeta,
+          whatsappOptOutAt.isAcceptableOrUnknown(
+              data['whatsapp_opt_out_at']!, _whatsappOptOutAtMeta));
+    }
     return context;
   }
 
@@ -1222,6 +1264,12 @@ class $LocalClientsTable extends LocalClients
           .read(DriftSqlType.string, data['${effectivePrefix}birthday']),
       showNotes: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}show_notes'])!,
+      whatsappOptIn: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}whatsapp_opt_in']),
+      whatsappOptInAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}whatsapp_opt_in_at']),
+      whatsappOptOutAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}whatsapp_opt_out_at']),
     );
   }
 
@@ -1248,6 +1296,11 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
   final String? notes;
   final String? birthday;
   final bool showNotes;
+
+  /// Consentimiento de WhatsApp (Fase 11, esquema 3). `null` = aún no bajó.
+  final bool? whatsappOptIn;
+  final String? whatsappOptInAt;
+  final String? whatsappOptOutAt;
   const LocalClientRow(
       {required this.id,
       required this.name,
@@ -1264,7 +1317,10 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
       this.updatedAt,
       this.notes,
       this.birthday,
-      required this.showNotes});
+      required this.showNotes,
+      this.whatsappOptIn,
+      this.whatsappOptInAt,
+      this.whatsappOptOutAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1302,6 +1358,15 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
       map['birthday'] = Variable<String>(birthday);
     }
     map['show_notes'] = Variable<bool>(showNotes);
+    if (!nullToAbsent || whatsappOptIn != null) {
+      map['whatsapp_opt_in'] = Variable<bool>(whatsappOptIn);
+    }
+    if (!nullToAbsent || whatsappOptInAt != null) {
+      map['whatsapp_opt_in_at'] = Variable<String>(whatsappOptInAt);
+    }
+    if (!nullToAbsent || whatsappOptOutAt != null) {
+      map['whatsapp_opt_out_at'] = Variable<String>(whatsappOptOutAt);
+    }
     return map;
   }
 
@@ -1338,6 +1403,15 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
           ? const Value.absent()
           : Value(birthday),
       showNotes: Value(showNotes),
+      whatsappOptIn: whatsappOptIn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(whatsappOptIn),
+      whatsappOptInAt: whatsappOptInAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(whatsappOptInAt),
+      whatsappOptOutAt: whatsappOptOutAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(whatsappOptOutAt),
     );
   }
 
@@ -1361,6 +1435,9 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
       notes: serializer.fromJson<String?>(json['notes']),
       birthday: serializer.fromJson<String?>(json['birthday']),
       showNotes: serializer.fromJson<bool>(json['showNotes']),
+      whatsappOptIn: serializer.fromJson<bool?>(json['whatsappOptIn']),
+      whatsappOptInAt: serializer.fromJson<String?>(json['whatsappOptInAt']),
+      whatsappOptOutAt: serializer.fromJson<String?>(json['whatsappOptOutAt']),
     );
   }
   @override
@@ -1383,6 +1460,9 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
       'notes': serializer.toJson<String?>(notes),
       'birthday': serializer.toJson<String?>(birthday),
       'showNotes': serializer.toJson<bool>(showNotes),
+      'whatsappOptIn': serializer.toJson<bool?>(whatsappOptIn),
+      'whatsappOptInAt': serializer.toJson<String?>(whatsappOptInAt),
+      'whatsappOptOutAt': serializer.toJson<String?>(whatsappOptOutAt),
     };
   }
 
@@ -1402,7 +1482,10 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
           Value<String?> updatedAt = const Value.absent(),
           Value<String?> notes = const Value.absent(),
           Value<String?> birthday = const Value.absent(),
-          bool? showNotes}) =>
+          bool? showNotes,
+          Value<bool?> whatsappOptIn = const Value.absent(),
+          Value<String?> whatsappOptInAt = const Value.absent(),
+          Value<String?> whatsappOptOutAt = const Value.absent()}) =>
       LocalClientRow(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -1422,6 +1505,14 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
         notes: notes.present ? notes.value : this.notes,
         birthday: birthday.present ? birthday.value : this.birthday,
         showNotes: showNotes ?? this.showNotes,
+        whatsappOptIn:
+            whatsappOptIn.present ? whatsappOptIn.value : this.whatsappOptIn,
+        whatsappOptInAt: whatsappOptInAt.present
+            ? whatsappOptInAt.value
+            : this.whatsappOptInAt,
+        whatsappOptOutAt: whatsappOptOutAt.present
+            ? whatsappOptOutAt.value
+            : this.whatsappOptOutAt,
       );
   LocalClientRow copyWithCompanion(LocalClientsCompanion data) {
     return LocalClientRow(
@@ -1445,6 +1536,15 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
       notes: data.notes.present ? data.notes.value : this.notes,
       birthday: data.birthday.present ? data.birthday.value : this.birthday,
       showNotes: data.showNotes.present ? data.showNotes.value : this.showNotes,
+      whatsappOptIn: data.whatsappOptIn.present
+          ? data.whatsappOptIn.value
+          : this.whatsappOptIn,
+      whatsappOptInAt: data.whatsappOptInAt.present
+          ? data.whatsappOptInAt.value
+          : this.whatsappOptInAt,
+      whatsappOptOutAt: data.whatsappOptOutAt.present
+          ? data.whatsappOptOutAt.value
+          : this.whatsappOptOutAt,
     );
   }
 
@@ -1466,7 +1566,10 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('notes: $notes, ')
           ..write('birthday: $birthday, ')
-          ..write('showNotes: $showNotes')
+          ..write('showNotes: $showNotes, ')
+          ..write('whatsappOptIn: $whatsappOptIn, ')
+          ..write('whatsappOptInAt: $whatsappOptInAt, ')
+          ..write('whatsappOptOutAt: $whatsappOptOutAt')
           ..write(')'))
         .toString();
   }
@@ -1488,7 +1591,10 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
       updatedAt,
       notes,
       birthday,
-      showNotes);
+      showNotes,
+      whatsappOptIn,
+      whatsappOptInAt,
+      whatsappOptOutAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1508,7 +1614,10 @@ class LocalClientRow extends DataClass implements Insertable<LocalClientRow> {
           other.updatedAt == this.updatedAt &&
           other.notes == this.notes &&
           other.birthday == this.birthday &&
-          other.showNotes == this.showNotes);
+          other.showNotes == this.showNotes &&
+          other.whatsappOptIn == this.whatsappOptIn &&
+          other.whatsappOptInAt == this.whatsappOptInAt &&
+          other.whatsappOptOutAt == this.whatsappOptOutAt);
 }
 
 class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
@@ -1528,6 +1637,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
   final Value<String?> notes;
   final Value<String?> birthday;
   final Value<bool> showNotes;
+  final Value<bool?> whatsappOptIn;
+  final Value<String?> whatsappOptInAt;
+  final Value<String?> whatsappOptOutAt;
   final Value<int> rowid;
   const LocalClientsCompanion({
     this.id = const Value.absent(),
@@ -1546,6 +1658,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
     this.notes = const Value.absent(),
     this.birthday = const Value.absent(),
     this.showNotes = const Value.absent(),
+    this.whatsappOptIn = const Value.absent(),
+    this.whatsappOptInAt = const Value.absent(),
+    this.whatsappOptOutAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalClientsCompanion.insert({
@@ -1565,6 +1680,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
     this.notes = const Value.absent(),
     this.birthday = const Value.absent(),
     this.showNotes = const Value.absent(),
+    this.whatsappOptIn = const Value.absent(),
+    this.whatsappOptInAt = const Value.absent(),
+    this.whatsappOptOutAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -1586,6 +1704,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
     Expression<String>? notes,
     Expression<String>? birthday,
     Expression<bool>? showNotes,
+    Expression<bool>? whatsappOptIn,
+    Expression<String>? whatsappOptInAt,
+    Expression<String>? whatsappOptOutAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1605,6 +1726,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
       if (notes != null) 'notes': notes,
       if (birthday != null) 'birthday': birthday,
       if (showNotes != null) 'show_notes': showNotes,
+      if (whatsappOptIn != null) 'whatsapp_opt_in': whatsappOptIn,
+      if (whatsappOptInAt != null) 'whatsapp_opt_in_at': whatsappOptInAt,
+      if (whatsappOptOutAt != null) 'whatsapp_opt_out_at': whatsappOptOutAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1626,6 +1750,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
       Value<String?>? notes,
       Value<String?>? birthday,
       Value<bool>? showNotes,
+      Value<bool?>? whatsappOptIn,
+      Value<String?>? whatsappOptInAt,
+      Value<String?>? whatsappOptOutAt,
       Value<int>? rowid}) {
     return LocalClientsCompanion(
       id: id ?? this.id,
@@ -1644,6 +1771,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
       notes: notes ?? this.notes,
       birthday: birthday ?? this.birthday,
       showNotes: showNotes ?? this.showNotes,
+      whatsappOptIn: whatsappOptIn ?? this.whatsappOptIn,
+      whatsappOptInAt: whatsappOptInAt ?? this.whatsappOptInAt,
+      whatsappOptOutAt: whatsappOptOutAt ?? this.whatsappOptOutAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1699,6 +1829,15 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
     if (showNotes.present) {
       map['show_notes'] = Variable<bool>(showNotes.value);
     }
+    if (whatsappOptIn.present) {
+      map['whatsapp_opt_in'] = Variable<bool>(whatsappOptIn.value);
+    }
+    if (whatsappOptInAt.present) {
+      map['whatsapp_opt_in_at'] = Variable<String>(whatsappOptInAt.value);
+    }
+    if (whatsappOptOutAt.present) {
+      map['whatsapp_opt_out_at'] = Variable<String>(whatsappOptOutAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1724,6 +1863,9 @@ class LocalClientsCompanion extends UpdateCompanion<LocalClientRow> {
           ..write('notes: $notes, ')
           ..write('birthday: $birthday, ')
           ..write('showNotes: $showNotes, ')
+          ..write('whatsappOptIn: $whatsappOptIn, ')
+          ..write('whatsappOptInAt: $whatsappOptInAt, ')
+          ..write('whatsappOptOutAt: $whatsappOptOutAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2622,6 +2764,9 @@ typedef $$LocalClientsTableCreateCompanionBuilder = LocalClientsCompanion
   Value<String?> notes,
   Value<String?> birthday,
   Value<bool> showNotes,
+  Value<bool?> whatsappOptIn,
+  Value<String?> whatsappOptInAt,
+  Value<String?> whatsappOptOutAt,
   Value<int> rowid,
 });
 typedef $$LocalClientsTableUpdateCompanionBuilder = LocalClientsCompanion
@@ -2642,6 +2787,9 @@ typedef $$LocalClientsTableUpdateCompanionBuilder = LocalClientsCompanion
   Value<String?> notes,
   Value<String?> birthday,
   Value<bool> showNotes,
+  Value<bool?> whatsappOptIn,
+  Value<String?> whatsappOptInAt,
+  Value<String?> whatsappOptOutAt,
   Value<int> rowid,
 });
 
@@ -2702,6 +2850,17 @@ class $$LocalClientsTableFilterComposer
 
   ColumnFilters<bool> get showNotes => $composableBuilder(
       column: $table.showNotes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get whatsappOptIn => $composableBuilder(
+      column: $table.whatsappOptIn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get whatsappOptInAt => $composableBuilder(
+      column: $table.whatsappOptInAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get whatsappOptOutAt => $composableBuilder(
+      column: $table.whatsappOptOutAt,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$LocalClientsTableOrderingComposer
@@ -2762,6 +2921,18 @@ class $$LocalClientsTableOrderingComposer
 
   ColumnOrderings<bool> get showNotes => $composableBuilder(
       column: $table.showNotes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get whatsappOptIn => $composableBuilder(
+      column: $table.whatsappOptIn,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get whatsappOptInAt => $composableBuilder(
+      column: $table.whatsappOptInAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get whatsappOptOutAt => $composableBuilder(
+      column: $table.whatsappOptOutAt,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$LocalClientsTableAnnotationComposer
@@ -2820,6 +2991,15 @@ class $$LocalClientsTableAnnotationComposer
 
   GeneratedColumn<bool> get showNotes =>
       $composableBuilder(column: $table.showNotes, builder: (column) => column);
+
+  GeneratedColumn<bool> get whatsappOptIn => $composableBuilder(
+      column: $table.whatsappOptIn, builder: (column) => column);
+
+  GeneratedColumn<String> get whatsappOptInAt => $composableBuilder(
+      column: $table.whatsappOptInAt, builder: (column) => column);
+
+  GeneratedColumn<String> get whatsappOptOutAt => $composableBuilder(
+      column: $table.whatsappOptOutAt, builder: (column) => column);
 }
 
 class $$LocalClientsTableTableManager extends RootTableManager<
@@ -2864,6 +3044,9 @@ class $$LocalClientsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<String?> birthday = const Value.absent(),
             Value<bool> showNotes = const Value.absent(),
+            Value<bool?> whatsappOptIn = const Value.absent(),
+            Value<String?> whatsappOptInAt = const Value.absent(),
+            Value<String?> whatsappOptOutAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalClientsCompanion(
@@ -2883,6 +3066,9 @@ class $$LocalClientsTableTableManager extends RootTableManager<
             notes: notes,
             birthday: birthday,
             showNotes: showNotes,
+            whatsappOptIn: whatsappOptIn,
+            whatsappOptInAt: whatsappOptInAt,
+            whatsappOptOutAt: whatsappOptOutAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2902,6 +3088,9 @@ class $$LocalClientsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<String?> birthday = const Value.absent(),
             Value<bool> showNotes = const Value.absent(),
+            Value<bool?> whatsappOptIn = const Value.absent(),
+            Value<String?> whatsappOptInAt = const Value.absent(),
+            Value<String?> whatsappOptOutAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalClientsCompanion.insert(
@@ -2921,6 +3110,9 @@ class $$LocalClientsTableTableManager extends RootTableManager<
             notes: notes,
             birthday: birthday,
             showNotes: showNotes,
+            whatsappOptIn: whatsappOptIn,
+            whatsappOptInAt: whatsappOptInAt,
+            whatsappOptOutAt: whatsappOptOutAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

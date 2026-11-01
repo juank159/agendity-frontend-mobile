@@ -59,11 +59,13 @@ class ClientsRepositoryImpl implements ClientsRepository {
         if (duplicate != null) return Left(duplicate);
         final id = _store.newId();
         await _store.write((db, sink) async {
-          final payload = ClientModel.fromEntity(client).toJson();
+          final payload = ClientModel.fromEntity(client).toCreateJson();
           await _local.upsertFields(db, id, {
             ...payload,
             'isActive': true,
             'isFromDevice': false,
+            'whatsapp_opt_in': client.hasWhatsappConsent,
+            if (client.hasWhatsappConsent) 'whatsapp_opt_in_at': _nowIso(),
             'created_at': _nowIso(),
             'updated_at': _nowIso(),
           });
@@ -98,8 +100,11 @@ class ClientsRepositoryImpl implements ClientsRepository {
         if (changes.isEmpty) return Right(current);
 
         await _store.write((db, sink) async {
-          await _local.upsertFields(
-              db, current.id!, {...changes, 'updated_at': _nowIso()});
+          await _local.upsertFields(db, current.id!, {
+            ...changes,
+            ..._consentDates(changes),
+            'updated_at': _nowIso(),
+          });
           await sink.add(
               type: ClientsSyncHandler.update,
               entity: _entity,
@@ -153,11 +158,12 @@ class ClientsRepositoryImpl implements ClientsRepository {
         await _store.write((db, sink) async {
           for (final client in accepted) {
             final id = _store.newId();
-            final payload = ClientModel.fromEntity(client).toJson();
+            final payload = ClientModel.fromEntity(client).toCreateJson();
             await _local.upsertFields(db, id, {
               ...payload,
               'isActive': true,
               'isFromDevice': true,
+              'whatsapp_opt_in': client.hasWhatsappConsent,
               'created_at': _nowIso(),
               'updated_at': _nowIso(),
             });
@@ -206,4 +212,12 @@ class ClientsRepositoryImpl implements ClientsRepository {
       'Ya existe un cliente con el teléfono: $phone';
 
   String _nowIso() => _store.nowIso();
+
+  /// Fecha local del consentimiento o de la baja (el servidor pone la suya).
+  Map<String, dynamic> _consentDates(Map<String, dynamic> changes) =>
+      switch (changes['whatsapp_opt_in']) {
+        true => {'whatsapp_opt_in_at': _nowIso(), 'whatsapp_opt_out_at': null},
+        false => {'whatsapp_opt_out_at': _nowIso()},
+        _ => const {},
+      };
 }

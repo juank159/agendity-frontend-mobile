@@ -22,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -34,6 +34,12 @@ class AppDatabase extends _$AppDatabase {
             await m.createIndex(idxDocumentsRef1);
             await m.createIndex(idxDocumentsRef2);
             await m.createIndex(idxDocumentsAt);
+          }
+          // 2 → 3 (11.04): consentimiento de WhatsApp de los clientes.
+          if (from < 3) {
+            await m.addColumn(localClients, localClients.whatsappOptIn);
+            await m.addColumn(localClients, localClients.whatsappOptInAt);
+            await m.addColumn(localClients, localClients.whatsappOptOutAt);
           }
         },
       );

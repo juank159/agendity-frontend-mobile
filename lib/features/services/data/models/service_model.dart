@@ -22,6 +22,9 @@ class ServiceModel {
   final int deposit;
   final bool isActive;
 
+  /// `maintenanceDays` (Fase 11): `null` = sin mantenimiento.
+  final int? maintenanceDays;
+
   const ServiceModel({
     this.id,
     required this.name,
@@ -36,6 +39,7 @@ class ServiceModel {
     this.onlineBooking = false,
     this.deposit = 0,
     this.isActive = true,
+    this.maintenanceDays,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -60,6 +64,9 @@ class ServiceModel {
       onlineBooking: JsonRead.asBool(json['onlineBooking'], fallback: false),
       deposit: JsonRead.asInt(json['deposit']),
       isActive: JsonRead.asBool(json['isActive'], fallback: true),
+      maintenanceDays: json['maintenanceDays'] == null
+          ? null
+          : JsonRead.asInt(json['maintenanceDays']),
     );
   }
 
@@ -79,6 +86,7 @@ class ServiceModel {
         onlineBooking: entity.onlineBooking,
         deposit: entity.deposit,
         isActive: entity.isActive,
+        maintenanceDays: entity.maintenanceDays,
       );
 
   ServiceEntity toEntity() => ServiceEntity(
@@ -95,6 +103,7 @@ class ServiceModel {
         onlineBooking: onlineBooking,
         deposit: deposit,
         isActive: isActive,
+        maintenanceDays: maintenanceDays,
       );
 
   /// Cuerpo de `POST /services` (`CreateServiceDto`): sin `id` ni
@@ -110,9 +119,16 @@ class ServiceModel {
         if (image != null) 'image': image,
         'onlineBooking': onlineBooking,
         'deposit': deposit,
+        if (maintenanceDays != null) 'maintenanceDays': maintenanceDays,
       };
 
   /// Cuerpo de `PATCH /services/:id` (`UpdateServiceDto`): lo del alta más
   /// `isActive` (activar o desactivar sin borrar, 2026-10-31).
-  Map<String, dynamic> toUpdateJson() => {...toJson(), 'isActive': isActive};
+  /// `maintenanceDays` va siempre (`null` lo quita); el diff del repositorio
+  /// solo lo envía si cambió.
+  Map<String, dynamic> toUpdateJson() => {
+        ...toJson(),
+        'maintenanceDays': maintenanceDays,
+        'isActive': isActive,
+      };
 }

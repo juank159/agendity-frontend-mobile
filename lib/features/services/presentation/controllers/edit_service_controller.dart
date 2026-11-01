@@ -38,6 +38,7 @@ class EditServiceController extends ServiceFormController {
     color.value = colorFromHex(service.color);
     onlineBooking.value = service.onlineBooking;
     deposit.value = service.deposit.clamp(0, 100).toDouble();
+    maintenanceDays.value = service.maintenanceDays;
     super.onInit();
   }
 
@@ -50,7 +51,7 @@ class EditServiceController extends ServiceFormController {
   @override
   Future<bool> save() async {
     if (isSaving.value || isDeleting.value) return false;
-    final updated = buildService(id: service.id);
+    final updated = buildService(id: service.id, isActive: service.isActive);
     if (updated == null) return false;
 
     isSaving.value = true;

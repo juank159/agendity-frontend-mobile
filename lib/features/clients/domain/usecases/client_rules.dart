@@ -46,6 +46,9 @@ abstract final class ClientRules {
         notes: _optional(client.notes),
         birthday: client.birthday,
         showNotes: client.showNotes,
+        whatsappOptIn: client.whatsappOptIn,
+        whatsappOptInAt: client.whatsappOptInAt,
+        whatsappOptOutAt: client.whatsappOptOutAt,
       );
 
   /// Problemas de un cliente ya normalizado; vacío si es válido.

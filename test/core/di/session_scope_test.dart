@@ -54,6 +54,6 @@ void main() {
     // BusinessSettingsController (6.04: zona horaria del negocio), más
     // CommissionsController (8.03: liquidación de comisiones), más
     // SyncAttention, RescheduleList, PaymentsReview y Notifications (10.03).
-    expect(SessionScope.featureControllers, hasLength(28));
+    expect(SessionScope.featureControllers, hasLength(27));
   });
 }

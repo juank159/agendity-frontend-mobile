@@ -124,4 +124,28 @@ void main() {
       expect(ClientModel.fromEntity(full).toEntity(), full);
     });
   });
+
+  group('consentimiento de WhatsApp (Fase 11)', () {
+    test('fromJson: valor y fechas; sin el campo = desconocido (null)', () {
+      final model = ClientModel.fromJson({
+        ...backendClient(),
+        'whatsapp_opt_in': true,
+        'whatsapp_opt_in_at': '2026-11-01T10:00:00.000-05:00',
+        'whatsapp_opt_out_at': null,
+      });
+      expect(model.whatsappOptIn, true);
+      expect(model.whatsappOptInAt, isNotNull);
+      expect(ClientModel.fromJson(backendClient()).whatsappOptIn, isNull);
+    });
+
+    test('toJson solo si se conoce; el alta solo si es true', () {
+      ClientModel withConsent(bool? value) => ClientModel.fromEntity(
+          ClientEntity(name: 'Ana', phone: '300', whatsappOptIn: value));
+      expect(withConsent(null).toJson().containsKey('whatsapp_opt_in'), false);
+      expect(withConsent(false).toJson()['whatsapp_opt_in'], false);
+      expect(withConsent(false).toCreateJson().containsKey('whatsapp_opt_in'),
+          false);
+      expect(withConsent(true).toCreateJson()['whatsapp_opt_in'], true);
+    });
+  });
 }

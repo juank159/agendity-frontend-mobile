@@ -27,6 +27,14 @@ class ClientEntity {
   final DateTime? birthday;
   final bool showNotes;
 
+  /// Consentimiento para mensajes automáticos de WhatsApp (Fase 11, D-21,
+  /// Ley 1581): **todo** envío lo exige. `null` = no se conoce o no se toca:
+  /// un formulario que no muestra la casilla nunca da de baja a nadie. Solo
+  /// se envía cuando cambia (`true` lo registra; `false` es la baja).
+  final bool? whatsappOptIn;
+  final DateTime? whatsappOptInAt;
+  final DateTime? whatsappOptOutAt;
+
   const ClientEntity({
     this.id,
     required this.name,
@@ -44,7 +52,13 @@ class ClientEntity {
     this.notes,
     this.birthday,
     this.showNotes = false,
+    this.whatsappOptIn,
+    this.whatsappOptInAt,
+    this.whatsappOptOutAt,
   });
+
+  /// Aceptó recibir WhatsApp automáticos.
+  bool get hasWhatsappConsent => whatsappOptIn == true;
 
   /// Nombre y apellido separados por un espacio.
   String get fullName => lastname.isEmpty ? name : '$name $lastname';
@@ -70,6 +84,7 @@ class ClientEntity {
     String? notes,
     DateTime? birthday,
     bool? showNotes,
+    bool? whatsappOptIn,
   }) =>
       ClientEntity(
         id: id ?? this.id,
@@ -88,6 +103,9 @@ class ClientEntity {
         notes: notes ?? this.notes,
         birthday: birthday ?? this.birthday,
         showNotes: showNotes ?? this.showNotes,
+        whatsappOptIn: whatsappOptIn ?? this.whatsappOptIn,
+        whatsappOptInAt: whatsappOptInAt,
+        whatsappOptOutAt: whatsappOptOutAt,
       );
 
   @override
@@ -109,7 +127,10 @@ class ClientEntity {
           other.updatedAt == updatedAt &&
           other.notes == notes &&
           other.birthday == birthday &&
-          other.showNotes == showNotes;
+          other.showNotes == showNotes &&
+          other.whatsappOptIn == whatsappOptIn &&
+          other.whatsappOptInAt == whatsappOptInAt &&
+          other.whatsappOptOutAt == whatsappOptOutAt;
 
   @override
   int get hashCode => Object.hash(
@@ -129,6 +150,9 @@ class ClientEntity {
         notes,
         birthday,
         showNotes,
+        whatsappOptIn,
+        whatsappOptInAt,
+        whatsappOptOutAt,
       );
 
   @override

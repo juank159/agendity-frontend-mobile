@@ -26,7 +26,6 @@ void main() {
   const ownerOnly = [
     'Personal',
     'Mi negocio',
-    'WhatsApp',
     'Planes y suscripción',
   ];
   const forEveryone = [

@@ -284,6 +284,92 @@ void main() {
     });
   });
 
+  group('consentimiento de WhatsApp (Fase 11)', () {
+    test('alta con consentimiento: whatsapp_opt_in true en la mutación y en '
+        'local, con fecha', () async {
+      final created = rightOf(await repository.createClient(const ClientEntity(
+          name: 'Ana', phone: '3001234567', whatsappOptIn: true)));
+      expect(created.hasWhatsappConsent, true);
+      expect(created.whatsappOptInAt, isNotNull);
+      expect((await OutboxStore.all(db)).single.payload['whatsapp_opt_in'],
+          true);
+    });
+
+    test('alta sin consentimiento: no se envía el campo (ni false)', () async {
+      for (final optIn in [null, false]) {
+        await repository.createClient(ClientEntity(
+            name: 'Sin $optIn',
+            phone: optIn == null ? '3001234567' : '3007654321',
+            whatsappOptIn: optIn));
+      }
+      for (final entry in await OutboxStore.all(db)) {
+        expect(entry.payload.containsKey('whatsapp_opt_in'), false);
+      }
+      expect(
+          rightOf(await repository.getClients(const ClientsQuery()))
+              .items
+              .every((c) => c.whatsappOptIn == false),
+          true);
+    });
+
+    test('editar sin tocar la casilla (null) nunca da de baja', () async {
+      await seed([
+        {...backendClient(id: 'c1', phone: '3000000001'), 'whatsapp_opt_in': true}
+      ]);
+      final current = rightOf(await repository.getClientById('c1'));
+      expect(current.hasWhatsappConsent, true);
+      // Un formulario que no conoce el campo: lo construye sin él.
+      rightOf(await repository.updateClient(ClientEntity(
+          id: 'c1',
+          name: 'Ana María',
+          lastname: current.lastname,
+          email: current.email,
+          phone: current.phone,
+          address: current.address,
+          notes: current.notes,
+          birthday: current.birthday,
+          showNotes: current.showNotes)));
+      final payload = (await OutboxStore.all(db)).single.payload;
+      expect(payload.containsKey('whatsapp_opt_in'), false);
+      expect(rightOf(await repository.getClientById('c1')).hasWhatsappConsent,
+          true);
+    });
+
+    test('baja: solo cuando cambia de true a false (con fecha local)',
+        () async {
+      await seed([
+        {...backendClient(id: 'c1', phone: '3000000001'), 'whatsapp_opt_in': true}
+      ]);
+      final current = rightOf(await repository.getClientById('c1'));
+      final updated = rightOf(await UpdateClientUseCase(repository)(
+          current.copyWith(whatsappOptIn: false)));
+      expect(updated.whatsappOptIn, false);
+      expect(updated.whatsappOptOutAt, isNotNull);
+      expect((await OutboxStore.all(db)).single.payload,
+          {'whatsapp_opt_in': false});
+
+      // Reenviar lo mismo no encola nada.
+      rightOf(await repository.updateClient(updated));
+      expect((await OutboxStore.all(db)).length, 1);
+    });
+
+    test('la mutación se reaplica igual tras una bajada (handler)', () async {
+      await seed([backendClient(id: 'c1', phone: '3000000001')]);
+      final handler = ClientsSyncHandler(const ClientsLocalDataSource());
+      await OutboxStore.enqueue(db,
+          mutationId: 'm1',
+          type: 'client.update',
+          entity: 'clients',
+          entityId: 'c1',
+          payload: {'whatsapp_opt_in': true},
+          clientTime: DateTime.utc(2026, 11, 1));
+      await handler.upsert(db, 'c1',
+          {...backendClient(id: 'c1', phone: '3000000001'), 'whatsapp_opt_in': false});
+      await handler.replay(db, (await OutboxStore.all(db)).single);
+      expect(rightOf(await repository.getClientById('c1')).whatsappOptIn, true);
+    });
+  });
+
   group('importación', () {
     test('rechazos locales (reglas y teléfonos ya registrados), sin red',
         () async {

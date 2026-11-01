@@ -27,6 +27,11 @@ class ClientModel {
   final DateTime? birthday;
   final bool showNotes;
 
+  /// `whatsapp_opt_in` y sus fechas (Fase 11). `null` = no se toca.
+  final bool? whatsappOptIn;
+  final DateTime? whatsappOptInAt;
+  final DateTime? whatsappOptOutAt;
+
   const ClientModel({
     this.id,
     required this.name,
@@ -44,6 +49,9 @@ class ClientModel {
     this.notes,
     this.birthday,
     this.showNotes = false,
+    this.whatsappOptIn,
+    this.whatsappOptInAt,
+    this.whatsappOptOutAt,
   });
 
   factory ClientModel.fromJson(Map<String, dynamic> json) {
@@ -64,6 +72,11 @@ class ClientModel {
       notes: JsonRead.asOptionalString(json['notes']),
       birthday: DateCodec.tryDecodeDay(json['birthday']),
       showNotes: JsonRead.asBool(json['showNotes'], fallback: false),
+      whatsappOptIn: json['whatsapp_opt_in'] == null
+          ? null
+          : JsonRead.asBool(json['whatsapp_opt_in'], fallback: false),
+      whatsappOptInAt: DateCodec.tryDecode(json['whatsapp_opt_in_at']),
+      whatsappOptOutAt: DateCodec.tryDecode(json['whatsapp_opt_out_at']),
     );
   }
 
@@ -84,6 +97,9 @@ class ClientModel {
         notes: entity.notes,
         birthday: entity.birthday,
         showNotes: entity.showNotes,
+        whatsappOptIn: entity.whatsappOptIn,
+        whatsappOptInAt: entity.whatsappOptInAt,
+        whatsappOptOutAt: entity.whatsappOptOutAt,
       );
 
   ClientEntity toEntity() => ClientEntity(
@@ -103,6 +119,9 @@ class ClientModel {
         notes: notes,
         birthday: birthday,
         showNotes: showNotes,
+        whatsappOptIn: whatsappOptIn,
+        whatsappOptInAt: whatsappOptInAt,
+        whatsappOptOutAt: whatsappOptOutAt,
       );
 
   /// Cuerpo de `POST /clients` y `PATCH /clients/:id` (`CreateClientDto`; el
@@ -124,5 +143,12 @@ class ClientModel {
         'notes': notes,
         'birthday': birthday == null ? null : DateCodec.encodeDay(birthday!),
         'showNotes': showNotes,
+        // Solo si se conoce (null = no se toca; ver `ClientEntity`).
+        if (whatsappOptIn != null) 'whatsapp_opt_in': whatsappOptIn,
       };
+
+  /// Cuerpo de un alta: el consentimiento solo si se dio (nunca un `false`
+  /// que no hace falta: el backend nace en `false`).
+  Map<String, dynamic> toCreateJson() =>
+      toJson()..removeWhere((k, v) => k == 'whatsapp_opt_in' && v != true);
 }

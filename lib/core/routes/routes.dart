@@ -59,8 +59,6 @@ import 'package:login_signup/features/subscriptions/presentation/screens/payment
 import 'package:login_signup/features/subscriptions/presentation/screens/payment_webview_screen.dart';
 import 'package:login_signup/features/subscriptions/presentation/screens/subscription_plans_screen.dart';
 import 'package:login_signup/features/theme/presentation/screens/theme_settings_screen.dart';
-import 'package:login_signup/features/whatsapp/presentation/bindings/whatsapp_binding.dart';
-import 'package:login_signup/features/whatsapp/presentation/screens/whatsapp_config_screen.dart';
 import 'package:login_signup/shared/screens/sync_pending_screen.dart';
 
 class GetRoutes {
@@ -106,7 +104,6 @@ class GetRoutes {
   static const String commissions = '/commissions';
 
   // config whatsapp Routes
-  static const String configWhatsapp = '/whatsapp-config';
 
   // notifications Routes
   static const String notifications = '/notifications';
@@ -342,17 +339,6 @@ class GetRoutes {
       middlewares: [AuthMiddleware()],
       page: () => const EmployeeStatsScreen(),
       binding: EmployeeStatsBinding(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 250),
-      preventDuplicates: true,
-    ),
-
-    // Config Whatsapp Pages
-    GetPage(
-      name: configWhatsapp,
-      middlewares: RoleMiddleware.ownerOnly(),
-      page: () => const WhatsappConfigScreen(),
-      binding: WhatsappBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,

@@ -26,7 +26,6 @@ import 'package:login_signup/features/statistics/presentation/controllers/commis
 import 'package:login_signup/features/statistics/presentation/controllers/employee_stats_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/statistics_controller.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
-import 'package:login_signup/features/whatsapp/presentation/controllers/whatsapp_controller.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
 
 /// Controllers que guardan datos del usuario que inició sesión.
@@ -65,7 +64,6 @@ abstract final class SessionScope {
     deleteSessionController<EmployeeStatsController>,
     deleteSessionController<CommissionsController>,
     deleteSessionController<SubscriptionController>,
-    deleteSessionController<WhatsappController>,
     deleteSessionController<SyncAttentionController>,
     deleteSessionController<RescheduleListController>,
     deleteSessionController<PaymentsReviewController>,

@@ -23,6 +23,11 @@ class LocalClients extends Table {
   TextColumn get birthday => text().nullable()();
   BoolColumn get showNotes => boolean().withDefault(const Constant(false))();
 
+  /// Consentimiento de WhatsApp (Fase 11, esquema 3). `null` = aún no bajó.
+  BoolColumn get whatsappOptIn => boolean().nullable()();
+  TextColumn get whatsappOptInAt => text().nullable()();
+  TextColumn get whatsappOptOutAt => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

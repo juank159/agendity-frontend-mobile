@@ -27,6 +27,10 @@ class ServiceEntity {
   final int deposit;
   final bool isActive;
 
+  /// Días tras los que toca el mantenimiento (recordatorio `maintenance`,
+  /// Fase 11; 1 a 365). `null` = el servicio no lo tiene.
+  final int? maintenanceDays;
+
   const ServiceEntity({
     this.id,
     required this.name,
@@ -41,6 +45,7 @@ class ServiceEntity {
     this.onlineBooking = false,
     this.deposit = 0,
     this.isActive = true,
+    this.maintenanceDays,
   });
 
   ServiceEntity copyWith({
@@ -57,6 +62,8 @@ class ServiceEntity {
     bool? onlineBooking,
     int? deposit,
     bool? isActive,
+    int? maintenanceDays,
+    bool clearMaintenanceDays = false,
   }) =>
       ServiceEntity(
         id: id ?? this.id,
@@ -72,6 +79,9 @@ class ServiceEntity {
         onlineBooking: onlineBooking ?? this.onlineBooking,
         deposit: deposit ?? this.deposit,
         isActive: isActive ?? this.isActive,
+        maintenanceDays: clearMaintenanceDays
+            ? null
+            : maintenanceDays ?? this.maintenanceDays,
       );
 
   @override
@@ -90,7 +100,8 @@ class ServiceEntity {
           other.image == image &&
           other.onlineBooking == onlineBooking &&
           other.deposit == deposit &&
-          other.isActive == isActive;
+          other.isActive == isActive &&
+          other.maintenanceDays == maintenanceDays;
 
   @override
   int get hashCode => Object.hash(
@@ -106,7 +117,8 @@ class ServiceEntity {
       image,
       onlineBooking,
       deposit,
-      isActive);
+      isActive,
+      maintenanceDays);
 
   @override
   String toString() => 'ServiceEntity($id, $name)';

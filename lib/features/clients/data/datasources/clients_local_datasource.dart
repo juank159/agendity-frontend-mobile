@@ -198,6 +198,13 @@ class ClientsLocalDataSource {
           ? Value(_day(f['birthday']))
           : const Value.absent(),
       showNotes: flag('showNotes', false),
+      whatsappOptIn: f.containsKey('whatsapp_opt_in')
+          ? Value(f['whatsapp_opt_in'] == null
+              ? null
+              : JsonRead.asBool(f['whatsapp_opt_in'], fallback: false))
+          : const Value.absent(),
+      whatsappOptInAt: instant('whatsapp_opt_in_at'),
+      whatsappOptOutAt: instant('whatsapp_opt_out_at'),
     );
   }
 
@@ -228,5 +235,8 @@ class ClientsLocalDataSource {
         notes: row.notes,
         birthday: DateCodec.tryDecodeDay(row.birthday),
         showNotes: row.showNotes,
+        whatsappOptIn: row.whatsappOptIn,
+        whatsappOptInAt: DateCodec.tryDecode(row.whatsappOptInAt),
+        whatsappOptOutAt: DateCodec.tryDecode(row.whatsappOptOutAt),
       );
 }

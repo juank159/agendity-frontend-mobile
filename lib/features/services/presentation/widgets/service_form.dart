@@ -87,6 +87,22 @@ class ServiceForm extends StatelessWidget {
             )),
         const SizedBox(height: 16),
         TextField(
+          key: const Key('service-maintenance-days'),
+          controller: controller.maintenanceDaysController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: 'Recordar mantenimiento a los N días (opcional)',
+            helperText: 'Ej.: 21 para un retoque de pestañas. Si lo dejas '
+                'vacío, este servicio no envía recordatorio de mantenimiento.',
+            helperMaxLines: 2,
+            suffixText: 'días',
+            prefixIcon: Icon(Icons.autorenew),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
           controller: controller.descriptionController,
           maxLines: 2,
           decoration: const InputDecoration(

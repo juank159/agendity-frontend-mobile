@@ -53,7 +53,9 @@ void main() {
     // (4.08b: aviso "Verifica tu email" del menú), más
     // BusinessSettingsController (6.04: zona horaria del negocio), más
     // CommissionsController (8.03: liquidación de comisiones), más
-    // SyncAttention, RescheduleList, PaymentsReview y Notifications (10.03).
-    expect(SessionScope.featureControllers, hasLength(27));
+    // SyncAttention, RescheduleList, PaymentsReview y Notifications (10.03),
+    // menos WhatsappController (CallMeBot retirado, 11.04 FD), más
+    // RemindersController y ReminderHistoryController (11.04 FP).
+    expect(SessionScope.featureControllers, hasLength(29));
   });
 }

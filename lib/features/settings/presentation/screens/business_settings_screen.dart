@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/loading_state.dart';
 import 'package:login_signup/features/settings/presentation/controllers/business_settings_controller.dart';
@@ -36,6 +37,7 @@ class BusinessSettingsScreen extends GetView<BusinessSettingsController> {
                 BusinessTimeZoneNotice(),
                 _NameCard(),
                 _BookingLinkCard(),
+                _RemindersLinkCard(),
                 _OpeningHoursCard(),
                 _TimeZoneCard(),
               ],
@@ -209,6 +211,28 @@ Rect? _originOf(BuildContext context) {
   final box = context.findRenderObject();
   if (box is! RenderBox || !box.hasSize) return null;
   return box.localToGlobal(Offset.zero) & box.size;
+}
+
+/// Acceso a "Recordatorios" (Fase 11) desde "Mi negocio".
+class _RemindersLinkCard extends StatelessWidget {
+  const _RemindersLinkCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: ListTile(
+        key: const Key('business-reminders'),
+        leading: Icon(Icons.notifications_active_outlined,
+            color: Theme.of(context).colorScheme.primary),
+        title: const Text('Recordatorios por WhatsApp'),
+        subtitle: const Text('Antes de la cita, mantenimiento, cumpleaños y '
+            '"te extrañamos".'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Get.toNamed(GetRoutes.reminders),
+      ),
+    );
+  }
 }
 
 class _OpeningHoursCard extends GetView<BusinessSettingsController> {

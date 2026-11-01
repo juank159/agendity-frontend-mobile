@@ -65,8 +65,12 @@ class FakeClientsRepository implements ClientsRepository {
 
   @override
   Future<Either<Failure, ClientEntity>> updateClient(
-          ClientEntity client) async =>
-      Right(client);
+      ClientEntity client) async {
+    updated.add(client);
+    return Right(client);
+  }
+
+  final updated = <ClientEntity>[];
 
   @override
   Future<Either<Failure, Unit>> deleteClient(String id) async {
@@ -127,6 +131,10 @@ void main() {
   }
 
   Future<void> pump(WidgetTester tester, Widget home) async {
+    // Los formularios crecieron (consentimiento, mantenimiento: 11.04).
+    tester.view.physicalSize = const Size(1000, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(GetMaterialApp(
       theme: ThemeConfig.lightTheme,
       home: home,
@@ -225,6 +233,24 @@ void main() {
   });
 
   group('Alta', () {
+    testWidgets('consentimiento al crear: la casilla registra true',
+        (tester) async {
+      signInAs('Employee');
+      Get.put(NewClientController(
+        createClientUseCase: CreateClientUseCase(repo),
+        uploadClientImageUseCase: UploadClientImageUseCase(repo),
+      ));
+      await pump(tester, const NewClientScreen());
+      await tester.enterText(find.widgetWithText(TextField, 'Nombre *'), 'Ana');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Teléfono móvil *'), '3001234567');
+      await tester.tap(find.byKey(const Key('client-whatsapp-opt-in')));
+      await tester.pump();
+      await tapText(tester, 'Guardar cliente');
+      expect(repo.created.single.whatsappOptIn, isTrue);
+      await expireSnackbar(tester);
+    });
+
     testWidgets('teléfono repetido: aviso y se queda en el formulario',
         (tester) async {
       signInAs('Employee');
@@ -318,6 +344,36 @@ void main() {
           ['tel:3001234567', 'https://wa.me/573001234567']);
     });
 
+    testWidgets('consentimiento: aceptó el…; desmarcar es darse de baja',
+        (tester) async {
+      signInAs('Owner');
+      repo.byIdResult = Right(ana.copyWith(whatsappOptIn: true)
+          .withConsentDates(DateTime(2026, 10, 30)));
+      putEditController();
+      await pump(tester, const EditClientScreen());
+      expect(find.text('Aceptó el 30/10/2026.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('client-whatsapp-opt-in')));
+      await tester.pump();
+      await tapText(tester, 'Guardar cambios');
+      expect(repo.updated.single.whatsappOptIn, isFalse);
+      await expireSnackbar(tester);
+    });
+
+    testWidgets('sin consentimiento: marcar y desmarcar no da de baja',
+        (tester) async {
+      signInAs('Owner');
+      putEditController();
+      await pump(tester, const EditClientScreen());
+      expect(find.textContaining('Márcala solo si el cliente te dio permiso'),
+          findsOneWidget);
+      final c = Get.find<EditClientController>();
+      c.setWhatsappOptIn(true);
+      expect(c.whatsappOptIn.value, isTrue);
+      c.setWhatsappOptIn(false);
+      expect(c.whatsappOptIn.value, isNull, reason: 'sin tocar, no es baja');
+    });
+
     testWidgets('sin teléfono no hay Llamar ni WhatsApp', (tester) async {
       signInAs('Owner');
       repo.byIdResult = const Right(ClientEntity(id: 'c1', name: 'Sin', phone: ''));
@@ -337,4 +393,18 @@ void main() {
     expect(whatsappUri(''), isNull);
     expect(phoneCallUri('+57 300-123'), Uri.parse('tel:+57300123'));
   });
+}
+
+extension on ClientEntity {
+  /// Copia con la fecha de aceptación (copyWith no la cambia).
+  ClientEntity withConsentDates(DateTime acceptedAt) => ClientEntity(
+        id: this.id,
+        name: name,
+        lastname: lastname,
+        phone: phone,
+        email: email,
+        address: address,
+        whatsappOptIn: whatsappOptIn,
+        whatsappOptInAt: acceptedAt,
+      );
 }

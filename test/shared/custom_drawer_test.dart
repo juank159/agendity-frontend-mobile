@@ -26,6 +26,7 @@ void main() {
   const ownerOnly = [
     'Personal',
     'Mi negocio',
+    'Recordatorios',
     'Planes y suscripción',
   ];
   const forEveryone = [

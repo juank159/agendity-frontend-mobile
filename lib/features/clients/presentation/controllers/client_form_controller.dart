@@ -43,6 +43,19 @@ abstract class ClientFormController extends GetxController {
   /// Consentimiento de WhatsApp (Fase 11): el del cliente al editar; `null`
   /// = sin tocar (nunca da de baja por accidente). La casilla la pone FP.
   final whatsappOptIn = Rxn<bool>();
+
+  /// Lo guardado del consentimiento (para mostrar "aceptó el…" o "se dio de
+  /// baja el…" en la ficha).
+  final savedWhatsappOptIn = Rxn<bool>();
+  final whatsappOptInAt = Rxn<DateTime>();
+  final whatsappOptOutAt = Rxn<DateTime>();
+
+  /// La casilla "Acepta recibir recordatorios por WhatsApp". Marcarla
+  /// registra el consentimiento (`true`); desmarcarla solo es una baja
+  /// (`false`) si ya lo tenía; si no, vuelve a "sin tocar" (`null`).
+  void setWhatsappOptIn(bool accepted) => whatsappOptIn.value = accepted
+      ? true
+      : (savedWhatsappOptIn.value == true ? false : savedWhatsappOptIn.value);
   final birthday = Rxn<DateTime>();
 
   /// URL de la foto ya subida (vacía = sin foto).
@@ -94,6 +107,9 @@ abstract class ClientFormController extends GetxController {
     notesController.text = client.notes ?? '';
     showNotes.value = client.showNotes;
     whatsappOptIn.value = client.whatsappOptIn;
+    savedWhatsappOptIn.value = client.whatsappOptIn;
+    whatsappOptInAt.value = client.whatsappOptInAt;
+    whatsappOptOutAt.value = client.whatsappOptOutAt;
     birthday.value = client.birthday;
     imageUrl.value = client.image ?? '';
   }

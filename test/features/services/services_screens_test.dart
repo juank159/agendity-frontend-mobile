@@ -153,6 +153,10 @@ void main() {
   }
 
   Future<void> pump(WidgetTester tester, Widget home) async {
+    // Los formularios crecieron (consentimiento, mantenimiento: 11.04).
+    tester.view.physicalSize = const Size(1000, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(GetMaterialApp(
       theme: ThemeConfig.lightTheme,
       home: home,
@@ -379,6 +383,8 @@ void main() {
       await tester.enterText(
           find.widgetWithText(TextField, 'Nombre del servicio'), 'Uñas acrílicas');
       await tester.enterText(find.widgetWithText(TextField, 'Precio'), '80000');
+      await tester.enterText(
+          find.byKey(const Key('service-maintenance-days')), '21');
       await tapText(tester, ServicePriceType.variable.apiValue);
       final green = find.byKey(const ValueKey('service-color-#4caf50'));
       await tester.ensureVisible(green);
@@ -396,6 +402,8 @@ void main() {
       expect(saved.categoryId, 'cat-1'); // única categoría: elegida sola
       // Nace sin reserva en línea, como en el backend (7.04-9).
       expect(saved.onlineBooking, isFalse);
+      // Recordar mantenimiento a los 21 días (11.04).
+      expect(saved.maintenanceDays, 21);
       expect(results, [true]);
       await expireSnackbar(tester);
     });

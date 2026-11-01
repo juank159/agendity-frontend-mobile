@@ -43,17 +43,31 @@ abstract class ServiceFormController extends GetxController {
   /// lo pone FP; al editar se conserva el del servicio.
   final maintenanceDays = Rxn<int>();
 
+  /// Campo "Recordar mantenimiento a los N días" (vacío = sin
+  /// mantenimiento). Un texto que no es número cuenta como 0 para que el use
+  /// case lo rechace con su mensaje.
+  final maintenanceDaysController = TextEditingController();
+
   final categories = <CategoryEntity>[].obs;
   final isSaving = false.obs;
 
   @override
   void onInit() {
     super.onInit();
+    // Al editar, el subcontroller ya puso los días del servicio.
+    maintenanceDaysController.text = maintenanceDays.value?.toString() ?? '';
+    maintenanceDaysController.addListener(_onMaintenanceDaysChanged);
     loadCategories();
+  }
+
+  void _onMaintenanceDaysChanged() {
+    final text = maintenanceDaysController.text.trim();
+    maintenanceDays.value = text.isEmpty ? null : int.tryParse(text) ?? 0;
   }
 
   @override
   void onClose() {
+    maintenanceDaysController.dispose();
     nameController.dispose();
     priceController.dispose();
     descriptionController.dispose();

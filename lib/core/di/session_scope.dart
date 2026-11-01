@@ -16,6 +16,8 @@ import 'package:login_signup/features/employees/presentation/controllers/verify_
 import 'package:login_signup/features/notifications/presentation/controllers/notifications_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payments_review_controller.dart';
+import 'package:login_signup/features/reminders/presentation/controllers/reminder_history_controller.dart';
+import 'package:login_signup/features/reminders/presentation/controllers/reminders_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/categories_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/edit_service_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/new_category_controller.dart';
@@ -68,6 +70,8 @@ abstract final class SessionScope {
     deleteSessionController<RescheduleListController>,
     deleteSessionController<PaymentsReviewController>,
     deleteSessionController<NotificationsController>,
+    deleteSessionController<RemindersController>,
+    deleteSessionController<ReminderHistoryController>,
     deleteSessionController<BusinessSettingsController>,
   ];
 

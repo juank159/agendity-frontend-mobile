@@ -9,7 +9,7 @@ import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 
 /// Menú lateral de la home. Solo entradas con pantalla real; las de Owner
-/// (Personal, Mi negocio y Planes) se ocultan al Employee, igual
+/// (Personal, Mi negocio, Recordatorios y Planes) se ocultan al Employee, igual
 /// que `RoleMiddleware.ownerOnly()` en sus rutas. Colores del `ColorScheme`.
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
@@ -91,6 +91,11 @@ class CustomDrawer extends GetView<UserInfoController> {
                 icon: Icons.storefront_outlined,
                 title: 'Mi negocio',
                 onTap: () => _open(GetRoutes.businessSettings),
+              ),
+              _DrawerItem(
+                icon: Icons.notifications_active_outlined,
+                title: 'Recordatorios',
+                onTap: () => _open(GetRoutes.reminders),
               ),
               _DrawerItem(
                 icon: Icons.workspace_premium_outlined,

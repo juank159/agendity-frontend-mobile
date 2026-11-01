@@ -45,6 +45,16 @@ class ClientForm extends StatelessWidget {
               value: controller.showNotes.value,
               onChanged: (value) => controller.showNotes.value = value,
             )),
+        Obx(() => CheckboxListTile(
+              key: const Key('client-whatsapp-opt-in'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text('Acepta recibir recordatorios por WhatsApp'),
+              subtitle: Text(_consentStatus()),
+              value: controller.whatsappOptIn.value == true,
+              onChanged: (value) =>
+                  controller.setWhatsappOptIn(value ?? false),
+            )),
         Obx(() {
           final birthday = controller.birthday.value;
           return ListTile(
@@ -65,6 +75,26 @@ class ClientForm extends StatelessWidget {
         }),
       ],
     );
+  }
+
+  /// Estado del consentimiento (Ley 1581): pregúntale antes de marcarla.
+  String _consentStatus() {
+    final saved = controller.savedWhatsappOptIn.value;
+    final acceptedAt = controller.whatsappOptInAt.value;
+    final optedOutAt = controller.whatsappOptOutAt.value;
+    if (saved == true) {
+      return acceptedAt == null
+          ? 'Aceptó recibir mensajes automáticos.'
+          : 'Aceptó el ${formatDate(acceptedAt)}.';
+    }
+    if (saved == false) {
+      return optedOutAt == null
+          ? 'Se dio de baja: no recibe mensajes automáticos.'
+          : 'Se dio de baja el ${formatDate(optedOutAt)}: no recibe mensajes '
+              'automáticos.';
+    }
+    return 'Márcala solo si el cliente te dio permiso. Sin ella no recibe '
+        'recordatorios automáticos (solo los que envíes tú por WhatsApp).';
   }
 
   Future<void> _pickBirthday(BuildContext context) async {

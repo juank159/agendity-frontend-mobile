@@ -38,6 +38,9 @@ import 'package:login_signup/features/employees/presentation/screens/verify_empl
 
 import 'package:login_signup/features/payments/presentation/bindings/payments_review_binding.dart';
 import 'package:login_signup/features/payments/presentation/screens/payments_review_screen.dart';
+import 'package:login_signup/features/reminders/presentation/bindings/reminders_binding.dart';
+import 'package:login_signup/features/reminders/presentation/screens/reminder_history_screen.dart';
+import 'package:login_signup/features/reminders/presentation/screens/reminders_screen.dart';
 import 'package:login_signup/features/services/presentation/bindings/categories_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/edit_service_binding.dart';
 import 'package:login_signup/features/services/presentation/bindings/new_category_binding.dart';
@@ -124,6 +127,10 @@ class GetRoutes {
 
   /// Pagos en revisión tras sincronizar (10.03, solo Owner).
   static const String paymentsReview = '/payments/review';
+
+  /// Recordatorios automáticos por WhatsApp (Fase 11, solo Owner).
+  static const String reminders = '/reminders';
+  static const String reminderHistory = '/reminders/history';
 
   /// Cambios sin enviar y los que esperan al usuario (10.03).
   static const String syncPending = '/sync-pending';
@@ -368,6 +375,22 @@ class GetRoutes {
       middlewares: RoleMiddleware.ownerOnly(),
       page: () => const PaymentsReviewScreen(),
       binding: PaymentsReviewBinding(),
+      transition: Transition.rightToLeft,
+      preventDuplicates: true,
+    ),
+    GetPage(
+      name: reminders,
+      middlewares: RoleMiddleware.ownerOnly(),
+      page: () => const RemindersScreen(),
+      binding: RemindersBinding(),
+      transition: Transition.rightToLeft,
+      preventDuplicates: true,
+    ),
+    GetPage(
+      name: reminderHistory,
+      middlewares: RoleMiddleware.ownerOnly(),
+      page: () => const ReminderHistoryScreen(),
+      binding: ReminderHistoryBinding(),
       transition: Transition.rightToLeft,
       preventDuplicates: true,
     ),

@@ -101,8 +101,7 @@ void main() {
 
     test('descartar la saca de la bandeja y avisa a las pantallas', () async {
       sync.onInit();
-      server.forced['client.create'] =
-          rejected('FORBIDDEN', 'Sin permiso');
+      server.forced['client.create'] = rejected('FORBIDDEN', 'Sin permiso');
       await createClient('Ana', '3001112233');
       await engine.syncNow();
       await sync.loadEntries();
@@ -164,7 +163,8 @@ void main() {
       expect(SyncEntryText.detail(e), 'Ana Ruiz');
       expect(SyncEntryText.reason(e),
           'El servidor no aceptó los datos: El teléfono no es válido');
-      expect(SyncEntryText.reason(entry('appointment.cancel', code: 'NOT_FOUND')),
+      expect(
+          SyncEntryText.reason(entry('appointment.cancel', code: 'NOT_FOUND')),
           contains('alguien lo borró'));
       expect(SyncEntryText.discardWarning(e), contains('No se puede deshacer'));
     });
@@ -177,7 +177,8 @@ void main() {
   });
 
   test('cerrar sesión con cambios sin enviar: dice que no se pierden', () {
-    expect(CustomDrawer.logoutMessage(0), '¿Seguro que quieres cerrar la sesión?');
+    expect(
+        CustomDrawer.logoutMessage(0), '¿Seguro que quieres cerrar la sesión?');
     final message = CustomDrawer.logoutMessage(3);
     expect(message, contains('3 cambios sin enviar'));
     expect(message, contains('No se pierden'));
@@ -203,8 +204,8 @@ void main() {
 
     testWidgets('indicador: sin conexión, pendientes y atención',
         (tester) async {
-      await pumpApp(
-          tester, Scaffold(appBar: AppBar(actions: const [SyncStatusIndicator()])));
+      await pumpApp(tester,
+          Scaffold(appBar: AppBar(actions: const [SyncStatusIndicator()])));
       expect(find.byTooltip('Todo sincronizado'), findsOneWidget);
 
       sync.status.value = const SyncStatus(online: false, pending: 2);
@@ -235,7 +236,8 @@ void main() {
       // Rechazada: "Descartar" y "Reintentar"; sin el "Sincronizar" de la
       // tarjeta (solo el de la cabecera).
       expect(find.text('Reintentar'), findsOneWidget);
-      expect(find.widgetWithText(TextButton, 'Sincronizar ahora'), findsNothing);
+      expect(
+          find.widgetWithText(TextButton, 'Sincronizar ahora'), findsNothing);
       expect(find.text('Ana Ruiz'), findsOneWidget);
       expect(find.textContaining('El teléfono no es válido'), findsOneWidget);
 
@@ -290,6 +292,122 @@ void main() {
       expect(sync.entries, isEmpty);
       expect(server.clients, hasLength(1));
       expect(find.text('Todo está en el servidor'), findsOneWidget);
+    });
+  });
+
+  MutationResult Function(String) conflict(String code, String message) =>
+      (id) => MutationResult(
+          mutationId: id,
+          status: MutationStatus.conflict,
+          code: code,
+          message: message);
+
+  group('aviso de lo rechazado (7.05b)', () {
+    test('avisa una vez por operación; reintentar y volver a fallar, otra vez',
+        () async {
+      final notices = <List<String>>[];
+      final announcing = SyncController(engine,
+          announce: (fresh) =>
+              notices.add([for (final e in fresh) e.mutationId]));
+      announcing.onInit();
+      server.forced['client.create'] = conflict('CONFLICT', 'Ya existe');
+      await createClient('Ana', '3001112233');
+      await engine.syncNow();
+      await announcing.loadEntries();
+      expect(notices, hasLength(1));
+      expect(notices.single, [announcing.attentionEntries.single.mutationId]);
+
+      // Otra sincronización con el mismo conflicto: sin aviso nuevo.
+      await engine.syncNow();
+      await announcing.loadEntries();
+      await announcing.loadEntries();
+      expect(notices, hasLength(1));
+
+      // Reintentar = mutación nueva; si el servidor la rechaza, se avisa.
+      server.forced['client.create'] =
+          rejected('VALIDATION_ERROR', 'El teléfono no es válido');
+      await announcing.retry(announcing.attentionEntries.single);
+      await engine.syncNow();
+      await announcing.loadEntries();
+      expect(notices, hasLength(2));
+      expect(notices.last, [announcing.attentionEntries.single.mutationId]);
+      announcing.onClose();
+    });
+
+    test('lo pendiente (sin respuesta) no avisa', () async {
+      var notices = 0;
+      final announcing = SyncController(engine, announce: (_) => notices++);
+      announcing.onInit();
+      server.offline = true;
+      await createClient('Ana', '3001112233');
+      await engine.syncNow();
+      await announcing.loadEntries();
+      expect(announcing.pendingEntries, hasLength(1));
+      expect(notices, 0);
+      announcing.onClose();
+    });
+
+    test('texto: qué cambio y dónde corregirlo', () {
+      OutboxEntry entry(String id) => OutboxEntry(
+            seq: 1,
+            mutationId: id,
+            type: 'service.create',
+            entity: 'services',
+            payload: const {'name': 'Corte'},
+            clientTime: '2026-10-31T12:00:00Z',
+            status: OutboxStatus.conflict,
+          );
+      final one = SyncController.attentionMessage([entry('a')]);
+      expect(one, startsWith('Servicio nuevo'));
+      expect(one, contains('no se guardó en el servidor'));
+      expect(one, contains('Pendientes'));
+      expect(SyncController.attentionMessage([entry('a'), entry('b')]),
+          startsWith('2 cambios'));
+    });
+
+    testWidgets(
+        'al terminar la sincronización, aviso con "Revisar" que abre '
+        'Pendientes', (tester) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      Get.put<SyncController>(sync, permanent: true);
+      await tester.pumpWidget(GetMaterialApp(
+        theme: ThemeConfig.lightTheme,
+        initialRoute: '/services-test',
+        getPages: [
+          GetPage(
+              name: '/services-test',
+              page: () => const Scaffold(body: Text('Servicios'))),
+          GetPage(
+              name: GetRoutes.syncPending,
+              page: () => const SyncPendingScreen()),
+        ],
+      ));
+      await tester.pump();
+
+      await tester.runAsync(() async {
+        server.forced['client.create'] = conflict('CONFLICT', 'Ya existe');
+        await createClient('Ana', '3001112233');
+        await engine.syncNow();
+        await sync.loadEntries();
+      });
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('Cambio no guardado'), findsOneWidget);
+      expect(find.textContaining('Cliente nuevo (Ana Ruiz)'), findsOneWidget);
+      await tester.tap(find.text('Revisar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SyncPendingScreen), findsOneWidget);
+      expect(find.text('Requieren atención'), findsOneWidget);
+
+      // Ya en Pendientes, una lectura más no repite el aviso.
+      await tester.runAsync(sync.loadEntries);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('Cambio no guardado'), findsNothing);
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
     });
   });
 

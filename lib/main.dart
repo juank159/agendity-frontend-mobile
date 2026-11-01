@@ -68,7 +68,10 @@ class MyApp extends StatelessWidget {
           ],
           locale: const Locale('es'),
 
-          // Builder para forzar formato 12 horas
+          // Formato de 12 h para lo que dependa del ajuste del dispositivo.
+          // Las horas de la app se formatean con patrón explícito
+          // (`formatTime`, SfCalendar) y el selector de hora fuerza 24 h por
+          // su cuenta (`showAppTimePicker`, 7.05b).
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(

@@ -265,16 +265,9 @@ Future<void> closeDialog(WidgetTester tester) async {
 
 /// Elige [hhmm] en el selector de hora de Material que abre [button]: pasa
 /// al modo de texto (el reloj no se puede tocar de forma estable) y escribe
-/// hora y minutos (la app está en `es`: formato de 24 h).
-///
-/// El modo de texto de Flutter interpreta la hora escrita en 12 h si el
-/// dispositivo no usa el formato de 24 h (aunque pinte 24 h en `es`): con el
-/// Mac en 12 h, "19" da "Indica una hora válida". La prueba fija el ajuste de
-/// 24 h del dispositivo mientras elige la hora (hallazgo de 7.05).
+/// hora y minutos en 24 h: la app fuerza ese formato en el selector
+/// (`showAppTimePicker`, 7.05b), sea cual sea el ajuste del dispositivo.
 Future<void> pickTime(WidgetTester tester, Finder button, String hhmm) async {
-  tester.platformDispatcher.alwaysUse24HourFormatTestValue = true;
-  addTearDown(
-      tester.platformDispatcher.clearAlwaysUse24HourTestValue);
   final label = find.descendant(of: button, matching: find.byType(Text));
   await centerOn(tester, label.first);
   await tester.tap(label.first);
@@ -296,7 +289,6 @@ Future<void> pickTime(WidgetTester tester, Finder button, String hhmm) async {
   await tester.pump(const Duration(milliseconds: 200));
   if (debugPickTime) await shot(tester, 'debug_hora_$hhmm');
   await tapText(tester, 'ACEPTAR', wait: 600);
-  tester.platformDispatcher.clearAlwaysUse24HourTestValue();
 }
 
 /// Captura de cada selector de hora (diagnóstico).

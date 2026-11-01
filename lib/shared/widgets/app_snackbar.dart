@@ -17,6 +17,9 @@ import 'package:login_signup/core/utils/app_logger.dart';
 /// `PopupRoute` arriba), el `SnackBar` del Scaffold quedaría debajo de su
 /// barrera (7.04-3): entonces el aviso se pinta en el `Overlay` del
 /// navegador, por encima de todas las rutas, con el mismo aspecto.
+///
+/// [action] añade un botón (p. ej. "Revisar" → otra pantalla) que también
+/// cierra el aviso.
 abstract final class AppSnackbar {
   static const Duration defaultDuration = Duration(seconds: 3);
 
@@ -30,20 +33,24 @@ abstract final class AppSnackbar {
   static void info(String message, {String title = 'Aviso'}) =>
       show(AppTone.info, message, title: title);
 
-  static void warning(String message, {String title = 'Atención'}) =>
+  static void warning(String message,
+          {String title = 'Atención', SnackbarAction? action}) =>
       show(AppTone.warning, message,
-          title: title, duration: const Duration(seconds: 4));
+          title: title,
+          duration: Duration(seconds: action == null ? 4 : 8),
+          action: action);
 
   static void show(
     AppTone tone,
     String message, {
     required String title,
     Duration duration = defaultDuration,
+    SnackbarAction? action,
   }) {
     _removeOverlay();
     final overlay = _popupOverlay();
     if (overlay != null) {
-      _presentInOverlay(overlay, tone, title, message, duration);
+      _presentInOverlay(overlay, tone, title, message, duration, action);
       return;
     }
     final messenger = Get.rootController.scaffoldMessengerKey.currentState;
@@ -53,7 +60,7 @@ abstract final class AppSnackbar {
     // Sin un Scaffold montado (p. ej. en plena navegación) Flutter lanza una
     // aserción; un aviso perdido no debe romper el flujo que lo pide.
     try {
-      _present(messenger, tone, colors, title, message, duration);
+      _present(messenger, tone, colors, title, message, duration, action);
     } catch (e) {
       AppLogger.error('AppSnackbar: no se pudo mostrar "$title"', e);
     }
@@ -85,7 +92,7 @@ abstract final class AppSnackbar {
   }
 
   static void _presentInOverlay(OverlayState overlay, AppTone tone,
-      String title, String message, Duration duration) {
+      String title, String message, Duration duration, SnackbarAction? action) {
     final entry = OverlayEntry(builder: (context) {
       final colors = context.tokens.tone(tone);
       return Positioned(
@@ -105,8 +112,17 @@ abstract final class AppSnackbar {
               padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
               child: Row(
                 children: [
-                  Expanded(
-                      child: _content(tone, colors, title, message)),
+                  Expanded(child: _content(tone, colors, title, message)),
+                  if (action != null)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                          foregroundColor: colors.onContainer),
+                      onPressed: () {
+                        _removeOverlay();
+                        action.onPressed();
+                      },
+                      child: Text(action.label),
+                    ),
                   IconButton(
                     icon: Icon(Icons.close, color: colors.onContainer),
                     tooltip: 'Cerrar aviso',
@@ -136,6 +152,7 @@ abstract final class AppSnackbar {
     String title,
     String message,
     Duration duration,
+    SnackbarAction? action,
   ) {
     messenger
       ..hideCurrentSnackBar()
@@ -151,6 +168,13 @@ abstract final class AppSnackbar {
           ),
           showCloseIcon: true,
           closeIconColor: colors.onContainer,
+          action: action == null
+              ? null
+              : SnackBarAction(
+                  label: action.label,
+                  textColor: colors.onContainer,
+                  onPressed: action.onPressed,
+                ),
           content: _content(tone, colors, title, message),
         ),
       );
@@ -197,4 +221,12 @@ abstract final class AppSnackbar {
         return Icons.error_outline;
     }
   }
+}
+
+/// Botón de un [AppSnackbar] ("Revisar", "Ver"…).
+class SnackbarAction {
+  final String label;
+  final VoidCallback onPressed;
+
+  const SnackbarAction({required this.label, required this.onPressed});
 }

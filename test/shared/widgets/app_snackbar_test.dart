@@ -92,4 +92,27 @@ void main() {
     await _expire(tester);
     expect(find.text('Se va solo'), findsNothing);
   });
+
+  testWidgets('con acción: el botón la ejecuta y cierra el aviso (7.05b)',
+      (tester) async {
+    await _pumpApp(tester);
+    var taps = 0;
+    final action = SnackbarAction(label: 'Revisar', onPressed: () => taps++);
+    AppSnackbar.warning('Un cambio no se guardó', action: action);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Revisar'));
+    await tester.pumpAndSettle();
+    expect(taps, 1);
+    expect(find.text('Un cambio no se guardó'), findsNothing);
+
+    // Sobre un diálogo (Overlay) también.
+    Get.dialog<void>(const AlertDialog(content: Text('Formulario')));
+    await tester.pumpAndSettle();
+    AppSnackbar.warning('Otro cambio no se guardó', action: action);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Revisar'));
+    await tester.pumpAndSettle();
+    expect(taps, 2);
+    expect(find.text('Otro cambio no se guardó'), findsNothing);
+  });
 }

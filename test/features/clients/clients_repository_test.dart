@@ -463,4 +463,44 @@ void main() {
       expect(ClientRules.normalizePhone('30+0'), '300');
     });
   });
+
+  group('consentimiento (11.06)', () {
+    test('link: POST /clients/:id/consent-link; url null = se arma después',
+        () async {
+      adapter.handler = (_) => jsonBody(201, {
+            'url': null,
+            'path': '/consentimiento/tok-1',
+            'expires_at': '2026-11-30T15:00:00.000Z',
+            'already_opted_in': false,
+          });
+      final link = (await repository.requestConsentLink('c-1'))
+          .getOrElse(() => throw StateError('Left'));
+      final request = adapter.requests.single;
+      expect('${request.method} ${request.uri.path}',
+          'POST /api/clients/c-1/consent-link');
+      expect(link.url, isNull);
+      expect(link.path, '/consentimiento/tok-1');
+      expect(link.expiresAt, isNotNull);
+      expect(link.alreadyOptedIn, isFalse);
+    });
+
+    test('origen del consentimiento y filtro "sin consentimiento" en local',
+        () async {
+      await seed([
+        {'id': 'a', 'name': 'Ana', 'phone': '3001111111',
+          'whatsapp_opt_in': true, 'whatsapp_opt_in_source': 'LINK'},
+        {'id': 'b', 'name': 'Bea', 'phone': '3002222222'},
+        {'id': 'c', 'name': 'Caro', 'phone': '3003333333',
+          'whatsapp_opt_in': false},
+      ]);
+      final ana = (await repository.getClientById('a'))
+          .getOrElse(() => throw StateError('Left'));
+      expect(ana.whatsappOptInSource, ConsentSource.link);
+      final page = (await repository
+              .getClients(const ClientsQuery(withoutConsent: true)))
+          .getOrElse(() => throw StateError('Left'));
+      expect(page.items.map((c) => c.id), ['b'],
+          reason: 'la baja (Caro) no se vuelve a pedir');
+    });
+  });
 }

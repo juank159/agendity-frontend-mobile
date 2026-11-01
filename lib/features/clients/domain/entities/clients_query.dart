@@ -15,6 +15,11 @@ class ClientsQuery {
   final ClientStatusFilter status;
   final ClientSourceFilter source;
 
+  /// Solo los que nunca respondieron al consentimiento de WhatsApp
+  /// (`whatsappOptIn == null`; los que se dieron de baja no salen: no se les
+  /// vuelve a pedir). Para pedirlo en serie (11.06).
+  final bool withoutConsent;
+
   const ClientsQuery({
     this.page = 1,
     this.limit = 20,
@@ -23,6 +28,7 @@ class ClientsQuery {
     this.direction = SortDirection.desc,
     this.status = ClientStatusFilter.all,
     this.source = ClientSourceFilter.all,
+    this.withoutConsent = false,
   });
 
   /// [search] sin espacios sobrantes; `null` si queda vacío.
@@ -41,11 +47,13 @@ class ClientsQuery {
           other.sortBy == sortBy &&
           other.direction == direction &&
           other.status == status &&
-          other.source == source;
+          other.source == source &&
+          other.withoutConsent == withoutConsent;
 
   @override
   int get hashCode => Object.hash(
-      page, limit, normalizedSearch, sortBy, direction, status, source);
+      page, limit, normalizedSearch, sortBy, direction, status, source,
+      withoutConsent);
 }
 
 /// Campo de orden (`sortBy`).

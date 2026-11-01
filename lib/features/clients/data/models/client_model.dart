@@ -31,6 +31,7 @@ class ClientModel {
   final bool? whatsappOptIn;
   final DateTime? whatsappOptInAt;
   final DateTime? whatsappOptOutAt;
+  final String? whatsappOptInSource;
 
   const ClientModel({
     this.id,
@@ -52,6 +53,7 @@ class ClientModel {
     this.whatsappOptIn,
     this.whatsappOptInAt,
     this.whatsappOptOutAt,
+    this.whatsappOptInSource,
   });
 
   factory ClientModel.fromJson(Map<String, dynamic> json) {
@@ -77,6 +79,8 @@ class ClientModel {
           : JsonRead.asBool(json['whatsapp_opt_in'], fallback: false),
       whatsappOptInAt: DateCodec.tryDecode(json['whatsapp_opt_in_at']),
       whatsappOptOutAt: DateCodec.tryDecode(json['whatsapp_opt_out_at']),
+      whatsappOptInSource:
+          JsonRead.asOptionalString(json['whatsapp_opt_in_source']),
     );
   }
 
@@ -100,6 +104,7 @@ class ClientModel {
         whatsappOptIn: entity.whatsappOptIn,
         whatsappOptInAt: entity.whatsappOptInAt,
         whatsappOptOutAt: entity.whatsappOptOutAt,
+        whatsappOptInSource: entity.whatsappOptInSource,
       );
 
   ClientEntity toEntity() => ClientEntity(
@@ -122,6 +127,7 @@ class ClientModel {
         whatsappOptIn: whatsappOptIn,
         whatsappOptInAt: whatsappOptInAt,
         whatsappOptOutAt: whatsappOptOutAt,
+        whatsappOptInSource: whatsappOptInSource,
       );
 
   /// Cuerpo de `POST /clients` y `PATCH /clients/:id` (`CreateClientDto`; el

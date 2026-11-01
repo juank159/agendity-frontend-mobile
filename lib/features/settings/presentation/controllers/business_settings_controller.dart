@@ -7,6 +7,7 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/core/utils/public_url.dart';
 import 'package:login_signup/features/settings/domain/entities/business_settings.dart';
 import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_name_usecase.dart';
@@ -21,17 +22,10 @@ import 'package:login_signup/shared/widgets/app_snackbar.dart';
 /// Estado de la carga inicial de la configuración.
 enum BusinessSettingsStatus { loading, ready, error }
 
-/// Link público de reservas (9.02): la página la sirve el backend en
-/// `/reservar/<slug>`, fuera de `/api`. [apiUrl] es la base del API
-/// (`…/api`, `EnvConfig.apiUrl`).
-String publicBookingLink(String apiUrl, String slug) {
-  var base = apiUrl.trim();
-  while (base.endsWith('/')) {
-    base = base.substring(0, base.length - 1);
-  }
-  if (base.endsWith('/api')) base = base.substring(0, base.length - 4);
-  return '$base/reservar/${Uri.encodeComponent(slug)}';
-}
+/// Link público de reservas (9.02): `/reservar/<slug>` fuera de `/api`.
+/// [apiUrl] es la base del API (`…/api`, `EnvConfig.apiUrl`).
+String publicBookingLink(String apiUrl, String slug) =>
+    publicWebUrl(apiUrl, '/reservar/${Uri.encodeComponent(slug)}');
 
 /// "Mi negocio" (solo Owner: la ruta lleva `RoleMiddleware.ownerOnly()`):
 /// nombre, link público de reservas, horario de apertura y zona horaria.

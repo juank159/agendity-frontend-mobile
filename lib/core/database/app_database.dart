@@ -22,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -40,6 +40,13 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(localClients, localClients.whatsappOptIn);
             await m.addColumn(localClients, localClients.whatsappOptInAt);
             await m.addColumn(localClients, localClients.whatsappOptOutAt);
+          }
+          // 3 → 4 (11.06): origen del consentimiento. Bajada completa para
+          // rellenarlo en los clientes que ya estaban.
+          if (from < 4) {
+            await m.addColumn(localClients, localClients.whatsappOptInSource);
+            await (update(syncMeta)..where((t) => t.key.equals('cursor')))
+                .write(const SyncMetaCompanion(value: Value('0')));
           }
         },
       );

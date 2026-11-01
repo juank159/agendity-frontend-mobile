@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import '../controllers/client_form_controller.dart';
 import 'client_image_picker.dart';
 
@@ -83,9 +84,15 @@ class ClientForm extends StatelessWidget {
     final acceptedAt = controller.whatsappOptInAt.value;
     final optedOutAt = controller.whatsappOptOutAt.value;
     if (saved == true) {
-      return acceptedAt == null
-          ? 'Aceptó recibir mensajes automáticos.'
-          : 'Aceptó el ${formatDate(acceptedAt)}.';
+      final on = acceptedAt == null ? '' : ' el ${formatDate(acceptedAt)}';
+      return switch (controller.whatsappOptInSource.value) {
+        ConsentSource.link => 'Aceptó desde el link$on.',
+        ConsentSource.app => 'Marcado por el negocio$on.',
+        ConsentSource.web => 'Aceptó al reservar por la web$on.',
+        _ => acceptedAt == null
+            ? 'Aceptó recibir mensajes automáticos.'
+            : 'Aceptó$on.',
+      };
     }
     if (saved == false) {
       return optedOutAt == null

@@ -13,6 +13,7 @@ import 'package:login_signup/features/clients/domain/usecases/delete_client_usec
 import 'package:login_signup/features/clients/domain/usecases/get_client_by_id_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/import_clients_usecase.dart';
+import 'package:login_signup/features/clients/domain/usecases/request_consent_link_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/update_client_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/upload_client_image_usecase.dart';
 
@@ -48,6 +49,9 @@ abstract final class ClientsDependencies {
     Get.lazyPut(() => DeleteClientUseCase(Get.find<ClientsRepository>()),
         fenix: true);
     Get.lazyPut(() => ImportClientsUseCase(Get.find<ClientsRepository>()),
+        fenix: true);
+    Get.lazyPut(
+        () => RequestConsentLinkUseCase(Get.find<ClientsRepository>()),
         fenix: true);
     Get.lazyPut(() => UploadClientImageUseCase(Get.find<ClientsRepository>()),
         fenix: true);

@@ -77,6 +77,11 @@ class ClientSearchBar extends GetView<ClientsController> {
                   onDeleted: () =>
                       controller.applySourceFilter(ClientSourceFilter.all),
                 ),
+              if (controller.withoutConsent.value)
+                InputChip(
+                  label: const Text('Sin consentimiento'),
+                  onDeleted: () => controller.applyWithoutConsent(false),
+                ),
               if (controller.sort.value != ClientsController.defaultSort)
                 InputChip(
                   label: Text(controller.sort.value.label),
@@ -130,6 +135,15 @@ class _FiltersSheet extends GetView<ClientsController> {
                       onSelected: (_) => controller.applySourceFilter(value),
                     ),
                 ]),
+                title('WhatsApp'),
+                FilterChip(
+                  key: const Key('filter-without-consent'),
+                  label: const Text('Sin consentimiento'),
+                  tooltip: 'Clientes a los que aún no has pedido permiso '
+                      'para los recordatorios por WhatsApp',
+                  selected: controller.withoutConsent.value,
+                  onSelected: controller.applyWithoutConsent,
+                ),
                 title('Ordenar por'),
                 Wrap(spacing: 8, children: [
                   for (final value in ClientSortOption.values)

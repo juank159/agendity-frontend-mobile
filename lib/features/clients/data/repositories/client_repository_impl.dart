@@ -6,6 +6,8 @@ import 'package:login_signup/core/database/app_database.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_local_datasource.dart';
 import 'package:login_signup/features/clients/data/datasources/clients_remote_datasource.dart';
 import 'package:login_signup/features/clients/data/models/client_model.dart';
@@ -13,6 +15,7 @@ import 'package:login_signup/features/clients/data/sync/clients_sync_handler.dar
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/entities/client_import_result.dart';
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
+import 'package:login_signup/features/clients/domain/entities/consent_link.dart';
 import 'package:login_signup/features/clients/domain/entities/paginated_list.dart';
 import 'package:login_signup/features/clients/domain/failures/client_failures.dart';
 import 'package:login_signup/features/clients/domain/repositories/clients_repository.dart';
@@ -190,6 +193,22 @@ class ClientsRepositoryImpl implements ClientsRepository {
     }
     return safeCall(() => _remote.uploadImage(filePath));
   }
+
+  @override
+  Future<Either<Failure, ConsentLink>> requestConsentLink(String clientId) =>
+      safeCall(() async {
+        final json = await _remote.requestConsentLink(clientId);
+        final path = JsonRead.asOptionalString(json['path']);
+        if (path == null) {
+          throw const FormatException('Link de consentimiento sin path');
+        }
+        return ConsentLink(
+          url: JsonRead.asOptionalString(json['url']),
+          path: path,
+          expiresAt: DateCodec.tryDecode(json['expires_at']),
+          alreadyOptedIn: JsonRead.asBool(json['already_opted_in'], fallback: false),
+        );
+      });
 
   /// Mismos textos que el backend (2.30).
   Future<Failure?> _duplicate(AppDatabase db, ClientEntity client,

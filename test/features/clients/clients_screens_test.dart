@@ -2,6 +2,11 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/features/clients/domain/entities/consent_link.dart';
+import 'package:login_signup/features/clients/domain/usecases/request_consent_link_usecase.dart';
+import 'package:login_signup/features/settings/domain/entities/business_settings.dart';
+import 'package:login_signup/features/settings/domain/repositories/settings_repository.dart';
+import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
 import 'package:login_signup/shared/utils/external_link.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:login_signup/core/config/theme_config.dart';
@@ -44,11 +49,23 @@ class FakeClientsRepository implements ClientsRepository {
   final deleted = <String>[];
   final importedBatches = <List<ClientEntity>>[];
   int pageCalls = 0;
+  final queries = <ClientsQuery>[];
+  Either<Failure, ConsentLink> consentResult = const Right(
+      ConsentLink(path: '/consentimiento/tok-1'));
+  final consentRequests = <String>[];
+
+  @override
+  Future<Either<Failure, ConsentLink>> requestConsentLink(
+      String clientId) async {
+    consentRequests.add(clientId);
+    return consentResult;
+  }
 
   @override
   Future<Either<Failure, PaginatedList<ClientEntity>>> getClients(
       ClientsQuery query) async {
     pageCalls++;
+    queries.add(query);
     return pageResult;
   }
 
@@ -165,6 +182,10 @@ void main() {
   final opened = <Uri>[];
 
   EditClientController putEditController() => Get.put(EditClientController(
+        requestConsentLinkUseCase: RequestConsentLinkUseCase(repo),
+        getBusinessSettingsUseCase:
+            GetBusinessSettingsUseCase(_FakeSettings()),
+        apiUrl: () => 'http://api.test/api',
         getClientByIdUseCase: GetClientByIdUseCase(repo),
         updateClientUseCase: UpdateClientUseCase(repo),
         deleteClientUseCase: DeleteClientUseCase(repo),
@@ -177,6 +198,19 @@ void main() {
       ));
 
   group('Lista', () {
+    test('filtro "Sin consentimiento" llega a la consulta', () async {
+      signInAs('Owner');
+      final c = putListController();
+      await Future<void>.delayed(Duration.zero);
+      c.applyWithoutConsent(true);
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.queries.last.withoutConsent, isTrue);
+      expect(c.hasActiveFilters, isTrue);
+      c.clearAllFilters();
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.queries.last.withoutConsent, isFalse);
+    });
+
     testWidgets('un error se muestra con reintento, no como lista vacía',
         (tester) async {
       signInAs('Owner');
@@ -374,6 +408,71 @@ void main() {
       expect(c.whatsappOptIn.value, isNull, reason: 'sin tocar, no es baja');
     });
 
+    testWidgets('pedir consentimiento: link y wa.me con el texto prellenado',
+        (tester) async {
+      signInAs('Employee');
+      opened.clear();
+      putEditController();
+      await pump(tester, const EditClientScreen());
+      await tapText(tester, 'Pedir consentimiento por WhatsApp');
+
+      expect(repo.consentRequests, ['c1']);
+      final uri = opened.single;
+      expect(uri.host, 'wa.me');
+      expect(uri.path, '/573001234567');
+      expect(
+          uri.queryParameters['text'],
+          'Hola Ana, Cejas Luna quiere enviarte recordatorios de tus citas '
+          'por WhatsApp. Si estás de acuerdo, acepta aquí: '
+          'http://api.test/consentimiento/tok-1');
+    });
+
+    testWidgets('si ya aceptó: "Ya aceptó" y sin botón', (tester) async {
+      signInAs('Owner');
+      opened.clear();
+      repo.consentResult = const Right(ConsentLink(
+          url: 'https://x.co/consentimiento/t', path: '/consentimiento/t',
+          alreadyOptedIn: true));
+      putEditController();
+      await pump(tester, const EditClientScreen());
+      await tapText(tester, 'Pedir consentimiento por WhatsApp');
+      expect(opened, isEmpty);
+      expect(find.byKey(const Key('client-consent-accepted')), findsOneWidget);
+      expect(find.text('Pedir consentimiento por WhatsApp'), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('sin conexión: aviso claro', (tester) async {
+      signInAs('Owner');
+      opened.clear();
+      repo.consentResult =
+          const Left(NetworkFailure(message: 'Sin conexión a internet'));
+      putEditController();
+      await pump(tester, const EditClientScreen());
+      await tapText(tester, 'Pedir consentimiento por WhatsApp');
+      expect(opened, isEmpty);
+      expect(find.textContaining('hace falta internet'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('origen del consentimiento: desde el link', (tester) async {
+      signInAs('Owner');
+      repo.byIdResult = Right(ClientEntity(
+        id: 'c1',
+        name: 'Ana',
+        phone: '3001234567',
+        whatsappOptIn: true,
+        whatsappOptInAt: DateTime(2026, 10, 30),
+        whatsappOptInSource: ConsentSource.link,
+      ));
+      putEditController();
+      await pump(tester, const EditClientScreen());
+      expect(find.text('Aceptó desde el link el 30/10/2026.'), findsOneWidget);
+      expect(find.text('Pedir consentimiento por WhatsApp'), findsNothing);
+    });
+
     testWidgets('sin teléfono no hay Llamar ni WhatsApp', (tester) async {
       signInAs('Owner');
       repo.byIdResult = const Right(ClientEntity(id: 'c1', name: 'Sin', phone: ''));
@@ -407,4 +506,13 @@ extension on ClientEntity {
         whatsappOptIn: whatsappOptIn,
         whatsappOptInAt: acceptedAt,
       );
+}
+
+class _FakeSettings implements SettingsRepository {
+  @override
+  Future<Either<Failure, BusinessSettings>> getSettings() async =>
+      const Right(BusinessSettings(timeZone: 'America/Bogota', name: 'Cejas Luna'));
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -3,6 +3,7 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/entities/client_import_result.dart';
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
+import 'package:login_signup/features/clients/domain/entities/consent_link.dart';
 import 'package:login_signup/features/clients/domain/entities/paginated_list.dart';
 
 /// Clientes del negocio. Owner y Employee leen y escriben los del negocio
@@ -32,4 +33,7 @@ abstract class ClientsRepository {
 
   /// Sube la foto (`POST /upload/image`, carpeta `clients`) y devuelve su URL.
   Future<Either<Failure, String>> uploadImage(String filePath);
+
+  /// `POST /clients/:id/consent-link` (11.06, solo con conexión).
+  Future<Either<Failure, ConsentLink>> requestConsentLink(String clientId);
 }

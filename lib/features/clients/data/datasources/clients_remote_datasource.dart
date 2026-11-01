@@ -17,6 +17,10 @@ abstract class ClientsRemoteDataSource {
   /// `POST /upload/image?folder=clients` (multipart `file`, JPEG comprimido).
   /// Responde `{url, message}`.
   Future<String> uploadImage(String filePath);
+
+  /// `POST /clients/:id/consent-link` →
+  /// `{url, path, expires_at, already_opted_in}` (11.06).
+  Future<Map<String, dynamic>> requestConsentLink(String clientId);
 }
 
 class ClientsRemoteDataSourceImpl implements ClientsRemoteDataSource {
@@ -37,6 +41,13 @@ class ClientsRemoteDataSourceImpl implements ClientsRemoteDataSource {
   @override
   Future<Map<String, dynamic>> fetchClient(String id) async {
     final response = await _dio.get<Map<String, dynamic>>('/clients/$id');
+    return response.data ?? const {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> requestConsentLink(String clientId) async {
+    final response = await _dio
+        .post<Map<String, dynamic>>('/clients/$clientId/consent-link');
     return response.data ?? const {};
   }
 

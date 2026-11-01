@@ -49,6 +49,7 @@ class _EditClientBody extends GetView<EditClientController> {
             Obx(() => controller.savedPhone.isEmpty
                 ? const SizedBox.shrink()
                 : const _ContactActions()),
+            const _ConsentAction(),
             ClientForm(controller: controller),
             const SizedBox(height: 16),
             Obx(() {
@@ -86,6 +87,48 @@ class _EditClientBody extends GetView<EditClientController> {
         ),
       ),
     );
+  }
+}
+
+/// Consentimiento de WhatsApp (11.06): "Ya aceptó" o el botón para pedirlo
+/// por WhatsApp con el link de un solo uso.
+class _ConsentAction extends GetView<EditClientController> {
+  const _ConsentAction();
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      if (controller.savedWhatsappOptIn.value == true) {
+        final success = context.tokens.success;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              Icon(Icons.verified_outlined, color: success.color),
+              const SizedBox(width: 8),
+              Text('Ya aceptó recibir recordatorios por WhatsApp',
+                  key: const Key('client-consent-accepted'),
+                  style: TextStyle(color: success.color)),
+            ],
+          ),
+        );
+      }
+      if (!controller.canRequestConsent) return const SizedBox.shrink();
+      final busy = controller.isRequestingConsent.value;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: OutlinedButton.icon(
+          key: const Key('client-request-consent'),
+          onPressed: busy ? null : controller.requestConsent,
+          icon: busy
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.mark_chat_read_outlined),
+          label: const Text('Pedir consentimiento por WhatsApp'),
+        ),
+      );
+    });
   }
 }
 

@@ -61,6 +61,9 @@ class ClientsController extends GetxController {
   final searchQuery = ''.obs;
   final statusFilter = ClientStatusFilter.all.obs;
   final sourceFilter = ClientSourceFilter.all.obs;
+
+  /// "Sin consentimiento" (11.06): para pedirlo cliente por cliente.
+  final withoutConsent = false.obs;
   final sort = defaultSort.obs;
 
   final isImporting = false.obs;
@@ -71,6 +74,7 @@ class ClientsController extends GetxController {
       searchQuery.value.trim().isNotEmpty ||
       statusFilter.value != ClientStatusFilter.all ||
       sourceFilter.value != ClientSourceFilter.all ||
+      withoutConsent.value ||
       sort.value != defaultSort;
 
   @override
@@ -117,6 +121,7 @@ class ClientsController extends GetxController {
         direction: sort.value.direction,
         status: statusFilter.value,
         source: sourceFilter.value,
+        withoutConsent: withoutConsent.value,
       );
 
   /// Primera página con los filtros actuales. Si falla con clientes ya
@@ -177,6 +182,12 @@ class ClientsController extends GetxController {
     loadClients();
   }
 
+  void applyWithoutConsent(bool value) {
+    if (withoutConsent.value == value) return;
+    withoutConsent.value = value;
+    loadClients();
+  }
+
   void applySort(ClientSortOption value) {
     if (sort.value == value) return;
     sort.value = value;
@@ -190,6 +201,7 @@ class ClientsController extends GetxController {
     searchQuery.value = '';
     statusFilter.value = ClientStatusFilter.all;
     sourceFilter.value = ClientSourceFilter.all;
+    withoutConsent.value = false;
     sort.value = defaultSort;
     loadClients();
   }

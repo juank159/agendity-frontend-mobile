@@ -136,6 +136,12 @@ void main() {
       expect(model.whatsappOptIn, true);
       expect(model.whatsappOptInAt, isNotNull);
       expect(ClientModel.fromJson(backendClient()).whatsappOptIn, isNull);
+      expect(
+          ClientModel.fromJson({
+            ...backendClient(),
+            'whatsapp_opt_in_source': 'WEB',
+          }).toEntity().whatsappOptInSource,
+          ConsentSource.web);
     });
 
     test('toJson solo si se conoce; el alta solo si es true', () {

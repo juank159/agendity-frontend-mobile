@@ -35,6 +35,10 @@ class ClientEntity {
   final DateTime? whatsappOptInAt;
   final DateTime? whatsappOptOutAt;
 
+  /// De dónde salió el consentimiento (11.06, prueba para la Ley 1581):
+  /// [ConsentSource.app], [ConsentSource.web] o [ConsentSource.link].
+  final String? whatsappOptInSource;
+
   const ClientEntity({
     this.id,
     required this.name,
@@ -55,6 +59,7 @@ class ClientEntity {
     this.whatsappOptIn,
     this.whatsappOptInAt,
     this.whatsappOptOutAt,
+    this.whatsappOptInSource,
   });
 
   /// Aceptó recibir WhatsApp automáticos.
@@ -106,6 +111,7 @@ class ClientEntity {
         whatsappOptIn: whatsappOptIn ?? this.whatsappOptIn,
         whatsappOptInAt: whatsappOptInAt,
         whatsappOptOutAt: whatsappOptOutAt,
+        whatsappOptInSource: whatsappOptInSource,
       );
 
   @override
@@ -130,7 +136,8 @@ class ClientEntity {
           other.showNotes == showNotes &&
           other.whatsappOptIn == whatsappOptIn &&
           other.whatsappOptInAt == whatsappOptInAt &&
-          other.whatsappOptOutAt == whatsappOptOutAt;
+          other.whatsappOptOutAt == whatsappOptOutAt &&
+          other.whatsappOptInSource == whatsappOptInSource;
 
   @override
   int get hashCode => Object.hash(
@@ -153,8 +160,21 @@ class ClientEntity {
         whatsappOptIn,
         whatsappOptInAt,
         whatsappOptOutAt,
+        whatsappOptInSource,
       );
 
   @override
   String toString() => 'ClientEntity($id, $fullName)';
+}
+
+/// Origen del consentimiento de WhatsApp (`whatsapp_opt_in_source`, 11.06).
+abstract final class ConsentSource {
+  /// Lo marcó el negocio en la app.
+  static const app = 'APP';
+
+  /// Lo aceptó el cliente al reservar por la web.
+  static const web = 'WEB';
+
+  /// Lo aceptó el cliente desde el link de consentimiento.
+  static const link = 'LINK';
 }

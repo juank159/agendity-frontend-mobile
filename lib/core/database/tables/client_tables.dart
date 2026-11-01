@@ -28,6 +28,9 @@ class LocalClients extends Table {
   TextColumn get whatsappOptInAt => text().nullable()();
   TextColumn get whatsappOptOutAt => text().nullable()();
 
+  /// Origen del consentimiento (`APP`/`WEB`/`LINK`, 11.06, esquema 4).
+  TextColumn get whatsappOptInSource => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

@@ -50,6 +50,9 @@ abstract class ClientFormController extends GetxController {
   final whatsappOptInAt = Rxn<DateTime>();
   final whatsappOptOutAt = Rxn<DateTime>();
 
+  /// Origen del consentimiento guardado (`ConsentSource`, 11.06).
+  final whatsappOptInSource = RxnString();
+
   /// La casilla "Acepta recibir recordatorios por WhatsApp". Marcarla
   /// registra el consentimiento (`true`); desmarcarla solo es una baja
   /// (`false`) si ya lo tenía; si no, vuelve a "sin tocar" (`null`).
@@ -110,6 +113,7 @@ abstract class ClientFormController extends GetxController {
     savedWhatsappOptIn.value = client.whatsappOptIn;
     whatsappOptInAt.value = client.whatsappOptInAt;
     whatsappOptOutAt.value = client.whatsappOptOutAt;
+    whatsappOptInSource.value = client.whatsappOptInSource;
     birthday.value = client.birthday;
     imageUrl.value = client.image ?? '';
   }

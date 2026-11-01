@@ -47,6 +47,7 @@ class ClientsLocalDataSource {
       case ClientSourceFilter.all:
         break;
     }
+    if (query.withoutConsent) where = where & t.whatsappOptIn.isNull();
 
     final count = t.id.count();
     final total = await (db.selectOnly(t)
@@ -205,6 +206,7 @@ class ClientsLocalDataSource {
           : const Value.absent(),
       whatsappOptInAt: instant('whatsapp_opt_in_at'),
       whatsappOptOutAt: instant('whatsapp_opt_out_at'),
+      whatsappOptInSource: optional('whatsapp_opt_in_source'),
     );
   }
 
@@ -238,5 +240,6 @@ class ClientsLocalDataSource {
         whatsappOptIn: row.whatsappOptIn,
         whatsappOptInAt: DateCodec.tryDecode(row.whatsappOptInAt),
         whatsappOptOutAt: DateCodec.tryDecode(row.whatsappOptOutAt),
+        whatsappOptInSource: row.whatsappOptInSource,
       );
 }

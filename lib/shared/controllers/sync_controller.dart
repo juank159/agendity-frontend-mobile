@@ -44,6 +44,12 @@ class SyncController extends GetxController with WidgetsBindingObserver {
   /// `mutation_id` de las que requieren atención y ya se avisaron.
   final Set<String> _announced = {};
 
+  /// `lastSyncedAt` al terminar la pasada anterior (7.05c). Se compara con
+  /// esto y no con el evento previo: el motor emite el `lastSyncedAt` nuevo
+  /// **antes** del evento que cierra la pasada (`syncing: false`), así que
+  /// contra el previo nunca cambiaba y las pantallas no se recargaban.
+  DateTime? _syncedAtLastFinish;
+
   int get pending => status.value.pending;
   int get needsAttention => status.value.needsAttention;
   bool get isOffline => !status.value.online;
@@ -66,6 +72,7 @@ class SyncController extends GetxController with WidgetsBindingObserver {
   void onInit() {
     super.onInit();
     status.value = _engine.current;
+    _syncedAtLastFinish = _engine.current.lastSyncedAt;
     _subscription = _engine.status.listen(_onStatus);
     WidgetsBinding.instance.addObserver(this);
   }
@@ -81,8 +88,10 @@ class SyncController extends GetxController with WidgetsBindingObserver {
     final previous = status.value;
     status.value = next;
     final finished = previous.syncing && !next.syncing;
-    if (finished && next.lastSyncedAt != previous.lastSyncedAt) {
-      dataVersion.value++;
+    if (finished) {
+      // Pasada correcta (subida + bajada): los datos locales pudieron cambiar.
+      if (next.lastSyncedAt != _syncedAtLastFinish) dataVersion.value++;
+      _syncedAtLastFinish = next.lastSyncedAt;
     }
     if (finished || next.needsAttention != previous.needsAttention) {
       unawaited(loadEntries());

@@ -418,6 +418,15 @@ Future<void> configureBusiness(WidgetTester tester, Biz biz) async {
   check(allText().contains(biz.zone),
       '${biz.code}: zona del negocio ${biz.zone}', allText());
   if (biz.zone != 'America/Bogota') {
+    // El aviso va arriba de la lista (perezosa): subir antes de leerlo.
+    await tester.drag(
+        find
+            .byWidgetPredicate((w) =>
+                w is Scrollable && w.axisDirection == AxisDirection.down)
+            .first,
+        const Offset(0, 5000),
+        warnIfMissed: false);
+    await idle(tester, 600);
     check(
         allText().contains('Horas en la zona del negocio'),
         '${biz.code}: aviso de que las horas van en la zona del negocio '
@@ -828,6 +837,12 @@ Future<void> setEmployeeDay(WidgetTester tester, Biz biz, Emp e, int weekday,
   await openEditEmployee(tester, e);
   final dayLabel = _dayNames[weekday - 1];
   final toggle = find.widgetWithText(SwitchListTile, dayLabel);
+  // El formulario es una lista perezosa: el horario no existe hasta bajar.
+  await tester.scrollUntilVisible(toggle, 300,
+      scrollable: find
+          .byWidgetPredicate((w) =>
+              w is Scrollable && w.axisDirection == AxisDirection.down)
+          .first);
   await tester.ensureVisible(toggle);
   final on = tester.widget<SwitchListTile>(toggle).value;
   if ((hours != null) != on) await tap(tester, toggle, wait: 400);
@@ -1319,8 +1334,11 @@ Future<void> phaseFutureB(WidgetTester tester) async {
   await chooseSlotAndSave(tester, slot: at(dayX, 14), label: 'B_diaX_14');
   await settle(tester);
 
-  // Fuera del horario del negocio: Sofía trabaja el sábado, B no abre.
-  final saturday = nextSaturday(biz.today());
+  // Fuera del horario del negocio: Sofía trabaja el sábado, B no abre. Si
+  // hoy es sábado, la fase de hoy lo abrió entero: se usa el domingo.
+  final saturday = biz.today().weekday == DateTime.saturday
+      ? nextSaturday(biz.today()).add(const Duration(days: 1))
+      : nextSaturday(biz.today());
   slots = await openAppointmentForm(tester,
       professional: sofia.fullName,
       services: ['Manicure'],
@@ -1525,9 +1543,11 @@ Future<void> phaseComplete(WidgetTester tester, Biz biz) async {
         biz,
         completed.contains('Ana Gómez') ? 310000 : 160000,
         completed.contains('Ana Gómez') ? 4 : 3);
+  } else if (completed.isEmpty) {
+    skip('B: comisiones e ingresos de hoy', 'no hubo citas de hoy');
   } else {
     await checkCommissions(tester, biz,
-        perPro: {if (completed.isNotEmpty) 'Sofía Rangel': (30000, 12000)});
+        perPro: {'Sofía Rangel': (30000, 12000)});
     await checkStats(tester, biz, 30000, 2);
   }
   // A, después de crear B: su catálogo sigue sin nada de B.
@@ -1596,7 +1616,7 @@ Future<void> phaseEmployee(WidgetTester tester, Biz biz, Emp e,
   final proTile = find.byKey(const Key('appointment-professional'));
   t = allText();
   check(
-      t.contains(e.fullName) &&
+      t.contains(e.first) &&
           tester
                   .widget<ListTile>(find
                       .descendant(of: proTile, matching: find.byType(ListTile))

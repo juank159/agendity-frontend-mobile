@@ -55,7 +55,7 @@ class ServicesController extends GetxController {
   void onInit() {
     super.onInit();
     if (Get.isRegistered<SyncController>()) {
-      _syncWorker = Get.find<SyncController>().onDataChanged(loadServices);
+      _syncWorker = Get.find<SyncController>().onDataChanged(_refreshSilently);
     }
     loadServices();
   }
@@ -101,21 +101,38 @@ class ServicesController extends GetxController {
   Future<void> loadServices() =>
       _inFlight ??= _load().whenComplete(() => _inFlight = null);
 
-  Future<void> _load() async {
-    isLoading.value = true;
-    loadError.value = null;
+  /// Tras una sincronización (7.05d): sin indicador de carga ni aviso de
+  /// error si ya hay servicios. Una carga en curso se espera y se repite: pudo
+  /// empezar antes de que llegaran los datos nuevos.
+  Future<void> _refreshSilently() async {
+    final running = _inFlight;
+    if (running != null) await running;
+    if (isClosed) return;
+    await (_inFlight ??=
+        _load(silent: true).whenComplete(() => _inFlight = null));
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) {
+      isLoading.value = true;
+      loadError.value = null;
+    }
     final all = _getAllServices;
     final result = all != null && canManage
         ? await all(NoParams())
         : await _getServices(NoParams());
-    isLoading.value = false;
+    if (!silent) isLoading.value = false;
     result.fold(
       (failure) {
+        if (silent && services.isNotEmpty) return;
         final message = CatalogAccess.messageFor(failure);
         loadError.value = message;
         if (services.isNotEmpty) AppSnackbar.error(message);
       },
-      services.assignAll,
+      (loaded) {
+        loadError.value = null;
+        services.assignAll(loaded);
+      },
     );
   }
 

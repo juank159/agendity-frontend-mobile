@@ -23,7 +23,8 @@ class NotificationsController extends GetxController {
   void onInit() {
     super.onInit();
     if (Get.isRegistered<SyncController>()) {
-      _worker = Get.find<SyncController>().onDataChanged(load);
+      _worker =
+          Get.find<SyncController>().onDataChanged(() => load(silent: true));
     }
     load();
   }
@@ -34,12 +35,22 @@ class NotificationsController extends GetxController {
     super.onClose();
   }
 
-  Future<void> load() async {
-    isLoading.value = true;
-    error.value = null;
+  /// [silent] (recarga tras una sincronización, 7.05d): sin indicador de
+  /// carga y, si falla con datos ya cargados, se conservan sin mostrar el
+  /// error.
+  Future<void> load({bool silent = false}) async {
+    if (!silent) {
+      isLoading.value = true;
+      error.value = null;
+    }
     final result = await _getNotifications(NoParams());
-    isLoading.value = false;
-    result.fold((failure) => error.value = failure, notifications.assignAll);
+    if (!silent) isLoading.value = false;
+    result.fold((failure) {
+      if (!silent || notifications.isEmpty) error.value = failure;
+    }, (loaded) {
+      error.value = null;
+      notifications.assignAll(loaded);
+    });
   }
 
   Future<void> refreshFromServer() async {

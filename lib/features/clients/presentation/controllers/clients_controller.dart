@@ -4,6 +4,7 @@ import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
 import 'package:login_signup/features/clients/domain/entities/client_import_result.dart';
 import 'package:login_signup/features/clients/domain/entities/clients_query.dart';
+import 'package:login_signup/features/clients/domain/entities/paginated_list.dart';
 import 'package:login_signup/features/clients/domain/usecases/get_clients_page_usecase.dart';
 import 'package:login_signup/features/clients/domain/usecases/import_clients_usecase.dart';
 import 'package:login_signup/shared/controllers/sync_controller.dart';
@@ -84,7 +85,7 @@ class ClientsController extends GetxController {
         time: const Duration(milliseconds: 500));
     scrollController.addListener(_onScroll);
     if (Get.isRegistered<SyncController>()) {
-      _syncWorker = Get.find<SyncController>().onDataChanged(loadClients);
+      _syncWorker = Get.find<SyncController>().onDataChanged(refreshLoaded);
     }
     loadClients();
   }
@@ -149,6 +150,42 @@ class ClientsController extends GetxController {
         hasNextPage.value = page.hasNextPage;
       },
     );
+  }
+
+  /// Recarga tras una sincronización (7.05d): vuelve a leer las páginas ya
+  /// cargadas con la búsqueda, los filtros y el orden actuales, sin indicador
+  /// de carga y sin volver a la página 1 (el scroll no salta). Si falla, se
+  /// conserva lo que hay sin avisar: el usuario no pidió nada.
+  Future<void> refreshLoaded() async {
+    // Una carga desde la página 1 ya en curso lee lo nuevo: se repite para
+    // que no se quede con datos de antes de la sincronización.
+    if (isLoading.value) return loadClients();
+    // Si se estaba pidiendo la página siguiente, también se incluye: esta
+    // recarga deja sin efecto esa petición.
+    final pages = _page + (isLoadingMore.value ? 1 : 0);
+    final request = ++_request;
+    final items = <ClientEntity>[];
+    PaginatedList<ClientEntity>? last;
+    var lastPage = 1;
+    for (var page = 1; page <= pages; page++) {
+      final result = await _getPage(_query(page));
+      if (request != _request || isClosed) return;
+      final loaded = result.fold<PaginatedList<ClientEntity>?>((failure) {
+        if (clients.isEmpty) error.value = ClientAccess.messageFor(failure);
+        return null;
+      }, (loaded) => loaded);
+      if (loaded == null) return;
+      items.addAll(loaded.items);
+      last = loaded;
+      lastPage = page;
+      if (!loaded.hasNextPage) break;
+    }
+    if (last == null) return;
+    _page = lastPage;
+    error.value = null;
+    clients.assignAll(items);
+    totalRecords.value = last.total;
+    hasNextPage.value = last.hasNextPage;
   }
 
   /// Siguiente página (scroll infinito).

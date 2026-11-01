@@ -94,7 +94,8 @@ class AppointmentsController extends GetxController {
     }
     // Lo que baja de la sincronización (10.03) se ve sin salir de la agenda.
     if (Get.isRegistered<SyncController>()) {
-      _syncWorker = Get.find<SyncController>().onDataChanged(reload);
+      _syncWorker = Get.find<SyncController>()
+          .onDataChanged(() => _load(_range, force: true, silent: true));
     }
     _load(rangeFor(currentView.value, selectedDate.value));
   }
@@ -155,20 +156,31 @@ class AppointmentsController extends GetxController {
   /// Vuelve a pedir el rango actual (reintento o tras un cambio externo).
   Future<void> reload() => _load(_range, force: true);
 
-  Future<void> _load(AppointmentsRange? range, {bool force = false}) async {
+  /// [silent] (recarga tras una sincronización, 7.05d): sin la barra de
+  /// carga y, si falla con citas ya pintadas, se conservan sin error.
+  Future<void> _load(AppointmentsRange? range,
+      {bool force = false, bool silent = false}) async {
     if (range == null || (!force && range == _range && error.value == null)) {
       return;
     }
     _range = range;
     final request = ++_request;
-    isLoading.value = true;
-    error.value = null;
+    if (!silent) {
+      isLoading.value = true;
+      error.value = null;
+    }
     final result = await _getAppointments(range);
     if (request != _request) return; // llegó otra petición después
+    // También si es silenciosa: pudo dejar sin efecto una carga visible.
     isLoading.value = false;
     result.fold(
-      (failure) => error.value = failure,
-      appointments.assignAll,
+      (failure) {
+        if (!silent || appointments.isEmpty) error.value = failure;
+      },
+      (loaded) {
+        error.value = null;
+        appointments.assignAll(loaded);
+      },
     );
   }
 

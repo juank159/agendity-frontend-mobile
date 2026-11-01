@@ -23,7 +23,8 @@ class RescheduleListController extends GetxController {
   void onInit() {
     super.onInit();
     if (Get.isRegistered<SyncController>()) {
-      _worker = Get.find<SyncController>().onDataChanged(load);
+      _worker =
+          Get.find<SyncController>().onDataChanged(() => load(silent: true));
     }
     load();
   }
@@ -34,12 +35,22 @@ class RescheduleListController extends GetxController {
     super.onClose();
   }
 
-  Future<void> load() async {
-    isLoading.value = true;
-    error.value = null;
+  /// [silent] (recarga tras una sincronización, 7.05d): sin indicador de
+  /// carga y, si falla con datos ya cargados, se conservan sin mostrar el
+  /// error.
+  Future<void> load({bool silent = false}) async {
+    if (!silent) {
+      isLoading.value = true;
+      error.value = null;
+    }
     final result = await _getToReschedule(NoParams());
-    isLoading.value = false;
-    result.fold((failure) => error.value = failure, appointments.assignAll);
+    if (!silent) isLoading.value = false;
+    result.fold((failure) {
+      if (!silent || appointments.isEmpty) error.value = failure;
+    }, (loaded) {
+      error.value = null;
+      appointments.assignAll(loaded);
+    });
   }
 
   /// Deslizar para refrescar: sincroniza y vuelve a leer.

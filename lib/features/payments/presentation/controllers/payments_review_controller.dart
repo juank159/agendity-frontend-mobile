@@ -29,7 +29,8 @@ class PaymentsReviewController extends GetxController {
   void onInit() {
     super.onInit();
     if (Get.isRegistered<SyncController>()) {
-      _worker = Get.find<SyncController>().onDataChanged(load);
+      _worker =
+          Get.find<SyncController>().onDataChanged(() => load(silent: true));
     }
     load();
   }
@@ -40,12 +41,22 @@ class PaymentsReviewController extends GetxController {
     super.onClose();
   }
 
-  Future<void> load() async {
-    isLoading.value = true;
-    error.value = null;
+  /// [silent] (recarga tras una sincronización, 7.05d): sin indicador de
+  /// carga y, si falla con datos ya cargados, se conservan sin mostrar el
+  /// error.
+  Future<void> load({bool silent = false}) async {
+    if (!silent) {
+      isLoading.value = true;
+      error.value = null;
+    }
     final result = await _getInReview(NoParams());
-    isLoading.value = false;
-    result.fold((failure) => error.value = failure, items.assignAll);
+    if (!silent) isLoading.value = false;
+    result.fold((failure) {
+      if (!silent || items.isEmpty) error.value = failure;
+    }, (loaded) {
+      error.value = null;
+      items.assignAll(loaded);
+    });
   }
 
   Future<void> refreshFromServer() async {
@@ -60,8 +71,8 @@ class PaymentsReviewController extends GetxController {
       {required double amount, required String reason}) async {
     if (refundingId.value != null) return false;
     refundingId.value = item.payment.id;
-    final result = await _refund(
-        RefundPaymentParams(payment: item.payment, amount: amount, reason: reason));
+    final result = await _refund(RefundPaymentParams(
+        payment: item.payment, amount: amount, reason: reason));
     refundingId.value = null;
     return result.fold<Future<bool>>((failure) async {
       if (failure is ValidationFailure) {

@@ -20,4 +20,9 @@ abstract class SettingsRepository {
   /// `PATCH /settings {opening_hours}` (solo Owner). `null` = sin horario.
   Future<Either<Failure, BusinessSettings>> updateOpeningHours(
       OpeningHours? hours);
+
+  /// `PATCH /settings {theme_palette}` (solo Owner, con conexión). `null` =
+  /// sin paleta del negocio.
+  Future<Either<Failure, BusinessSettings>> updateThemePalette(
+      AppPalette? palette);
 }

@@ -28,6 +28,7 @@ import 'package:login_signup/features/services/services_dependencies.dart';
 import 'package:login_signup/features/notifications/notifications_dependencies.dart';
 import 'package:login_signup/features/reminders/reminders_dependencies.dart';
 import 'package:login_signup/features/settings/settings_dependencies.dart';
+import 'package:login_signup/features/theme/theme_dependencies.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
 
 class DependencyInjection {
@@ -138,6 +139,8 @@ class DependencyInjection {
       SettingsDependencies.init();
       NotificationsDependencies.init();
       RemindersDependencies.init();
+      // D-22: antes de ThemeController (_initThemeController).
+      ThemeDependencies.init();
 
       AppLogger.debug('Features initialized successfully');
     } catch (e) {

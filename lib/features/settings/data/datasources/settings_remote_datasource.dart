@@ -9,7 +9,7 @@ abstract class SettingsRemoteDataSource {
 
   /// `PATCH /settings` con solo los campos que cambian (solo Owner). El
   /// cuerpo lo arma `BusinessSettingsModel` (`timeZoneUpdate`, `nameUpdate`,
-  /// `openingHoursUpdate`).
+  /// `openingHoursUpdate`, `themePaletteUpdate`).
   Future<BusinessSettingsModel> update(Map<String, dynamic> changes);
 }
 

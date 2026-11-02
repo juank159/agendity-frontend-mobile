@@ -31,7 +31,10 @@ import 'package:login_signup/features/services/data/repositories/services_reposi
 import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
 import 'package:login_signup/features/settings/data/datasources/settings_remote_datasource.dart';
 import 'package:login_signup/features/settings/data/repositories/settings_repository_impl.dart';
+import 'package:login_signup/features/settings/domain/entities/business_settings.dart';
+import 'package:login_signup/core/network/api_client.dart';
 
+import '../network/fake_http_client_adapter.dart';
 import '../session/memory_token_store.dart';
 import 'fake_sync_api.dart';
 
@@ -193,6 +196,53 @@ void main() {
         'Nequi');
   });
 
+  test('paleta del negocio (12.02): baja con el feed y el PATCH la guarda',
+      () async {
+    final tokens = MemoryTokenStore('jwt');
+    final adapter = FakeHttpClientAdapter((_) => jsonBody(200, {
+          'tenant_id': 'owner-1',
+          'name': 'Estudio Ana',
+          'slug': 'estudio-ana',
+          'timezone': 'America/Caracas',
+          'opening_hours': null,
+          'theme_palette': 'turquesa',
+        }));
+    final settings = SettingsRepositoryImpl(
+      remote: SettingsRemoteDataSourceImpl(buildApiClient(
+        baseUrl: 'http://api.test/api',
+        tokenStore: tokens,
+        httpClientAdapter: adapter,
+        retryDelay: (_) => Duration.zero,
+        enableLogs: false,
+      )),
+      session:
+          SessionService(tokenStore: tokens, repository: SessionRepository(tokens)),
+      store: store,
+    );
+
+    server.serverUpsert('business_settings', 'owner-1', {
+      'tenant_id': 'owner-1',
+      'name': 'Estudio Ana',
+      'slug': 'estudio-ana',
+      'timezone': 'America/Caracas',
+      'opening_hours': null,
+      'theme_palette': 'coral',
+    });
+    await engine.syncNow();
+    BusinessSettings read() => throw StateError('settings');
+    expect((await settings.getSettings()).getOrElse(read).themePalette,
+        AppPalette.coral);
+
+    final saved = (await settings.updateThemePalette(AppPalette.turquesa))
+        .getOrElse(read);
+    expect(saved.themePalette, AppPalette.turquesa);
+    expect(adapter.requests.single.data, {'theme_palette': 'turquesa'});
+    // Lo siguiente se lee de la base local, ya con la paleta nueva.
+    expect((await settings.getSettings()).getOrElse(read).themePalette,
+        AppPalette.turquesa);
+    expect(adapter.requests, hasLength(1));
+  });
+
   test('configuración (zona de la sesión) y avisos', () async {
     final tokens = MemoryTokenStore('jwt');
     final settings = SettingsRepositoryImpl(
@@ -206,6 +256,8 @@ void main() {
     expect(read.name, 'Estudio Ana');
     expect(read.slug, 'estudio-ana');
     expect(BusinessTimeZone.current, 'America/Caracas');
+    // Documento sin `theme_palette` (anterior a 12.01) = sin paleta.
+    expect(read.themePalette, isNull);
 
     final notifications =
         (await NotificationsRepositoryImpl(store).getNotifications())

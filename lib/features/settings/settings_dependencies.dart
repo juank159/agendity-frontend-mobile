@@ -11,6 +11,7 @@ import 'package:login_signup/features/settings/data/repositories/settings_reposi
 import 'package:login_signup/features/settings/domain/repositories/settings_repository.dart';
 import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_name_usecase.dart';
+import 'package:login_signup/features/settings/domain/usecases/update_business_palette_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_time_zone_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_opening_hours_usecase.dart';
 
@@ -43,6 +44,9 @@ abstract final class SettingsDependencies {
     Get.lazyPut(() => UpdateBusinessNameUseCase(Get.find<SettingsRepository>()),
         fenix: true);
     Get.lazyPut(() => UpdateOpeningHoursUseCase(Get.find<SettingsRepository>()),
+        fenix: true);
+    Get.lazyPut(
+        () => UpdateBusinessPaletteUseCase(Get.find<SettingsRepository>()),
         fenix: true);
   }
 }

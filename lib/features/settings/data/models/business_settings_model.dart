@@ -2,23 +2,29 @@ import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/settings/domain/entities/business_settings.dart';
 
-/// DTO de `GET`/`PATCH /settings`: `{timezone, name, slug, opening_hours}`
-/// (`opening_hours`: `[{day_of_week, start_time, end_time}]` o `null`).
+/// DTO de `GET`/`PATCH /settings` (y del documento `business_settings` del
+/// feed de sync): `{timezone, name, slug, opening_hours, theme_palette}`
+/// (`opening_hours`: `[{day_of_week, start_time, end_time}]` o `null`;
+/// `theme_palette`: `lavanda|rosa|azul|turquesa|coral|grafito` o `null`).
 class BusinessSettingsModel {
   final String timeZone;
   final String? name;
   final String? slug;
   final OpeningHours? openingHours;
+  final AppPalette? themePalette;
 
   const BusinessSettingsModel({
     required this.timeZone,
     this.name,
     this.slug,
     this.openingHours,
+    this.themePalette,
   });
 
   /// Sin `timezone` no es una respuesta válida (`FormatException` →
   /// `ServerFailure`). Franjas ilegibles (sin día de 1 a 7) se descartan.
+  /// Una paleta que falta (backend anterior a 12.01, documento local viejo) o
+  /// desconocida cuenta como `null`, igual que en el backend.
   factory BusinessSettingsModel.fromJson(Map<String, dynamic>? json) {
     final timeZone = JsonRead.asOptionalString(json?['timezone']);
     if (timeZone == null) {
@@ -30,6 +36,7 @@ class BusinessSettingsModel {
       name: JsonRead.asOptionalString(json?['name']),
       slug: JsonRead.asOptionalString(json?['slug']),
       openingHours: rawHours is List ? _readHours(rawHours) : null,
+      themePalette: AppPalette.fromId(json?['theme_palette']),
     );
   }
 
@@ -68,11 +75,16 @@ class BusinessSettingsModel {
               ],
       };
 
+  /// `null` = sin paleta (la app usa la del dispositivo o lavanda).
+  static Map<String, dynamic> themePaletteUpdate(AppPalette? palette) =>
+      {'theme_palette': palette?.id};
+
   BusinessSettings toEntity() => BusinessSettings(
         timeZone: timeZone,
         name: name,
         slug: slug,
         openingHours: openingHours,
+        themePalette: themePalette,
       );
 
   /// Forma de la API (para guardar en local la respuesta de un PATCH).
@@ -81,5 +93,6 @@ class BusinessSettingsModel {
         'name': name,
         'slug': slug,
         ...openingHoursUpdate(openingHours),
+        ...themePaletteUpdate(themePalette),
       };
 }

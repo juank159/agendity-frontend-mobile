@@ -34,6 +34,7 @@ class FakeSettingsRepository implements SettingsRepository {
   final zoneUpdates = <String>[];
   final nameUpdates = <String>[];
   final hoursUpdates = <OpeningHours?>[];
+  final paletteUpdates = <AppPalette?>[];
 
   FakeSettingsRepository(this.session,
       {this.current = const BusinessSettings(timeZone: 'America/Bogota')});
@@ -77,6 +78,18 @@ class FakeSettingsRepository implements SettingsRepository {
     current = hours == null
         ? current.copyWith(clearOpeningHours: true)
         : current.copyWith(openingHours: hours);
+    return Right(current);
+  }
+
+  @override
+  Future<Either<Failure, BusinessSettings>> updateThemePalette(
+      AppPalette? palette) async {
+    paletteUpdates.add(palette);
+    final failure = updateFailure;
+    if (failure != null) return Left(failure);
+    current = palette == null
+        ? current.copyWith(clearThemePalette: true)
+        : current.copyWith(themePalette: palette);
     return Right(current);
   }
 }

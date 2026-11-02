@@ -61,6 +61,11 @@ class SettingsRepositoryImpl implements SettingsRepository {
           OpeningHours? hours) =>
       _update(BusinessSettingsModel.openingHoursUpdate(hours));
 
+  @override
+  Future<Either<Failure, BusinessSettings>> updateThemePalette(
+          AppPalette? palette) =>
+      _update(BusinessSettingsModel.themePaletteUpdate(palette));
+
   Future<Either<Failure, BusinessSettings>> _update(
           Map<String, dynamic> changes) =>
       safeCall(() async {

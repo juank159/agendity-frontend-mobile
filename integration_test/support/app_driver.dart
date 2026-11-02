@@ -24,9 +24,66 @@ final _checks = <String>[];
 final _failures = <String>[];
 var _shotIndex = 0;
 
+/// Modo para mirar (`--dart-define=WATCH=true`): la ventana dibuja todo en
+/// vivo, cada toque y cada texto van más despacio y un letrero abajo dice el
+/// paso en curso. Pensado para seguir el recorrido a ojo.
+const watchMode = bool.fromEnvironment('WATCH');
+
+final _step = ValueNotifier<String>('Arrancando la app…');
+OverlayEntry? _stepEntry;
+
 void log(String message) {
   // ignore: avoid_print
   print(message);
+  if (!watchMode) return;
+  if (message.startsWith('==') ||
+      message.startsWith('PASS') ||
+      message.startsWith('FAIL') ||
+      message.startsWith('SKIP')) {
+    final text = message.split('  -> ').first.replaceAll('=', '').trim();
+    _step.value = text
+        .replaceFirst(RegExp(r'^PASS\s+'), '✓ ')
+        .replaceFirst(RegExp(r'^FAIL\s+'), '✗ ')
+        .replaceFirst(RegExp(r'^SKIP\s+'), '– ');
+  }
+}
+
+/// Pone el letrero del paso encima de todo (se reinserta porque las rutas y
+/// los diálogos nuevos se apilan por encima). Usa `RichText` y no `Text` para
+/// no aparecer en [texts] ni en los `find.text` de las comprobaciones.
+void _raiseStepBanner() {
+  if (!watchMode) return;
+  final overlay = Get.key.currentState?.overlay;
+  if (overlay == null) return;
+  _stepEntry?.remove();
+  _stepEntry = OverlayEntry(
+    builder: (_) => IgnorePointer(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ValueListenableBuilder<String>(
+          valueListenable: _step,
+          builder: (_, step, __) => Container(
+            width: double.infinity,
+            color: const Color(0xDD1B1B1F),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+            child: RichText(
+              textDirection: TextDirection.ltr,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                text: step,
+                style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  overlay.insert(_stepEntry!);
 }
 
 /// Anota una comprobación PASS/FAIL (la prueba sigue; al final, [finish]).
@@ -122,13 +179,23 @@ Future<bool> waitGone(WidgetTester tester, Finder finder,
 }
 
 Future<void> idle(WidgetTester tester, [int ms = 1500]) async {
+  _raiseStepBanner();
   for (var i = 0; i < ms ~/ 100; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
 }
 
 Future<void> tap(WidgetTester tester, Finder finder, {int wait = 800}) async {
+  if (finder.evaluate().isEmpty) {
+    // Listas perezosas: lo que está más abajo no existe hasta bajar.
+    final lists = find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down);
+    if (lists.evaluate().isNotEmpty) {
+      await tester.scrollUntilVisible(finder, 300, scrollable: lists.first);
+    }
+  }
   await centerOn(tester, finder.first);
+  if (watchMode) await idle(tester, 700);
   await tester.tap(finder.first, warnIfMissed: false);
   await idle(tester, wait);
 }
@@ -164,6 +231,7 @@ Future<void> type(WidgetTester tester, String label, String value) async {
   await tester.ensureVisible(f.first);
   await tester.enterText(f.first, value);
   await tester.pump(const Duration(milliseconds: 200));
+  if (watchMode) await idle(tester, 500);
 }
 
 Future<void> openDrawerItem(WidgetTester tester, String item) async {
@@ -345,11 +413,22 @@ Future<void> enterPin(WidgetTester tester, String code) async {
 /// overflow anotados como hallazgo. Devuelve la función que restaura el
 /// manejador de errores.
 Future<void Function()> startApp(WidgetTester tester) async {
-  tester.view.physicalSize = const Size(860, 1864);
-  tester.view.devicePixelRatio = 2;
-  addTearDown(tester.view.reset);
+  // Con un tamaño distinto al de la ventana, macOS descarta los cuadros y
+  // la ventana se queda en "Test starting…": en el modo para mirar se usa el
+  // tamaño real de la ventana (con forma de teléfono, MainFlutterWindow).
+  if (!watchMode) {
+    tester.view.physicalSize = const Size(860, 1864);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+  }
 
   FlutterSecureStorage.setMockInitialValues({});
+  if (watchMode) {
+    final binding = tester.binding;
+    if (binding is LiveTestWidgetsFlutterBinding) {
+      binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
+    }
+  }
   app.main();
   final originalOnError = FlutterError.onError;
   final overflows = <String>{};

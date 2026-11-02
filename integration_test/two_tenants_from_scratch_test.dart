@@ -28,6 +28,8 @@
 // horario como estaba.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_tile.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:integration_test/integration_test.dart';
@@ -723,6 +725,16 @@ Future<List<DateTime>> openAppointmentForm(WidgetTester tester,
     required DateTime day}) async {
   await showDay(tester, day);
   await tap(tester, find.byTooltip('Nueva cita'), wait: 2500);
+  return fillAppointmentForm(tester,
+      professional: professional, services: services, client: client);
+}
+
+/// Llena el formulario de cita ya abierto (por "Nueva cita" o tocando una
+/// hora de la agenda) y devuelve las horas libres que ofrece.
+Future<List<DateTime>> fillAppointmentForm(WidgetTester tester,
+    {String? professional,
+    required List<String> services,
+    required Cli client}) async {
   if (professional != null) {
     await tap(tester, find.byKey(const Key('appointment-professional')));
     await tap(
@@ -1283,7 +1295,93 @@ Future<void> phaseFutureA(WidgetTester tester) async {
         'A: (otro dispositivo) Laura no puede agendar un servicio que no hace',
         '${r.statusCode} ${r.data}');
   }
+  await bookFromCalendarCell(tester, biz, dayX, ana, isabella, valentina);
   await logout(tester);
+}
+
+/// Cita nueva como la agenda la gente: en la vista de día se toca el bloque
+/// de una hora libre (aquí, el de las 12:00, justo debajo de la cita de
+/// [anchor] de 10:00 a 12:00) y el formulario abre con esa hora ya elegida.
+Future<void> bookFromCalendarCell(WidgetTester tester, Biz biz, DateTime day,
+    Emp pro, Cli anchor, Cli client) async {
+  await showDay(tester, day);
+  await idle(tester, 2000);
+  final anchorText = find.text(anchor.fullName);
+  final block = find.ancestor(
+      of: anchorText, matching: find.byType(AppointmentTile));
+  if (block.evaluate().isEmpty) {
+    check(false, '${biz.code}: la agenda muestra el bloque de ${anchor.first}',
+        allText());
+    return;
+  }
+  // Que el final de la cita quede a media pantalla.
+  var rect = tester.getRect(block.first);
+  final middle = tester.view.physicalSize.height /
+      tester.view.devicePixelRatio /
+      2;
+  // Arrastre lento con el dedo sobre la agenda (sin impulso), en tramos.
+  final calendar = tester.getRect(find.byType(AppointmentCalendar));
+  for (var i = 0; i < 6 && (rect.bottom - middle).abs() > 40; i++) {
+    final dy = (middle - rect.bottom).clamp(-300.0, 300.0);
+    await tester.timedDragFrom(
+        Offset(calendar.center.dx, calendar.center.dy), Offset(0, dy),
+        const Duration(milliseconds: 700));
+    await idle(tester, 800);
+    rect = tester.getRect(block.first);
+  }
+  final perMinute = rect.height / 120; // la cita de [anchor] dura 2 h
+  final target = Offset(rect.center.dx, rect.bottom + perMinute * 15);
+  await shot(tester, '${biz.code}_agenda_antes_de_tocar_12');
+  if (watchMode) await idle(tester, 1500);
+  await tester.tapAt(target);
+  final opened = await waitFor(tester, find.text('Nueva cita'),
+      timeout: const Duration(seconds: 10));
+  check(opened, '${biz.code}: tocar la hora 12:00 de la agenda abre "Nueva cita"',
+      allText());
+  if (!opened) return;
+  await idle(tester, 1500);
+  final slots = await fillAppointmentForm(tester,
+      professional: pro.fullName,
+      services: ['Pestañas punto a punto'],
+      client: client);
+  final noon = at(day, 12);
+  final chip = find.byKey(ValueKey('slot-${noon.toIso8601String()}'));
+  final preselected = chip.evaluate().isNotEmpty &&
+      tester.widget<ChoiceChip>(chip).selected;
+  await shot(tester, '${biz.code}_cita_desde_bloque_12');
+  check(preselected,
+      '${biz.code}: la hora tocada (12:00) queda elegida en el formulario',
+      slotsText(slots));
+  final saved = await tap(tester, find.widgetWithText(FilledButton, 'Agendar'),
+          wait: 3000)
+      .then((_) => waitGone(tester, find.text('Nueva cita'),
+          timeout: const Duration(seconds: 10)));
+  check(saved, '${biz.code}: cita agendada desde el bloque de las 12:00',
+      allText());
+  await settle(tester);
+  final newBlock = find.ancestor(
+      of: find.text(client.fullName), matching: find.byType(AppointmentTile));
+  Rect? under;
+  for (final e in newBlock.evaluate()) {
+    final r = tester.getRect(find.byWidget(e.widget).first);
+    if ((r.top - rect.bottom).abs() < 6) under = r;
+  }
+  await shot(tester, '${biz.code}_agenda_cita_desde_bloque');
+  check(under != null,
+      '${biz.code}: la agenda pinta la cita de ${client.first} justo debajo '
+      'de la de ${anchor.first} (12:00)',
+      allText());
+  if (under == null) return;
+  // Tocar el bloque nuevo abre su detalle.
+  await tester.tapAt(under.center);
+  await idle(tester, 2000);
+  final t = allText();
+  await shot(tester, '${biz.code}_detalle_cita_desde_bloque');
+  await closeDialog(tester);
+  check(t.contains('12:00') && t.contains('2:00') && t.contains(cop(150000)),
+      '${biz.code}: detalle: ${client.first} con ${pro.first} 12:00-2:00 p. m., '
+      '${cop(150000)}',
+      t);
 }
 
 Future<void> phaseFutureB(WidgetTester tester) async {
@@ -1651,6 +1749,13 @@ void main() {
     if (want('b_setup')) await phaseSetup(tester, bizB);
     if (want('b_today')) await phaseToday(tester, bizB);
     if (want('a_future')) await phaseFutureA(tester);
+    if (want('a_calendar')) {
+      // Solo el paso de la agenda (para repetirlo sobre una corrida hecha).
+      await login(tester, bizA.ownerEmail);
+      await bookFromCalendarCell(tester, bizA, nextWeekday(bizA.today()),
+          bizA.employees[0], bizA.clients[2], bizA.clients[0]);
+      await logout(tester);
+    }
     if (want('b_future')) await phaseFutureB(tester);
     if (want('a_complete')) await phaseComplete(tester, bizA);
     if (want('a_employee')) {

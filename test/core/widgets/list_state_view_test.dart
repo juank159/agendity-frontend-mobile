@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/core/widgets/empty_state.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import 'package:login_signup/core/widgets/loading_state.dart';
+import 'package:login_signup/core/widgets/state_illustration.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
       theme: ThemeConfig.lightTheme,
@@ -38,8 +40,7 @@ void main() {
     expect(find.text('Cargando...'), findsOneWidget);
   });
 
-  testWidgets('error sin elementos → ErrorState con reintento',
-      (tester) async {
+  testWidgets('error sin elementos → ErrorState con reintento', (tester) async {
     var retries = 0;
     await tester.pumpWidget(
         _wrap(_view(error: 'Sin conexión', onRetry: () => retries++)));
@@ -75,10 +76,57 @@ void main() {
     expect(find.text('Reintentar'), findsNothing);
   });
 
-  testWidgets('LoadingState sin mensaje solo muestra el indicador',
+  testWidgets('LoadingState: esqueletos con brillo, sin ruedita (12.03)',
       (tester) async {
     await tester.pumpWidget(_wrap(const LoadingState()));
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonShimmer), findsOneWidget);
+    expect(find.byType(SkeletonListTile), findsNWidgets(5));
+    expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byType(Text), findsNothing);
+    expect(find.bySemanticsLabel('Cargando'), findsOneWidget);
+  });
+
+  testWidgets('LoadingState con mensaje lo muestra debajo', (tester) async {
+    await tester.pumpWidget(_wrap(const LoadingState(message: 'Cargando…')));
+    expect(find.text('Cargando…'), findsOneWidget);
+  });
+
+  testWidgets('LoadingState(skeleton: false) = ruedita (esperas sin lista)',
+      (tester) async {
+    await tester.pumpWidget(
+        _wrap(const LoadingState(message: 'Verificando…', skeleton: false)));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonShimmer), findsNothing);
+  });
+
+  testWidgets('sin animaciones del sistema el brillo se detiene',
+      (tester) async {
+    await tester.pumpWidget(_wrap(Builder(
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: true),
+        child: const LoadingState(),
+      ),
+    )));
+    // Sin animación infinita: se asienta.
+    await tester.pumpAndSettle();
+    expect(find.byType(SkeletonShimmer), findsOneWidget);
+  });
+
+  testWidgets('estados vacío y error: ilustración y acción con degradado',
+      (tester) async {
+    var retried = 0;
+    await tester.pumpWidget(
+        _wrap(ErrorState(message: 'Sin conexión', onRetry: () => retried++)));
+    expect(find.byType(StateIllustration), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Reintentar'));
+    expect(retried, 1);
+
+    await tester.pumpWidget(_wrap(EmptyState(
+        icon: Icons.people_rounded,
+        message: 'Aún no hay clientes',
+        actionLabel: 'Nuevo cliente',
+        onAction: () {})));
+    expect(find.byType(StateIllustration), findsOneWidget);
+    expect(find.byType(AppGradientButton), findsOneWidget);
   });
 }

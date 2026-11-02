@@ -13,8 +13,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/main.dart' as app;
+import 'package:login_signup/shared/widgets/app_time_picker.dart';
 
 /// Contraseña de todas las cuentas de prueba (cumple la política: el `#` no
 /// está entre los especiales permitidos).
@@ -331,32 +333,42 @@ Future<void> closeDialog(WidgetTester tester) async {
   await tap(tester, find.byTooltip('Cerrar'), wait: 800);
 }
 
-/// Elige [hhmm] en el selector de hora de Material que abre [button]: pasa
-/// al modo de texto (el reloj no se puede tocar de forma estable) y escribe
-/// hora y minutos en 24 h: la app fuerza ese formato en el selector
-/// (`showAppTimePicker`, 7.05b), sea cual sea el ajuste del dispositivo.
+/// Elige [hhmm] (24 h, `13:30`) en la hoja de ruedas `AppTimePicker` (D-23,
+/// 12.03) que abre [button]: mueve cada rueda por su `Key` (hora 1–12,
+/// minutos de 5 en 5 y a. m./p. m.), comprueba la vista previa y pulsa
+/// "Listo". Los minutos deben ser múltiplos de 5 (el paso de la app).
 Future<void> pickTime(WidgetTester tester, Finder button, String hhmm) async {
   final label = find.descendant(of: button, matching: find.byType(Text));
   await centerOn(tester, label.first);
   await tester.tap(label.first);
   await idle(tester, 800);
-  final toKeyboard = find.byIcon(Icons.keyboard_outlined);
-  if (await waitFor(tester, toKeyboard, timeout: const Duration(seconds: 3))) {
-    await tap(tester, toKeyboard, wait: 600);
-  }
-  final fields = find.descendant(
-      of: find.byType(TimePickerDialog), matching: find.byType(TextField));
-  if (!await waitFor(tester, fields, timeout: const Duration(seconds: 5))) {
-    await shot(tester, 'selector_hora_sin_campos');
-    throw StateError('Selector de hora sin campos de texto: ${allText()}');
+  final sheet = find.byType(AppTimePicker);
+  if (!await waitFor(tester, sheet, timeout: const Duration(seconds: 5))) {
+    await shot(tester, 'selector_hora_sin_ruedas');
+    throw StateError('No se abrió el selector de hora: ${allText()}');
   }
   final parts = hhmm.split(':');
-  await tester.enterText(fields.at(0), parts[0]);
-  await tester.pump(const Duration(milliseconds: 200));
-  await tester.enterText(fields.at(1), parts[1]);
-  await tester.pump(const Duration(milliseconds: 200));
+  final time =
+      TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  if (time.minute % 5 != 0) {
+    throw ArgumentError('pickTime: minutos de 5 en 5 ($hhmm)');
+  }
+  FixedExtentScrollController wheel(Key key) => tester
+      .widget<ListWheelScrollView>(find.descendant(
+          of: find.byKey(key), matching: find.byType(ListWheelScrollView)))
+      .controller! as FixedExtentScrollController;
+  wheel(AppTimePicker.hourWheelKey)
+      .jumpToItem(AppTimePicker.hours.indexOf(AppTimePicker.hour12Of(time)));
+  wheel(AppTimePicker.minuteWheelKey).jumpToItem(time.minute ~/ 5);
+  wheel(AppTimePicker.periodWheelKey)
+      .jumpToItem(time.period == DayPeriod.pm ? 1 : 0);
+  await idle(tester, 400);
+  final preview =
+      tester.widget<Text>(find.byKey(const Key('time-picker-preview'))).data;
+  check(preview == formatTimeOfDay(time), 'selector de hora en $hhmm',
+      'vista previa: $preview');
   if (debugPickTime) await shot(tester, 'debug_hora_$hhmm');
-  await tapText(tester, 'ACEPTAR', wait: 600);
+  await tap(tester, find.byKey(AppTimePicker.doneKey), wait: 600);
 }
 
 /// Captura de cada selector de hora (diagnóstico).

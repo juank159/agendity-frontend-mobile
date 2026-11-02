@@ -12,6 +12,7 @@ class BusinessSettingsBinding implements Bindings {
         updateBusinessTimeZoneUseCase: Get.find(),
         updateBusinessNameUseCase: Get.find(),
         updateOpeningHoursUseCase: Get.find(),
+        updateBusinessPaletteUseCase: Get.find(),
         session: Get.find(),
       ),
     );

@@ -35,6 +35,7 @@ import 'package:get/get.dart' hide Response;
 import 'package:integration_test/integration_test.dart';
 import 'package:login_signup/core/config/env_config.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 
 import 'support/app_driver.dart';
@@ -486,8 +487,11 @@ Future<void> setOpeningHours(
       '${biz.code}: horario de apertura guardado', allText());
 }
 
+/// El botón ya muestra [hhmm] (`13:30`), que se ve en 12 h (D-23):
+/// "Abre: 1:30 p. m.".
 bool _buttonShows(WidgetTester tester, Finder button, String hhmm) => find
-    .descendant(of: button, matching: find.textContaining(hhmm))
+    .descendant(
+        of: button, matching: find.textContaining(': ${formatHhmm(hhmm)}'))
     .evaluate()
     .isNotEmpty;
 

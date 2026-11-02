@@ -151,7 +151,8 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
                 );
               }
               if (_isDemoUrl) {
-                return const LoadingState(message: 'Abriendo pago de prueba…');
+                return const LoadingState(
+                    message: 'Abriendo pago de prueba…', skeleton: false);
               }
               if (_loadError != null) {
                 return ErrorState(

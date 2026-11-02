@@ -353,6 +353,12 @@ void main() {
       await tapText(tester, 'Reintentar');
 
       expect(find.text('No se pudo cargar'), findsNothing);
+      // 12.03: el estado de error es más alto; el resumen quedó arriba.
+      tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
       expect(find.text('\$ 20.000'), findsWidgets);
     });
 
@@ -447,7 +453,9 @@ void main() {
   group('Comisiones (8.03)', () {
     final settlement = CommissionSettlement(
       totals: const CommissionAmounts(
-          servicesTotal: 150000, professionalTotal: 52500, businessTotal: 97500),
+          servicesTotal: 150000,
+          professionalTotal: 52500,
+          businessTotal: 97500),
       appointmentCount: 2,
       professionals: [
         ProfessionalCommission(
@@ -526,13 +534,12 @@ void main() {
     testWidgets('sin citas completadas: estado vacío', (tester) async {
       signInAs('Owner');
       await pumpCommissions(tester);
-      expect(find.text('Sin citas completadas en este período'),
-          findsOneWidget);
+      expect(
+          find.text('Sin citas completadas en este período'), findsOneWidget);
     });
   });
 
-  testWidgets('comparación sin base: "nuevo" o "—", nunca 0 %',
-      (tester) async {
+  testWidgets('comparación sin base: "nuevo" o "—", nunca 0 %', (tester) async {
     await pump(
         tester,
         Scaffold(

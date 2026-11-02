@@ -10,14 +10,21 @@ abstract class ThemeLocalDataSource {
   Future<ThemePreferenceModel> read();
 
   Future<void> write(ThemePreferenceModel model);
+
+  /// Última paleta del negocio vista en este equipo (`id`), para pintar con
+  /// ella desde el arranque, antes de leer la configuración (12.03). `null` =
+  /// ninguna o sin elegir.
+  Future<String?> readBusinessPalette();
+
+  /// `null` la borra.
+  Future<void> writeBusinessPalette(String? paletteId);
 }
 
 class ThemeLocalDataSourceImpl implements ThemeLocalDataSource {
   /// Inyectable en tests; por defecto, `SharedPreferences.getInstance`.
   final Future<SharedPreferences> Function() _preferences;
 
-  ThemeLocalDataSourceImpl(
-      {Future<SharedPreferences> Function()? preferences})
+  ThemeLocalDataSourceImpl({Future<SharedPreferences> Function()? preferences})
       : _preferences = preferences ?? SharedPreferences.getInstance;
 
   @override
@@ -39,6 +46,20 @@ class ThemeLocalDataSourceImpl implements ThemeLocalDataSource {
       await prefs.remove(ThemePreferenceModel.paletteKey);
     } else {
       await prefs.setString(ThemePreferenceModel.paletteKey, palette);
+    }
+  }
+
+  @override
+  Future<String?> readBusinessPalette() async =>
+      (await _preferences()).getString(ThemePreferenceModel.businessPaletteKey);
+
+  @override
+  Future<void> writeBusinessPalette(String? paletteId) async {
+    final prefs = await _preferences();
+    if (paletteId == null) {
+      await prefs.remove(ThemePreferenceModel.businessPaletteKey);
+    } else {
+      await prefs.setString(ThemePreferenceModel.businessPaletteKey, paletteId);
     }
   }
 }

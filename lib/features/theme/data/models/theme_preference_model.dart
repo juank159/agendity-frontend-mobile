@@ -11,6 +11,10 @@ import 'package:login_signup/features/theme/domain/entities/theme_preference.dar
 class ThemePreferenceModel {
   static const String modeKey = 'app_theme';
   static const String paletteKey = 'app_palette';
+
+  /// Última paleta del negocio (12.03): copia local para evitar el parpadeo
+  /// al arrancar. No es una elección del dispositivo.
+  static const String businessPaletteKey = 'app_business_palette';
   static const String _legacyModePrefix = 'ThemeType.';
 
   /// Valores crudos guardados (`null` = no hay).
@@ -30,10 +34,10 @@ class ThemePreferenceModel {
     final mode = storedMode;
     return ThemePreference(
       palette: AppPalette.fromId(storedPalette),
-      mode: ThemeModePreference.fromId(mode != null &&
-                  mode.startsWith(_legacyModePrefix)
-              ? mode.substring(_legacyModePrefix.length)
-              : mode) ??
+      mode: ThemeModePreference.fromId(
+              mode != null && mode.startsWith(_legacyModePrefix)
+                  ? mode.substring(_legacyModePrefix.length)
+                  : mode) ??
           ThemeModePreference.fallback,
     );
   }

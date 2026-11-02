@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/loading_state.dart';
@@ -7,9 +8,10 @@ import 'package:login_signup/features/settings/presentation/controllers/business
 import 'package:login_signup/features/settings/presentation/widgets/opening_hours_editor.dart';
 import 'package:login_signup/features/settings/presentation/widgets/time_zone_picker.dart';
 import 'package:login_signup/shared/widgets/business_time_zone_notice.dart';
+import 'package:login_signup/shared/widgets/palette_swatch.dart';
 
-/// "Mi negocio" (solo Owner): nombre, link público de reservas, horario de
-/// apertura y zona horaria (D-15) con la que se interpretan y muestran todas
+/// "Mi negocio" (solo Owner): nombre, color del negocio (D-22), link público
+/// de reservas, horario de apertura y zona horaria (D-15) con la que se interpretan y muestran todas
 /// las horas del negocio.
 class BusinessSettingsScreen extends GetView<BusinessSettingsController> {
   const BusinessSettingsScreen({super.key});
@@ -36,6 +38,7 @@ class BusinessSettingsScreen extends GetView<BusinessSettingsController> {
               children: const [
                 BusinessTimeZoneNotice(),
                 _NameCard(),
+                _PaletteCard(),
                 _BookingLinkCard(),
                 _RemindersLinkCard(),
                 _OpeningHoursCard(),
@@ -136,6 +139,40 @@ class _NameCard extends GetView<BusinessSettingsController> {
           }),
         ],
       ),
+    );
+  }
+}
+
+/// "Color del negocio" (D-22): la paleta de todos los teléfonos del negocio
+/// que no eligieron otra y el acento de la web de reservas.
+class _PaletteCard extends GetView<BusinessSettingsController> {
+  const _PaletteCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Section(
+      icon: Icons.palette_rounded,
+      title: 'Color del negocio',
+      subtitle: 'Lo ven tu equipo y tus clientes en el link de reservas. '
+          'Cada persona puede elegir otro para su teléfono en Apariencia.',
+      child: Obx(() {
+        final saving = controller.isSavingPalette.value;
+        final current = controller.savedPalette ?? AppPalette.fallback;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            PaletteSwatchGrid(
+              padding: EdgeInsets.zero,
+              selected: current,
+              onSelected: saving ? null : controller.savePalette,
+            ),
+            if (saving) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+            ],
+          ],
+        );
+      }),
     );
   }
 }

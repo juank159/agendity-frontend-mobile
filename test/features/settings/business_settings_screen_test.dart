@@ -15,11 +15,13 @@ import 'package:login_signup/features/settings/domain/entities/business_settings
 import 'package:login_signup/features/settings/domain/repositories/settings_repository.dart';
 import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_name_usecase.dart';
+import 'package:login_signup/features/settings/domain/usecases/update_business_palette_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_time_zone_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_opening_hours_usecase.dart';
 import 'package:login_signup/features/settings/presentation/controllers/business_settings_controller.dart';
 import 'package:login_signup/features/settings/presentation/screens/business_settings_screen.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/widgets/palette_swatch.dart';
 
 import '../../core/session/jwt_helper.dart';
 import '../../core/session/memory_token_store.dart';
@@ -64,8 +66,7 @@ class FakeSettingsRepository implements SettingsRepository {
     final failure = updateFailure;
     if (failure != null) return Left(failure);
     // Como el backend: el slug nace con el primer nombre y no cambia.
-    current = current.copyWith(
-        name: name, slug: current.slug ?? 'cejas-luna');
+    current = current.copyWith(name: name, slug: current.slug ?? 'cejas-luna');
     return Right(current);
   }
 
@@ -109,6 +110,7 @@ void main() {
   late FakeSettingsRepository repo;
   late List<Uri> opened;
   late List<(String, String?)> shared;
+  late List<BusinessSettings> themed;
 
   setUpAll(() => initializeDateFormatting('es'));
 
@@ -127,6 +129,7 @@ void main() {
     repo = FakeSettingsRepository(service);
     opened = [];
     shared = [];
+    themed = [];
   });
 
   tearDown(() {
@@ -140,6 +143,8 @@ void main() {
         updateBusinessTimeZoneUseCase: UpdateBusinessTimeZoneUseCase(repo),
         updateBusinessNameUseCase: UpdateBusinessNameUseCase(repo),
         updateOpeningHoursUseCase: UpdateOpeningHoursUseCase(repo),
+        updateBusinessPaletteUseCase: UpdateBusinessPaletteUseCase(repo),
+        onPaletteSaved: themed.add,
         session: session,
         zones: zones,
         apiUrl: () => 'https://api.agendity.co/api/',
@@ -183,7 +188,8 @@ void main() {
         'http://localhost:3000/reservar/luna');
     expect(publicBookingLink('https://x.co/api/', 'luna'),
         'https://x.co/reservar/luna');
-    expect(publicBookingLink('https://x.co', 'a b'), 'https://x.co/reservar/a%20b');
+    expect(publicBookingLink('https://x.co', 'a b'),
+        'https://x.co/reservar/a%20b');
   });
 
   group('BusinessSettingsController', () {
@@ -296,8 +302,8 @@ void main() {
       expect(find.text('Ponle nombre al negocio para tener tu link.'),
           findsOneWidget);
 
-      await tester.enterText(find.byKey(const Key('business-name')),
-          '  Cejas Luna ');
+      await tester.enterText(
+          find.byKey(const Key('business-name')), '  Cejas Luna ');
       await tap(tester, find.text('Guardar nombre'));
       expect(repo.nameUpdates, ['Cejas Luna']);
       expect(find.text('https://api.agendity.co/reservar/cejas-luna'),
@@ -305,8 +311,8 @@ void main() {
       await expireSnackbar(tester);
 
       String? copied;
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform, (call) async {
+      tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
         if (call.method == 'Clipboard.setData') {
           copied = (call.arguments as Map)['text'] as String?;
         }
@@ -378,7 +384,8 @@ void main() {
       await expireSnackbar(tester);
     });
 
-    testWidgets('zona: elegir en el selector, confirmar y avisar a quien '
+    testWidgets(
+        'zona: elegir en el selector, confirmar y avisar a quien '
         'escucha el cambio', (tester) async {
       final changes = <String>[];
       final worker = session.onTimeZoneChanged(changes.add);
@@ -416,6 +423,42 @@ void main() {
       repo.getFailure = null;
       await tap(tester, find.text('Reintentar'));
       expect(find.text('Zona horaria del negocio'), findsOneWidget);
+    });
+
+    testWidgets('color del negocio: muestras, guardar y avisar al tema (D-22)',
+        (tester) async {
+      await pumpScreen(tester);
+      expect(find.text('Color del negocio'), findsOneWidget);
+      // Sin elegir = lavanda marcada.
+      bool selected(String id) => tester
+          .widget<PaletteSwatch>(find.ancestor(
+              of: find.byKey(Key('palette-$id')),
+              matching: find.byType(PaletteSwatch)))
+          .selected;
+      expect(selected('lavanda'), isTrue);
+      expect(selected('rosa'), isFalse);
+
+      await tap(tester, find.byKey(const Key('palette-rosa')));
+      expect(repo.paletteUpdates, [AppPalette.rosa]);
+      expect(themed.single.themePalette, AppPalette.rosa);
+      expect(find.text('Color del negocio guardado'), findsOneWidget);
+      expect(selected('rosa'), isTrue);
+      await expireSnackbar(tester);
+
+      // Tocar el que ya está no envía nada.
+      await tap(tester, find.byKey(const Key('palette-rosa')));
+      expect(repo.paletteUpdates, [AppPalette.rosa]);
+    });
+
+    testWidgets('color del negocio sin conexión: error y no cambia el tema',
+        (tester) async {
+      await pumpScreen(tester);
+      repo.updateFailure = const NetworkFailure(message: 'Sin conexión');
+      await tap(tester, find.byKey(const Key('palette-azul')));
+      expect(repo.paletteUpdates, [AppPalette.azul]);
+      expect(themed, isEmpty);
+      expect(find.text('No se guardó el color'), findsOneWidget);
+      await expireSnackbar(tester);
     });
   });
 }

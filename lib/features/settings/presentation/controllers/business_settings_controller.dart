@@ -11,9 +11,11 @@ import 'package:login_signup/core/utils/public_url.dart';
 import 'package:login_signup/features/settings/domain/entities/business_settings.dart';
 import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_name_usecase.dart';
+import 'package:login_signup/features/settings/domain/usecases/update_business_palette_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_business_time_zone_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_opening_hours_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/shared/utils/external_link.dart';
 import 'package:login_signup/shared/utils/share_text.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
@@ -42,7 +44,13 @@ class BusinessSettingsController extends GetxController {
   final UpdateBusinessTimeZoneUseCase _updateTimeZone;
   final UpdateBusinessNameUseCase _updateName;
   final UpdateOpeningHoursUseCase _updateOpeningHours;
+  final UpdateBusinessPaletteUseCase _updatePalette;
   final SessionController _session;
+
+  /// Avisa al tema de la app que cambió la configuración (la paleta se ve al
+  /// instante, sin esperar a la sincronización). Por defecto,
+  /// `ThemeController.applyBusinessSettings` si está registrado.
+  final void Function(BusinessSettings settings) _onPaletteSaved;
   final List<String> _zones;
   final String Function() _apiUrl;
   final ExternalLinkOpener _openLink;
@@ -53,7 +61,9 @@ class BusinessSettingsController extends GetxController {
     required UpdateBusinessTimeZoneUseCase updateBusinessTimeZoneUseCase,
     required UpdateBusinessNameUseCase updateBusinessNameUseCase,
     required UpdateOpeningHoursUseCase updateOpeningHoursUseCase,
+    required UpdateBusinessPaletteUseCase updateBusinessPaletteUseCase,
     required SessionController session,
+    void Function(BusinessSettings settings)? onPaletteSaved,
     List<String>? zones,
     String Function()? apiUrl,
     ExternalLinkOpener? openLink,
@@ -62,6 +72,8 @@ class BusinessSettingsController extends GetxController {
         _updateTimeZone = updateBusinessTimeZoneUseCase,
         _updateName = updateBusinessNameUseCase,
         _updateOpeningHours = updateOpeningHoursUseCase,
+        _updatePalette = updateBusinessPaletteUseCase,
+        _onPaletteSaved = onPaletteSaved ?? _applyToTheme,
         _session = session,
         _zones = zones ?? BusinessTimeZone.names,
         _apiUrl = apiUrl ?? (() => EnvConfig.apiUrl),
@@ -90,12 +102,18 @@ class BusinessSettingsController extends GetxController {
   final draftHours = Rx<OpeningHours>(OpeningHours.closed);
   final isSavingHours = false.obs;
 
+  // --- Color del negocio (D-22) -------------------------------------------------
+  final isSavingPalette = false.obs;
+
   // --- Zona horaria -----------------------------------------------------------
   final query = ''.obs;
   final isSavingZone = false.obs;
   final searchController = TextEditingController();
 
   String? get savedZone => saved.value?.timeZone;
+
+  /// Paleta guardada del negocio; `null` = sin elegir (se ve lavanda).
+  AppPalette? get savedPalette => saved.value?.themePalette;
   String? get slug => saved.value?.slug;
 
   /// Link público, o `null` mientras el negocio no tenga nombre (sin slug).
@@ -180,7 +198,8 @@ class BusinessSettingsController extends GetxController {
 
   /// Lunes a sábado de 9:00 a 18:00; domingo cerrado.
   static OpeningHours _defaultWeek() => OpeningHours([
-        for (var day = OpeningHoursRange.monday; day < OpeningHoursRange.sunday;
+        for (var day = OpeningHoursRange.monday;
+            day < OpeningHoursRange.sunday;
             day++)
           OpeningHoursRange(dayOfWeek: day, hours: defaultRange),
       ]);
@@ -245,8 +264,7 @@ class BusinessSettingsController extends GetxController {
   Future<void> shareByWhatsapp() async {
     final text = shareMessage;
     if (text == null) return;
-    final opened = await _openLink(
-        Uri.https('wa.me', '/', {'text': text}));
+    final opened = await _openLink(Uri.https('wa.me', '/', {'text': text}));
     if (!opened) {
       AppSnackbar.warning('No se pudo abrir WhatsApp. Copia el link y '
           'compártelo a mano.');
@@ -335,6 +353,38 @@ class BusinessSettingsController extends GetxController {
     final hour = (int.tryParse(parts.first) ?? 9) + hours;
     if (hour > 23) return '23:59';
     return '${hour.toString().padLeft(2, '0')}:${parts.length > 1 ? parts[1] : '00'}';
+  }
+
+  // --- Color del negocio -------------------------------------------------------
+
+  static void _applyToTheme(BusinessSettings settings) {
+    if (Get.isRegistered<ThemeController>()) {
+      Get.find<ThemeController>().applyBusinessSettings(settings);
+    }
+  }
+
+  /// Guarda la paleta del negocio (solo con conexión). `true` si se guardó.
+  Future<bool> savePalette(AppPalette palette) async {
+    if (isSavingPalette.value) return false;
+    if (palette == (savedPalette ?? AppPalette.fallback)) return false;
+    isSavingPalette.value = true;
+    final result = await _updatePalette(palette);
+    isSavingPalette.value = false;
+    return result.fold(
+      (failure) {
+        _showFailure(failure, 'No se guardó el color');
+        return false;
+      },
+      (settings) {
+        _apply(settings);
+        _onPaletteSaved(settings);
+        AppSnackbar.success(
+            'Lo verán tu equipo y tu link de reservas. Cada persona puede '
+            'cambiar el de su teléfono en Apariencia.',
+            title: 'Color del negocio guardado');
+        return true;
+      },
+    );
   }
 
   // --- Zona horaria -----------------------------------------------------------

@@ -7,6 +7,7 @@ import 'package:login_signup/features/theme/data/datasources/theme_local_datasou
 import 'package:login_signup/features/theme/data/models/theme_preference_model.dart';
 import 'package:login_signup/features/theme/data/repositories/theme_repository_impl.dart';
 import 'package:login_signup/features/theme/domain/entities/theme_preference.dart';
+import 'package:login_signup/features/theme/domain/usecases/business_palette_memory_usecases.dart';
 import 'package:login_signup/features/theme/domain/usecases/get_theme_preference_usecase.dart';
 import 'package:login_signup/features/theme/domain/usecases/resolve_palette.dart';
 import 'package:login_signup/features/theme/domain/usecases/save_theme_preference_usecase.dart';
@@ -25,6 +26,13 @@ class _BrokenDataSource implements ThemeLocalDataSource {
 
   @override
   Future<void> write(ThemePreferenceModel model) async =>
+      throw StateError('disco');
+
+  @override
+  Future<String?> readBusinessPalette() async => throw StateError('disco');
+
+  @override
+  Future<void> writeBusinessPalette(String? paletteId) async =>
       throw StateError('disco');
 }
 
@@ -76,7 +84,8 @@ void main() {
       const a = ThemePreference(
           palette: AppPalette.coral, mode: ThemeModePreference.dark);
       expect(a.copyWith(), a);
-      expect(a.hashCode,
+      expect(
+          a.hashCode,
           const ThemePreference(
                   palette: AppPalette.coral, mode: ThemeModePreference.dark)
               .hashCode);
@@ -104,18 +113,24 @@ void main() {
           palette: AppPalette.azul, mode: ThemeModePreference.highContrast));
       expect(model.storedMode, 'ThemeType.highContrast');
       expect(model.storedPalette, 'azul');
-      expect(model.toEntity(),
+      expect(
+          model.toEntity(),
           const ThemePreference(
               palette: AppPalette.azul,
               mode: ThemeModePreference.highContrast));
     });
 
-    test('el formato coincide con el enum ThemeType de hoy', () {
-      for (final type in ThemeType.values) {
-        final mode =
-            ThemePreferenceModel(storedMode: type.toString()).toEntity().mode;
-        expect(mode.id, type.name);
-      }
+    test('lee lo que guardaba el enum ThemeType (retirado en 12.03)', () {
+      // Valores que escribía `ThemeType.toString()` antes de 12.03.
+      const legacy = {
+        'ThemeType.light': ThemeModePreference.light,
+        'ThemeType.dark': ThemeModePreference.dark,
+        'ThemeType.highContrast': ThemeModePreference.highContrast,
+        'ThemeType.system': ThemeModePreference.system,
+      };
+      legacy.forEach((stored, mode) {
+        expect(ThemePreferenceModel(storedMode: stored).toEntity().mode, mode);
+      });
     });
 
     test('lee el id suelto; ilegible o vacío → valores iniciales', () {
@@ -145,8 +160,7 @@ void main() {
 
     test('conserva la elección de los usuarios actuales (clave app_theme)',
         () async {
-      SharedPreferences.setMockInitialValues(
-          {'app_theme': ThemeType.dark.toString()});
+      SharedPreferences.setMockInitialValues({'app_theme': 'ThemeType.dark'});
       expect(rightOf(await repository.getPreference()),
           const ThemePreference(mode: ThemeModePreference.dark));
     });
@@ -167,12 +181,33 @@ void main() {
       expect(rightOf(await repository.getPreference()), business);
     });
 
-    test('ThemeController de hoy lee lo que guarda el repositorio', () async {
+    test('ThemeController lee lo que guarda el repositorio', () async {
       rightOf(await repository.savePreference(
           const ThemePreference(mode: ThemeModePreference.highContrast)));
-      final controller = ThemeController()..onInit();
-      await Future<void>.delayed(Duration.zero);
-      expect(controller.themeType, ThemeType.highContrast);
+      final controller = ThemeController(
+        getPreference: GetThemePreferenceUseCase(repository),
+        savePreference: SaveThemePreferenceUseCase(repository),
+        getLastBusinessPalette: GetLastBusinessPaletteUseCase(repository),
+        rememberBusinessPalette: RememberBusinessPaletteUseCase(repository),
+      );
+      await controller.load();
+      expect(controller.mode, ThemeModePreference.highContrast);
+    });
+
+    test('recuerda la última paleta del negocio (12.03)', () async {
+      expect(rightOf(await repository.getLastBusinessPalette()), isNull);
+      rightOf(
+          await RememberBusinessPaletteUseCase(repository)(AppPalette.coral));
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('app_business_palette'), 'coral');
+      expect(
+          rightOf(await GetLastBusinessPaletteUseCase(repository)(NoParams())),
+          AppPalette.coral);
+      rightOf(await repository.rememberBusinessPalette(null));
+      expect(prefs.containsKey('app_business_palette'), isFalse);
+      // No toca la preferencia del dispositivo.
+      expect(
+          rightOf(await repository.getPreference()), ThemePreference.initial);
     });
 
     test('un fallo del almacenamiento → Left, sin excepción', () async {
@@ -184,7 +219,10 @@ void main() {
       expect(leftOf(await broken.getPreference()), isA<Failure>());
       expect(leftOf(await broken.savePreference(ThemePreference.initial)),
           isA<Failure>());
-      expect(logged, hasLength(2));
+      expect(leftOf(await broken.getLastBusinessPalette()), isA<Failure>());
+      expect(leftOf(await broken.rememberBusinessPalette(AppPalette.rosa)),
+          isA<Failure>());
+      expect(logged, hasLength(4));
     });
   });
 }

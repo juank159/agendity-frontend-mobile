@@ -64,7 +64,8 @@ class PaymentVerificationView extends GetView<SubscriptionController> {
         case PaymentVerificationStatus.idle:
         case PaymentVerificationStatus.verifying:
         case PaymentVerificationStatus.approved:
-          return const LoadingState(message: 'Verificando pago…');
+          return const LoadingState(
+              message: 'Verificando pago…', skeleton: false);
       }
     });
   }

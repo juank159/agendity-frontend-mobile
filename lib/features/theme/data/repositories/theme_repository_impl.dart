@@ -23,4 +23,16 @@ class ThemeRepositoryImpl implements ThemeRepository {
         await _local.write(ThemePreferenceModel.fromEntity(preference));
         return preference;
       });
+
+  @override
+  Future<Either<Failure, AppPalette?>> getLastBusinessPalette() => safeCall(
+      () async => AppPalette.fromId(await _local.readBusinessPalette()));
+
+  @override
+  Future<Either<Failure, AppPalette?>> rememberBusinessPalette(
+          AppPalette? palette) =>
+      safeCall(() async {
+        await _local.writeBusinessPalette(palette?.id);
+        return palette;
+      });
 }

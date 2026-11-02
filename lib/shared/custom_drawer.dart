@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/auth/presentation/controllers/logout_controller.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/email_verification_notice.dart';
 import 'package:login_signup/shared/controllers/sync_controller.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 
-/// Menú lateral de la home. Solo entradas con pantalla real; las de Owner
-/// (Personal, Mi negocio, Recordatorios y Planes) se ocultan al Employee, igual
-/// que `RoleMiddleware.ownerOnly()` en sus rutas. Colores del `ColorScheme`.
+/// Menú lateral de la home (12.03): cabecera con el negocio, el usuario y su
+/// rol sobre el degradado de la paleta; ítems agrupados con íconos
+/// `_rounded` y el activo resaltado con una píldora. Solo entradas con
+/// pantalla real; las de Owner (Personal, Mi negocio, Recordatorios y Planes)
+/// se ocultan al Employee, igual que `RoleMiddleware.ownerOnly()` en sus
+/// rutas. Los textos de los ítems los usan los integration_test.
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
@@ -37,78 +43,63 @@ class CustomDrawer extends GetView<UserInfoController> {
     if (confirmed) await Get.find<LogoutController>().logout();
   }
 
-  /// Cierra el menú y abre [route].
+  /// Cierra el menú y abre [route] (si ya está ahí, solo lo cierra).
   void _open(String route) {
     Get.back();
-    Get.toNamed(route);
+    if (Get.currentRoute != route) Get.toNamed(route);
   }
 
   @override
   Widget build(BuildContext context) {
+    final current = Get.currentRoute;
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.85,
       child: Obx(() {
         final isOwner = controller.isOwner();
+        _DrawerItem item(IconData icon, String title, String route,
+                {Key? key}) =>
+            _DrawerItem(
+              key: key,
+              icon: icon,
+              title: title,
+              active: current == route,
+              onTap: () => _open(route),
+            );
         return ListView(
           padding: EdgeInsets.zero,
           children: [
             _DrawerHeader(controller: controller, isOwner: isOwner),
-            const _SectionTitle('NAVEGACIÓN'),
+            const SizedBox(height: 8),
+            item(Icons.calendar_month_rounded, 'Agenda', GetRoutes.home,
+                key: const Key('drawer-home')),
+            const _SectionTitle('Tu negocio'),
             // Owner y Employee (el Employee, en solo lectura).
-            _DrawerItem(
-              icon: Icons.sell_outlined,
-              title: 'Servicios',
-              onTap: () => _open(GetRoutes.services),
-            ),
+            item(Icons.spa_rounded, 'Servicios', GetRoutes.services),
             // Owner y Employee crean y editan clientes; borrar, solo el Owner.
-            _DrawerItem(
-              icon: Icons.people_outline,
-              title: 'Clientela',
-              onTap: () => _open(GetRoutes.clients),
-            ),
+            item(Icons.people_alt_rounded, 'Clientela', GetRoutes.clients),
             if (isOwner)
-              _DrawerItem(
-                icon: Icons.badge_outlined,
-                title: 'Personal',
-                onTap: () => _open(GetRoutes.employees),
-              ),
-            _DrawerItem(
-              icon: Icons.bar_chart,
-              title: 'Informes',
-              onTap: () => _open(controller.getStatisticsRoute()),
-            ),
+              item(Icons.badge_rounded, 'Personal', GetRoutes.employees),
+            const _SectionTitle('Números'),
+            item(Icons.insights_rounded, 'Informes',
+                controller.getStatisticsRoute()),
             // Owner: el equipo; Employee: sus comisiones.
-            _DrawerItem(
-              icon: Icons.percent,
-              title: 'Comisiones',
-              onTap: () => _open(GetRoutes.commissions),
-            ),
-            const _SectionTitle('CONFIGURACIÓN'),
+            item(Icons.percent_rounded, 'Comisiones', GetRoutes.commissions),
+            const _SectionTitle('Configuración'),
             // Solo Owner: el backend responde 403 al Employee en la
             // configuración del negocio y al suscribirse.
             if (isOwner) ...[
-              _DrawerItem(
-                icon: Icons.storefront_outlined,
-                title: 'Mi negocio',
-                onTap: () => _open(GetRoutes.businessSettings),
-              ),
-              _DrawerItem(
-                icon: Icons.notifications_active_outlined,
-                title: 'Recordatorios',
-                onTap: () => _open(GetRoutes.reminders),
-              ),
-              _DrawerItem(
-                icon: Icons.workspace_premium_outlined,
-                title: 'Planes y suscripción',
-                onTap: () => _open(GetRoutes.subscriptionPlans),
-              ),
+              item(Icons.storefront_rounded, 'Mi negocio',
+                  GetRoutes.businessSettings),
+              item(Icons.notifications_active_rounded, 'Recordatorios',
+                  GetRoutes.reminders),
+              item(Icons.workspace_premium_rounded, 'Planes y suscripción',
+                  GetRoutes.subscriptionPlans),
             ],
-            _DrawerItem(
-              icon: Icons.palette_outlined,
-              title: 'Apariencia',
-              onTap: () => _open(GetRoutes.themeSettings),
+            item(Icons.palette_rounded, 'Apariencia', GetRoutes.themeSettings),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(28, 12, 28, 4),
+              child: Divider(),
             ),
-            const _SectionTitle('CUENTA'),
             _DrawerItem(
               icon: Icons.logout_rounded,
               title: 'Cerrar sesión',
@@ -118,7 +109,7 @@ class CustomDrawer extends GetView<UserInfoController> {
                 _confirmLogout();
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
           ],
         );
       }),
@@ -126,7 +117,8 @@ class CustomDrawer extends GetView<UserInfoController> {
   }
 }
 
-/// Avatar, nombre, email, rol y el aviso de email sin verificar (4.08b).
+/// Cabecera sobre el degradado de la paleta: nombre del negocio, usuario,
+/// email, rol y el aviso de email sin verificar (4.08b).
 class _DrawerHeader extends StatelessWidget {
   final UserInfoController controller;
   final bool isOwner;
@@ -135,64 +127,128 @@ class _DrawerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
-    final roleBackground =
-        isOwner ? scheme.tertiaryContainer : scheme.secondaryContainer;
-    final roleForeground =
-        isOwner ? scheme.onTertiaryContainer : scheme.onSecondaryContainer;
+    final onGradient = tokens.onGradient;
+    final theme = Get.isRegistered<ThemeController>()
+        ? Get.find<ThemeController>()
+        : null;
 
     return Container(
-      color: scheme.primaryContainer,
+      decoration: BoxDecoration(
+        gradient: tokens.primaryGradient,
+        borderRadius: const BorderRadius.only(
+            bottomRight: Radius.circular(AppRadii.sheet)),
+        boxShadow: tokens.elevation2(),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: const BorderRadius.only(
+            bottomRight: Radius.circular(AppRadii.sheet)),
+        gradient: tokens.sheenGradient,
+      ),
       padding: EdgeInsets.fromLTRB(
-          16, MediaQuery.of(context).padding.top + 24, 16, 20),
-      child: Obx(() => Column(
-            children: [
-              CircleAvatar(
-                radius: 44,
-                backgroundColor: scheme.primary,
-                foregroundColor: scheme.onPrimary,
-                child: Text(
-                  controller.userInitial.value,
-                  style: const TextStyle(
-                      fontSize: 38, fontWeight: FontWeight.bold),
-                ),
+          20, MediaQuery.of(context).padding.top + 20, 20, 20),
+      child: Obx(() {
+        final business = theme?.businessName.value;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (business != null && business.trim().isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(Icons.storefront_rounded, size: 18, color: onGradient),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      business,
+                      key: const Key('drawer-business-name'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleSmall?.copyWith(
+                          color: onGradient, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                controller.userName.value,
-                textAlign: TextAlign.center,
-                style: text.titleLarge?.copyWith(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (controller.userEmail.value.isNotEmpty)
-                Text(
-                  controller.userEmail.value,
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium
-                      ?.copyWith(color: scheme.onPrimaryContainer),
-                ),
-              const SizedBox(height: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: roleBackground,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  isOwner ? 'PROPIETARIO' : 'EMPLEADO',
-                  style: text.labelMedium?.copyWith(
-                    color: roleForeground,
-                    fontWeight: FontWeight.bold,
+              const SizedBox(height: 16),
+            ],
+            Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: onGradient.withValues(alpha: 0.18),
+                    border: Border.all(
+                        color: onGradient.withValues(alpha: 0.5), width: 1.5),
+                  ),
+                  child: Text(
+                    AppAvatar.initialsOf(controller.userName.value),
+                    style: text.titleLarge?.copyWith(
+                        color: onGradient, fontWeight: FontWeight.w800),
                   ),
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        controller.userName.value,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.titleLarge?.copyWith(
+                          color: onGradient,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (controller.userEmail.value.isNotEmpty)
+                        Text(
+                          controller.userEmail.value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodySmall?.copyWith(color: onGradient),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: onGradient.withValues(alpha: 0.18),
+                borderRadius: const BorderRadius.all(Radius.circular(20)),
+                border: Border.all(color: onGradient.withValues(alpha: 0.4)),
               ),
-              const EmailVerificationNotice(),
-            ],
-          )),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                      isOwner
+                          ? Icons.workspace_premium_rounded
+                          : Icons.badge_rounded,
+                      size: 14,
+                      color: onGradient),
+                  const SizedBox(width: 6),
+                  Text(
+                    isOwner ? 'PROPIETARIO' : 'EMPLEADO',
+                    style: text.labelSmall?.copyWith(
+                      color: onGradient,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const EmailVerificationNotice(),
+          ],
+        );
+      }),
     );
   }
 }
@@ -206,46 +262,75 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 20, 28, 8),
-      child: Text(
-        title,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.5,
+      padding: const EdgeInsets.fromLTRB(28, 18, 28, 6),
+      child: Semantics(
+        header: true,
+        child: Text(
+          title.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.4,
+          ),
         ),
       ),
     );
   }
 }
 
+/// Ítem del menú; el activo se resalta con una píldora tonal.
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
   final bool destructive;
+  final bool active;
 
   const _DrawerItem({
+    super.key,
     required this.icon,
     required this.title,
     required this.onTap,
     this.destructive = false,
+    this.active = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = destructive ? scheme.error : scheme.onSurface;
+    final foreground = destructive
+        ? scheme.error
+        : active
+            ? scheme.onPrimaryContainer
+            : scheme.onSurface;
+    const pill = BorderRadius.all(Radius.circular(100));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: ListTile(
-        leading: Icon(icon, color: destructive ? scheme.error : scheme.primary),
-        title: Text(
-          title,
-          style: TextStyle(color: color, fontWeight: FontWeight.w500),
+      child: AnimatedContainer(
+        duration: AppMotion.of(context),
+        curve: AppMotion.curve,
+        decoration: BoxDecoration(
+          color: active ? scheme.primaryContainer : null,
+          borderRadius: pill,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onTap: onTap,
+        child: ListTile(
+          selected: active,
+          leading: Icon(icon,
+              color: destructive
+                  ? scheme.error
+                  : active
+                      ? scheme.onPrimaryContainer
+                      : scheme.onSurfaceVariant),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: foreground,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
+          shape: const RoundedRectangleBorder(borderRadius: pill),
+          onTap: onTap,
+        ),
       ),
     );
   }

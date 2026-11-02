@@ -12,4 +12,13 @@ abstract class ThemeRepository {
   /// Guarda la paleta (o la quita si es `null`) y el modo.
   Future<Either<Failure, ThemePreference>> savePreference(
       ThemePreference preference);
+
+  /// Última paleta del negocio vista en este dispositivo (12.03): con ella
+  /// se pinta el arranque mientras se lee la configuración del negocio.
+  /// `null` = ninguna.
+  Future<Either<Failure, AppPalette?>> getLastBusinessPalette();
+
+  /// Recuerda (o borra, con `null`) la paleta del negocio.
+  Future<Either<Failure, AppPalette?>> rememberBusinessPalette(
+      AppPalette? palette);
 }

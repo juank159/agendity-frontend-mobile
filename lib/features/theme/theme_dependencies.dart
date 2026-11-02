@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/features/theme/data/datasources/theme_local_datasource.dart';
 import 'package:login_signup/features/theme/data/repositories/theme_repository_impl.dart';
 import 'package:login_signup/features/theme/domain/repositories/theme_repository.dart';
+import 'package:login_signup/features/theme/domain/usecases/business_palette_memory_usecases.dart';
 import 'package:login_signup/features/theme/domain/usecases/get_theme_preference_usecase.dart';
 import 'package:login_signup/features/theme/domain/usecases/save_theme_preference_usecase.dart';
 
@@ -18,6 +19,12 @@ abstract final class ThemeDependencies {
     Get.lazyPut(() => GetThemePreferenceUseCase(Get.find<ThemeRepository>()),
         fenix: true);
     Get.lazyPut(() => SaveThemePreferenceUseCase(Get.find<ThemeRepository>()),
+        fenix: true);
+    Get.lazyPut(
+        () => GetLastBusinessPaletteUseCase(Get.find<ThemeRepository>()),
+        fenix: true);
+    Get.lazyPut(
+        () => RememberBusinessPaletteUseCase(Get.find<ThemeRepository>()),
         fenix: true);
   }
 }

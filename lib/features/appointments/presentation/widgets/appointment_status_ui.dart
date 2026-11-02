@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/shared/utils/color_hex.dart';
+import 'package:login_signup/shared/widgets/status_chip.dart';
 
 /// Texto y color del estado de una cita (la entidad no conoce Flutter). Los
-/// colores salen de `AppTokens` (modo oscuro incluido; `CONFIRMED` es teal).
+/// textos e íconos canónicos están en `StatusChip` (shared, 12.03); los
+/// colores, en `AppTokens` (modo oscuro incluido; `CONFIRMED` es teal).
 extension AppointmentStatusUi on AppointmentStatus {
-  String get label => switch (this) {
-        AppointmentStatus.PENDING => 'Pendiente',
-        AppointmentStatus.CONFIRMED => 'Confirmada',
-        AppointmentStatus.COMPLETED => 'Completada',
-        AppointmentStatus.CANCELLED => 'Cancelada',
-      };
+  String get label => StatusChip.appointmentLabel(this);
 
   ToneColors colorsOf(BuildContext context) =>
       context.tokens.appointmentStatus(this);
@@ -19,24 +16,9 @@ extension AppointmentStatusUi on AppointmentStatus {
 
 /// Texto y tono del estado de pago de una cita (`PARTIAL` = anticipo, 2.24).
 extension AppointmentPaymentStatusUi on AppointmentPaymentStatus {
-  String get label => switch (this) {
-        AppointmentPaymentStatus.PENDING => 'Sin pagar',
-        AppointmentPaymentStatus.PARTIAL => 'Anticipo',
-        AppointmentPaymentStatus.COMPLETED => 'Pagada',
-        AppointmentPaymentStatus.FAILED => 'Pago fallido',
-        AppointmentPaymentStatus.REFUNDED => 'Reembolsada',
-        AppointmentPaymentStatus.CANCELLED => 'Pago cancelado',
-      };
+  String get label => StatusChip.paymentLabel(this);
 
-  AppTone get tone => switch (this) {
-        AppointmentPaymentStatus.PENDING => AppTone.warning,
-        AppointmentPaymentStatus.PARTIAL => AppTone.info,
-        AppointmentPaymentStatus.COMPLETED => AppTone.success,
-        AppointmentPaymentStatus.REFUNDED => AppTone.info,
-        AppointmentPaymentStatus.FAILED ||
-        AppointmentPaymentStatus.CANCELLED =>
-          AppTone.error,
-      };
+  AppTone get tone => StatusChip.paymentTone(this);
 
   ToneColors colorsOf(BuildContext context) => context.tokens.tone(tone);
 }
@@ -51,38 +33,13 @@ extension AppointmentColorsUi on AppointmentEntity {
       colorFromHex(index < services.length ? services[index].color : null);
 }
 
-/// Etiqueta con fondo suave para un estado (de la cita o de su pago).
-class AppointmentChip extends StatelessWidget {
-  final String label;
-  final ToneColors colors;
-
-  const AppointmentChip({super.key, required this.label, required this.colors});
-
+/// Chip de estado de la cita o de su pago: el `StatusChip` compartido.
+abstract final class AppointmentChip {
   /// Estado de la cita (`Pendiente`, `Confirmada`…).
-  factory AppointmentChip.status(BuildContext context, AppointmentStatus s) =>
-      AppointmentChip(label: s.label, colors: s.colorsOf(context));
+  static Widget status(BuildContext context, AppointmentStatus s) =>
+      StatusChip.appointment(s);
 
   /// Estado de pago (`Sin pagar`, `Anticipo`, `Pagada`…).
-  factory AppointmentChip.payment(
-          BuildContext context, AppointmentPaymentStatus s) =>
-      AppointmentChip(label: s.label, colors: s.colorsOf(context));
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: colors.container,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: colors.onContainer,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
+  static Widget payment(BuildContext context, AppointmentPaymentStatus s) =>
+      StatusChip.payment(s);
 }

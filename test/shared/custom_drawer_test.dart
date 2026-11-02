@@ -7,6 +7,7 @@ import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/features/auth/presentation/controllers/user_info_controller.dart';
 import 'package:login_signup/features/theme/presentation/screens/theme_settings_screen.dart';
+import 'package:login_signup/features/theme/theme_dependencies.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/shared/custom_drawer.dart';
@@ -62,6 +63,7 @@ void main() {
         roles: [role]);
     Get.put<SessionController>(session, permanent: true);
     Get.put(UserInfoController(), permanent: true);
+    ThemeDependencies.init();
     Get.put(ThemeController(), permanent: true);
 
     await tester.pumpWidget(GetMaterialApp(
@@ -119,5 +121,24 @@ void main() {
     expect(find.byType(ThemeSettingsScreen), findsOneWidget);
     expect(find.text('Tema oscuro'), findsOneWidget);
     expect(find.text('Tema del sistema'), findsOneWidget);
+  });
+
+  testWidgets('cabecera: negocio, usuario y rol; "Agenda" activa con píldora',
+      (tester) async {
+    await openDrawer(tester, SessionRole.owner);
+    expect(find.byKey(const Key('drawer-business-name')), findsNothing);
+
+    Get.find<ThemeController>().businessName.value = 'Cejas Luna';
+    await tester.pump();
+    expect(find.text('Cejas Luna'), findsOneWidget);
+    expect(find.text('ana@negocio.co'), findsOneWidget);
+
+    final agenda = tester.widget<ListTile>(find.descendant(
+        of: find.byKey(const Key('drawer-home')),
+        matching: find.byType(ListTile)));
+    expect(agenda.selected, isTrue);
+    final services = tester.widget<ListTile>(find.ancestor(
+        of: find.text('Servicios'), matching: find.byType(ListTile)));
+    expect(services.selected, isFalse);
   });
 }

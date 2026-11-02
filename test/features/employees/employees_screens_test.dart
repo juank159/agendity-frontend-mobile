@@ -353,7 +353,7 @@ void main() {
       await pumpList(tester);
 
       expect(find.text('Aún no tienes profesionales'), findsOneWidget);
-      expect(find.widgetWithText(ElevatedButton, 'Agregar profesional'),
+      expect(find.widgetWithText(FilledButton, 'Agregar profesional'),
           findsOneWidget);
     });
 

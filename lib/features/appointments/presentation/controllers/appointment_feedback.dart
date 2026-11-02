@@ -46,7 +46,7 @@ abstract final class AppointmentFeedback {
           message: 'El profesional ya no está libre a esa hora.',
           detail: 'Elige otra de las horas libres.',
           tone: AppTone.warning,
-          icon: Icons.schedule,
+          icon: Icons.schedule_rounded,
         );
       case AppointmentInPastFailure():
         AppSnackbar.warning(failure.message, title: 'Hora pasada');
@@ -60,7 +60,7 @@ abstract final class AppointmentFeedback {
           detail: 'Elige una hora dentro del horario de apertura o cámbialo '
               'en "Mi negocio".',
           tone: AppTone.warning,
-          icon: Icons.storefront_outlined,
+          icon: Icons.storefront_rounded,
         );
       case ServiceInactiveFailure():
         AppDialogs.info(
@@ -68,7 +68,7 @@ abstract final class AppointmentFeedback {
           message: failure.message,
           detail: 'Quítalo de la cita o actívalo de nuevo en Servicios.',
           tone: AppTone.warning,
-          icon: Icons.block,
+          icon: Icons.block_rounded,
         );
       case ServiceNotOfferedFailure():
         AppDialogs.info(
@@ -76,7 +76,7 @@ abstract final class AppointmentFeedback {
           message: failure.message,
           detail: 'Quita ese servicio o elige otro profesional.',
           tone: AppTone.warning,
-          icon: Icons.content_cut,
+          icon: Icons.content_cut_rounded,
         );
       case ValidationFailure():
         AppSnackbar.warning(failure.message);
@@ -94,7 +94,7 @@ abstract final class AppointmentFeedback {
           title: paidTitle,
           message: paidMessage,
           tone: AppTone.warning,
-          icon: Icons.payments_outlined,
+          icon: Icons.payments_rounded,
         );
       case InvalidStateTransitionFailure():
         AppDialogs.error(title: 'La cita cambió', message: failure.message);

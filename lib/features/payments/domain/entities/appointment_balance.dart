@@ -1,3 +1,5 @@
+import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
+
 /// Lo pagado y lo que falta de una cita, con los pagos registrados
 /// (anticipos, 2.24). Misma cuenta que el backend (`payment-rules.ts`): solo
 /// cuentan los pagos `COMPLETED`, netos de reembolsos, en centavos.
@@ -7,7 +9,24 @@ class AppointmentBalance {
   /// Pagado neto (pagos `COMPLETED`: monto − reembolsado).
   final double paid;
 
-  const AppointmentBalance({required this.total, required this.paid});
+  /// Pagos de la cita tal como llegaron (historial del detalle, 12.07),
+  /// del más antiguo al más reciente; incluye los reembolsados y los que
+  /// están en revisión (que no cuentan en [paid]). No entra en `==`: el
+  /// saldo es [total] y [paid].
+  final List<PaymentEntity> payments;
+
+  const AppointmentBalance({
+    required this.total,
+    required this.paid,
+    this.payments = const [],
+  });
+
+  /// Parte pagada del total, de 0 a 1 (barra de progreso).
+  double get paidFraction {
+    final totalCents = (total * 100).round();
+    if (totalCents <= 0) return 0;
+    return ((paid * 100).round() / totalCents).clamp(0.0, 1.0);
+  }
 
   /// Lo que falta por pagar (nunca negativo). Es el máximo de un pago nuevo.
   double get outstanding {

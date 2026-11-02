@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/core/widgets/empty_state.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/shared/utils/color_hex.dart';
+import 'package:login_signup/shared/widgets/app_dialog_title.dart';
+import 'package:login_signup/shared/widgets/app_search_field.dart';
 
 /// Elige los servicios de una cita (al menos uno). Devuelve los ids en el
 /// orden en que se marcaron, o `null` si se cancela.
@@ -47,6 +51,7 @@ class _ServiceSelectorDialogState extends State<ServiceSelectorDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final query = _query.trim().toLowerCase();
     final filtered = widget.catalog
         .where((s) => s.id != null && s.name.toLowerCase().contains(query))
@@ -59,26 +64,27 @@ class _ServiceSelectorDialogState extends State<ServiceSelectorDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Elegir servicios', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 12),
-              TextField(
+              const AppDialogTitle(
+                icon: Icons.spa_rounded,
+                title: 'Elegir servicios',
+                subtitle: 'Puedes marcar varios: el total es la suma.',
+              ),
+              const SizedBox(height: 14),
+              AppSearchField(
                 controller: _search,
-                decoration: const InputDecoration(
-                  labelText: 'Buscar servicio',
-                  prefixIcon: Icon(Icons.search),
-                ),
+                hint: 'Buscar servicio',
                 onChanged: (value) => setState(() => _query = value),
               ),
               const SizedBox(height: 8),
               Flexible(
                 child: filtered.isEmpty
                     ? EmptyState(
-                        icon: Icons.search_off,
+                        icon: Icons.search_off_rounded,
                         message: widget.catalog.isEmpty
                             ? 'No hay servicios activos'
                             : 'Ningún servicio coincide',
@@ -89,29 +95,61 @@ class _ServiceSelectorDialogState extends State<ServiceSelectorDialog> {
                         itemBuilder: (context, index) {
                           final service = filtered[index];
                           final id = service.id!;
-                          return CheckboxListTile(
-                            value: _selected.contains(id),
-                            onChanged: (_) => _toggle(id),
-                            secondary: CircleAvatar(
-                              radius: 8,
-                              backgroundColor: colorFromHex(service.color),
-                            ),
-                            title: Text(service.name),
-                            subtitle: Text(
+                          final checked = _selected.contains(id);
+                          final color = colorFromHex(service.color);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: CheckboxListTile(
+                              value: checked,
+                              onChanged: (_) => _toggle(id),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadii.fieldRadius,
+                                side: BorderSide(
+                                    color: checked
+                                        ? color.withValues(alpha: 0.7)
+                                        : scheme.outlineVariant
+                                            .withValues(alpha: 0.5)),
+                              ),
+                              tileColor: checked
+                                  ? color.withValues(alpha: 0.12)
+                                  : scheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
+                              secondary: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                  boxShadow: context.tokens
+                                      .elevation1(tint: color),
+                                ),
+                              ),
+                              title: Text(service.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: Text(
                                 '${formatCop(service.price)} · '
-                                '${formatDurationMinutes(service.duration)}'),
+                                '${formatDurationMinutes(service.duration)}',
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(
+                                        color: scheme.onSurfaceVariant)
+                                    .tabular,
+                              ),
+                            ),
                           );
                         },
                       ),
               ),
-              const Divider(),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       '${formatCount(_selected.length, 'servicio', 'servicios')}'
                       ' · ${formatCop(_total)}',
-                      style: theme.textTheme.titleSmall,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700)
+                          .tabular,
                     ),
                   ),
                   TextButton(
@@ -119,11 +157,12 @@ class _ServiceSelectorDialogState extends State<ServiceSelectorDialog> {
                     child: const Text('Cancelar'),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(
+                  AppGradientButton(
+                    label: 'Listo',
+                    icon: Icons.check_rounded,
                     onPressed: _selected.isEmpty
                         ? null
                         : () => Navigator.of(context).pop(List.of(_selected)),
-                    child: const Text('Listo'),
                   ),
                 ],
               ),

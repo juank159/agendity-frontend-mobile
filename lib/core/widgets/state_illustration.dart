@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/config/color_contrast.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 
 /// Ilustración de los estados vacío y error (guía §3): ícono grande dentro de
-/// un círculo con degradado y un halo suave. [tone] = error pinta el círculo
-/// con el tono de error en lugar de la paleta.
+/// un círculo con degradado y un halo suave. Con [tone] (error, éxito,
+/// aviso…) el círculo lleva el tono en lugar de la paleta.
 class StateIllustration extends StatelessWidget {
   final IconData icon;
   final AppTone? tone;
@@ -21,9 +22,13 @@ class StateIllustration extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [toneColors.container, toneColors.color],
           );
+    // Sobre el tono, el texto legible en el centro del degradado (12.07:
+    // antes era `onError` para todos los tonos y en oscuro el de éxito
+    // quedaba granate sobre verde).
     final foreground = toneColors == null
         ? tokens.onGradient
-        : Theme.of(context).colorScheme.onError;
+        : readableOn(
+            Color.lerp(toneColors.container, toneColors.color, 0.5)!);
     final halo = (toneColors?.color ?? tokens.gradientEnd);
     return ExcludeSemantics(
       child: Container(

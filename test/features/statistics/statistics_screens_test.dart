@@ -281,6 +281,9 @@ void main() {
 
       expect(find.text('Ingresos netos'), findsWidgets);
       expect(find.text('\$ 150.000'), findsWidgets);
+      // 12.07: el resumen (KPI) es más alto; la comparación queda debajo.
+      await tester.scrollUntilVisible(find.text('Anterior: \$ 100.000'), 200,
+          scrollable: find.byType(Scrollable).first);
       expect(find.text('Anterior: \$ 100.000'), findsOneWidget);
       expect(find.text('50 %'), findsWidgets);
       // Hoy por defecto, un solo día del negocio.

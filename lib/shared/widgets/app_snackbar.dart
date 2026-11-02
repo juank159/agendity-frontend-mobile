@@ -124,7 +124,7 @@ abstract final class AppSnackbar {
                       child: Text(action.label),
                     ),
                   IconButton(
-                    icon: Icon(Icons.close, color: colors.onContainer),
+                    icon: Icon(Icons.close_rounded, color: colors.onContainer),
                     tooltip: 'Cerrar aviso',
                     onPressed: _removeOverlay,
                   ),
@@ -212,13 +212,13 @@ abstract final class AppSnackbar {
   static IconData _icon(AppTone tone) {
     switch (tone) {
       case AppTone.info:
-        return Icons.info_outline;
+        return Icons.info_outline_rounded;
       case AppTone.success:
-        return Icons.check_circle_outline;
+        return Icons.check_circle_outline_rounded;
       case AppTone.warning:
         return Icons.warning_amber_rounded;
       case AppTone.error:
-        return Icons.error_outline;
+        return Icons.error_outline_rounded;
     }
   }
 }

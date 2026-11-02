@@ -8,6 +8,7 @@ import 'package:login_signup/features/appointments/domain/entities/appointment_e
 import 'package:login_signup/features/appointments/domain/usecases/get_upcoming_appointments_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/mark_reminder_sent_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/prepare_reminder_usecase.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/manual_reminder_sender.dart';
 import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/utils/external_link.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
@@ -22,9 +23,7 @@ class AppointmentReminderController extends GetxController {
   static const localNoticeLead = Duration(minutes: 30);
 
   final GetUpcomingAppointmentsUseCase _getUpcoming;
-  final PrepareReminderUseCase _prepare;
-  final MarkReminderSentUseCase _markSent;
-  final ExternalLinkOpener _openLink;
+  final ManualReminderSender _sender;
   final NotificationService Function() _notifications;
   final DateTime Function() _now;
 
@@ -36,9 +35,11 @@ class AppointmentReminderController extends GetxController {
     NotificationService Function()? notifications,
     DateTime Function()? now,
   })  : _getUpcoming = getUpcomingAppointmentsUseCase,
-        _prepare = prepareReminderUseCase,
-        _markSent = markReminderSentUseCase,
-        _openLink = openLink ?? openExternalLink,
+        _sender = ManualReminderSender(
+          prepareReminderUseCase: prepareReminderUseCase,
+          markReminderSentUseCase: markReminderSentUseCase,
+          openLink: openLink,
+        ),
         _notifications = notifications ?? NotificationService.new,
         _now = now ?? BusinessTimeZone.now;
 
@@ -95,29 +96,9 @@ class AppointmentReminderController extends GetxController {
     }
     sendingId.value = appointment.id;
     try {
-      final prepared = await _prepare(appointment.id);
-      final reminder = prepared.fold((failure) {
-        AppSnackbar.error(failure.message,
-            title: 'No se pudo preparar el recordatorio');
-        return null;
-      }, (reminder) => reminder);
-      if (reminder == null) return;
-
-      final link = Uri.tryParse(reminder.whatsappUrl);
-      if (link == null || !await _openLink(link)) {
-        AppSnackbar.error('No se pudo abrir WhatsApp');
-        return;
-      }
-
-      final marked = await _markSent(appointment.id);
+      if (!await _sender.send(appointment)) return;
       upcoming.removeWhere((a) => a.id == appointment.id);
       _cancelLocalNotice(appointment);
-      marked.fold(
-        (_) => AppSnackbar.warning(
-            'Se abrió WhatsApp, pero no se pudo registrar el envío'),
-        (_) => AppSnackbar.success(
-            'Recordatorio para ${appointment.clientName} listo en WhatsApp'),
-      );
     } finally {
       sendingId.value = null;
     }

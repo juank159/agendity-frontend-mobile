@@ -13,7 +13,7 @@ import 'loading_state.dart';
 ///       error: controller.error.value,
 ///       items: controller.clients,
 ///       onRetry: controller.load,
-///       emptyIcon: Icons.people_outline,
+///       emptyIcon: Icons.people_outline_rounded,
 ///       emptyMessage: 'Aún no tienes clientes',
 ///       builder: (context, clients) => ListView(...),
 ///     ))
@@ -43,7 +43,7 @@ class ListStateView<T> extends StatelessWidget {
     this.error,
     this.onRetry,
     this.loadingMessage,
-    this.emptyIcon = Icons.inbox_outlined,
+    this.emptyIcon = Icons.inbox_rounded,
     this.emptySubMessage,
     this.emptyActionLabel,
     this.emptyActionIcon,

@@ -40,7 +40,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         theme: ThemeConfig.darkTheme,
         home: const Scaffold(
-            body: AppNote('Error', tone: AppTone.error, icon: Icons.error)),
+            body: AppNote('Error', tone: AppTone.error, icon: Icons.error_rounded)),
       ));
       expect(tester.takeException(), isNull);
     });

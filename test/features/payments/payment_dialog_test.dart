@@ -88,6 +88,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// El `TextField` del `MoneyField` "Monto recibido".
+  Finder amountField() => find.descendant(
+      of: find.byKey(const Key('payment-amount')),
+      matching: find.byType(TextField));
+
   Future<void> tapText(WidgetTester tester, String text) async {
     await tester.ensureVisible(find.text(text));
     await tester.pumpAndSettle();
@@ -104,9 +109,9 @@ void main() {
       (tester) async {
     await openDialog(tester);
     expect(find.text('\$ 45.000'), findsOneWidget);
-    final amount =
-        tester.widget<TextField>(find.byKey(const Key('payment-amount')));
-    expect(amount.controller!.text, '45000');
+    // MoneyField (D-24): el monto propuesto con separador de miles.
+    final amount = tester.widget<TextField>(amountField());
+    expect(amount.controller!.text, '45.000');
     expect(find.text('Otro método'), findsNothing);
   });
 
@@ -126,7 +131,7 @@ void main() {
   testWidgets('anticipo: pide confirmación y envía el monto parcial',
       (tester) async {
     await openDialog(tester);
-    await tester.enterText(find.byKey(const Key('payment-amount')), '20.000');
+    await tester.enterText(amountField(), '20.000');
     await tapText(tester, 'Confirmar pago');
     expect(find.text('¿Registrar un anticipo?'), findsOneWidget);
     await tapText(tester, 'Registrar anticipo');
@@ -139,7 +144,7 @@ void main() {
   testWidgets('mayor que el total → error en el campo, sin enviar',
       (tester) async {
     await openDialog(tester);
-    await tester.enterText(find.byKey(const Key('payment-amount')), '50000');
+    await tester.enterText(amountField(), '50000');
     await tapText(tester, 'Confirmar pago');
 
     expect(repo.sent, isEmpty);
@@ -150,7 +155,7 @@ void main() {
 
   testWidgets('monto vacío o cero → error en el campo', (tester) async {
     await openDialog(tester);
-    await tester.enterText(find.byKey(const Key('payment-amount')), '');
+    await tester.enterText(amountField(), '');
     await tapText(tester, 'Confirmar pago');
     expect(repo.sent, isEmpty);
     expect(find.text(InvalidPaymentAmountFailure.notPositiveMessage),
@@ -201,13 +206,40 @@ void main() {
     await expireSnackbar(tester);
   });
 
-  test('parseAmount acepta los formatos que escribe el usuario', () {
-    expect(PaymentController.parseAmount('45000'), 45000);
-    expect(PaymentController.parseAmount('45.000'), 45000);
-    expect(PaymentController.parseAmount('\$ 45.000'), 45000);
-    expect(PaymentController.parseAmount('45000,5'), 45000.5);
-    expect(PaymentController.parseAmount(''), isNull);
-    expect(PaymentController.parseAmount('abc'), isNull);
+  testWidgets(
+      'MoneyField: "20000" se ve "20.000" mientras se escribe y se envía como '
+      'pesos enteros', (tester) async {
+    await openDialog(tester);
+    await tester.enterText(amountField(), '20000');
+    await tester.pump();
+    expect(tester.widget<TextField>(amountField()).controller!.text, '20.000');
+    await tapText(tester, 'Confirmar pago');
+    await tapText(tester, 'Registrar anticipo');
+
+    final sent = repo.sent.single.amount;
+    expect(sent, 20000);
+    expect(sent, sent.roundToDouble()); // sin decimales (COP)
+    await expireSnackbar(tester);
+  });
+
+  testWidgets('MoneyField: solo cifras (sin letras)', (tester) async {
+    await openDialog(tester);
+    await tester.enterText(amountField(), '12a34');
+    await tester.pump();
+    expect(tester.widget<TextField>(amountField()).controller!.text, '1.234');
+  });
+
+  testWidgets('los métodos son chips con su ícono', (tester) async {
+    await openDialog(tester);
+    expect(find.widgetWithText(ChoiceChip, 'Efectivo'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Transferencia'), findsOneWidget);
+    expect(find.byIcon(Icons.account_balance_rounded), findsOneWidget);
+    final cash = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Efectivo'));
+    expect(cash.selected, isTrue);
+    await tapText(tester, 'Transferencia');
+    // Transferencia pide el ID (opcional).
+    expect(find.byKey(const Key('payment-transaction')), findsOneWidget);
   });
 
   group('métodos propios (GET /custom-payment-methods/active)', () {

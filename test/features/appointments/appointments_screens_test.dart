@@ -11,6 +11,7 @@ import 'package:login_signup/core/services/notification_service.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
@@ -66,6 +67,7 @@ import 'package:login_signup/features/payments/domain/usecases/refund_payment_us
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payments_review_controller.dart';
 import 'package:login_signup/features/payments/presentation/screens/payments_review_screen.dart';
+import 'package:login_signup/features/payments/presentation/widgets/refund_dialog.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_offered_by_usecase.dart';
@@ -512,7 +514,10 @@ void main() {
       expect(query.professionalId, 'e1');
       expect(query.serviceIds, ['s1']);
       expect(query.day, DateTime(2030, 1, 7));
-      expect(find.text('Corte\n\$ 20.000 · 30 min'), findsOneWidget);
+      // Píldora del servicio y el total con la duración en un solo texto.
+      expect(find.text('Corte'), findsOneWidget);
+      expect(find.text('\$ 20.000 · 30 min'), findsOneWidget);
+      expect(find.text('Total · 1 servicio'), findsOneWidget);
 
       await tapText(tester, 'Agendar');
 
@@ -634,6 +639,44 @@ void main() {
       expect(find.text('Plan de prueba finalizado'), findsOneWidget);
       expect(find.text('Nueva cita'), findsNothing);
     });
+
+    testWidgets(
+        '12.07: varios servicios en píldoras, total formateado y horas en 12 h '
+        'por franja', (tester) async {
+      signInAs('Owner');
+      final afternoon = DateTime(2030, 1, 7, 14, 30);
+      appts.freeSlots = [nineAm, afternoon];
+      await pumpLauncher(
+          tester, () => AppointmentFormDialog.create(initialStart: nineAm));
+      await tapKey(tester, 'appointment-professional');
+      await tapText(tester, 'Ana Pérez');
+      await tapKey(tester, 'appointment-services');
+      await tapText(tester, 'Corte');
+      await tapText(tester, 'Tinte');
+      await tapText(tester, 'Listo');
+
+      // Píldoras de los servicios y el total con la duración.
+      expect(find.text('Corte'), findsOneWidget);
+      expect(find.text('Tinte'), findsOneWidget);
+      expect(find.text('Total · 2 servicios'), findsOneWidget);
+      expect(find.text('\$ 70.000 · 1 h 30 min'), findsOneWidget);
+      // Horas libres agrupadas y en 12 h; las claves slot-* siguen.
+      expect(find.text('Mañana'), findsOneWidget);
+      expect(find.text('Tarde'), findsOneWidget);
+      final chip = find.byKey(ValueKey('slot-${afternoon.toIso8601String()}'));
+      expect(chip, findsOneWidget);
+      final label = (tester.widget<ChoiceChip>(chip).label as Text).data!;
+      expect(label, formatTime(afternoon));
+      expect(label, contains(timePmLabel));
+      expect(label, isNot(contains('14:30')));
+      // La hora tocada (9:00) viene elegida.
+      expect(
+          tester
+              .widget<ChoiceChip>(
+                  find.byKey(ValueKey('slot-${nineAm.toIso8601String()}')))
+              .selected,
+          isTrue);
+    });
   });
 
   group('Agenda (home)', () {
@@ -721,6 +764,14 @@ void main() {
     testWidgets('muestra estados con su texto y el precio guardado',
         (tester) async {
       signInAs('Owner');
+      payments.previous = const [
+        PaymentEntity(
+          appointmentId: 'a1',
+          amount: 20000,
+          paymentMethod: PaymentMethod.CASH,
+          status: PaymentStatus.COMPLETED,
+        ),
+      ];
       await openDetail(
           tester,
           appointment(
@@ -733,6 +784,14 @@ void main() {
       expect(find.text('\$ 50.000'), findsNWidgets(2)); // línea y total
       expect(find.textContaining('hoy cuesta \$ 55.000'), findsOneWidget);
       expect(find.text('Cobrar saldo'), findsOneWidget);
+      // Pagos (12.07): barra, pagado, saldo e historial.
+      expect(find.byKey(const Key('detail-payments')), findsOneWidget);
+      final bar = tester.widget<LinearProgressIndicator>(
+          find.byKey(const Key('detail-payment-progress')));
+      expect(bar.value, closeTo(0.4, 1e-9));
+      expect(find.text('\$ 30.000'), findsOneWidget); // saldo
+      expect(find.text('\$ 20.000'), findsNWidgets(2)); // pagado e historial
+      expect(find.text('Efectivo'), findsOneWidget);
     });
 
     testWidgets('cancelar sin pagos, con motivo', (tester) async {
@@ -845,22 +904,141 @@ void main() {
 
       expect(find.text('Saldo pendiente'), findsOneWidget);
       expect(find.text('\$ 30.000'), findsOneWidget);
-      final amount =
-          tester.widget<TextField>(find.byKey(const Key('payment-amount')));
-      expect(amount.controller!.text, '30000');
+      final amountField = find.descendant(
+          of: find.byKey(const Key('payment-amount')),
+          matching: find.byType(TextField));
+      final amount = tester.widget<TextField>(amountField);
+      expect(amount.controller!.text, '30.000');
 
-      await tester.enterText(find.byKey(const Key('payment-amount')), '40000');
+      await tester.enterText(amountField, '40000');
       await tapText(tester, 'Confirmar pago');
       expect(find.textContaining('no puede superar el saldo pendiente'),
           findsOneWidget);
       expect(payments.sent, isEmpty);
 
-      await tester.enterText(find.byKey(const Key('payment-amount')), '30000');
+      await tester.enterText(amountField, '30000');
       await tapText(tester, 'Confirmar pago');
 
       expect(payments.sent.single.amount, 30000);
       expect(appts.reads, ['a1']); // la cita se vuelve a leer
       await expireSnackbar(tester);
+    });
+  });
+
+  group('Detalle (12.07)', () {
+    Future<void> openDetail(WidgetTester tester, AppointmentEntity a) async {
+      appts.agenda = [a];
+      await Get.find<AppointmentsController>().showDay(a.startTime);
+      await pumpLauncher(tester, () async {
+        await AppointmentDetailsDialog.show(a);
+        return null;
+      });
+    }
+
+    testWidgets('la hora se muestra en 12 h con a. m./p. m.', (tester) async {
+      signInAs('Owner');
+      final start = DateTime(2030, 1, 7, 14);
+      final end = DateTime(2030, 1, 7, 15, 5);
+      await openDetail(
+          tester, appointment().copyWith(startTime: start, endTime: end));
+
+      expect(find.textContaining(formatTimeRange(start, end)), findsOneWidget);
+      expect(find.textContaining('1 h 5 min'), findsOneWidget);
+      expect(find.textContaining(timePmLabel), findsOneWidget);
+      expect(find.textContaining('14:00'), findsNothing);
+      expect(find.textContaining('15:05'), findsNothing);
+      // Cliente con su avatar y estados con StatusChip.
+      expect(find.text('Carla Díaz'), findsOneWidget);
+      expect(find.text('Pendiente'), findsOneWidget);
+      expect(find.text('Sin pagar'), findsOneWidget);
+    });
+
+    testWidgets('pagos: barra, saldo, devuelto y en revisión en el historial',
+        (tester) async {
+      signInAs('Owner');
+      payments.previous = [
+        PaymentEntity(
+          id: 'p1',
+          appointmentId: 'a1',
+          amount: 30000,
+          paymentMethod: PaymentMethod.CASH,
+          status: PaymentStatus.COMPLETED,
+          refundAmount: 10000,
+          createdAt: DateTime(2030, 1, 7, 9, 45),
+        ),
+        PaymentEntity(
+          id: 'p2',
+          appointmentId: 'a1',
+          amount: 15000,
+          paymentMethod: PaymentMethod.TRANSFER,
+          status: PaymentStatus.COMPLETED,
+          reviewRequired: 'OVERPAID',
+          createdAt: DateTime(2030, 1, 7, 10, 15),
+        ),
+      ];
+      await openDetail(
+          tester, appointment(payment: AppointmentPaymentStatus.PARTIAL));
+
+      // Pagado neto 20.000 (el de revisión no cuenta) de 50.000.
+      final bar = tester.widget<LinearProgressIndicator>(
+          find.byKey(const Key('detail-payment-progress')));
+      expect(bar.value, closeTo(0.4, 1e-9));
+      expect(find.text('\$ 20.000'), findsOneWidget); // pagado
+      expect(find.text('\$ 30.000'), findsNWidgets(2)); // saldo y 1.er pago
+      expect(find.text('Devuelto \$ 10.000'), findsOneWidget);
+      expect(find.text('En revisión'), findsOneWidget);
+      expect(find.text('Transferencia'), findsOneWidget);
+      expect(find.textContaining(formatTime(DateTime(2030, 1, 7, 9, 45))),
+          findsOneWidget);
+      expect(find.text('2 pagos'), findsOneWidget);
+    });
+
+    testWidgets('el Employee no ve la sección de pagos', (tester) async {
+      signInAs('Employee', userId: 'e1');
+      await openDetail(
+          tester, appointment(payment: AppointmentPaymentStatus.PARTIAL));
+      expect(find.byKey(const Key('detail-payments')), findsNothing);
+      expect(find.text('Anticipo'), findsOneWidget);
+    });
+
+    testWidgets('recordatorio por WhatsApp desde el detalle', (tester) async {
+      signInAs('Owner');
+      BusinessTimeZone.clock =
+          () => BusinessTimeZone.toInstant(DateTime(2030, 1, 7, 8));
+      addTearDown(() => BusinessTimeZone.clock = DateTime.now);
+      Get.delete<AppointmentActionsController>(force: true);
+      Get.put(AppointmentActionsController(
+        cancelAppointmentUseCase: CancelAppointmentUseCase(appts),
+        completeAppointmentUseCase: CompleteAppointmentUseCase(appts),
+        getAppointmentUseCase: GetAppointmentUseCase(appts),
+        getAppointmentBalanceUseCase: GetAppointmentBalanceUseCase(payments),
+        prepareReminderUseCase: PrepareReminderUseCase(appts),
+        markReminderSentUseCase: MarkReminderSentUseCase(appts),
+        openLink: (uri) async {
+          openedLinks.add(uri);
+          return true;
+        },
+      ));
+      await openDetail(tester, appointment());
+
+      await tapText(tester, 'Recordatorio por WhatsApp');
+
+      expect(appts.prepared, ['a1']);
+      expect(openedLinks.single.host, 'wa.me');
+      expect(appts.marked, ['a1']);
+      expect(find.text('Recordatorio por WhatsApp'), findsNothing);
+      expect(find.text('Recordatorio enviado'), findsOneWidget);
+      await expireSnackbar(tester);
+    });
+
+    testWidgets('sin los use cases de recordatorio no se ofrece',
+        (tester) async {
+      signInAs('Owner');
+      BusinessTimeZone.clock =
+          () => BusinessTimeZone.toInstant(DateTime(2030, 1, 7, 8));
+      addTearDown(() => BusinessTimeZone.clock = DateTime.now);
+      await openDetail(tester, appointment());
+      expect(find.text('Recordatorio por WhatsApp'), findsNothing);
     });
   });
 
@@ -1102,6 +1280,55 @@ void main() {
       expect(payments.refunds.single, ('pr1', 10000.0, 'Pago de más'));
       expect(find.text('No hay pagos por revisar'), findsOneWidget);
       await expireSnackbar(tester);
+    });
+
+    testWidgets(
+        'reembolso (12.07): MoneyField, no supera lo que queda del pago y se '
+        'envía en pesos enteros', (tester) async {
+      signInAs('Owner');
+      payments.inReview = [review];
+      Get.put(PaymentsReviewController(
+        getPaymentsInReviewUseCase: GetPaymentsInReviewUseCase(payments),
+        refundPaymentUseCase: RefundPaymentUseCase(payments),
+      ));
+      await pumpScreen(tester, const PaymentsReviewScreen());
+      await tapText(tester, 'Reembolsar \$ 10.000');
+
+      final field = find.descendant(
+          of: find.byKey(const Key('refund-amount')),
+          matching: find.byType(TextField));
+      expect(tester.widget<TextField>(field).controller!.text, '10.000');
+
+      FilledButton refundButton() => tester.widget<FilledButton>(
+          find.widgetWithText(FilledButton, 'Reembolsar'));
+
+      // Lo pagado es 60.000: 70.000 no se permite.
+      await tester.enterText(field, '70000');
+      await tester.pump();
+      expect(tester.widget<TextField>(field).controller!.text, '70.000');
+      expect(find.text('No puede superar lo que queda del pago (\$ 60.000)'),
+          findsOneWidget);
+      expect(refundButton().onPressed, isNull);
+
+      await tester.enterText(field, '');
+      await tester.pump();
+      expect(find.text('Escribe el monto a devolver'), findsOneWidget);
+      expect(refundButton().onPressed, isNull);
+
+      await tester.enterText(field, '15000');
+      await tester.pump();
+      expect(refundButton().onPressed, isNotNull);
+      await tapText(tester, 'Reembolsar');
+      expect(payments.refunds.single, ('pr1', 15000.0, 'Pago de más'));
+      await expireSnackbar(tester);
+    });
+
+    test('RefundDialog.amountError: vacío, cero, de más y válido', () {
+      expect(RefundDialog.amountError(null, 60000), isNotNull);
+      expect(RefundDialog.amountError(0, 60000), isNotNull);
+      expect(RefundDialog.amountError(60001, 60000), isNotNull);
+      expect(RefundDialog.amountError(60000, 60000), isNull);
+      expect(RefundDialog.amountError(1, 60000), isNull);
     });
 
     testWidgets('Employee: el catálogo de la cita son sus servicios',

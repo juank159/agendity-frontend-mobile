@@ -413,7 +413,7 @@ class _Full extends StatelessWidget {
               clipBehavior: Clip.hardEdge,
               children: [
                 for (var i = 0; i < a.services.length; i++)
-                  _ServicePill(
+                  AppointmentServicePill(
                     name: a.services[i].name,
                     color: a.serviceColor(i),
                     foreground: foreground,
@@ -438,40 +438,56 @@ class _Full extends StatelessWidget {
   }
 }
 
-/// Píldora de un servicio: punto con su color y su nombre.
-class _ServicePill extends StatelessWidget {
+/// Píldora de un servicio: punto con su color y su nombre. Sobre la tarjeta
+/// de la agenda (fondo del color del servicio) es translúcida con
+/// [foreground]; con [onSurface] (formulario y detalle de la cita, 12.07) se
+/// tiñe con el color del servicio sobre la superficie del tema y es más
+/// grande.
+class AppointmentServicePill extends StatelessWidget {
   final String name;
   final Color color;
   final Color foreground;
+  final bool onSurface;
 
-  const _ServicePill({
+  const AppointmentServicePill({
+    super.key,
     required this.name,
     required this.color,
     required this.foreground,
+    this.onSurface = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final large = onSurface;
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, 2, 8, 2),
+      padding: large
+          ? const EdgeInsets.fromLTRB(6, 4, 10, 4)
+          : const EdgeInsets.fromLTRB(4, 2, 8, 2),
       decoration: BoxDecoration(
-        color: foreground.withValues(alpha: 0.16),
+        color: onSurface
+            ? color.withValues(alpha: 0.14)
+            : foreground.withValues(alpha: 0.16),
         borderRadius: AppRadii.chipRadius,
-        border: Border.all(color: foreground.withValues(alpha: 0.22)),
+        border: Border.all(
+            color: onSurface
+                ? color.withValues(alpha: 0.45)
+                : foreground.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 10,
-            height: 10,
+            width: large ? 12 : 10,
+            height: large ? 12 : 10,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              border: Border.all(color: foreground, width: 1.5),
+              border: Border.all(
+                  color: onSurface ? color : foreground, width: 1.5),
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: large ? 6 : 4),
           Flexible(
             child: Text(
               name,
@@ -479,7 +495,7 @@ class _ServicePill extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: foreground,
-                fontSize: 10.5,
+                fontSize: large ? 13 : 10.5,
                 fontWeight: FontWeight.w600,
                 height: 1.2,
               ),
@@ -527,7 +543,7 @@ class _Badges extends StatelessWidget {
           circle(Icon(Icons.report_problem_rounded,
               size: iconSize, color: foreground, semanticLabel: 'Por mover')),
         if (a.isWebBooking)
-          circle(Icon(Icons.public,
+          circle(Icon(Icons.public_rounded,
               size: iconSize, color: foreground, semanticLabel: 'Reserva web')),
         circle(Icon(StatusChip.paymentIcon(a.paymentStatus),
             size: iconSize,

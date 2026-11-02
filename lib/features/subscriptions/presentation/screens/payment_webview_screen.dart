@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/loading_state.dart';
@@ -163,8 +164,10 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
               }
               return Column(
                 children: [
+                  const _SecureStrip(),
                   if (_progress < 100)
-                    LinearProgressIndicator(value: _progress / 100),
+                    LinearProgressIndicator(
+                        value: _progress / 100, minHeight: 3),
                   Expanded(
                     child: WebViewWidget(controller: _webViewController!),
                   ),
@@ -182,4 +185,34 @@ bool isPaymentCallbackUrl(String url) {
   if (uri == null) return false;
   if (uri.scheme == 'myapp') return uri.host == 'payment-callback';
   return uri.path.contains('/payment-callback');
+}
+
+/// Franja bajo la barra del checkout: el pago lo procesa Wompi y la app
+/// solo verifica el resultado con el backend.
+class _SecureStrip extends StatelessWidget {
+  const _SecureStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tone = context.tokens.success;
+    return Container(
+      width: double.infinity,
+      color: tone.container,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.lock_rounded, size: 16, color: tone.onContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Pago seguro con Wompi. Al terminar volverás a la app.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: tone.onContainer, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

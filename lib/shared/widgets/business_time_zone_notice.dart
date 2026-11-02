@@ -43,7 +43,7 @@ class BusinessTimeZoneNotice extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.public, size: 16, color: tone.onContainer),
+              Icon(Icons.public_rounded, size: 16, color: tone.onContainer),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

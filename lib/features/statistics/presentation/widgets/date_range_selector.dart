@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/shared/widgets/app_card.dart';
 import '../../domain/entities/stats_range.dart';
 
 /// Períodos rápidos del selector. Todos terminan hoy (incluido).
@@ -62,45 +64,66 @@ class DateRangeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final active = StatsPeriodPreset.matching(selected, today);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Período', style: theme.textTheme.titleSmall),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _describe(selected),
-                    style: theme.textTheme.bodyLarge,
-                  ),
+    return AppCard(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      depth: 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: AppRadii.chipRadius,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.date_range),
-                  tooltip: 'Elegir fechas',
-                  onPressed: () => _pickRange(context),
+                child: Icon(Icons.calendar_month_rounded,
+                    size: 18, color: scheme.onPrimaryContainer),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Período',
+                        style: theme.textTheme.labelMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                    Text(
+                      _describe(selected),
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)
+                          .tabular,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final preset in StatsPeriodPreset.values)
-                  ChoiceChip(
-                    label: Text(preset.label),
-                    selected: preset == active,
-                    onSelected: (_) {
-                      if (preset != active) onChanged(preset.rangeFor(today));
-                    },
-                  ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.date_range_rounded),
+                tooltip: 'Elegir fechas',
+                onPressed: () => _pickRange(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final preset in StatsPeriodPreset.values)
+                ChoiceChip(
+                  showCheckmark: false,
+                  label: Text(preset.label),
+                  selected: preset == active,
+                  onSelected: (_) {
+                    if (preset != active) onChanged(preset.rangeFor(today));
+                  },
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

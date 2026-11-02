@@ -31,7 +31,7 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
         appBar: AppBar(title: const Text('Estadísticas')),
         body: const ErrorState(
           title: 'Sin acceso',
-          icon: Icons.lock_outline,
+          icon: Icons.lock_rounded,
           message: StatisticsController.ownerOnlyMessage,
         ),
       );
@@ -41,12 +41,12 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
         title: const Text('Estadísticas'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.percent),
+            icon: const Icon(Icons.percent_rounded),
             tooltip: 'Comisiones',
             onPressed: () => Get.toNamed(GetRoutes.commissions),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Actualizar',
             onPressed: controller.refreshAll,
           ),
@@ -56,14 +56,14 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
         onRefresh: controller.refreshAll,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
           children: [
             Obx(() => DateRangeSelector(
                   selected: controller.range.value,
                   today: controller.today,
                   onChanged: controller.setRange,
                 )),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             StatsSectionView(
               section: controller.overview,
               onRetry: controller.loadOverview,
@@ -72,9 +72,9 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
               emptySubMessage: 'Prueba con un período más amplio.',
               builder: (context, stats) => OverviewStatsCard(stats: stats),
             ),
-            const SizedBox(height: 16),
             StatsCard(
               title: 'Comparación con el período anterior',
+              icon: Icons.compare_arrows_rounded,
               child: StatsSectionView(
                 section: controller.comparison,
                 onRetry: controller.loadOverview,
@@ -82,17 +82,16 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
                     PaymentComparisonCard(comparison: comparison),
               ),
             ),
-            const SizedBox(height: 8),
             _Section(
               section: StatsDashboardSection.paymentMethods,
               title: 'Métodos de pago',
-              icon: Icons.payment,
+              icon: Icons.payment_rounded,
               child: Obx(() => ListStateView<PaymentMethodStatsEntity>(
                     isLoading: controller.paymentMethods.isLoading.value,
                     error: controller.paymentMethods.error.value,
                     items: controller.paymentMethods.data.value ?? const [],
                     onRetry: _retry(StatsDashboardSection.paymentMethods),
-                    emptyIcon: Icons.payment,
+                    emptyIcon: Icons.payment_rounded,
                     emptyMessage: 'Sin pagos en este período',
                     builder: (context, stats) =>
                         PaymentMethodsChart(stats: stats),
@@ -101,13 +100,13 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
             _Section(
               section: StatsDashboardSection.professionals,
               title: 'Ingresos por profesional',
-              icon: Icons.person_outline,
+              icon: Icons.person_rounded,
               child: Obx(() => ListStateView<ProfessionalStatsEntity>(
                     isLoading: controller.professionals.isLoading.value,
                     error: controller.professionals.error.value,
                     items: controller.professionals.data.value ?? const [],
                     onRetry: _retry(StatsDashboardSection.professionals),
-                    emptyIcon: Icons.person_outline,
+                    emptyIcon: Icons.person_rounded,
                     emptyMessage: 'Sin pagos en este período',
                     builder: (context, stats) =>
                         ProfessionalsPerformanceWidget(stats: stats),
@@ -116,13 +115,13 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
             _Section(
               section: StatsDashboardSection.services,
               title: 'Servicios',
-              icon: Icons.spa_outlined,
+              icon: Icons.spa_rounded,
               child: Obx(() => ListStateView<ServiceStatsEntity>(
                     isLoading: controller.services.isLoading.value,
                     error: controller.services.error.value,
                     items: controller.services.data.value ?? const [],
                     onRetry: _retry(StatsDashboardSection.services),
-                    emptyIcon: Icons.spa_outlined,
+                    emptyIcon: Icons.spa_rounded,
                     emptyMessage: 'Sin servicios pagados en este período',
                     builder: (context, stats) =>
                         ServicesPerformanceWidget(stats: stats),
@@ -131,13 +130,13 @@ class StatisticsDashboardScreen extends GetView<StatisticsController> {
             _Section(
               section: StatsDashboardSection.topClients,
               title: 'Mejores clientes',
-              icon: Icons.people_outline,
+              icon: Icons.people_rounded,
               child: Obx(() => ListStateView<TopClientEntity>(
                     isLoading: controller.topClients.isLoading.value,
                     error: controller.topClients.error.value,
                     items: controller.topClients.data.value ?? const [],
                     onRetry: _retry(StatsDashboardSection.topClients),
-                    emptyIcon: Icons.people_outline,
+                    emptyIcon: Icons.people_rounded,
                     emptyMessage: 'Sin clientes con pagos en este período',
                     builder: (context, clients) => TopClientsWidget(
                       clients: clients,

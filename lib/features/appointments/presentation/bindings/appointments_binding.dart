@@ -42,6 +42,9 @@ class AppointmentsBinding implements Bindings {
         getAppointmentUseCase: Get.find(),
         getAppointmentBalanceUseCase: Get.find(),
         getPaymentsInReviewUseCase: Get.find<GetPaymentsInReviewUseCase>(),
+        // Recordatorio por WhatsApp desde el detalle (12.07).
+        prepareReminderUseCase: Get.find(),
+        markReminderSentUseCase: Get.find(),
       ),
       fenix: true,
     );

@@ -20,7 +20,7 @@ class CodeExpiryNotice extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.timer_outlined, color: warning.color, size: 18),
+          Icon(Icons.timer_rounded, color: warning.color, size: 18),
           const SizedBox(width: 8),
           Text(
             'El código vence en $remaining',

@@ -263,6 +263,11 @@ class AppointmentFormController extends GetxController {
       original?.services.firstWhereOrNull((s) => s.serviceId == id)?.name ??
       'Servicio';
 
+  /// Color (hex del catálogo) del servicio [id], para su píldora.
+  String? colorOf(String id) =>
+      catalog.firstWhereOrNull((s) => s.id == id)?.color ??
+      original?.services.firstWhereOrNull((s) => s.serviceId == id)?.color;
+
   int durationOf(String id) {
     final minutes = catalog.firstWhereOrNull((s) => s.id == id)?.duration ??
         original?.services

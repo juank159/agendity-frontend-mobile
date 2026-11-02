@@ -14,23 +14,17 @@ class ServicesPerformanceWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final max = stats.fold<double>(
         0, (value, s) => s.totalAmount > value ? s.totalAmount : value);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            for (final stat in stats)
-              StatsBarRow(
-                title: stat.serviceName.isEmpty ? 'Servicio' : stat.serviceName,
-                subtitle:
-                    '${formatCount(stat.appointmentCount, 'cita', 'citas')}'
-                    ' · ${formatPercent(stat.percentageOfTotal)}',
-                value: formatCop(stat.totalAmount),
-                fraction: StatsBarRow.fractionOf(stat.totalAmount, max),
-              ),
-          ],
-        ),
-      ),
+    return Column(
+      children: [
+        for (final stat in stats)
+          StatsBarRow(
+            title: stat.serviceName.isEmpty ? 'Servicio' : stat.serviceName,
+            subtitle: '${formatCount(stat.appointmentCount, 'cita', 'citas')}'
+                ' · ${formatPercent(stat.percentageOfTotal)}',
+            value: formatCop(stat.totalAmount),
+            fraction: StatsBarRow.fractionOf(stat.totalAmount, max),
+          ),
+      ],
     );
   }
 }

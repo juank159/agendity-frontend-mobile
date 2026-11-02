@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/shared/widgets/app_pill.dart';
 import '../../domain/entities/payment_comparison_entity.dart';
 
 /// Período elegido frente al anterior de la misma duración.
@@ -20,8 +21,18 @@ class PaymentComparisonCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Actual: ${_period(current)}', style: muted),
-        Text('Anterior: ${_period(previous)}', style: muted),
+        Row(children: [
+          Icon(Icons.date_range_rounded, size: 16, color: muted?.color),
+          const SizedBox(width: 6),
+          Expanded(
+              child: Text('Actual: ${_period(current)}', style: muted)),
+        ]),
+        Row(children: [
+          Icon(Icons.history_rounded, size: 16, color: muted?.color),
+          const SizedBox(width: 6),
+          Expanded(
+              child: Text('Anterior: ${_period(previous)}', style: muted)),
+        ]),
         const Divider(height: 24),
         _ComparisonRow(
           label: 'Ingresos netos',
@@ -84,18 +95,18 @@ class _ComparisonRow extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final tokens = context.tokens;
-    final Color color;
+    final ToneColors? tone;
     final IconData icon;
     final trend = percentage ?? difference;
     if (trend > 0) {
-      color = tokens.success.color;
-      icon = Icons.arrow_upward;
+      tone = tokens.success;
+      icon = Icons.trending_up_rounded;
     } else if (trend < 0) {
-      color = tokens.error.color;
-      icon = Icons.arrow_downward;
+      tone = tokens.error;
+      icon = Icons.trending_down_rounded;
     } else {
-      color = scheme.onSurfaceVariant;
-      icon = Icons.remove;
+      tone = null;
+      icon = Icons.trending_flat_rounded;
     }
     return Row(
       children: [
@@ -104,34 +115,24 @@ class _ComparisonRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: theme.textTheme.bodyMedium
+                  style: theme.textTheme.labelMedium
                       ?.copyWith(color: scheme.onSurfaceVariant)),
               Text(current,
                   style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
+                      ?.copyWith(fontWeight: FontWeight.w800)
+                      .tabular),
               Text('Anterior: $previous',
                   style: theme.textTheme.bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant)),
+                      ?.copyWith(color: scheme.onSurfaceVariant)
+                      .tabular),
             ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                changeLabel(percentage, difference),
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
+        AppPill(
+          label: changeLabel(percentage, difference),
+          icon: icon,
+          colors: tone,
+          tabular: true,
         ),
       ],
     );

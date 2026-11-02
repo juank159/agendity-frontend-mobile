@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/features/appointments/domain/usecases/appointment_rules.dart';
 
 /// Confirma la cancelación y pide un motivo opcional. Devuelve el motivo
@@ -29,23 +30,39 @@ class _CancelAppointmentDialogState extends State<CancelAppointmentDialog> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final error = context.tokens.error;
     return AlertDialog(
-      icon: Icon(Icons.event_busy_outlined, color: scheme.error),
+      icon: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: error.container,
+          border: Border.all(
+              color: error.color.withValues(alpha: 0.28), width: 5),
+        ),
+        child: Icon(Icons.event_busy_rounded, color: error.color, size: 30),
+      ),
       title: const Text('¿Cancelar la cita?'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('La cita de ${widget.clientName} quedará cancelada y su hora '
-              'se liberará. No se devuelve el cupo del plan.'),
+          Text(
+            'La cita de ${widget.clientName} quedará cancelada y su hora '
+            'se liberará. No se devuelve el cupo del plan.',
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 16),
           TextField(
             key: const Key('cancel-reason'),
             controller: _reason,
             maxLength: AppointmentRules.maxCancellationReasonLength,
             maxLines: 3,
+            minLines: 1,
             decoration: const InputDecoration(
               labelText: 'Motivo (opcional)',
+              prefixIcon: Icon(Icons.notes_rounded),
             ),
           ),
         ],

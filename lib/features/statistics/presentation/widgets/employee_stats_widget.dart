@@ -17,47 +17,50 @@ class EmployeeStatsWidget extends StatelessWidget {
     final summary = stats.summary;
     final maxService = stats.byService
         .fold<double>(0, (value, s) => s.total > value ? s.total : value);
+    final maxDay = stats.dailyEvolution
+        .fold<double>(0, (value, d) => d.total > value ? d.total : value);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         StatsCard(
           title: 'Resumen',
           subtitle: 'Pagos completados menos lo reembolsado',
+          icon: Icons.insights_rounded,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              StatTile(
+              StatHero(
                 label: 'Ingresos netos',
                 value: formatCop(summary.totalAmount),
-                icon: Icons.payments_outlined,
-                color: tokens.success.color,
+                icon: Icons.payments_rounded,
               ),
-              const SizedBox(height: 12),
-              StatTile(
-                label: 'Pagos',
-                value: '${summary.paymentCount}',
-                icon: Icons.receipt_long_outlined,
-                color: tokens.info.color,
-              ),
-              const SizedBox(height: 12),
-              StatTile(
-                label: 'Citas pagadas',
-                value: '${summary.appointmentCount}',
-                icon: Icons.event_available_outlined,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 12),
-              StatTile(
-                label: 'Promedio por pago',
-                value: formatCop(summary.averagePerPayment),
-                icon: Icons.analytics_outlined,
-                color: tokens.warning.color,
-              ),
+              const SizedBox(height: 10),
+              StatTileGrid(tiles: [
+                StatTile(
+                  label: 'Pagos',
+                  value: '${summary.paymentCount}',
+                  icon: Icons.receipt_long_rounded,
+                  color: tokens.info.color,
+                ),
+                StatTile(
+                  label: 'Citas pagadas',
+                  value: '${summary.appointmentCount}',
+                  icon: Icons.event_available_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                StatTile(
+                  label: 'Promedio por pago',
+                  value: formatCop(summary.averagePerPayment),
+                  icon: Icons.analytics_rounded,
+                  color: tokens.warning.color,
+                ),
+              ]),
             ],
           ),
         ),
-        const SizedBox(height: 16),
         StatsCard(
           title: 'Servicios realizados',
+          icon: Icons.spa_rounded,
           child: stats.byService.isEmpty
               ? const Text('Sin servicios en este período')
               : Column(
@@ -76,22 +79,21 @@ class EmployeeStatsWidget extends StatelessWidget {
                   ],
                 ),
         ),
-        const SizedBox(height: 16),
         StatsCard(
           title: 'Ingresos por día',
+          icon: Icons.calendar_view_day_rounded,
           child: stats.dailyEvolution.isEmpty
               ? const Text('Sin pagos en este período')
               : Column(
                   children: [
                     for (final day in stats.dailyEvolution)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        title: Text(formatDate(day.day)),
-                        subtitle: Text(
+                      StatsBarRow(
+                        title: formatDate(day.day),
+                        subtitle:
                             '${formatCount(day.appointmentCount, 'cita', 'citas')}'
-                            ' · ${formatCount(day.paymentCount, 'pago', 'pagos')}'),
-                        trailing: Text(formatCop(day.total)),
+                            ' · ${formatCount(day.paymentCount, 'pago', 'pagos')}',
+                        value: formatCop(day.total),
+                        fraction: StatsBarRow.fractionOf(day.total, maxDay),
                       ),
                   ],
                 ),

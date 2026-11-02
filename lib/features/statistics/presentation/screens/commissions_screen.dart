@@ -18,7 +18,7 @@ class CommissionsScreen extends GetView<CommissionsController> {
         title: Text(controller.title),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Actualizar',
             onPressed: controller.refreshSettlement,
           ),
@@ -28,20 +28,20 @@ class CommissionsScreen extends GetView<CommissionsController> {
         onRefresh: controller.refreshSettlement,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
           children: [
             Obx(() => DateRangeSelector(
                   selected: controller.range.value,
                   today: controller.today,
                   onChanged: controller.setRange,
                 )),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             StatsSectionView(
               section: controller.settlement,
               onRetry: controller.load,
               loadingMessage: 'Calculando comisiones…',
               isEmpty: (settlement) => settlement.isEmpty,
-              emptyIcon: Icons.percent,
+              emptyIcon: Icons.percent_rounded,
               emptyMessage: 'Sin citas completadas en este período',
               emptySubMessage: 'Las comisiones salen de las citas '
                   'completadas. Prueba con un período más amplio.',

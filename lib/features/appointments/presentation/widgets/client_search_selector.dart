@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/client_picker_controller.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
+import 'package:login_signup/shared/widgets/app_dialog_title.dart';
+import 'package:login_signup/shared/widgets/app_search_field.dart';
 
 /// Busca y elige el cliente de una cita (paginado en el servidor). Crea su
 /// `ClientPickerController` al abrirse y lo borra al cerrarse. Devuelve el
@@ -53,28 +57,25 @@ class _ClientSearchSelectorState extends State<ClientSearchSelector> {
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Elegir cliente',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              TextField(
+              const AppDialogTitle(
+                icon: Icons.face_rounded,
+                title: 'Elegir cliente',
+                subtitle: 'Busca por nombre o teléfono.',
+              ),
+              const SizedBox(height: 14),
+              AppSearchField(
                 controller: _search,
-                decoration: InputDecoration(
-                  labelText: 'Buscar por nombre o teléfono',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: IconButton(
-                    tooltip: 'Limpiar búsqueda',
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _search.clear();
-                      _controller.clear();
-                    },
-                  ),
-                ),
+                hint: 'Buscar por nombre o teléfono',
+                clearTooltip: 'Limpiar búsqueda',
                 onChanged: (value) => _controller.query.value = value,
+                onClear: () {
+                  _search.clear();
+                  _controller.clear();
+                },
               ),
               const SizedBox(height: 8),
               Expanded(
@@ -83,7 +84,7 @@ class _ClientSearchSelectorState extends State<ClientSearchSelector> {
                       error: _controller.error.value?.message,
                       items: _controller.clients.toList(),
                       onRetry: _controller.search,
-                      emptyIcon: Icons.person_off_outlined,
+                      emptyIcon: Icons.person_off_rounded,
                       emptyMessage: _controller.query.value.trim().isEmpty
                           ? 'No hay clientes registrados'
                           : 'Ningún cliente coincide',
@@ -97,7 +98,7 @@ class _ClientSearchSelectorState extends State<ClientSearchSelector> {
                 children: [
                   TextButton.icon(
                     onPressed: _newClient,
-                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    icon: const Icon(Icons.person_add_alt_1_rounded),
                     label: const Text('Nuevo cliente'),
                   ),
                   const Spacer(),
@@ -123,6 +124,7 @@ class _ClientList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final hasMore = controller.hasMore.value;
     return ListView.builder(
       itemCount: clients.length + (hasMore ? 1 : 0),
@@ -136,13 +138,26 @@ class _ClientList extends StatelessWidget {
           );
         }
         final client = clients[index];
-        final initial =
-            client.name.isEmpty ? '?' : client.name[0].toUpperCase();
-        return ListTile(
-          leading: CircleAvatar(child: Text(initial)),
-          title: Text(client.fullName),
-          subtitle: client.phone.isEmpty ? null : Text(client.phone),
-          onTap: () => Navigator.of(context).pop(client),
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadii.fieldRadius,
+              side: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            ),
+            tileColor: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            leading: AppAvatar(
+                name: client.fullName, imageUrl: client.image, radius: 20),
+            title: Text(client.fullName,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: client.phone.isEmpty
+                ? null
+                : Text(client.phone,
+                    style: TextStyle(color: scheme.onSurfaceVariant)),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.of(context).pop(client),
+          ),
         );
       },
     );

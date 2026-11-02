@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/core/widgets/app_fade_in.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
+import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/app_section_header.dart';
 import '../../domain/entities/commission_settlement.dart';
 
 /// Totales del período y una fila por profesional (servicios, profesional y
@@ -22,32 +27,36 @@ class CommissionSettlementView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Total del período · '
-                  '${formatCount(settlement.appointmentCount, 'cita completada', 'citas completadas')}',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 12),
-                CommissionAmountsRow(amounts: settlement.totals),
-              ],
-            ),
+        AppCard(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSectionHeader(
+                icon: Icons.percent_rounded,
+                title: 'Total del período',
+                subtitle: formatCount(settlement.appointmentCount,
+                    'cita completada', 'citas completadas'),
+                padding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 14),
+              CommissionAmountsRow(amounts: settlement.totals),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        for (final professional in settlement.professionals)
-          _ProfessionalCard(professional: professional, expanded: ownOnly),
+        for (final (index, professional) in settlement.professionals.indexed)
+          AppFadeIn(
+            index: index,
+            child: _ProfessionalCard(
+                professional: professional, expanded: ownOnly),
+          ),
       ],
     );
   }
 }
 
-/// Servicios · Profesional · Negocio, en tres columnas.
+/// Servicios · Profesional · Negocio, en tres columnas con números
+/// tabulares; lo de la profesional resaltado con la paleta.
 class CommissionAmountsRow extends StatelessWidget {
   final CommissionAmounts amounts;
   final bool dense;
@@ -59,10 +68,14 @@ class CommissionAmountsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Amount('Servicios', amounts.servicesTotal, dense: dense),
+        _Amount('Servicios', amounts.servicesTotal,
+            icon: Icons.spa_rounded, dense: dense),
+        SizedBox(width: dense ? 6 : 8),
         _Amount('Profesional', amounts.professionalTotal,
-            dense: dense, highlight: true),
-        _Amount('Negocio', amounts.businessTotal, dense: dense),
+            icon: Icons.person_rounded, dense: dense, highlight: true),
+        SizedBox(width: dense ? 6 : 8),
+        _Amount('Negocio', amounts.businessTotal,
+            icon: Icons.storefront_rounded, dense: dense),
       ],
     );
   }
@@ -71,11 +84,12 @@ class CommissionAmountsRow extends StatelessWidget {
 class _Amount extends StatelessWidget {
   final String label;
   final double value;
+  final IconData icon;
   final bool dense;
   final bool highlight;
 
   const _Amount(this.label, this.value,
-      {this.dense = false, this.highlight = false});
+      {required this.icon, this.dense = false, this.highlight = false});
 
   @override
   Widget build(BuildContext context) {
@@ -85,17 +99,44 @@ class _Amount extends StatelessWidget {
             ? theme.textTheme.bodyMedium
             : theme.textTheme.titleMedium)
         ?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: highlight ? scheme.primary : null);
+            fontWeight: FontWeight.w800,
+            color: highlight ? scheme.primary : scheme.onSurface)
+        .tabular;
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
-          Text(formatCop(value), style: valueStyle),
-        ],
+      child: Container(
+        padding: EdgeInsets.all(dense ? 8 : 10),
+        decoration: BoxDecoration(
+          color: highlight
+              ? scheme.primaryContainer.withValues(alpha: 0.55)
+              : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: AppRadii.fieldRadius,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon,
+                    size: dense ? 13 : 15,
+                    color: highlight ? scheme.primary : scheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(formatCop(value), maxLines: 1, style: valueStyle),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -110,13 +151,19 @@ class _ProfessionalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return AppCard(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.zero,
+      depth: 1,
       child: ExpansionTile(
         key: PageStorageKey('commission-${professional.professionalId}'),
         initiallyExpanded: expanded,
         shape: const Border(),
+        collapsedShape: const Border(),
+        leading: AppAvatar(name: professional.professionalName, radius: 20),
         title: Text(professional.professionalName,
-            style: theme.textTheme.titleMedium),
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: CommissionAmountsRow(amounts: professional.amounts, dense: true),
@@ -143,25 +190,43 @@ class _AppointmentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final muted =
-        theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+        theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: AppRadii.fieldRadius,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Divider(height: 1),
-          const SizedBox(height: 6),
-          Text('${formatShortDate(_date)} · ${formatTime(_date)} · '
-              '${appointment.clientName}'),
+          Row(
+            children: [
+              Icon(Icons.event_rounded, size: 16, color: scheme.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '${formatShortDate(_date)} · ${formatTime(_date)} · '
+                  '${appointment.clientName}',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)
+                      .tabular,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           for (final line in appointment.lines)
             Text(
               '${line.serviceName}: ${formatCop(line.price)} × '
               '${formatPercent(line.commissionPercentage)} = '
               '${formatCop(line.commission)}',
-              style: muted,
+              style: muted?.tabular,
             ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           CommissionAmountsRow(amounts: appointment.amounts, dense: true),
         ],
       ),

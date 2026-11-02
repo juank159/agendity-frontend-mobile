@@ -441,12 +441,28 @@ abstract final class ThemeConfig {
         contentTextStyle:
             text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
       ),
+      // Calendarios (cita, agenda, cumpleaños, rango de Informes; 12.07):
+      // radio 28, días con radio de chip, hoy con borde primario y el
+      // rango en el contenedor primario.
       datePickerTheme: DatePickerThemeData(
         backgroundColor: scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(borderRadius: AppRadii.sheetRadius),
         headerHeadlineStyle:
             text.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        headerHelpStyle: text.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+        weekdayStyle: text.labelMedium?.copyWith(
+            color: scheme.onSurfaceVariant, fontWeight: FontWeight.w700),
+        dayStyle: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        dayShape: const WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: AppRadii.chipRadius)),
+        todayBorder: BorderSide(color: scheme.primary, width: 1.5),
+        yearShape: const WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: AppRadii.chipRadius)),
+        rangePickerBackgroundColor: scheme.surfaceContainerLow,
+        rangePickerSurfaceTintColor: Colors.transparent,
+        rangeSelectionBackgroundColor: scheme.primaryContainer,
+        dividerColor: scheme.outlineVariant.withValues(alpha: 0.6),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: scheme.surfaceContainerLow,

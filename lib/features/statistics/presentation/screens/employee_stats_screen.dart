@@ -17,12 +17,12 @@ class EmployeeStatsScreen extends GetView<EmployeeStatsController> {
         title: const Text('Mis estadísticas'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.percent),
+            icon: const Icon(Icons.percent_rounded),
             tooltip: 'Comisiones',
             onPressed: () => Get.toNamed(GetRoutes.commissions),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Actualizar',
             onPressed: controller.refreshStats,
           ),
@@ -32,14 +32,14 @@ class EmployeeStatsScreen extends GetView<EmployeeStatsController> {
         onRefresh: controller.refreshStats,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
           children: [
             Obx(() => DateRangeSelector(
                   selected: controller.range.value,
                   today: controller.today,
                   onChanged: controller.setRange,
                 )),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             StatsSectionView(
               section: controller.stats,
               onRetry: controller.load,

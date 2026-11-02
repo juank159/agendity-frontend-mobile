@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
+import 'package:login_signup/shared/widgets/app_dialog_title.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 
 Future<void> _pumpApp(WidgetTester tester) async {
@@ -61,6 +63,58 @@ void main() {
       await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
       expect(await result, isFalse);
+    });
+
+    testWidgets(
+        '12.07: confirmar normal = botón con degradado (AppGradientButton) e '
+        'ícono _rounded', (tester) async {
+      await _pumpApp(tester);
+      final result = AppDialogs.confirm(title: 'T', message: 'M');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(AppGradientButton, 'Confirmar'),
+          findsOneWidget);
+      // Sigue siendo un FilledButton para los tests de integración.
+      expect(find.widgetWithText(FilledButton, 'Confirmar'), findsOneWidget);
+      expect(find.byIcon(Icons.help_outline_rounded), findsOneWidget);
+      await tester.tap(find.text('Confirmar'));
+      await tester.pumpAndSettle();
+      expect(await result, isTrue);
+    });
+
+    testWidgets(
+        '12.07: destructivo = FilledButton del color de error, sin degradado',
+        (tester) async {
+      await _pumpApp(tester);
+      final result = AppDialogs.confirm(
+          title: '¿Eliminar?',
+          message: 'M',
+          confirmLabel: 'Eliminar',
+          destructive: true);
+      await tester.pumpAndSettle();
+      expect(find.byType(AppGradientButton), findsNothing);
+      expect(find.byIcon(Icons.delete_outline_rounded), findsOneWidget);
+      final button = tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Eliminar'));
+      final context = tester.element(find.text('Eliminar'));
+      expect(button.style?.backgroundColor?.resolve({}),
+          Theme.of(context).colorScheme.error);
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(await result, isFalse);
+    });
+
+    testWidgets('12.07: error e info usan íconos _rounded', (tester) async {
+      await _pumpApp(tester);
+      AppDialogs.error(message: 'Falló');
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+      await tester.tap(find.text('Entendido'));
+      await tester.pumpAndSettle();
+      AppDialogs.info(title: 'I', message: 'M');
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+      await tester.tap(find.text('Entendido'));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('devuelve false al tocar fuera', (tester) async {
@@ -135,5 +189,31 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('planes'), findsNothing);
     });
+  });
+
+  testWidgets('AppDialogTitle: ícono con degradado, título y subtítulo',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeConfig.lightTheme,
+      home: const Scaffold(
+        body: AppDialogTitle(
+          icon: Icons.payments_rounded,
+          title: 'Registrar pago',
+          subtitle: 'Carla Díaz',
+          trailing: Icon(Icons.close_rounded),
+        ),
+      ),
+    ));
+    expect(find.text('Registrar pago'), findsOneWidget);
+    expect(find.text('Carla Díaz'), findsOneWidget);
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    final circle = tester.widget<Container>(find
+        .ancestor(
+            of: find.byIcon(Icons.payments_rounded),
+            matching: find.byType(Container))
+        .first);
+    final context = tester.element(find.text('Registrar pago'));
+    expect((circle.decoration! as BoxDecoration).gradient,
+        context.tokens.primaryGradient);
   });
 }

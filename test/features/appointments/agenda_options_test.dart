@@ -143,7 +143,7 @@ void main() {
           tester, appointment('a', source: AppointmentSource.WEB),
           height: 70);
       expect(find.bySemanticsLabel(RegExp('reserva web')), findsWidgets);
-      expect(find.byIcon(Icons.public), findsOneWidget);
+      expect(find.byIcon(Icons.public_rounded), findsOneWidget);
     });
   });
 }

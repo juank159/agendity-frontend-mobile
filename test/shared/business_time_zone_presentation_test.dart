@@ -165,7 +165,7 @@ void main() {
       BusinessTimeZone.use(zone);
       expect(BusinessTimeZone.differsFromDevice, isFalse);
       await pump(tester);
-      expect(find.byIcon(Icons.public), findsNothing);
+      expect(find.byIcon(Icons.public_rounded), findsNothing);
     });
   });
 }

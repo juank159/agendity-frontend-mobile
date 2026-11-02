@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 
 /// Motivo por el que la suscripción bloquea una acción.
@@ -25,7 +26,7 @@ abstract final class AppDialogs {
       AppDialog(
         tone: destructive ? AppTone.error : AppTone.info,
         icon: icon ??
-            (destructive ? Icons.delete_outline : Icons.help_outline_rounded),
+            (destructive ? Icons.delete_outline_rounded : Icons.help_outline_rounded),
         title: title,
         message: message,
         primaryLabel: confirmLabel,
@@ -50,7 +51,7 @@ abstract final class AppDialogs {
         message: message,
         confirmLabel: 'Reintentar',
         cancelLabel: 'Ahora no',
-        icon: Icons.refresh,
+        icon: Icons.refresh_rounded,
       );
 
   /// Error que el usuario debe leer antes de seguir (lo pasajero va en
@@ -64,7 +65,7 @@ abstract final class AppDialogs {
       title: title,
       message: message,
       tone: AppTone.error,
-      icon: Icons.error_outline,
+      icon: Icons.error_outline_rounded,
       actionLabel: actionLabel,
     );
   }
@@ -75,7 +76,7 @@ abstract final class AppDialogs {
     required String message,
     String? detail,
     AppTone tone = AppTone.info,
-    IconData icon = Icons.info_outline,
+    IconData icon = Icons.info_outline_rounded,
     String actionLabel = 'Entendido',
     bool barrierDismissible = true,
   }) async {
@@ -116,8 +117,8 @@ abstract final class AppDialogs {
       AppDialog(
         tone: trialEnded ? AppTone.warning : AppTone.error,
         icon: trialEnded
-            ? Icons.workspace_premium_outlined
-            : Icons.assignment_late_outlined,
+            ? Icons.workspace_premium_rounded
+            : Icons.assignment_late_rounded,
         title: title,
         message: body,
         detail: isOwner
@@ -143,7 +144,13 @@ abstract final class AppDialogs {
 }
 
 /// Cuerpo común de los diálogos de [AppDialogs]. Público para reutilizarlo
-/// en diálogos de feature con el mismo aspecto.
+/// en diálogos de feature con el mismo aspecto (guía §3, 12.07): ícono del
+/// tono en un círculo con halo, título w700, mensaje, detalle opcional y
+/// botones al pie a todo el ancho.
+///
+/// El botón principal es `AppGradientButton` (degradado de la paleta); con
+/// [destructive], un `FilledButton` del color de error. Los dos son
+/// `FilledButton` para los tests (`find.widgetWithText(FilledButton, …)`).
 class AppDialog extends StatelessWidget {
   final AppTone tone;
   final IconData icon;
@@ -172,71 +179,87 @@ class AppDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final colors = context.tokens.tone(tone);
+    final extra = detail;
+    final secondary = secondaryLabel;
+
+    void close(Object? result) => Navigator.of(context).pop(result);
 
     return Dialog(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colors.container,
-                  shape: BoxShape.circle,
+              Center(
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.container,
+                    border: Border.all(
+                        color: colors.color.withValues(alpha: 0.28), width: 6),
+                    boxShadow: context.tokens.elevation1(tint: colors.color),
+                  ),
+                  child: Icon(icon, color: colors.color, size: 34),
                 ),
-                child: Icon(icon, color: colors.color, size: 40),
               ),
               const SizedBox(height: 20),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: scheme.onSurface,
+              Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700, color: scheme.onSurface),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
+                style: theme.textTheme.bodyLarge
+                    ?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
               ),
-              if (detail != null) ...[
+              if (extra != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  detail!,
+                  extra,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
                 ),
               ],
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: destructive
-                      ? FilledButton.styleFrom(
-                          backgroundColor: scheme.error,
-                          foregroundColor: scheme.onError,
-                        )
-                      : null,
-                  onPressed: () => Navigator.of(context).pop(primaryResult),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text(primaryLabel),
+              if (destructive)
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: scheme.error,
+                    foregroundColor: scheme.onError,
+                    minimumSize: const Size.fromHeight(52),
                   ),
+                  onPressed: () => close(primaryResult),
+                  child: Text(primaryLabel),
+                )
+              else
+                AppGradientButton(
+                  label: primaryLabel,
+                  expand: true,
+                  onPressed: () => close(primaryResult),
                 ),
-              ),
-              if (secondaryLabel != null) ...[
+              if (secondary != null) ...[
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(secondaryResult),
-                  child: Text(secondaryLabel!),
+                  style: TextButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48)),
+                  onPressed: () => close(secondaryResult),
+                  child: Text(secondary),
                 ),
               ],
             ],

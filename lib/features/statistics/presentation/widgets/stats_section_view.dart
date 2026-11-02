@@ -27,7 +27,7 @@ class StatsSectionView<T extends Object> extends StatelessWidget {
     required this.onRetry,
     required this.builder,
     this.isEmpty,
-    this.emptyIcon = Icons.insights_outlined,
+    this.emptyIcon = Icons.insights_rounded,
     this.emptyMessage = 'Sin pagos en este período',
     this.emptySubMessage,
     this.loadingMessage,
@@ -43,7 +43,7 @@ class StatsSectionView<T extends Object> extends StatelessWidget {
           final isFinal = section.errorIsFinal.value;
           return ErrorState(
             title: isFinal ? 'Sin acceso' : 'No se pudo cargar',
-            icon: isFinal ? Icons.lock_outline : Icons.error_outline,
+            icon: isFinal ? Icons.lock_rounded : Icons.error_outline_rounded,
             message: error,
             onRetry: isFinal ? null : onRetry,
           );

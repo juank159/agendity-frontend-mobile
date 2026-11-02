@@ -10,6 +10,7 @@ import 'package:login_signup/features/payments/domain/failures/payment_failures.
 import 'package:login_signup/features/payments/domain/usecases/create_payment_usecase.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_active_custom_payment_methods_usecase.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
+import 'package:login_signup/core/utils/cop_input_formatter.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
 /// Formulario de "Registrar pago" de una cita. Lo registra
@@ -26,6 +27,7 @@ class PaymentController extends GetxController {
   })  : _createPayment = createPaymentUseCase,
         _getCustomMethods = getActiveCustomPaymentMethodsUseCase;
 
+  /// Texto del `MoneyField` "Monto recibido" (`45.000`).
   final amountController = TextEditingController();
   final transactionController = TextEditingController();
   final method = PaymentMethod.CASH.obs;
@@ -95,7 +97,9 @@ class PaymentController extends GetxController {
     amountError.value = null;
     methodError.value = null;
 
-    final amount = parseAmount(amountController.text);
+    // Pesos enteros del `MoneyField` (D-24: sin decimales).
+    final pesos = parseCop(amountController.text);
+    final amount = pesos?.toDouble();
     final params = CreatePaymentParams(
       appointmentId: appointment.id,
       amount: amount ?? 0,
@@ -118,7 +122,7 @@ class PaymentController extends GetxController {
         message: 'Vas a registrar ${formatCop(amount)} de un saldo pendiente '
             'de ${formatCop(due)}.',
         confirmLabel: 'Registrar anticipo',
-        icon: Icons.payments_outlined,
+        icon: Icons.payments_rounded,
       );
       if (!confirmed) return false;
     }
@@ -155,19 +159,9 @@ class PaymentController extends GetxController {
 
   static int _cents(double value) => (value * 100).round();
 
-  static String _amountText(double value) => value == value.roundToDouble()
-      ? value.round().toString()
-      : value.toStringAsFixed(2).replaceAll('.', ',');
-
-  /// Texto del campo → pesos. Acepta `45000`, `45.000` y `$ 45.000`;
-  /// la coma es el separador decimal. `null` si no es un número.
-  static double? parseAmount(String input) {
-    final cleaned = input
-        .replaceAll(RegExp(r'[\s$.]'), '')
-        .replaceAll(',', '.');
-    if (cleaned.isEmpty) return null;
-    return double.tryParse(cleaned);
-  }
+  /// Texto inicial del campo de dinero (`45.000`; pesos enteros, D-24).
+  static String _amountText(double value) =>
+      CopInputFormatter.format(value.round());
 
   @override
   void onClose() {

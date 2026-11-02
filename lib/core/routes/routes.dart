@@ -145,9 +145,9 @@ class GetRoutes {
       body: ErrorState(
         title: 'Página no encontrada',
         message: 'La pantalla que buscas no existe o ya no está disponible.',
-        icon: Icons.explore_off_outlined,
+        icon: Icons.explore_off_rounded,
         actionLabel: 'Volver al inicio',
-        actionIcon: Icons.home_outlined,
+        actionIcon: Icons.home_rounded,
         onRetry: () => Get.offAllNamed(home),
       ),
     ),

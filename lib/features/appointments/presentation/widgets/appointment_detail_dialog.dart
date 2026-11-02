@@ -4,19 +4,27 @@ import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_feedback.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_conflict_ui.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_detail_header.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_form_dialog.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_payments_section.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_tile.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/cancel_appointment_dialog.dart';
+import 'package:login_signup/features/payments/domain/entities/appointment_balance.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
-import 'package:login_signup/shared/widgets/app_note.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
+import 'package:login_signup/shared/widgets/app_note.dart';
+import 'package:login_signup/shared/widgets/app_section_header.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
+import 'package:login_signup/shared/widgets/whatsapp_icon.dart';
 
 /// Nota "Agendada en hora de Bogota: 10:00 a. m." si la cita se guardó en
 /// otra zona que la actual del negocio (6.03); `null` si no. Las horas del
@@ -28,10 +36,14 @@ String? recordedZoneNote(AppointmentEntity a) {
       '${formatTime(a.recordStartTime)}';
 }
 
-/// Detalle de una cita con sus acciones según el estado y el rol:
-/// pagar el saldo y editar (Owner), completar y cancelar (los dos; el
-/// Employee solo ve sus citas). Lo que cambia se refleja en la agenda.
-class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
+/// Detalle de una cita (12.07): cabecera 3D con el color del primer servicio
+/// (cliente con su avatar, día, hora en 12 h y estados), servicios en
+/// píldoras con su precio, la sección de pagos del Owner (lo pagado, el
+/// saldo con su barra y el historial) y las acciones según el estado y el
+/// rol: cobrar y editar o mover (Owner), completar, recordatorio por
+/// WhatsApp y cancelar (los dos; el Employee solo ve sus citas). Lo que
+/// cambia se refleja en la agenda.
+class AppointmentDetailsDialog extends StatefulWidget {
   final AppointmentEntity appointment;
 
   const AppointmentDetailsDialog({super.key, required this.appointment});
@@ -39,47 +51,65 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
   static Future<void> show(AppointmentEntity appointment) =>
       Get.dialog<void>(AppointmentDetailsDialog(appointment: appointment));
 
+  @override
+  State<AppointmentDetailsDialog> createState() =>
+      _AppointmentDetailsDialogState();
+}
+
+class _AppointmentDetailsDialogState extends State<AppointmentDetailsDialog> {
+  AppointmentActionsController get controller =>
+      Get.find<AppointmentActionsController>();
+
   AppointmentsController get _agenda => Get.find<AppointmentsController>();
+
+  AppointmentEntity get a => widget.appointment;
+
+  late final Future<int> _inReview = controller.paymentsInReviewOf(a.id);
+  late final Future<AppointmentBalance?> _payments =
+      controller.paymentSummaryOf(a);
+
+  /// El recordatorio se acaba de enviar desde aquí.
+  bool _reminderSent = false;
 
   // --- Acciones -------------------------------------------------------------
 
-  Future<void> _complete(BuildContext context) async {
+  Future<void> _complete() async {
     final navigator = Navigator.of(context);
     final confirmed = await AppDialogs.confirm(
       title: '¿Completar la cita?',
-      message: appointment.isFullyPaid
+      message: a.isFullyPaid
           ? 'La cita quedará como atendida.'
           : 'La cita aún no está pagada del todo. Quedará como atendida y '
               'podrás registrar el pago después.',
       confirmLabel: 'Completar',
-      icon: Icons.task_alt,
+      icon: Icons.task_alt_rounded,
     );
     if (!confirmed) return;
-    final updated = await controller.complete(appointment);
+    final updated = await controller.complete(a);
     if (updated == null) return;
     navigator.pop();
     _agenda.applyChange(updated);
   }
 
-  Future<void> _cancel(BuildContext context) async {
+  Future<void> _cancel() async {
     final navigator = Navigator.of(context);
-    final reason = await CancelAppointmentDialog.show(appointment.clientName);
+    final reason = await CancelAppointmentDialog.show(a.clientName);
     if (reason == null) return;
-    final updated = await controller.cancel(appointment, reason: reason);
+    final updated = await controller.cancel(a, reason: reason);
     if (updated == null) return;
     navigator.pop();
     _agenda.applyChange(updated);
   }
 
-  Future<void> _edit(BuildContext context) async {
+  Future<void> _edit() async {
     Navigator.of(context).pop();
-    final saved = await AppointmentFormDialog.edit(appointment);
+    final saved = await AppointmentFormDialog.edit(a);
     if (saved != null) _agenda.applyChange(saved);
   }
 
-  Future<void> _pay(BuildContext context) async {
+  Future<void> _pay() async {
     final navigator = Navigator.of(context);
-    final due = await controller.balanceDue(appointment);
+    final due = await controller.balanceDue(a);
     if (due == null) return;
     navigator.pop();
     if (due <= 0) {
@@ -88,15 +118,22 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
       return;
     }
     final methods = await Get.find<PaymentController>().loadCustomMethods();
-    final paid = await PaymentDialog.show(appointment,
+    final paid = await PaymentDialog.show(a,
         balanceDue: due, customMethods: methods);
     if (paid) await _refresh();
+  }
+
+  Future<void> _sendReminder() async {
+    if (!await controller.sendReminder(a)) return;
+    if (mounted) setState(() => _reminderSent = true);
+    final fresh = await controller.fetchLatest(a.id);
+    if (fresh != null) _agenda.applyChange(fresh);
   }
 
   /// Tras un pago la cita cambia (estado de pago y, al primer pago,
   /// confirmada): se lee de nuevo; si no se puede, se recarga la agenda.
   Future<void> _refresh() async {
-    final fresh = await controller.fetchLatest(appointment.id);
+    final fresh = await controller.fetchLatest(a.id);
     fresh == null ? await _agenda.reload() : _agenda.applyChange(fresh);
   }
 
@@ -104,95 +141,46 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
 
   @override
   Widget build(BuildContext context) {
-    final a = appointment;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final statusColors = a.status.colorsOf(context);
-    final canPay = AppointmentAccess.canPay() && a.canBePaid;
+    final now = BusinessTimeZone.now();
+    final isOwner = AppointmentAccess.canPay();
+    final canPay = isOwner && a.canBePaid;
     final canEdit = AppointmentAccess.canEdit() && !a.isFinal;
     // Solo se completa una cita que ya empezó (7.03, APPOINTMENT_NOT_STARTED).
-    final hasStarted = a.canCompleteAt(BusinessTimeZone.now());
+    final hasStarted = a.canCompleteAt(now);
+    final showPayments = isOwner &&
+        !(a.isCancelled &&
+            a.paymentStatus == AppointmentPaymentStatus.PENDING);
+    final canRemind = !_reminderSent && controller.canSendReminder(a, now);
 
     return Dialog(
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: BoxConstraints(
+          maxWidth: 480,
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              color: statusColors.container,
-              padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(a.clientName,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                                color: statusColors.onContainer,
-                                fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Wrap(spacing: 8, runSpacing: 4, children: [
-                          AppointmentChip.status(context, a.status),
-                          AppointmentChip.payment(context, a.paymentStatus),
-                        ]),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Cerrar',
-                    icon: Icon(Icons.close, color: statusColors.onContainer),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
+            AppointmentDetailHeader(
+              appointment: a,
+              onClose: () => Navigator.of(context).pop(),
             ),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _InfoRow(
-                      icon: Icons.event_outlined,
-                      title: _capitalized(formatLongDate(a.startTime)),
-                      subtitle:
-                          '${formatTimeRange(a.startTime, a.endTime)} · '
-                          '${formatDurationMinutes(a.duration.inMinutes)}',
-                    ),
                     if (recordedZoneNote(a) case final note?)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 40, bottom: 4),
-                        child: Text(
-                          note,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant),
-                        ),
+                      AppNote(
+                        note,
+                        tone: AppTone.info,
+                        icon: Icons.public_rounded,
+                        margin: const EdgeInsets.only(bottom: 10),
                       ),
-                    FutureBuilder<int>(
-                      future: controller.paymentsInReviewOf(a.id),
-                      builder: (context, snapshot) {
-                        final count = snapshot.data ?? 0;
-                        if (count == 0) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: OutlinedButton.icon(
-                            key: const Key('detail-review-payments'),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              Get.toNamed(GetRoutes.paymentsReview);
-                            },
-                            icon: const Icon(Icons.flag_outlined),
-                            label: Text(
-                                '${formatCount(count, 'pago en revisión', 'pagos en revisión')}'
-                                ': revisar'),
-                          ),
-                        );
-                      },
-                    ),
+                    _reviewButton(),
                     if (a.needsReschedule)
                       AppNote(
                         '${a.rescheduleReason} Mientras tanto no ocupa la '
@@ -200,57 +188,54 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                             'propietario puede moverla.'}',
                         tone: AppTone.warning,
                         icon: Icons.report_problem_rounded,
-                        margin: const EdgeInsets.only(top: 12),
+                        margin: const EdgeInsets.only(bottom: 10),
                       ),
                     if (a.isWebBooking)
                       const _InfoRow(
-                        icon: Icons.public,
+                        icon: Icons.public_rounded,
                         title: 'Reserva web',
                         subtitle: 'El cliente la agendó desde el link público '
                             'del negocio.',
                       ),
                     if (!AppointmentAccess.professionalIsFixed())
                       _InfoRow(
-                        icon: Icons.person_outline,
                         title: 'Profesional',
                         subtitle: a.professionalName ?? 'Sin nombre',
+                        leading: AppAvatar(
+                            name: a.professionalName ?? '?', radius: 18),
                       ),
-                    const Divider(height: 24),
-                    for (var i = 0; i < a.services.length; i++)
-                      _ServiceLine(line: a.services[i], color: a.serviceColor(i)),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text('Total',
-                                style: theme.textTheme.titleMedium),
-                          ),
-                          Text(formatCop(a.totalPrice),
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
-                        ],
+                    _ServicesSection(appointment: a),
+                    if (showPayments)
+                      FutureBuilder<AppointmentBalance?>(
+                        future: _payments,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState !=
+                              ConnectionState.done) {
+                            return const AppointmentPaymentsSkeleton();
+                          }
+                          final balance = snapshot.data;
+                          return balance == null
+                              ? const SizedBox.shrink()
+                              : AppointmentPaymentsSection(balance: balance);
+                        },
                       ),
-                    ),
-                    if (a.paymentStatus == AppointmentPaymentStatus.PARTIAL)
-                      const AppNote(
-                        'Tiene un anticipo registrado; al cobrar se propone '
-                        'el saldo pendiente.',
-                        tone: AppTone.info,
-                        icon: Icons.info_outline_rounded,
-                        margin: EdgeInsets.only(top: 12),
-                      ),
-                    if (a.notes?.trim().isNotEmpty ?? false) ...[
-                      const Divider(height: 24),
+                    if (a.notes?.trim().isNotEmpty ?? false)
                       _InfoRow(
-                          icon: Icons.notes, title: 'Notas', subtitle: a.notes!),
-                    ],
+                          icon: Icons.notes_rounded,
+                          title: 'Notas',
+                          subtitle: a.notes!),
                     if (a.isCancelled &&
                         (a.cancellationReason?.trim().isNotEmpty ?? false))
                       _InfoRow(
-                        icon: Icons.event_busy_outlined,
+                        icon: Icons.event_busy_rounded,
                         title: 'Motivo de la cancelación',
                         subtitle: a.cancellationReason!,
+                      ),
+                    if (a.reminderSent || _reminderSent)
+                      const _InfoRow(
+                        icon: Icons.mark_chat_read_rounded,
+                        title: 'Recordatorio enviado',
+                        subtitle: 'Ya se le escribió al cliente por WhatsApp.',
                       ),
                     if (!a.isFinal && !a.canCancel)
                       const AppNote(
@@ -258,7 +243,7 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                         'cancelar la cita.',
                         tone: AppTone.warning,
                         icon: Icons.warning_amber_rounded,
-                        margin: EdgeInsets.only(top: 12),
+                        margin: EdgeInsets.only(top: 10),
                       ),
                     const SizedBox(height: 16),
                     Obx(() {
@@ -266,42 +251,62 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (busy) const LinearProgressIndicator(),
-                          if (canPay)
-                            FilledButton.icon(
-                              onPressed: busy ? null : () => _pay(context),
-                              icon: const Icon(Icons.payments_outlined),
-                              label: Text(a.paymentStatus ==
+                          if (busy)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 8),
+                              child: LinearProgressIndicator(),
+                            ),
+                          if (canPay) ...[
+                            AppGradientButton(
+                              icon: Icons.payments_rounded,
+                              expand: true,
+                              onPressed: busy ? null : _pay,
+                              label: a.paymentStatus ==
                                       AppointmentPaymentStatus.PARTIAL
                                   ? 'Cobrar saldo'
-                                  : 'Registrar pago'),
+                                  : 'Registrar pago',
                             ),
-                          if (a.canComplete)
+                            const SizedBox(height: 8),
+                          ],
+                          if (a.canComplete) ...[
                             OutlinedButton.icon(
-                              onPressed: busy || !hasStarted
-                                  ? null
-                                  : () => _complete(context),
-                              icon: const Icon(Icons.task_alt),
+                              onPressed:
+                                  busy || !hasStarted ? null : _complete,
+                              icon: const Icon(Icons.task_alt_rounded),
                               label: Text(hasStarted
                                   ? 'Completar'
                                   : 'Completar (cuando empiece)'),
                             ),
-                          if (canEdit)
+                            const SizedBox(height: 8),
+                          ],
+                          if (canEdit) ...[
                             OutlinedButton.icon(
-                              onPressed: busy ? null : () => _edit(context),
+                              onPressed: busy ? null : _edit,
                               icon: Icon(a.needsReschedule
-                                  ? Icons.edit_calendar
-                                  : Icons.edit_outlined),
+                                  ? Icons.edit_calendar_rounded
+                                  : Icons.edit_rounded),
                               label: Text(a.needsReschedule
                                   ? 'Mover a otra hora'
                                   : 'Editar'),
                             ),
+                            const SizedBox(height: 8),
+                          ],
+                          if (canRemind) ...[
+                            OutlinedButton.icon(
+                              key: const Key('detail-reminder'),
+                              onPressed: busy ? null : _sendReminder,
+                              icon: const WhatsappIcon(size: 20),
+                              label: const Text('Recordatorio por WhatsApp'),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           if (a.canCancel)
                             TextButton.icon(
                               style: TextButton.styleFrom(
-                                  foregroundColor: scheme.error),
-                              onPressed: busy ? null : () => _cancel(context),
-                              icon: const Icon(Icons.event_busy_outlined),
+                                  foregroundColor:
+                                      Theme.of(context).colorScheme.error),
+                              onPressed: busy ? null : _cancel,
+                              icon: const Icon(Icons.event_busy_rounded),
                               label: const Text('Cancelar cita'),
                             ),
                         ],
@@ -317,26 +322,121 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
     );
   }
 
-  static String _capitalized(String text) =>
-      text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);
+  /// "N pagos en revisión: revisar" (10.03, solo Owner).
+  Widget _reviewButton() => FutureBuilder<int>(
+        future: _inReview,
+        builder: (context, snapshot) {
+          final count = snapshot.data ?? 0;
+          if (count == 0) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: OutlinedButton.icon(
+              key: const Key('detail-review-payments'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Get.toNamed(GetRoutes.paymentsReview);
+              },
+              icon: const Icon(Icons.flag_rounded),
+              label: Text(
+                  '${formatCount(count, 'pago en revisión', 'pagos en revisión')}'
+                  ': revisar'),
+            ),
+          );
+        },
+      );
 }
 
+/// Dato del detalle: ícono (o [leading]) en una píldora tonal, título y
+/// texto.
 class _InfoRow extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final Widget? leading;
   final String title;
   final String subtitle;
 
-  const _InfoRow(
-      {required this.icon, required this.title, required this.subtitle});
+  const _InfoRow({
+    this.icon,
+    this.leading,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: scheme.onSurfaceVariant),
-      title: Text(title),
-      subtitle: Text(subtitle),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          leading ??
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: AppRadii.chipRadius,
+                ),
+                child: Icon(icon, size: 19, color: scheme.onPrimaryContainer),
+              ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: scheme.onSurfaceVariant)),
+                Text(subtitle,
+                    style: theme.textTheme.bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Servicios de la cita en píldoras con su color, duración y el precio
+/// guardado en la cita (2.29), y el total.
+class _ServicesSection extends StatelessWidget {
+  final AppointmentEntity appointment;
+
+  const _ServicesSection({required this.appointment});
+
+  @override
+  Widget build(BuildContext context) {
+    final a = appointment;
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSectionHeader(
+          icon: Icons.spa_rounded,
+          title: 'Servicios',
+          subtitle: formatCount(a.services.length, 'servicio', 'servicios'),
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
+        ),
+        for (var i = 0; i < a.services.length; i++)
+          _ServiceLine(line: a.services[i], color: a.serviceColor(i)),
+        const Divider(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: Text('Total',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+            ),
+            Text(formatCop(a.totalPrice),
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w800)
+                    .tabular),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -350,35 +450,46 @@ class _ServiceLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final current = line.currentPrice;
     final changed = current != null && (current - line.price).abs() >= 0.01;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 5, right: 10),
-            child: CircleAvatar(radius: 5, backgroundColor: color),
-          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(line.name),
-                Text(
-                  formatDurationMinutes(line.durationMinutes) +
-                      (changed ? ' · hoy cuesta ${formatCop(current)}' : ''),
-                  style:
-                      TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                AppointmentServicePill(
+                  name: line.name,
+                  color: color,
+                  foreground: scheme.onSurface,
+                  onSurface: true,
+                ),
+                const SizedBox(height: 3),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    formatDurationMinutes(line.durationMinutes) +
+                        (changed ? ' · hoy cuesta ${formatCop(current)}' : ''),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
                 ),
               ],
             ),
           ),
-          Text(formatCop(line.price)),
+          const SizedBox(width: 8),
+          Text(formatCop(line.price),
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w600)
+                  .tabular),
         ],
       ),
     );
   }
 }
+

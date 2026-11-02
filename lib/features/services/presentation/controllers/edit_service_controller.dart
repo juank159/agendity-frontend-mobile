@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/utils/cop_input_formatter.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/usecases/delete_service_usecase.dart';
@@ -30,7 +31,7 @@ class EditServiceController extends ServiceFormController {
   @override
   void onInit() {
     nameController.text = service.name;
-    priceController.text = _priceText(service.price);
+    priceController.text = CopInputFormatter.format(service.price.round());
     descriptionController.text = service.description;
     priceType.value = service.priceType;
     duration.value = Duration(minutes: service.duration);
@@ -79,7 +80,7 @@ class EditServiceController extends ServiceFormController {
       message: 'Se eliminará "${service.name}" del catálogo.',
       confirmLabel: 'Eliminar',
       destructive: true,
-      icon: Icons.delete_outline,
+      icon: Icons.delete_rounded,
     );
     if (!confirmed) return false;
 
@@ -98,9 +99,4 @@ class EditServiceController extends ServiceFormController {
       },
     );
   }
-
-  /// `45000.0` → `45000`; `45000.5` → `45000.5`.
-  static String _priceText(double price) => price == price.roundToDouble()
-      ? price.toStringAsFixed(0)
-      : price.toString();
 }

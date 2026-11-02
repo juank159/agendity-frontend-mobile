@@ -35,6 +35,7 @@ import 'package:get/get.dart' hide Response;
 import 'package:integration_test/integration_test.dart';
 import 'package:login_signup/core/config/env_config.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 
@@ -501,7 +502,7 @@ Future<void> createCategories(WidgetTester tester, Biz biz) async {
   await idle(tester, 1500);
   for (final name in biz.categories) {
     if (find.text(name).evaluate().isNotEmpty) continue;
-    final fab = find.widgetWithText(FloatingActionButton, 'Categoría');
+    final fab = find.widgetWithText(AppGradientButton, 'Categoría');
     if (fab.evaluate().isNotEmpty) {
       await tap(tester, fab, wait: 1200);
     } else {
@@ -524,7 +525,7 @@ Future<void> createServices(WidgetTester tester, Biz biz) async {
   await idle(tester, 1500);
   for (final s in biz.services) {
     if (find.text(s.name).evaluate().isNotEmpty) continue;
-    final fab = find.widgetWithText(FloatingActionButton, 'Servicio');
+    final fab = find.widgetWithText(AppGradientButton, 'Servicio');
     if (fab.evaluate().isNotEmpty) {
       await tap(tester, fab, wait: 1500);
     } else {

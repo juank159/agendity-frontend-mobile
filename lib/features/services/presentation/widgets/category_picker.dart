@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 
 /// Lista de categorías para elegir la de un servicio. Devuelve la elegida o
@@ -26,22 +27,37 @@ class CategoryPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return AlertDialog(
+      icon: const Icon(Icons.folder_rounded),
       title: const Text('Categoría del servicio'),
-      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
       content: SizedBox(
-        width: 320,
+        width: 340,
         child: ListView(
           shrinkWrap: true,
           children: [
             for (final category in categories)
-              ListTile(
-                title: Text(category.name),
-                subtitle: category.isActive ? null : const Text('Inactiva'),
-                trailing: category.id == selectedId
-                    ? Icon(Icons.check_circle, color: scheme.primary)
-                    : null,
-                selected: category.id == selectedId,
-                onTap: () => Navigator.of(context).pop(category),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: ListTile(
+                  shape: const RoundedRectangleBorder(
+                      borderRadius: AppRadii.fieldRadius),
+                  leading: Icon(
+                    category.isActive
+                        ? Icons.folder_rounded
+                        : Icons.folder_off_rounded,
+                    color: category.isActive
+                        ? scheme.primary
+                        : scheme.onSurfaceVariant,
+                  ),
+                  title: Text(category.name),
+                  subtitle: category.isActive ? null : const Text('Inactiva'),
+                  trailing: category.id == selectedId
+                      ? Icon(Icons.check_circle_rounded, color: scheme.primary)
+                      : null,
+                  selected: category.id == selectedId,
+                  selectedTileColor: scheme.primaryContainer,
+                  onTap: () => Navigator.of(context).pop(category),
+                ),
               ),
           ],
         ),

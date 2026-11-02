@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 
 /// Rueda de duraciones (de 5 en 5 minutos, hasta 6 horas; 7.04-4). Devuelve la
 /// duración elegida o `null` si se cancela.
+///
+/// La fila elegida va en negrita sobre una banda tonal (el `pickDuration` del
+/// integration_test la reconoce por la negrita).
 class DurationPicker extends StatefulWidget {
   static const stepMinutes = 5;
   static const steps = 72;
@@ -20,6 +24,8 @@ class DurationPicker extends StatefulWidget {
 }
 
 class _DurationPickerState extends State<DurationPicker> {
+  static const _itemExtent = 50.0;
+
   late int _index;
   late final FixedExtentScrollController _scroll;
 
@@ -45,35 +51,53 @@ class _DurationPickerState extends State<DurationPicker> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return AlertDialog(
+      icon: const Icon(Icons.timer_rounded),
       title: const Text('Duración'),
       content: SizedBox(
         height: 250,
         width: 280,
-        child: ListWheelScrollView.useDelegate(
-          controller: _scroll,
-          itemExtent: 50,
-          perspective: 0.006,
-          diameterRatio: 1.6,
-          physics: const FixedExtentScrollPhysics(),
-          onSelectedItemChanged: (index) => setState(() => _index = index),
-          childDelegate: ListWheelChildBuilderDelegate(
-            childCount: DurationPicker.steps,
-            builder: (context, index) {
-              final selected = index == _index;
-              return Container(
-                alignment: Alignment.center,
-                color: selected ? scheme.surfaceContainerHighest : null,
-                child: Text(
-                  formatDurationMinutes(_minutesAt(index)),
-                  style: (selected ? text.titleLarge : text.bodyLarge)
-                      ?.copyWith(
-                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                    color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
-                  ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Banda de la fila elegida.
+            IgnorePointer(
+              child: Container(
+                height: _itemExtent - 4,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: AppRadii.fieldRadius,
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+            ListWheelScrollView.useDelegate(
+              controller: _scroll,
+              itemExtent: _itemExtent,
+              perspective: 0.006,
+              diameterRatio: 1.6,
+              physics: const FixedExtentScrollPhysics(),
+              onSelectedItemChanged: (index) => setState(() => _index = index),
+              childDelegate: ListWheelChildBuilderDelegate(
+                childCount: DurationPicker.steps,
+                builder: (context, index) {
+                  final selected = index == _index;
+                  return Center(
+                    child: Text(
+                      formatDurationMinutes(_minutesAt(index)),
+                      style: (selected ? text.titleLarge : text.bodyLarge)
+                          ?.copyWith(
+                            fontWeight:
+                                selected ? FontWeight.bold : FontWeight.normal,
+                            color: selected
+                                ? scheme.onPrimaryContainer
+                                : scheme.onSurfaceVariant,
+                          )
+                          .tabular,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
       actions: [

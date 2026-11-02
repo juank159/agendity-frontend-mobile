@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/core/widgets/empty_state.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/core/widgets/loading_state.dart';
 import 'package:login_signup/features/employees/presentation/controllers/employee_form_controller.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
+import 'package:login_signup/shared/utils/color_hex.dart';
+import 'package:login_signup/shared/widgets/app_pill.dart';
 
 /// Servicios que atiende el profesional, agrupados por categoría. Cada uno
 /// usa la comisión general o una propia (0–100 %, D-16).
@@ -20,7 +23,7 @@ class EmployeeServicesSection extends StatelessWidget {
       switch (controller.catalogStatus.value) {
         case EmployeeLoadStatus.loading:
           return const SizedBox(
-              height: 120,
+              height: 160,
               child: LoadingState(message: 'Cargando servicios…'));
         case EmployeeLoadStatus.error:
           return SizedBox(
@@ -36,7 +39,7 @@ class EmployeeServicesSection extends StatelessWidget {
             return const SizedBox(
               height: 260,
               child: EmptyState(
-                icon: Icons.spa_outlined,
+                icon: Icons.spa_rounded,
                 message: 'No hay servicios',
                 subMessage: 'Crea servicios en el catálogo para asignarlos.',
               ),
@@ -61,6 +64,8 @@ class EmployeeServicesSection extends StatelessWidget {
   }
 }
 
+/// Bloque tonal de una categoría con sus servicios: cada uno se marca con
+/// su casilla (nombre, precio y duración) y, si está marcado, su comisión.
 class _CategoryCard extends StatelessWidget {
   final String category;
   final List<ServiceEntity> services;
@@ -76,36 +81,71 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(category,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            for (final service in services) ...[
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(service.name),
-                subtitle: Text(formatCop(service.price),
-                    style: TextStyle(color: scheme.onSurfaceVariant)),
-                value: selected.containsKey(service.id),
-                onChanged: (_) => controller.toggleService(service.id!),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final chosen = services.where((s) => selected.containsKey(s.id)).length;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 6),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: AppRadii.fieldRadius,
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.folder_rounded, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(category,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
               ),
-              if (selected.containsKey(service.id))
-                _CommissionEditor(
-                  serviceId: service.id!,
-                  exception: selected[service.id],
-                  controller: controller,
+              if (chosen > 0)
+                AppPill(
+                  dense: true,
+                  tabular: true,
+                  label: '$chosen de ${services.length}',
+                  colors: ToneColors(
+                    color: scheme.primary,
+                    container: scheme.primaryContainer,
+                    onContainer: scheme.onPrimaryContainer,
+                  ),
                 ),
             ],
+          ),
+          for (final service in services) ...[
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(service.name),
+              subtitle: Text(
+                  '${formatCop(service.price)} · '
+                  '${formatDurationMinutes(service.duration)}',
+                  style: TextStyle(color: scheme.onSurfaceVariant).tabular),
+              secondary: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: colorFromHex(service.color),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              value: selected.containsKey(service.id),
+              onChanged: (_) => controller.toggleService(service.id!),
+            ),
+            if (selected.containsKey(service.id))
+              _CommissionEditor(
+                serviceId: service.id!,
+                exception: selected[service.id],
+                controller: controller,
+              ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -128,8 +168,16 @@ class _CommissionEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final own = exception;
-    return Padding(
-      padding: const EdgeInsets.only(left: 16),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(40, 0, 4, 8),
+      padding: const EdgeInsets.fromLTRB(12, 0, 8, 4),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: AppRadii.chipRadius,
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -150,7 +198,7 @@ class _CommissionEditor extends StatelessWidget {
           if (own != null)
             Row(
               children: [
-                const Text('Propia'),
+                Text('Propia', style: theme.textTheme.bodyMedium),
                 Expanded(
                   child: Slider(
                     key: Key('commission-own-$serviceId'),
@@ -165,7 +213,14 @@ class _CommissionEditor extends StatelessWidget {
                 ),
                 SizedBox(
                   width: 56,
-                  child: Text(formatPercent(own), textAlign: TextAlign.end),
+                  child: Text(formatPercent(own),
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w700,
+                          )
+                          .tabular),
                 ),
               ],
             ),

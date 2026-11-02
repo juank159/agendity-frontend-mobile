@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/features/services/presentation/controllers/new_service_controller.dart';
 import 'package:login_signup/features/services/presentation/widgets/service_form.dart';
 
@@ -14,17 +15,13 @@ class NewServiceScreen extends GetView<NewServiceController> {
       body: ServiceForm(controller: controller),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Obx(() => FilledButton.icon(
-                onPressed: controller.isSaving.value ? null : controller.save,
-                icon: controller.isSaving.value
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.check),
-                label: const Text('Guardar'),
-                style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50)),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Obx(() => AppGradientButton(
+                label: 'Guardar',
+                icon: Icons.check_rounded,
+                expand: true,
+                loading: controller.isSaving.value,
+                onPressed: controller.save,
               )),
         ),
       ),

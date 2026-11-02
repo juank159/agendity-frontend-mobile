@@ -7,6 +7,7 @@ import 'package:login_signup/core/di/session_scope.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
@@ -17,6 +18,7 @@ import 'package:login_signup/features/services/domain/repositories/services_repo
 import 'package:login_signup/features/services/domain/usecases/create_category_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/create_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/delete_category_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/delete_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_all_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
@@ -27,15 +29,20 @@ import 'package:login_signup/features/services/presentation/bindings/services_bi
 import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
 import 'package:login_signup/features/services/presentation/controllers/categories_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/new_category_controller.dart';
+import 'package:login_signup/features/services/presentation/controllers/edit_service_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/new_service_controller.dart';
 import 'package:login_signup/features/services/presentation/controllers/services_controller.dart';
 import 'package:login_signup/features/services/presentation/screens/categories_screen.dart';
+import 'package:login_signup/features/services/presentation/screens/edit_service_screen.dart';
 import 'package:login_signup/features/services/presentation/screens/new_category_screen.dart';
 import 'package:login_signup/features/services/presentation/screens/new_service_screen.dart';
 import 'package:login_signup/features/services/presentation/screens/services_screen.dart';
 import 'package:login_signup/features/services/presentation/widgets/duration_picker.dart';
+import 'package:login_signup/features/services/presentation/widgets/service_card.dart';
 import 'package:login_signup/shared/utils/color_hex.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/money_field.dart';
 
 import '../../core/session/memory_token_store.dart';
 
@@ -220,9 +227,9 @@ void main() {
       await pump(tester, const ServicesScreen());
 
       expect(find.text('Manicure'), findsOneWidget);
-      expect(find.byType(FloatingActionButton), findsNothing);
-      final tile = tester.widget<ListTile>(find.ancestor(
-          of: find.text('Manicure'), matching: find.byType(ListTile)));
+      expect(find.byType(AppGradientButton), findsNothing);
+      final tile = tester.widget<AppCard>(find.ancestor(
+          of: find.text('Manicure'), matching: find.byType(AppCard)));
       expect(tile.onTap, isNull);
       // Las categorías siguen accesibles (en solo lectura).
       expect(find.byTooltip('Categorías'), findsOneWidget);
@@ -242,8 +249,10 @@ void main() {
       await pump(tester, const ServicesScreen());
 
       expect(services.allCalls, 1);
-      final dimmed = tester.widget<Opacity>(find.ancestor(
-          of: find.text('Pedicure'), matching: find.byType(Opacity)));
+      // La más cercana a la tarjeta (AppFadeIn también usa opacidad).
+      final dimmed = tester.widget<Opacity>(find
+          .ancestor(of: find.text('Pedicure'), matching: find.byType(Opacity))
+          .first);
       expect(dimmed.opacity, lessThan(1));
 
       await tester.tap(find.byKey(const Key('service-active-srv-2')));
@@ -260,11 +269,30 @@ void main() {
       putServicesController();
       await pump(tester, const ServicesScreen());
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
-      final tile = tester.widget<ListTile>(find.ancestor(
-          of: find.text('Manicure'), matching: find.byType(ListTile)));
+      expect(find.byType(AppGradientButton), findsOneWidget);
+      final tile = tester.widget<AppCard>(find.ancestor(
+          of: find.text('Manicure'), matching: find.byType(AppCard)));
       expect(tile.onTap, isNotNull);
     });
+  });
+
+  testWidgets(
+      'tarjeta de servicio: chip de color, duración, precio formateado y '
+      '"En línea"', (tester) async {
+    signInAs('Employee');
+    services.listResult = Right([
+      manicure.copyWith(
+          price: 45000, duration: 90, color: '#e91e63', onlineBooking: true),
+    ]);
+    putServicesController();
+    await pump(tester, const ServicesScreen());
+
+    expect(find.text(r'$ 45.000'), findsOneWidget);
+    expect(find.text('1 h 30 min'), findsOneWidget);
+    expect(find.text('En línea'), findsOneWidget);
+    expect(find.text('1 servicio'), findsOneWidget); // encabezado de "Uñas"
+    final chip = tester.widget<ServiceColorChip>(find.byType(ServiceColorChip));
+    expect(colorToHex(chip.color), '#e91e63');
   });
 
   group('CategoriesScreen', () {
@@ -336,7 +364,7 @@ void main() {
       expect(find.text('Uñas'), findsOneWidget);
       expect(find.byType(Switch), findsNothing);
       expect(find.byTooltip('Más acciones'), findsNothing);
-      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byType(AppGradientButton), findsNothing);
     });
 
     testWidgets('un Left muestra el error con reintento', (tester) async {
@@ -405,6 +433,62 @@ void main() {
       // Recordar mantenimiento a los 21 días (11.04).
       expect(saved.maintenanceDays, 21);
       expect(results, [true]);
+      await expireSnackbar(tester);
+    });
+
+    testWidgets(
+        'precio con MoneyField (D-24): "15000" se ve "15.000" y se guarda '
+        'como pesos enteros', (tester) async {
+      signInAs('Owner');
+      categories.listResult = const Right([nails]);
+      Get.put(NewServiceController(
+        getCategoriesUseCase: GetCategoriesUseCase(categories),
+        createServiceUseCase: CreateServiceUseCase(services),
+      ));
+      await openFrom(tester, const NewServiceScreen());
+
+      expect(find.byType(MoneyField), findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Nombre del servicio'), 'Corte');
+      await tester.enterText(find.widgetWithText(TextField, 'Precio'), '15000');
+      await tester.pump();
+      final field = tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Precio'));
+      expect(field.controller!.text, '15.000');
+      expect(find.text(r'$ '), findsOneWidget); // prefijo del campo
+      await tapText(tester, 'Guardar');
+
+      final saved = services.created.single;
+      expect(saved.price, 15000);
+      expect(saved.price, saved.price.roundToDouble()); // sin decimales (COP)
+      await expireSnackbar(tester);
+    });
+
+    testWidgets('editar: el precio guardado se ve con separador de miles',
+        (tester) async {
+      signInAs('Owner');
+      categories.listResult = const Right([nails]);
+      Get.put(EditServiceController(
+        getCategoriesUseCase: GetCategoriesUseCase(categories),
+        updateServiceUseCase: UpdateServiceUseCase(services),
+        deleteServiceUseCase: DeleteServiceUseCase(services),
+        service: manicure.copyWith(price: 1250000),
+      ));
+      await openFrom(tester, const EditServiceScreen());
+
+      final field = tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Precio'));
+      expect(field.controller!.text, '1.250.000');
+      // La vista previa de la agenda lleva el nombre del servicio.
+      expect(
+          find.descendant(
+              of: find.byWidgetPredicate((w) =>
+                  w is Semantics &&
+                  w.properties.label == 'Vista previa en la agenda'),
+              matching: find.text('Manicure')),
+          findsOneWidget);
+      await tapText(tester, 'Guardar cambios');
+      expect(services.updated.single.price, 1250000);
       await expireSnackbar(tester);
     });
 

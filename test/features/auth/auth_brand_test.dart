@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/core/config/theme_config.dart';
-import 'package:login_signup/features/auth/presentation/widgets/auth_code_field.dart';
+import 'package:login_signup/shared/widgets/app_code_field.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_layout.dart';
 import 'package:login_signup/shared/widgets/app_card.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
@@ -80,7 +80,7 @@ void main() {
         Scaffold(
           body: Padding(
             padding: const EdgeInsets.all(24),
-            child: AuthCodeField(
+            child: AppCodeField(
                 controller: code, onCompleted: (v) => completed = v),
           ),
         ));

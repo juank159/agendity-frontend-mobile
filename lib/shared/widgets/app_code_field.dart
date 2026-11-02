@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 
-/// Código de 6 dígitos enviado por email (verificación y recuperación), en
+/// Código de 6 dígitos enviado por email (verificación del Owner, recuperación
+/// de contraseña y verificación de un profesional), en
 /// seis cajas con el estilo de los campos (relleno, radio 14): la caja activa
 /// brilla con el color primario y las llenas toman el contenedor primario.
 /// Su vigencia se muestra con `CodeExpiryNotice` (shared). El [controller] lo
@@ -10,12 +11,12 @@ import 'package:pin_code_fields/pin_code_fields.dart';
 ///
 /// Sigue siendo un `PinCodeTextField` (el integration_test escribe el código
 /// en su `TextField`).
-class AuthCodeField extends StatelessWidget {
+class AppCodeField extends StatelessWidget {
   final TextEditingController controller;
   final bool enabled;
   final ValueChanged<String>? onCompleted;
 
-  const AuthCodeField({
+  const AppCodeField({
     super.key,
     required this.controller,
     this.enabled = true,

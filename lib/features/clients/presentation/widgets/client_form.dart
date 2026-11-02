@@ -3,77 +3,105 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
+import 'package:login_signup/shared/widgets/app_section_card.dart';
 import '../controllers/client_form_controller.dart';
 import 'client_image_picker.dart';
 
-/// Campos del cliente, comunes al alta y a la edición.
+/// Campos del cliente, comunes al alta y a la edición, en secciones de la
+/// guía: datos básicos, información adicional y WhatsApp. La foto va arriba
+/// salvo que la pantalla la pinte en su cabecera ([showPhoto] en `false`,
+/// la ficha).
 class ClientForm extends StatelessWidget {
   final ClientFormController controller;
+  final bool showPhoto;
 
-  const ClientForm({super.key, required this.controller});
+  const ClientForm(
+      {super.key, required this.controller, this.showPhoto = true});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ClientImagePicker(controller: controller),
-        const SizedBox(height: 24),
-        Text('Información básica', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 12),
-        _field(controller.nameController, 'Nombre *', Icons.person_outline,
-            capitalization: TextCapitalization.words),
-        _field(controller.lastnameController, 'Apellido', Icons.person_outline,
-            capitalization: TextCapitalization.words),
-        _field(
-            controller.phoneController, 'Teléfono móvil *', Icons.phone_android,
-            keyboard: TextInputType.phone),
-        _field(controller.emailController, 'Email', Icons.email_outlined,
-            keyboard: TextInputType.emailAddress),
-        _field(controller.addressController, 'Dirección', Icons.home_outlined,
-            keyboard: TextInputType.streetAddress),
-        const SizedBox(height: 12),
-        Text('Información adicional', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 12),
-        _field(controller.notesController, 'Notas del cliente',
-            Icons.note_outlined,
-            maxLines: 3),
-        Obx(() => SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              secondary: const Icon(Icons.visibility_outlined),
-              title: const Text('Mostrar notas en cada cita'),
-              value: controller.showNotes.value,
-              onChanged: (value) => controller.showNotes.value = value,
-            )),
-        Obx(() => CheckboxListTile(
-              key: const Key('client-whatsapp-opt-in'),
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: const Text('Acepta recibir recordatorios por WhatsApp'),
-              subtitle: Text(_consentStatus()),
-              value: controller.whatsappOptIn.value == true,
-              onChanged: (value) =>
-                  controller.setWhatsappOptIn(value ?? false),
-            )),
-        Obx(() {
-          final birthday = controller.birthday.value;
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.cake_outlined),
-            title: const Text('Cumpleaños'),
-            subtitle:
-                Text(birthday == null ? 'Sin fecha' : formatDate(birthday)),
-            trailing: birthday == null
-                ? const Icon(Icons.calendar_today)
-                : IconButton(
-                    icon: const Icon(Icons.clear),
-                    tooltip: 'Quitar fecha',
-                    onPressed: () => controller.birthday.value = null,
-                  ),
-            onTap: () => _pickBirthday(context),
-          );
-        }),
+        if (showPhoto) ...[
+          const SizedBox(height: 8),
+          ClientImagePicker(controller: controller),
+          const SizedBox(height: 8),
+        ],
+        AppSectionCard(
+          icon: Icons.person_rounded,
+          title: 'Información básica',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _field(controller.nameController, 'Nombre *',
+                  Icons.person_rounded,
+                  capitalization: TextCapitalization.words),
+              _field(controller.lastnameController, 'Apellido',
+                  Icons.badge_rounded,
+                  capitalization: TextCapitalization.words),
+              _field(controller.phoneController, 'Teléfono móvil *',
+                  Icons.phone_android_rounded,
+                  keyboard: TextInputType.phone),
+              _field(controller.emailController, 'Email', Icons.email_rounded,
+                  keyboard: TextInputType.emailAddress),
+              _field(controller.addressController, 'Dirección',
+                  Icons.home_rounded,
+                  keyboard: TextInputType.streetAddress, last: true),
+            ],
+          ),
+        ),
+        AppSectionCard(
+          icon: Icons.sticky_note_2_rounded,
+          title: 'Información adicional',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _field(controller.notesController, 'Notas del cliente',
+                  Icons.notes_rounded,
+                  maxLines: 3),
+              Obx(() => SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    secondary: const Icon(Icons.visibility_rounded),
+                    title: const Text('Mostrar notas en cada cita'),
+                    value: controller.showNotes.value,
+                    onChanged: (value) => controller.showNotes.value = value,
+                  )),
+              Obx(() {
+                final birthday = controller.birthday.value;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.cake_rounded),
+                  title: const Text('Cumpleaños'),
+                  subtitle: Text(
+                      birthday == null ? 'Sin fecha' : formatDate(birthday)),
+                  trailing: birthday == null
+                      ? const Icon(Icons.calendar_month_rounded)
+                      : IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          tooltip: 'Quitar fecha',
+                          onPressed: () => controller.birthday.value = null,
+                        ),
+                  onTap: () => _pickBirthday(context),
+                );
+              }),
+            ],
+          ),
+        ),
+        AppSectionCard(
+          icon: Icons.mark_chat_read_rounded,
+          title: 'Recordatorios por WhatsApp',
+          child: Obx(() => CheckboxListTile(
+                key: const Key('client-whatsapp-opt-in'),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('Acepta recibir recordatorios por WhatsApp'),
+                subtitle: Text(_consentStatus()),
+                value: controller.whatsappOptIn.value == true,
+                onChanged: (value) =>
+                    controller.setWhatsappOptIn(value ?? false),
+              )),
+        ),
       ],
     );
   }
@@ -127,9 +155,10 @@ class ClientForm extends StatelessWidget {
     TextInputType keyboard = TextInputType.text,
     TextCapitalization capitalization = TextCapitalization.sentences,
     int maxLines = 1,
+    bool last = false,
   }) =>
       Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: last ? 0 : 12),
         child: TextField(
           controller: textController,
           keyboardType: keyboard,

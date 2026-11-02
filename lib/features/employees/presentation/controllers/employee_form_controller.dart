@@ -5,6 +5,7 @@ import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 import 'package:login_signup/features/employees/domain/entities/service_assignment.dart';
+import 'package:login_signup/features/employees/domain/usecases/employee_rules.dart';
 import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
@@ -87,6 +88,13 @@ abstract class EmployeeFormController extends GetxController {
     if (clean.isEmpty) return 0;
     return double.tryParse(clean) ?? double.nan;
   }
+
+  /// Error de la comisión general para el campo (en vivo, con el mismo
+  /// texto que el use case): `null` si es un número de 0 a 100.
+  String? get generalCommissionError =>
+      EmployeeRules.isValidCommission(generalCommission.value)
+          ? null
+          : EmployeeRules.commissionInvalid;
 
   /// 12.0 → "12"; 12.5 → "12.5".
   static String percentageText(double value) =>

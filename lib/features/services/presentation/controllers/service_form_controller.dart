@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
@@ -104,16 +105,9 @@ abstract class ServiceFormController extends GetxController {
     return categories;
   }
 
-  /// Precio escrito (acepta coma decimal y separadores de miles con punto
-  /// solo si no hay decimales). `null` si no es un número.
-  double? get parsedPrice {
-    final text = priceController.text.trim().replaceAll(' ', '');
-    if (text.isEmpty) return null;
-    final normalized = text.contains(',')
-        ? text.replaceAll('.', '').replaceAll(',', '.')
-        : text;
-    return double.tryParse(normalized);
-  }
+  /// Precio escrito en pesos (D-24: el campo es un `MoneyField`, que solo
+  /// acepta cifras y muestra `15.000`). `null` si está vacío.
+  int? get parsedPrice => parseCop(priceController.text);
 
   /// Entidad con lo que hay en el formulario, o `null` si el precio no es un
   /// número (ya avisado).
@@ -131,7 +125,7 @@ abstract class ServiceFormController extends GetxController {
       id: id,
       name: nameController.text,
       description: descriptionController.text,
-      price: price,
+      price: price.toDouble(),
       priceType: priceType.value,
       duration: duration.value.inMinutes,
       categoryId: category?.id ?? '',

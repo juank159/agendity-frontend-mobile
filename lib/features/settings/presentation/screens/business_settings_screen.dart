@@ -9,15 +9,14 @@ import 'package:login_signup/features/settings/presentation/controllers/business
 import 'package:login_signup/features/settings/presentation/widgets/opening_hours_editor.dart';
 import 'package:login_signup/features/settings/presentation/widgets/time_zone_picker.dart';
 import 'package:login_signup/shared/widgets/app_card.dart';
-import 'package:login_signup/shared/widgets/app_section_header.dart';
+import 'package:login_signup/shared/widgets/app_section_card.dart';
 import 'package:login_signup/shared/widgets/business_time_zone_notice.dart';
 import 'package:login_signup/shared/widgets/palette_swatch.dart';
 
 /// "Mi negocio" (solo Owner): nombre, link público de reservas, horario de
 /// apertura, zona horaria (D-15) con la que se interpretan y muestran todas
 /// las horas del negocio, color del negocio (D-22) y acceso a los
-/// recordatorios. Cada sección es una [AppCard] con su [AppSectionHeader]
-/// (12.05).
+/// recordatorios. Cada sección es una `AppSectionCard` (12.05).
 class BusinessSettingsScreen extends GetView<BusinessSettingsController> {
   const BusinessSettingsScreen({super.key});
 
@@ -62,48 +61,12 @@ class BusinessSettingsScreen extends GetView<BusinessSettingsController> {
   }
 }
 
-/// Sección de "Mi negocio": tarjeta con profundidad y encabezado con ícono.
-class _Section extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final Widget child;
-
-  const _Section({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppSectionHeader(
-            padding: EdgeInsets.zero,
-            icon: icon,
-            title: title,
-            subtitle: subtitle,
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
 class _NameCard extends GetView<BusinessSettingsController> {
   const _NameCard();
 
   @override
   Widget build(BuildContext context) {
-    return _Section(
+    return AppSectionCard(
       icon: Icons.storefront_rounded,
       title: 'Nombre del negocio',
       subtitle: 'Lo ven tus clientes en el link de reservas.',
@@ -146,7 +109,7 @@ class _PaletteCard extends GetView<BusinessSettingsController> {
 
   @override
   Widget build(BuildContext context) {
-    return _Section(
+    return AppSectionCard(
       icon: Icons.palette_rounded,
       title: 'Color del negocio',
       subtitle: 'Lo ven tu equipo y tus clientes en el link de reservas. '
@@ -182,7 +145,7 @@ class _BookingLinkCard extends GetView<BusinessSettingsController> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = context.tokens;
-    return _Section(
+    return AppSectionCard(
       icon: Icons.link_rounded,
       title: 'Link de reservas',
       subtitle: 'Tus clientes eligen servicio, profesional y hora libre. '
@@ -319,7 +282,7 @@ class _OpeningHoursCard extends GetView<BusinessSettingsController> {
 
   @override
   Widget build(BuildContext context) {
-    return _Section(
+    return AppSectionCard(
       icon: Icons.schedule_rounded,
       title: 'Horario de apertura',
       subtitle: 'Fuera de este horario no se agendan citas (ni en la app ni '
@@ -386,7 +349,7 @@ class _TimeZoneCard extends GetView<BusinessSettingsController> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return _Section(
+    return AppSectionCard(
       icon: Icons.public_rounded,
       title: 'Zona horaria del negocio',
       subtitle: 'Las citas, los horarios, las horas libres, las estadísticas '

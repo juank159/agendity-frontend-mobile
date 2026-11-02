@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_controller.dart';
-import 'package:login_signup/features/auth/presentation/widgets/auth_code_field.dart';
+import 'package:login_signup/shared/widgets/app_code_field.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/shared/widgets/app_note.dart';
 import 'package:login_signup/shared/widgets/code_expiry_notice.dart';
@@ -28,7 +28,7 @@ class EmailVerificationView extends GetView<EmailVerificationController> {
               icon: Icons.error_outline_rounded,
               margin: const EdgeInsets.only(bottom: 16));
         }),
-        AuthCodeField(
+        AppCodeField(
           controller: controller.codeController,
           onCompleted: (_) => controller.verifyEmail(),
         ),

@@ -21,7 +21,7 @@ abstract final class EmployeeDialogs {
     final verify = await Get.dialog<bool>(
       AppDialog(
         tone: AppTone.warning,
-        icon: Icons.mark_email_unread_outlined,
+        icon: Icons.mark_email_unread_rounded,
         title: 'Falta verificar el email',
         message: reason,
         detail: 'Enviaremos un código a ${employee.email}. Al verificarlo, '
@@ -43,7 +43,7 @@ abstract final class EmployeeDialogs {
             'profesionales'
             '${employee.isEmailVerified ? '.' : ', pendiente de verificar su email.'}',
         confirmLabel: 'Restaurar',
-        icon: Icons.restore,
+        icon: Icons.restore_rounded,
       );
 
   /// Confirma activar o desactivar.
@@ -57,7 +57,7 @@ abstract final class EmployeeDialogs {
               'nuevas. Sus citas actuales se conservan.',
       confirmLabel: activate ? 'Activar' : 'Desactivar',
       destructive: !activate,
-      icon: activate ? Icons.person : Icons.person_off,
+      icon: activate ? Icons.person_rounded : Icons.person_off_rounded,
     );
   }
 }
@@ -100,7 +100,7 @@ class _DeleteEmployeeDialogState extends State<_DeleteEmployeeDialog> {
                     color: colors.container,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.delete_outline,
+                  child: Icon(Icons.delete_rounded,
                       color: colors.color, size: 40),
                 ),
               ),
@@ -129,6 +129,7 @@ class _DeleteEmployeeDialogState extends State<_DeleteEmployeeDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Motivo (opcional)',
                   hintText: 'Ej.: renuncia, fin de contrato…',
+                  prefixIcon: Icon(Icons.notes_rounded),
                 ),
               ),
               const SizedBox(height: 16),

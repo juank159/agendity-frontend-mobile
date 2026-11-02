@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/shared/utils/color_hex.dart';
 
 /// Colores que el Owner puede dar a un servicio en la agenda. Son datos del
@@ -18,8 +19,11 @@ const List<Color> servicePalette = [
   Color(0xFFE91E63),
 ];
 
-/// Selector del color de un servicio. Si el color actual no está en la
-/// paleta (servicios antiguos), se muestra al principio para no perderlo.
+/// Selector del color de un servicio: muestras redondas con el degradado de
+/// cada color; la elegida lleva un anillo del color primario y la marca. Si
+/// el color actual no está en la paleta (servicios antiguos), se muestra al
+/// principio para no perderlo. Cada muestra tiene la clave
+/// `service-color-<hex>` (la usan los integration_test).
 class ServiceColorPicker extends StatelessWidget {
   final Color selected;
   final ValueChanged<Color> onChanged;
@@ -33,40 +37,62 @@ class ServiceColorPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
     final selectedHex = colorToHex(selected);
     final colors = [
       if (!servicePalette.any((c) => colorToHex(c) == selectedHex)) selected,
       ...servicePalette,
     ];
+    final duration = AppMotion.of(context);
     return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+      spacing: 10,
+      runSpacing: 10,
       children: [
         for (final color in colors)
-          Semantics(
-            button: true,
-            selected: colorToHex(color) == selectedHex,
-            label: 'Color ${colorToHex(color)}',
-            child: InkWell(
-              key: ValueKey('service-color-${colorToHex(color)}'),
-              customBorder: const CircleBorder(),
-              onTap: () => onChanged(color),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: colorToHex(color) == selectedHex
-                      ? Border.all(color: scheme.onSurface, width: 3)
-                      : null,
+          Builder(builder: (context) {
+            final hex = colorToHex(color);
+            final isSelected = hex == selectedHex;
+            return Semantics(
+              button: true,
+              selected: isSelected,
+              label: 'Color $hex',
+              child: InkWell(
+                key: ValueKey('service-color-$hex'),
+                customBorder: const CircleBorder(),
+                onTap: () => onChanged(color),
+                child: AnimatedContainer(
+                  duration: duration,
+                  curve: AppMotion.curve,
+                  width: 44,
+                  height: 44,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected
+                          ? scheme.primary
+                          : scheme.surface.withValues(alpha: 0),
+                      width: 2.5,
+                    ),
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: tokens.gradientOf(color),
+                      border: Border.all(color: tokens.innerBorder),
+                      boxShadow: isSelected
+                          ? tokens.elevation2(tint: color)
+                          : tokens.elevation1(tint: color),
+                    ),
+                    child: isSelected
+                        ? Icon(Icons.check_rounded,
+                            color: contrastOn(color), size: 20)
+                        : null,
+                  ),
                 ),
-                child: colorToHex(color) == selectedHex
-                    ? Icon(Icons.check, color: contrastOn(color), size: 20)
-                    : null,
               ),
-            ),
-          ),
+            );
+          }),
       ],
     );
   }

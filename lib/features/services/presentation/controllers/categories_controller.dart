@@ -111,7 +111,7 @@ class CategoriesController extends GetxController {
           : 'Se ocultarán también los servicios de "${category.name}".',
       confirmLabel: active ? 'Activar' : 'Desactivar',
       destructive: !active,
-      icon: active ? Icons.check_circle_outline : Icons.visibility_off_outlined,
+      icon: active ? Icons.check_circle_rounded : Icons.visibility_off_rounded,
     );
     if (!confirmed) return;
 
@@ -144,6 +144,7 @@ class CategoriesController extends GetxController {
           'deshacer.',
       confirmLabel: 'Eliminar',
       destructive: true,
+      icon: Icons.delete_rounded,
     );
     if (!confirmed) return;
 

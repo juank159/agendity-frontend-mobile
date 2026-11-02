@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/features/services/presentation/controllers/edit_service_controller.dart';
 import 'package:login_signup/features/services/presentation/widgets/service_form.dart';
 
@@ -16,29 +17,25 @@ class EditServiceScreen extends GetView<EditServiceController> {
         actions: [
           Obx(() => IconButton(
                 tooltip: 'Eliminar servicio',
-                icon: Icon(Icons.delete_outline, color: scheme.error),
-                onPressed: controller.isDeleting.value || controller.isSaving.value
-                    ? null
-                    : controller.delete,
+                icon: Icon(Icons.delete_rounded, color: scheme.error),
+                onPressed:
+                    controller.isDeleting.value || controller.isSaving.value
+                        ? null
+                        : controller.delete,
               )),
         ],
       ),
       body: ServiceForm(controller: controller),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Obx(() => FilledButton.icon(
-                onPressed: controller.isSaving.value || controller.isDeleting.value
-                    ? null
-                    : controller.save,
-                icon: controller.isSaving.value
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.check),
-                label: const Text('Guardar cambios'),
-                style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50)),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Obx(() => AppGradientButton(
+                label: 'Guardar cambios',
+                icon: Icons.check_rounded,
+                expand: true,
+                loading: controller.isSaving.value,
+                onPressed:
+                    controller.isDeleting.value ? null : controller.save,
               )),
         ),
       ),

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/widgets/app_fade_in.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
+import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/app_pill.dart';
 import '../controllers/categories_controller.dart';
 
 enum _CategoryAction { edit, delete }
@@ -24,23 +28,26 @@ class CategoriesScreen extends GetView<CategoriesController> {
           items: controller.categories.toList(),
           onRetry: controller.loadCategories,
           loadingMessage: 'Cargando categorías…',
-          emptyIcon: Icons.folder_outlined,
+          emptyIcon: Icons.folder_copy_rounded,
           emptyMessage: 'No hay categorías',
           emptySubMessage: canManage
               ? 'Agrupa tus servicios en categorías (p. ej. Uñas, Cejas).'
               : null,
           emptyActionLabel: canManage ? 'Crear categoría' : null,
-          emptyActionIcon: Icons.add,
+          emptyActionIcon: Icons.add_rounded,
           onEmptyAction: canManage ? controller.openNewCategory : null,
           builder: (context, categories) => RefreshIndicator(
             onRefresh: controller.loadCategories,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 104),
               itemCount: categories.length,
-              itemBuilder: (context, index) => _CategoryTile(
-                category: categories[index],
-                canManage: canManage,
+              itemBuilder: (context, index) => AppFadeIn(
+                index: index,
+                child: _CategoryTile(
+                  category: categories[index],
+                  canManage: canManage,
+                ),
               ),
             ),
           ),
@@ -48,10 +55,10 @@ class CategoriesScreen extends GetView<CategoriesController> {
       }),
       floatingActionButton: Obx(() =>
           controller.canManage && controller.categories.isNotEmpty
-              ? FloatingActionButton.extended(
+              ? AppGradientButton.fab(
+                  label: 'Categoría',
+                  tooltip: 'Agregar categoría',
                   onPressed: controller.openNewCategory,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Categoría'),
                 )
               : const SizedBox.shrink()),
     );
@@ -66,34 +73,74 @@ class _CategoryTile extends GetView<CategoriesController> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final tokens = context.tokens;
     final count = category.serviceCount;
-    final details = [
-      if (category.description.isNotEmpty) category.description,
-      if (count != null) count == 1 ? '1 servicio' : '$count servicios',
-      if (!category.isActive) 'Inactiva',
-    ];
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor:
-              category.isActive ? scheme.primary : tokens.warning.container,
-          foregroundColor:
-              category.isActive ? scheme.onPrimary : tokens.warning.onContainer,
-          child: Text(category.name.isEmpty
-              ? '?'
-              : category.name.substring(0, 1).toUpperCase()),
-        ),
-        title: Text(category.name,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: details.isEmpty
-            ? null
-            : Text(details.join(' · '),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
-        onTap: canManage ? () => controller.editCategory(category) : null,
-        trailing: canManage ? _actions(scheme) : null,
+    final active = category.isActive;
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+      depth: 1,
+      onTap: canManage ? () => controller.editCategory(category) : null,
+      semanticLabel: canManage ? 'Editar ${category.name}' : null,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: active ? tokens.primaryGradient : null,
+              color: active ? null : scheme.surfaceContainerHighest,
+              borderRadius: AppRadii.fieldRadius,
+              border: Border.all(color: tokens.innerBorder),
+            ),
+            child: Icon(Icons.folder_rounded,
+                color: active ? tokens.onGradient : scheme.onSurfaceVariant),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(category.name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700, color: scheme.onSurface)),
+                if (category.description.isNotEmpty)
+                  Text(category.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                if (count != null || !active) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (count != null)
+                        AppPill(
+                          dense: true,
+                          tabular: true,
+                          icon: Icons.spa_rounded,
+                          label:
+                              count == 1 ? '1 servicio' : '$count servicios',
+                        ),
+                      if (!active)
+                        AppPill(
+                          dense: true,
+                          icon: Icons.visibility_off_rounded,
+                          label: 'Inactiva',
+                          colors: tokens.warning,
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (canManage) _actions(scheme),
+        ],
       ),
     );
   }
@@ -110,6 +157,7 @@ class _CategoryTile extends GetView<CategoriesController> {
             )),
         PopupMenuButton<_CategoryAction>(
           tooltip: 'Más acciones',
+          icon: const Icon(Icons.more_vert_rounded),
           onSelected: (action) {
             switch (action) {
               case _CategoryAction.edit:
@@ -122,7 +170,7 @@ class _CategoryTile extends GetView<CategoriesController> {
             const PopupMenuItem(
               value: _CategoryAction.edit,
               child: ListTile(
-                leading: Icon(Icons.edit_outlined),
+                leading: Icon(Icons.edit_rounded),
                 title: Text('Editar'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -130,7 +178,7 @@ class _CategoryTile extends GetView<CategoriesController> {
             PopupMenuItem(
               value: _CategoryAction.delete,
               child: ListTile(
-                leading: Icon(Icons.delete_outline, color: scheme.error),
+                leading: Icon(Icons.delete_rounded, color: scheme.error),
                 title: Text('Eliminar', style: TextStyle(color: scheme.error)),
                 contentPadding: EdgeInsets.zero,
               ),

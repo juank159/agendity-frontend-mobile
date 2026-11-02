@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/features/services/presentation/controllers/new_category_controller.dart';
+import 'package:login_signup/shared/widgets/app_note.dart';
+import 'package:login_signup/shared/widgets/app_section_card.dart';
 
 /// Alta de una categoría de servicios (solo Owner).
 class NewCategoryScreen extends GetView<NewCategoryController> {
@@ -9,64 +12,57 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
 
   @override
   Widget build(BuildContext context) {
-    final info = context.tokens.info;
     return Scaffold(
       appBar: AppBar(title: const Text('Nueva categoría')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.only(top: 8, bottom: 24),
           children: [
-            Card(
-              color: info.container,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, color: info.onContainer),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Las categorías agrupan tus servicios (p. ej. Uñas, '
-                        'Cejas, Cortes) y ordenan el catálogo.',
-                        style: TextStyle(color: info.onContainer),
-                      ),
+            const AppNote(
+              'Las categorías agrupan tus servicios (p. ej. Uñas, Cejas, '
+              'Cortes) y ordenan el catálogo.',
+              tone: AppTone.info,
+              icon: Icons.lightbulb_rounded,
+              margin: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            ),
+            AppSectionCard(
+              icon: Icons.folder_rounded,
+              title: 'Datos de la categoría',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: controller.nameController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre de la categoría',
+                      hintText: 'Ejemplo: Spa de uñas, Barbería…',
+                      prefixIcon: Icon(Icons.label_rounded),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller.descriptionController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Descripción (opcional)',
+                      hintText: 'Qué servicios incluye esta categoría',
+                      prefixIcon: Icon(Icons.notes_rounded),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: controller.nameController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Nombre de la categoría',
-                hintText: 'Ejemplo: Spa de uñas, Barbería…',
-                prefixIcon: Icon(Icons.folder_outlined),
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              child: Obx(() => AppGradientButton(
+                    label: 'Crear categoría',
+                    icon: Icons.add_rounded,
+                    expand: true,
+                    loading: controller.isSaving.value,
+                    onPressed: controller.save,
+                  )),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller.descriptionController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Descripción (opcional)',
-                hintText: 'Qué servicios incluye esta categoría',
-              ),
-            ),
-            const SizedBox(height: 32),
-            Obx(() => FilledButton.icon(
-                  onPressed: controller.isSaving.value ? null : controller.save,
-                  icon: controller.isSaving.value
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.add),
-                  label: const Text('Crear categoría'),
-                  style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50)),
-                )),
           ],
         ),
       ),

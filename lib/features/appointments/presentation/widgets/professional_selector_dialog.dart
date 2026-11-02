@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/widgets/empty_state.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
-import 'package:login_signup/features/employees/presentation/widgets/employee_avatar.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
 
 /// Elige el profesional de una cita entre los que se pueden agendar
 /// (activos y sin baja). Devuelve el elegido o `null` si se cierra.
@@ -84,8 +84,10 @@ class _ProfessionalSelectorDialogState
                           final employee = filtered[index];
                           final selected = employee.id == widget.selectedId;
                           return ListTile(
-                            leading:
-                                EmployeeAvatar(employee: employee, radius: 20),
+                            leading: AppAvatar(
+                                name: employee.fullName,
+                                imageUrl: employee.image,
+                                radius: 20),
                             title: Text(employee.fullName),
                             selected: selected,
                             trailing: selected

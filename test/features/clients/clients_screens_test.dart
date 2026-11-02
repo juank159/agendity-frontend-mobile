@@ -33,6 +33,10 @@ import 'package:login_signup/features/clients/presentation/screens/clients_scree
 import 'package:login_signup/features/clients/presentation/screens/edit_client_screen.dart';
 import 'package:login_signup/features/clients/presentation/screens/new_client_screen.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
+import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/app_search_field.dart';
+import 'package:login_signup/shared/widgets/app_sheet.dart';
 
 import '../../core/session/memory_token_store.dart';
 
@@ -323,6 +327,89 @@ void main() {
       expect(repo.created, isEmpty);
       expect(find.text('Revisa los datos'), findsOneWidget);
       await expireSnackbar(tester);
+    });
+  });
+
+  group('Rediseño (12.06)', () {
+    testWidgets(
+        'tarjeta: AppAvatar con iniciales, teléfono formateado y la marca de '
+        'WhatsApp si aceptó', (tester) async {
+      signInAs('Employee');
+      repo.pageResult = Right(page([
+        ana,
+        const ClientEntity(
+            id: 'c2',
+            name: 'Bea',
+            lastname: 'Ruiz',
+            phone: '3109998888',
+            whatsappOptIn: true),
+      ]));
+      putListController();
+      await pump(tester, const ClientsScreen());
+
+      final avatar = tester.widget<AppAvatar>(find.descendant(
+          of: find.ancestor(
+              of: find.text('Ana Pérez'), matching: find.byType(AppCard)),
+          matching: find.byType(AppAvatar)));
+      expect(avatar.name, 'Ana Pérez');
+      expect(find.text('AP'), findsOneWidget);
+      expect(find.text('BR'), findsOneWidget);
+      expect(find.textContaining('300 123 4567'), findsOneWidget);
+      expect(find.byTooltip('Acepta recordatorios por WhatsApp'),
+          findsOneWidget);
+      expect(find.text('2 clientes'), findsOneWidget);
+    });
+
+    testWidgets('buscar: el botón de borrar aparece con texto y vacía la '
+        'búsqueda', (tester) async {
+      signInAs('Owner');
+      final c = putListController();
+      await pump(tester, const ClientsScreen());
+
+      expect(find.byTooltip('Borrar búsqueda'), findsNothing);
+      await tester.enterText(find.byType(AppSearchField), 'ana');
+      await tester.pump();
+      expect(c.searchQuery.value, 'ana');
+      await tester.tap(find.byTooltip('Borrar búsqueda'));
+      await tester.pump();
+      expect(c.searchQuery.value, isEmpty);
+      expect(c.searchController.text, isEmpty);
+      expect(find.byTooltip('Borrar búsqueda'), findsNothing);
+      await tester.pumpAndSettle(const Duration(seconds: 1));
+    });
+
+    testWidgets('filtros en una AppSheet y el punto en el botón',
+        (tester) async {
+      signInAs('Owner');
+      final c = putListController();
+      await pump(tester, const ClientsScreen());
+
+      Badge badge() => tester.widget<Badge>(find.ancestor(
+          of: find.byTooltip('Filtros'), matching: find.byType(Badge)));
+      expect(badge().isLabelVisible, isFalse);
+      await tester.tap(find.byTooltip('Filtros'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppSheet), findsOneWidget);
+      expect(find.text('Filtrar clientes'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('filter-without-consent')));
+      await tester.pumpAndSettle();
+      expect(c.withoutConsent.value, isTrue);
+      expect(badge().isLabelVisible, isTrue);
+    });
+
+    testWidgets('ficha: cabecera con nombre y teléfono, y foto con AppAvatar',
+        (tester) async {
+      signInAs('Owner');
+      putEditController();
+      await pump(tester, const EditClientScreen());
+
+      expect(find.text('Ana Pérez'), findsOneWidget);
+      expect(find.text('300 123 4567'), findsOneWidget);
+      expect(find.byType(AppAvatar), findsOneWidget);
+      expect(find.bySemanticsLabel('Agregar foto'), findsOneWidget);
+      // Secciones del formulario.
+      expect(find.text('Información básica'), findsOneWidget);
+      expect(find.text('Recordatorios por WhatsApp'), findsOneWidget);
     });
   });
 

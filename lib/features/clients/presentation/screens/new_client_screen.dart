@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import '../controllers/new_client_controller.dart';
 import '../widgets/client_form.dart';
 
@@ -14,24 +15,23 @@ class NewClientScreen extends GetView<NewClientController> {
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.only(top: 8, bottom: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ClientForm(controller: controller),
-              const SizedBox(height: 16),
-              Obx(() => FilledButton.icon(
-                    onPressed: controller.isSaving.value ||
-                            controller.isUploadingImage.value
-                        ? null
-                        : controller.submit,
-                    icon: controller.isSaving.value
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.save),
-                    label: const Text('Guardar cliente'),
-                  )),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Obx(() => AppGradientButton(
+                      label: 'Guardar cliente',
+                      icon: Icons.check_rounded,
+                      expand: true,
+                      loading: controller.isSaving.value,
+                      onPressed: controller.isUploadingImage.value
+                          ? null
+                          : controller.submit,
+                    )),
+              ),
             ],
           ),
         ),

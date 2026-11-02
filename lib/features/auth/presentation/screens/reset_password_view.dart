@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/reset_password_controller.dart';
-import 'package:login_signup/features/auth/presentation/widgets/auth_code_field.dart';
+import 'package:login_signup/shared/widgets/app_code_field.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/shared/widgets/app_note.dart';
 import 'package:login_signup/shared/widgets/code_expiry_notice.dart';
@@ -22,7 +22,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
       logoHeight: 64,
       onBack: () => Get.back(),
       children: [
-        Obx(() => AuthCodeField(
+        Obx(() => AppCodeField(
               controller: controller.codeController,
               enabled: !controller.isLoading.value,
             )),

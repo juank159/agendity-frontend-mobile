@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+import 'package:login_signup/shared/widgets/app_pill.dart';
+import 'package:login_signup/shared/widgets/status_chip.dart';
 
 /// Texto, tono e icono de `EmployeeStatus` (la entidad no conoce Flutter).
 /// Los colores salen de `AppTokens` (modo oscuro incluido).
@@ -32,81 +34,50 @@ extension EmployeeStatusUi on EmployeeStatus {
       };
 
   IconData get icon => switch (this) {
-        EmployeeStatus.active => Icons.check_circle,
-        EmployeeStatus.pendingVerification => Icons.mark_email_unread_outlined,
-        EmployeeStatus.inactive => Icons.pause_circle,
-        EmployeeStatus.deleted => Icons.delete_forever,
+        EmployeeStatus.active => Icons.check_circle_rounded,
+        EmployeeStatus.pendingVerification => Icons.mark_email_unread_rounded,
+        EmployeeStatus.inactive => Icons.pause_circle_rounded,
+        EmployeeStatus.deleted => Icons.delete_forever_rounded,
       };
 
   ToneColors colorsOf(BuildContext context) => context.tokens.tone(tone);
 }
 
-/// Chip con el estado de un profesional.
+/// Chip con el estado de un profesional (el `StatusChip` de la guía con el
+/// tono, el ícono y el texto del estado).
 class EmployeeStatusChip extends StatelessWidget {
   final EmployeeStatus status;
+  final bool dense;
 
-  const EmployeeStatusChip({super.key, required this.status});
+  const EmployeeStatusChip(
+      {super.key, required this.status, this.dense = false});
 
   @override
-  Widget build(BuildContext context) {
-    final colors = status.colorsOf(context);
-    return Semantics(
-      label: 'Estado: ${status.label}',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: colors.container,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: colors.color.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(status.icon, size: 14, color: colors.color),
-            const SizedBox(width: 4),
-            Text(
-              status.label,
-              style: TextStyle(
-                color: colors.onContainer,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => StatusChip(
+        label: status.label,
+        icon: status.icon,
+        colors: status.colorsOf(context),
+        dense: dense,
+      );
 }
 
-/// Chip de "Propietario" para el Owner en la lista de profesionales.
+/// Píldora de "Propietario" para el Owner en la lista de profesionales.
 class OwnerChip extends StatelessWidget {
-  const OwnerChip({super.key});
+  final bool dense;
+
+  const OwnerChip({super.key, this.dense = false});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: scheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.business_center,
-              size: 14, color: scheme.onTertiaryContainer),
-          const SizedBox(width: 4),
-          Text(
-            'Propietario',
-            style: TextStyle(
-              color: scheme.onTertiaryContainer,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
+    return AppPill(
+      label: 'Propietario',
+      icon: Icons.workspace_premium_rounded,
+      dense: dense,
+      colors: ToneColors(
+        color: scheme.tertiary,
+        container: scheme.tertiaryContainer,
+        onContainer: scheme.onTertiaryContainer,
       ),
     );
   }

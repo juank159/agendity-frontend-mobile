@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
 import 'package:login_signup/common/enums/appointment_status_enum.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/shared/widgets/app_pill.dart';
 
-/// Chip de estado de la guía (§3): color de estado, ícono y texto, radio 12.
+/// Chip de estado de la guía (§3): color de estado, ícono y texto, radio 12
+/// (la píldora es `AppPill`; aquí, los colores y la semántica "Estado: …").
 /// Los colores salen de `AppTokens` (no cambian con la paleta).
 ///
 /// Textos e íconos **canónicos** de los estados de cita y de pago: los usan
@@ -92,36 +94,14 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _colors(context.tokens);
-    final chipIcon = icon;
     return Semantics(
       label: 'Estado: $label',
       excludeSemantics: true,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-            horizontal: dense ? 8 : 10, vertical: dense ? 2 : 4),
-        decoration: BoxDecoration(
-          color: colors.container,
-          borderRadius: AppRadii.chipRadius,
-          border: Border.all(color: colors.color.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (chipIcon != null) ...[
-              Icon(chipIcon, size: dense ? 12 : 14, color: colors.color),
-              SizedBox(width: dense ? 3 : 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                color: colors.onContainer,
-                fontSize: dense ? 11 : 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+      child: AppPill(
+        label: label,
+        icon: icon,
+        colors: _colors(context.tokens),
+        dense: dense,
       ),
     );
   }

@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/config/utils/string_utils.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
+import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/whatsapp_icon.dart';
 
-/// Un cliente de la lista.
+/// Un cliente de la lista: avatar (foto o iniciales sobre el degradado),
+/// nombre, teléfono y email, y la marca de WhatsApp si aceptó los
+/// recordatorios.
 class ClientCard extends StatelessWidget {
   final ClientEntity client;
   final VoidCallback onTap;
@@ -11,31 +17,52 @@ class ClientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final image = client.image;
-    final hasImage = image != null && image.isNotEmpty;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: onTap,
-        leading: CircleAvatar(
-          backgroundColor: scheme.primaryContainer,
-          foregroundColor: scheme.onPrimaryContainer,
-          backgroundImage: hasImage ? NetworkImage(image) : null,
-          onBackgroundImageError: hasImage ? (_, __) {} : null,
-          child: hasImage ? null : Text(StringUtils.getInitials(client.name)),
-        ),
-        title:
-            Text(client.fullName, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          [
-            StringUtils.formatPhoneNumber(client.phone),
-            if (client.hasEmail) client.email!,
-          ].join(' · '),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: const Icon(Icons.chevron_right),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tokens = context.tokens;
+    final contact = [
+      StringUtils.formatPhoneNumber(client.phone),
+      if (client.hasEmail) client.email!,
+    ].where((part) => part.isNotEmpty).join(' · ');
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+      depth: 1,
+      onTap: onTap,
+      semanticLabel: 'Abrir ficha de ${client.fullName}',
+      child: Row(
+        children: [
+          AppAvatar(name: client.fullName, imageUrl: client.image, radius: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(client.fullName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700, color: scheme.onSurface)),
+                if (contact.isNotEmpty)
+                  Text(contact,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)
+                          .tabular),
+              ],
+            ),
+          ),
+          if (client.hasWhatsappConsent)
+            Tooltip(
+              message: 'Acepta recordatorios por WhatsApp',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: WhatsappIcon(color: tokens.success.color, size: 18),
+              ),
+            ),
+          Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+        ],
       ),
     );
   }

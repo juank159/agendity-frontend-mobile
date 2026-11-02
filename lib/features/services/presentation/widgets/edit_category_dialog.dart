@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
 
 /// Diálogo para renombrar una categoría. Guardar lo hace [onSave] (el
@@ -59,6 +60,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      icon: const Icon(Icons.edit_rounded),
       title: const Text('Editar categoría'),
       content: SizedBox(
         width: 360,
@@ -71,7 +73,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
                 labelText: 'Nombre de la categoría',
-                prefixIcon: Icon(Icons.folder_outlined),
+                prefixIcon: Icon(Icons.label_rounded),
               ),
             ),
             const SizedBox(height: 16),
@@ -80,6 +82,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
               maxLines: 3,
               decoration: const InputDecoration(
                 labelText: 'Descripción (opcional)',
+                prefixIcon: Icon(Icons.notes_rounded),
               ),
             ),
           ],
@@ -90,13 +93,11 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: _saving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Guardar'),
+        AppGradientButton(
+          label: 'Guardar',
+          icon: Icons.check_rounded,
+          loading: _saving,
+          onPressed: _save,
         ),
       ],
     );

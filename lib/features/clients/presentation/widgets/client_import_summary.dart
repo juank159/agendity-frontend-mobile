@@ -25,7 +25,7 @@ Future<void> showClientImportSummary(ClientImportResult result) {
     message: _message(result),
     detail: lines.isEmpty ? null : lines.join('\n'),
     tone: complete ? AppTone.success : AppTone.warning,
-    icon: complete ? Icons.check_circle_outline : Icons.info_outline,
+    icon: complete ? Icons.check_circle_rounded : Icons.info_rounded,
   );
 }
 

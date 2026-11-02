@@ -164,7 +164,7 @@ class ServicesController extends GetxController {
         message: 'Cada servicio pertenece a una categoría. '
             '¿Quieres ir a crear una?',
         confirmLabel: 'Ir a categorías',
-        icon: Icons.folder_outlined,
+        icon: Icons.folder_rounded,
       );
       if (goToCategories) await openCategories();
       return;

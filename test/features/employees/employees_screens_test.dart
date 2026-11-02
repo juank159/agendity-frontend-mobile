@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/routes/routes.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_restoration.dart';
@@ -14,6 +16,7 @@ import 'package:login_signup/features/employees/domain/failures/employee_failure
 import 'package:login_signup/features/employees/domain/repositories/employees_repository.dart';
 import 'package:login_signup/features/employees/domain/usecases/create_employee_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/delete_employee_usecase.dart';
+import 'package:login_signup/features/employees/domain/usecases/employee_rules.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_deleted_employees_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employee_by_id_usecase.dart';
 import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
@@ -35,6 +38,7 @@ import 'package:login_signup/features/employees/presentation/screens/verify_empl
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
+import 'package:login_signup/shared/widgets/app_avatar.dart';
 
 /// Repositorio falso con estado: pantallas, controllers y use cases son los
 /// reales.
@@ -201,6 +205,7 @@ const ana = EmployeeEntity(
     's1': ServiceAssignment(
         serviceId: 's1', serviceName: 'Corte', commissionPercentage: 10),
   },
+  schedule: {'monday': WorkHours(start: '09:00', end: '13:30')},
 );
 const luis = EmployeeEntity(
   id: 'e2',
@@ -600,6 +605,89 @@ void main() {
       await tapText(tester, 'Guardar cambios');
       expect(repo.updated.single.services['s1']!.commissionPercentage, isNull);
       await expireSnackbar(tester);
+    });
+  });
+
+  group('Rediseño (12.06)', () {
+    testWidgets('la comisión general se valida en vivo (0 a 100 %)',
+        (tester) async {
+      await pumpList(tester);
+      await tester.tap(find.byTooltip('Agregar profesional'));
+      await tester.pumpAndSettle();
+      final field = find.widgetWithText(TextField, 'Comisión general (%)');
+
+      // Sufijo "%" en el campo.
+      expect(tester.widget<TextField>(field).decoration!.suffixText, '%');
+
+      await tester.enterText(field, '150');
+      await tester.pump();
+      expect(find.text(EmployeeRules.commissionInvalid), findsOneWidget);
+
+      // Letras: el campo no las acepta (solo cifras, punto y coma).
+      await tester.enterText(field, '3a');
+      await tester.pump();
+      expect(tester.widget<TextField>(field).controller!.text, '3');
+      expect(find.text(EmployeeRules.commissionInvalid), findsNothing);
+
+      // Dos separadores = no es un número.
+      await tester.enterText(field, '1,5,');
+      await tester.pump();
+      expect(find.text(EmployeeRules.commissionInvalid), findsOneWidget);
+
+      await tester.enterText(field, '12,5');
+      await tester.pump();
+      expect(find.text(EmployeeRules.commissionInvalid), findsNothing);
+    });
+
+    testWidgets('avatares con AppAvatar: iniciales y apagado si no está activo',
+        (tester) async {
+      await pumpList(tester);
+
+      AppAvatar avatarOf(EmployeeEntity e) => tester.widget<AppAvatar>(
+          find.descendant(
+              of: find.ancestor(
+                  of: find.text(e.fullName), matching: find.byType(Card)),
+              matching: find.byType(AppAvatar)));
+      expect(avatarOf(ana).name, 'Ana Pérez');
+      expect(avatarOf(ana).muted, isFalse);
+      expect(avatarOf(marta).muted, isTrue);
+      expect(avatarOf(luis).muted, isTrue);
+      expect(find.text('AP'), findsOneWidget);
+    });
+
+    testWidgets('el horario del detalle se ve en 12 h', (tester) async {
+      await pumpList(tester);
+      await tester.tap(find.text('Ana Pérez'));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('${formatHhmm('09:00')} – ${formatHhmm('13:30')}'),
+          findsOneWidget);
+      expect(find.textContaining('13:30'), findsNothing); // nada en 24 h
+    });
+
+    testWidgets('el horario del formulario: día con interruptor y 12 h',
+        (tester) async {
+      await pumpList(tester);
+      await tester.tap(find.byTooltip('Agregar profesional'));
+      await tester.pumpAndSettle();
+
+      // Alta: lunes a viernes de 9 a 18 y el sábado libre.
+      final saturday = find.widgetWithText(SwitchListTile, 'Sábado');
+      expect(tester.widget<SwitchListTile>(saturday).value, isFalse);
+      expect(
+          find.descendant(of: saturday, matching: find.text('Libre')),
+          findsOneWidget);
+      expect(find.text('Inicio: ${formatHhmm('09:00')}'), findsNWidgets(5));
+      expect(find.text('Fin: ${formatHhmm('18:00')}'), findsNWidgets(5));
+
+      await tester.ensureVisible(saturday);
+      await tester.tap(saturday);
+      await tester.pumpAndSettle();
+      expect(
+          find.descendant(of: saturday, matching: find.text('Trabaja')),
+          findsOneWidget);
+      expect(find.text('Inicio: ${formatHhmm('09:00')}'), findsNWidgets(6));
     });
   });
 

@@ -13,6 +13,7 @@ import 'package:get/get.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/commissions_controller.dart';
 import 'package:login_signup/shared/controllers/sync_controller.dart';
@@ -217,7 +218,7 @@ void main() {
           allText().contains('20 min'), 'axilas: 20 min al editar', allText());
       await back(tester);
     }
-    await tap(tester, find.widgetWithText(FloatingActionButton, 'Servicio'),
+    await tap(tester, find.widgetWithText(AppGradientButton, 'Servicio'),
         wait: 1500);
     final serviceName = 'Lifting de pestañas $_run';
     await type(tester, 'Nombre del servicio', serviceName);

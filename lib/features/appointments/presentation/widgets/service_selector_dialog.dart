@@ -71,7 +71,6 @@ class _ServiceSelectorDialogState extends State<ServiceSelectorDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Buscar servicio',
                   prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
                 ),
                 onChanged: (value) => setState(() => _query = value),
               ),

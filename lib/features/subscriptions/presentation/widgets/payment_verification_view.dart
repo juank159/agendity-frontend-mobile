@@ -30,7 +30,7 @@ class PaymentVerificationView extends GetView<SubscriptionController> {
       switch (controller.verification.value) {
         case PaymentVerificationStatus.pending:
           return _VerificationMessage(
-            icon: Icons.hourglass_top,
+            icon: Icons.hourglass_top_rounded,
             color: tokens.warning.color,
             title: 'Pago en proceso',
             message: message,
@@ -41,7 +41,7 @@ class PaymentVerificationView extends GetView<SubscriptionController> {
           );
         case PaymentVerificationStatus.failed:
           return _VerificationMessage(
-            icon: Icons.cancel_outlined,
+            icon: Icons.cancel_rounded,
             color: tokens.error.color,
             title: 'Pago no confirmado',
             message: message,
@@ -52,7 +52,7 @@ class PaymentVerificationView extends GetView<SubscriptionController> {
           );
         case PaymentVerificationStatus.error:
           return _VerificationMessage(
-            icon: Icons.error_outline,
+            icon: Icons.error_outline_rounded,
             color: tokens.error.color,
             title: 'No se pudo verificar el pago',
             message: message,

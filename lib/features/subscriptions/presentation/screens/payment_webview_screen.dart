@@ -110,7 +110,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
           '${reference.isEmpty ? '' : '\nReferencia: $reference'}',
       confirmLabel: 'Simular pago aprobado',
       cancelLabel: 'Cancelar',
-      icon: Icons.science_outlined,
+      icon: Icons.science_rounded,
     );
     if (!mounted) return;
     if (approve) {
@@ -127,7 +127,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
         title: const Text('Pagar suscripción'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Icons.close_rounded),
             tooltip: 'Cerrar',
             onPressed: _backToPlans,
           ),
@@ -138,7 +138,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
               title: 'Enlace de pago no válido',
               message: 'No se recibió un enlace de pago.',
               actionLabel: 'Volver',
-              actionIcon: Icons.arrow_back,
+              actionIcon: Icons.arrow_back_rounded,
               onRetry: _backToPlans,
             )
           : Obx(() {

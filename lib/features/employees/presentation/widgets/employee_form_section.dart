@@ -168,7 +168,6 @@ class _Field extends StatelessWidget {
           helperMaxLines: 3,
           prefixIcon: Icon(icon),
           suffixIcon: readOnly ? const Icon(Icons.lock_outline) : null,
-          border: const OutlineInputBorder(),
         ),
       ),
     );

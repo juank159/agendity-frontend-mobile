@@ -138,7 +138,6 @@ class ClientForm extends StatelessWidget {
           decoration: InputDecoration(
             labelText: label,
             prefixIcon: Icon(icon),
-            border: const OutlineInputBorder(),
           ),
         ),
       );

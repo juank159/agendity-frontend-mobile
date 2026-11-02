@@ -36,7 +36,6 @@ class ClientSearchBar extends GetView<ClientsController> {
                   decoration: InputDecoration(
                     hintText: 'Buscar por nombre, teléfono o email',
                     prefixIcon: const Icon(Icons.search),
-                    border: const OutlineInputBorder(),
                     isDense: true,
                     suffixIcon: Obx(() => controller.searchQuery.value.isEmpty
                         ? const SizedBox.shrink()

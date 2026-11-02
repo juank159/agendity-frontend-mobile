@@ -129,7 +129,6 @@ class _DeleteEmployeeDialogState extends State<_DeleteEmployeeDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Motivo (opcional)',
                   hintText: 'Ej.: renuncia, fin de contrato…',
-                  border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),

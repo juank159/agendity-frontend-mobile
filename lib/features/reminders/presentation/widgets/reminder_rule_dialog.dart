@@ -110,7 +110,6 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final info = context.tokens.info;
     return AlertDialog(
       icon: Icon(_kind.icon),
       title: Text(widget.rule.id == null
@@ -135,7 +134,7 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Texto para el envío manual (opcional)',
                   helperText: 'Vacío = el texto de Agendity para este tipo.',
-                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
                 ),
               ),
               Wrap(
@@ -144,6 +143,7 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
                 children: [
                   for (final v in ReminderRules.templateVariables)
                     ActionChip(
+                      avatar: const Icon(Icons.add_rounded, size: 16),
                       label: Text('{$v}'),
                       onPressed: () => _insert(v),
                     ),
@@ -155,22 +155,16 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
                 child: OutlinedButton.icon(
                   key: const Key('reminder-preview'),
                   onPressed: _previewing ? null : _showPreview,
-                  icon: const Icon(Icons.visibility_outlined),
+                  icon: const Icon(Icons.visibility_rounded),
                   label: const Text('Vista previa'),
                 ),
               ),
-              if (_preview != null)
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: info.container,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(_preview!,
-                      key: const Key('reminder-preview-text'),
-                      style: TextStyle(color: info.onContainer)),
-                ),
+              AnimatedSwitcher(
+                duration: AppMotion.of(context),
+                child: _preview == null
+                    ? const SizedBox(width: double.infinity)
+                    : _PreviewBubble(text: _preview!),
+              ),
             ],
           ),
         ),
@@ -180,9 +174,10 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancelar'),
         ),
-        Obx(() => FilledButton(
+        Obx(() => FilledButton.icon(
               onPressed: _c.isSaving.value ? null : _save,
-              child: const Text('Guardar'),
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('Guardar'),
             )),
       ],
     );
@@ -196,6 +191,7 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
           Row(
             children: [
               Expanded(
+                flex: 3,
                 child: TextField(
                   key: const Key('reminder-amount'),
                   controller: _amount,
@@ -203,19 +199,25 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
                   inputFormatters: digits,
                   decoration: const InputDecoration(
                     labelText: 'Cuánto antes',
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.timer_rounded),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              DropdownButton<String>(
-                value: _unit,
-                items: const [
-                  DropdownMenuItem(value: 'minutos', child: Text('minutos')),
-                  DropdownMenuItem(value: 'horas', child: Text('horas')),
-                  DropdownMenuItem(value: 'días', child: Text('días')),
-                ],
-                onChanged: (v) => setState(() => _unit = v ?? _unit),
+              Expanded(
+                flex: 2,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _unit,
+                  isExpanded: true,
+                  borderRadius: AppRadii.fieldRadius,
+                  decoration: const InputDecoration(labelText: 'Unidad'),
+                  items: const [
+                    DropdownMenuItem(value: 'minutos', child: Text('minutos')),
+                    DropdownMenuItem(value: 'horas', child: Text('horas')),
+                    DropdownMenuItem(value: 'días', child: Text('días')),
+                  ],
+                  onChanged: (v) => setState(() => _unit = v ?? _unit),
+                ),
               ),
             ],
           ),
@@ -229,9 +231,9 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
             inputFormatters: digits,
             decoration: const InputDecoration(
               labelText: 'Días sin venir',
+              prefixIcon: Icon(Icons.event_busy_rounded),
               helperText: 'De ${ReminderRules.minDaysWithoutVisit} a '
                   '${ReminderRules.maxDaysWithoutVisit}.',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -252,4 +254,32 @@ class _ReminderRuleDialogState extends State<ReminderRuleDialog> {
           onPicked: (v) => setState(() => _sendTime = v),
         ),
       );
+}
+
+/// Vista previa del mensaje como una burbuja de chat.
+class _PreviewBubble extends StatelessWidget {
+  final String text;
+
+  const _PreviewBubble({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final info = context.tokens.info;
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: info.container,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(AppRadii.field),
+          topRight: Radius.circular(AppRadii.field),
+          bottomRight: Radius.circular(AppRadii.field),
+          bottomLeft: Radius.circular(4),
+        ),
+      ),
+      child: Text(text,
+          key: const Key('reminder-preview-text'),
+          style: TextStyle(color: info.onContainer, height: 1.4)),
+    );
+  }
 }

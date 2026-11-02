@@ -41,7 +41,6 @@ class ServiceForm extends StatelessWidget {
           textCapitalization: TextCapitalization.sentences,
           decoration: const InputDecoration(
             labelText: 'Nombre del servicio',
-            border: OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 16),
@@ -54,7 +53,6 @@ class ServiceForm extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'Precio',
             prefixText: '\$ ',
-            border: OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 16),
@@ -98,7 +96,6 @@ class ServiceForm extends StatelessWidget {
             helperMaxLines: 2,
             suffixText: 'días',
             prefixIcon: Icon(Icons.autorenew),
-            border: OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 16),
@@ -107,7 +104,6 @@ class ServiceForm extends StatelessWidget {
           maxLines: 2,
           decoration: const InputDecoration(
             labelText: 'Descripción (opcional)',
-            border: OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 24),
@@ -175,7 +171,6 @@ class _SelectableField extends StatelessWidget {
           labelText: label,
           prefixIcon: Icon(icon),
           suffixIcon: const Icon(Icons.chevron_right),
-          border: const OutlineInputBorder(),
         ),
         child: Text(
           value,

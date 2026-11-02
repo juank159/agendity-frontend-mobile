@@ -400,7 +400,7 @@ class BusinessSettingsController extends GetxController {
           'Las citas, pagos y bloqueos ya creados conservan la hora con la '
           'que se guardaron.',
       confirmLabel: 'Cambiar zona',
-      icon: Icons.public,
+      icon: Icons.public_rounded,
     );
     if (!confirmed) return false;
 

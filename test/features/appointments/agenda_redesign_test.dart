@@ -25,6 +25,10 @@ import 'package:login_signup/features/appointments/presentation/widgets/appointm
 import 'package:login_signup/features/payments/domain/entities/payment_entity.dart';
 import 'package:login_signup/features/payments/domain/repositories/payment_repository.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_appointment_balance_usecase.dart';
+import 'package:login_signup/features/statistics/domain/entities/payment_stats_entity.dart';
+import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
+import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/repositories/subscription_repository.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
@@ -64,6 +68,23 @@ class _Payments implements PaymentRepository {
             status: PaymentStatus.COMPLETED,
           ),
       ]);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Informes: "ingresos" del rango = pagos con fecha en el rango, netos.
+class _Stats implements StatisticsRepository {
+  Either<Failure, PaymentStatsEntity> result = const Right(PaymentStatsEntity(
+      totalAmount: 25000, paymentCount: 2, averageAmount: 12500));
+  final ranges = <StatsRange>[];
+
+  @override
+  Future<Either<Failure, PaymentStatsEntity>> getPaymentStats(
+      StatsRange range) async {
+    ranges.add(range);
+    return result;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -312,11 +333,13 @@ void main() {
   group('resumen de hoy', () {
     late _Repo repo;
     late _Payments payments;
+    late _Stats stats;
 
     AgendaSummaryController summary({RxList<AppointmentEntity>? changes}) =>
         AgendaSummaryController(
           getAppointmentsUseCase: GetAppointmentsUseCase(repo),
           getAppointmentBalanceUseCase: GetAppointmentBalanceUseCase(payments),
+          getPaymentStatsUseCase: GetPaymentStatsUseCase(stats),
           agendaChanges: changes,
           now: () => DateTime(2030, 1, 7, 8, 30),
         );
@@ -324,6 +347,7 @@ void main() {
     setUp(() {
       repo = _Repo();
       payments = _Payments();
+      stats = _Stats();
       repo.result = [
         appointment('pend', total: 50000),
         appointment('paid',
@@ -337,15 +361,39 @@ void main() {
       payments.paid['partial'] = 10000;
     });
 
-    test('cuenta las citas de hoy y suma lo cobrado y lo por cobrar', () async {
+    test('cuenta las citas de hoy y lo por cobrar; Owner: ingresos de hoy',
+        () async {
+      signInAs('Owner');
       final c = summary();
       await c.load();
       expect(repo.ranges.last, AppointmentsRange.day(today));
       expect(c.isLoaded.value, isTrue);
+      // "Ingresos hoy" = pagos de hoy (Informes), no lo cobrado de las citas
+      // de hoy (que serían 40.000).
+      expect(stats.ranges.single, StatsRange.day(today));
       expect(
           c.summary.value,
           const AgendaSummary(
-              appointments: 3, toCollect: 80000, collected: 40000));
+              appointments: 3, toCollect: 80000, income: 25000));
+    });
+
+    test('Employee: no pide los ingresos', () async {
+      signInAs('Employee');
+      final c = summary();
+      await c.load();
+      expect(stats.ranges, isEmpty);
+      expect(c.summary.value.income, 0);
+      expect(c.summary.value.appointments, 3);
+    });
+
+    test('si los ingresos fallan, conserva el último valor', () async {
+      signInAs('Owner');
+      final c = summary();
+      await c.load();
+      stats.result = const Left(NetworkFailure(message: 'sin red'));
+      await c.load();
+      expect(c.summary.value.income, 25000);
+      expect(c.summary.value.appointments, 3);
     });
 
     test('se recalcula cuando cambia la lista de la agenda', () async {
@@ -358,7 +406,7 @@ void main() {
       changes.add(appointment('solo'));
       await pumpEventQueue();
       expect(c.summary.value,
-          const AgendaSummary(appointments: 1, toCollect: 30000, collected: 0));
+          const AgendaSummary(appointments: 1, toCollect: 30000, income: 0));
       c.onClose();
     });
 
@@ -393,7 +441,7 @@ void main() {
       expect(find.text('Por cobrar'), findsOneWidget);
       expect(find.text(formatCop(80000)), findsOneWidget);
       expect(find.text('Ingresos hoy'), findsOneWidget);
-      expect(find.text(formatCop(40000)), findsOneWidget);
+      expect(find.text(formatCop(25000)), findsOneWidget);
     });
 
     testWidgets('Employee: sin "Ingresos hoy"', (tester) async {

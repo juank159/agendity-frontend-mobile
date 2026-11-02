@@ -72,7 +72,6 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
               decoration: const InputDecoration(
                 labelText: 'Nombre de la categoría',
                 prefixIcon: Icon(Icons.folder_outlined),
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -81,7 +80,6 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
               maxLines: 3,
               decoration: const InputDecoration(
                 labelText: 'Descripción (opcional)',
-                border: OutlineInputBorder(),
               ),
             ),
           ],

@@ -46,7 +46,6 @@ class _CancelAppointmentDialogState extends State<CancelAppointmentDialog> {
             maxLines: 3,
             decoration: const InputDecoration(
               labelText: 'Motivo (opcional)',
-              border: OutlineInputBorder(),
             ),
           ),
         ],

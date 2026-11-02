@@ -24,7 +24,7 @@ class LoginView extends GetView<LoginController> {
                 controller: controller.emailController,
                 label: 'Correo electrónico',
                 hint: 'tu@email.com',
-                icon: Icons.email_outlined,
+                icon: Icons.alternate_email_rounded,
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
                 error: controller.emailError,
@@ -33,7 +33,7 @@ class LoginView extends GetView<LoginController> {
               AuthTextField(
                 controller: controller.passwordController,
                 label: 'Contraseña',
-                icon: Icons.lock_outline,
+                icon: Icons.lock_rounded,
                 autofillHints: const [AutofillHints.password],
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => controller.loginUser(),
@@ -54,6 +54,7 @@ class LoginView extends GetView<LoginController> {
         const SizedBox(height: 8),
         AuthSubmitButton(
           label: 'Iniciar sesión',
+          icon: Icons.login_rounded,
           loading: controller.isLoading,
           onPressed: controller.loginUser,
         ),

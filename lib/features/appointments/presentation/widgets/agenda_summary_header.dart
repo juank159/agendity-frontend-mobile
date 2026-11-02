@@ -139,7 +139,7 @@ class _Stats extends StatelessWidget {
           key: const Key('summary-income'),
           icon: Icons.trending_up_rounded,
           label: 'Ingresos hoy',
-          value: value(formatCop(summary.collected)),
+          value: value(formatCop(summary.income)),
           tone: tokens.success,
         ),
     ];

@@ -21,7 +21,7 @@ class PasswordRequirementsList extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.fieldRadius,
           border: Border.all(color: scheme.outlineVariant),
         ),
         child: Column(
@@ -68,7 +68,8 @@ class _RequirementRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Icon(met ? Icons.check_circle : Icons.cancel, size: 16, color: color),
+          Icon(met ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              size: 16, color: color),
           const SizedBox(width: 8),
           Expanded(
             child: Text(label, style: TextStyle(fontSize: 12, color: color)),

@@ -30,7 +30,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                 CircleAvatar(
                   radius: 56,
                   backgroundColor: tokens.success.container,
-                  child: Icon(Icons.check_circle,
+                  child: Icon(Icons.check_circle_rounded,
                       color: tokens.success.color, size: 72),
                 ),
                 const SizedBox(height: 32),

@@ -27,10 +27,10 @@ extension ReminderKindUi on ReminderKind {
       };
 
   IconData get icon => switch (this) {
-        ReminderKind.beforeAppointment => Icons.alarm,
-        ReminderKind.maintenance => Icons.autorenew,
-        ReminderKind.birthday => Icons.cake_outlined,
-        ReminderKind.winBack => Icons.favorite_border,
+        ReminderKind.beforeAppointment => Icons.alarm_rounded,
+        ReminderKind.maintenance => Icons.autorenew_rounded,
+        ReminderKind.birthday => Icons.cake_rounded,
+        ReminderKind.winBack => Icons.favorite_rounded,
       };
 
   /// Solo el de cita admite varias reglas; los otros, una por negocio.
@@ -66,6 +66,15 @@ extension DeliveryStatusUi on DeliveryStatus {
           AppTone.success,
         DeliveryStatus.failed => AppTone.error,
         DeliveryStatus.skipped => AppTone.warning,
+      };
+
+  IconData get icon => switch (this) {
+        DeliveryStatus.queued => Icons.schedule_send_rounded,
+        DeliveryStatus.sent => Icons.check_rounded,
+        DeliveryStatus.delivered => Icons.done_all_rounded,
+        DeliveryStatus.read => Icons.mark_chat_read_rounded,
+        DeliveryStatus.failed => Icons.error_rounded,
+        DeliveryStatus.skipped => Icons.do_not_disturb_on_rounded,
       };
 }
 

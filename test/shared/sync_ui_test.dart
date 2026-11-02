@@ -216,7 +216,7 @@ void main() {
       sync.status.value = const SyncStatus(pending: 1, needsAttention: 1);
       await tester.pump();
       expect(find.byTooltip('1 cambios requieren atención'), findsOneWidget);
-      expect(find.byIcon(Icons.sync_problem), findsOneWidget);
+      expect(find.byIcon(Icons.sync_problem_rounded), findsOneWidget);
     });
 
     testWidgets('Pendientes: descartar pide confirmación y explica la pérdida',

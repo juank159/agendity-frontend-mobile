@@ -4,6 +4,8 @@ import 'package:login_signup/features/appointments/domain/entities/appointment_e
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointments_usecase.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_appointment_balance_usecase.dart';
+import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 
 /// Números de hoy de la cabecera de la agenda (12.04).
@@ -14,31 +16,41 @@ class AgendaSummary {
   /// Lo que falta por cobrar de esas citas.
   final double toCollect;
 
-  /// Lo ya cobrado (neto) de esas citas: "Ingresos hoy", solo para el Owner.
-  final double collected;
+  /// "Ingresos hoy" (solo el Owner): el dinero **recibido hoy**, es decir,
+  /// los pagos con fecha de hoy en la zona del negocio, netos de reembolsos
+  /// (los mismos "ingresos de hoy" de Informes). No depende de la fecha de
+  /// la cita: el abono de hoy a una cita de mañana cuenta; el pago de ayer a
+  /// una cita de hoy, no.
+  final double income;
 
   const AgendaSummary({
     required this.appointments,
     required this.toCollect,
-    required this.collected,
+    required this.income,
   });
 
-  static const empty =
-      AgendaSummary(appointments: 0, toCollect: 0, collected: 0);
+  static const empty = AgendaSummary(appointments: 0, toCollect: 0, income: 0);
+
+  AgendaSummary copyWith({int? appointments, double? toCollect, double? income}) =>
+      AgendaSummary(
+        appointments: appointments ?? this.appointments,
+        toCollect: toCollect ?? this.toCollect,
+        income: income ?? this.income,
+      );
 
   @override
   bool operator ==(Object other) =>
       other is AgendaSummary &&
       other.appointments == appointments &&
       other.toCollect == toCollect &&
-      other.collected == collected;
+      other.income == income;
 
   @override
-  int get hashCode => Object.hash(appointments, toCollect, collected);
+  int get hashCode => Object.hash(appointments, toCollect, income);
 
   @override
   String toString() =>
-      'AgendaSummary($appointments citas, por cobrar $toCollect, cobrado $collected)';
+      'AgendaSummary($appointments citas, por cobrar $toCollect, ingresos $income)';
 }
 
 /// Cabecera de resumen de la agenda: saludo, fecha del negocio y los números
@@ -47,7 +59,10 @@ class AgendaSummary {
 /// - las citas del día con `GetAppointmentsUseCase`;
 /// - lo pagado de una cita con anticipo (`PARTIAL`) con
 ///   `GetAppointmentBalanceUseCase`; las demás se resuelven con
-///   `knownBalanceDue` (sin pagar = el total, pagada = 0).
+///   `knownBalanceDue` (sin pagar = el total, pagada = 0);
+/// - "Ingresos hoy" (solo el Owner) con `GetPaymentStatsUseCase` sobre el día
+///   de hoy: el mismo número que Informes (pagos de hoy, netos de
+///   reembolsos; sin conexión lo calcula con los datos locales).
 ///
 /// Se recalcula cuando cambia la lista de la agenda ([agendaChanges]: crear,
 /// editar, pagar, sincronizar o cambiar la zona del negocio recargan la
@@ -55,16 +70,19 @@ class AgendaSummary {
 class AgendaSummaryController extends GetxController {
   final GetAppointmentsUseCase _getAppointments;
   final GetAppointmentBalanceUseCase _getBalance;
+  final GetPaymentStatsUseCase? _getPaymentStats;
   final RxList<AppointmentEntity>? _agendaChanges;
   final DateTime Function() _now;
 
   AgendaSummaryController({
     required GetAppointmentsUseCase getAppointmentsUseCase,
     required GetAppointmentBalanceUseCase getAppointmentBalanceUseCase,
+    GetPaymentStatsUseCase? getPaymentStatsUseCase,
     RxList<AppointmentEntity>? agendaChanges,
     DateTime Function()? now,
   })  : _getAppointments = getAppointmentsUseCase,
         _getBalance = getAppointmentBalanceUseCase,
+        _getPaymentStats = getPaymentStatsUseCase,
         _agendaChanges = agendaChanges,
         _now = now ?? BusinessTimeZone.now;
 
@@ -117,31 +135,46 @@ class AgendaSummaryController extends GetxController {
     super.onClose();
   }
 
-  /// Vuelve a calcular los números de hoy. Si falla, conserva los últimos.
+  /// Vuelve a calcular los números de hoy. Si una parte falla, conserva su
+  /// último valor.
   Future<void> load() async {
     final request = ++_request;
+    final results = await Future.wait([_loadAppointments(), _loadIncome()]);
+    if (request != _request) return;
+    final counts = results[0] as AgendaSummary?;
+    final income = results[1] as double?;
+    if (counts == null && income == null) return;
+    summary.value = summary.value.copyWith(
+      appointments: counts?.appointments,
+      toCollect: counts?.toCollect,
+      income: income,
+    );
+    isLoaded.value = true;
+  }
+
+  /// Citas de hoy y lo que falta por cobrar de ellas (`null` si falla).
+  Future<AgendaSummary?> _loadAppointments() async {
     final day = AppointmentsRange.day(today);
     final result = await _getAppointments(day);
     final list = result.fold((_) => null, (list) => list);
-    if (list == null || request != _request) return;
+    if (list == null) return null;
     final todays = [
       for (final a in list)
         if (!a.isCancelled && day.contains(a.startInstant)) a,
     ];
     var due = 0.0;
-    var paid = 0.0;
     for (final a in todays) {
-      final outstanding = await _outstanding(a);
-      due += outstanding;
-      paid += (a.totalPrice - outstanding).clamp(0.0, a.totalPrice).toDouble();
+      due += await _outstanding(a);
     }
-    if (request != _request) return;
-    summary.value = AgendaSummary(
-      appointments: todays.length,
-      toCollect: due,
-      collected: paid,
-    );
-    isLoaded.value = true;
+    return AgendaSummary(appointments: todays.length, toCollect: due, income: 0);
+  }
+
+  /// Dinero recibido hoy (`null` si no aplica o falla): solo el Owner.
+  Future<double?> _loadIncome() async {
+    final getStats = _getPaymentStats;
+    if (getStats == null || !showsIncome) return null;
+    final result = await getStats(StatsRange.day(today));
+    return result.fold((_) => null, (stats) => stats.totalAmount);
   }
 
   /// Saldo de [a]: sin consultar si se sabe; con anticipo, por sus pagos

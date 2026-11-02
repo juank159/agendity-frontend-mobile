@@ -65,7 +65,6 @@ class _ClientSearchSelectorState extends State<ClientSearchSelector> {
                 decoration: InputDecoration(
                   labelText: 'Buscar por nombre o teléfono',
                   prefixIcon: const Icon(Icons.search),
-                  border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     tooltip: 'Limpiar búsqueda',
                     icon: const Icon(Icons.clear),

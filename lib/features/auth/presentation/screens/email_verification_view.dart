@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_code_field.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/shared/widgets/app_note.dart';
 import 'package:login_signup/shared/widgets/code_expiry_notice.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_layout.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_submit_button.dart';
@@ -13,28 +15,18 @@ class EmailVerificationView extends GetView<EmailVerificationController> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return AuthLayout(
       title: 'Verifica tu correo',
       subtitle: 'Escribe el código de 6 dígitos que enviamos a:',
-      subtitleTrailing: Text(
-        controller.email,
-        style: TextStyle(
-          color: scheme.primary,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      subtitleTrailing: AuthEmailBadge(email: controller.email),
       children: [
         Obx(() {
           final message = controller.errorMessage.value;
           if (message == null) return const SizedBox.shrink();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(message,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.error)),
-          );
+          return AppNote(message,
+              tone: AppTone.error,
+              icon: Icons.error_outline_rounded,
+              margin: const EdgeInsets.only(bottom: 16));
         }),
         AuthCodeField(
           controller: controller.codeController,
@@ -46,15 +38,17 @@ class EmailVerificationView extends GetView<EmailVerificationController> {
         const SizedBox(height: 24),
         AuthSubmitButton(
           label: 'Verificar correo',
+          icon: Icons.verified_rounded,
           loading: controller.isVerifying,
           busy: () => controller.isBusy,
           onPressed: controller.verifyEmail,
         ),
         const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Obx(() => TextButton.icon(
               onPressed:
                   controller.isBusy ? null : controller.requestVerificationCode,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('Reenviar código'),
             )),
         TextButton(

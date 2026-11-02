@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_layout.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 
-/// Arranque: restaura la sesión guardada (auto-login) mientras anima el logo
-/// y va a la home o al login.
+/// Arranque: restaura la sesión guardada (auto-login) mientras un brillo
+/// recorre la marca sobre el degradado de la paleta (sin animación si el
+/// sistema las desactiva) y va a la home o al login.
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
 
@@ -51,32 +53,57 @@ class _SplashViewState extends State<SplashView>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final light = scheme.onPrimary;
+    final theme = Theme.of(context);
+    final tokens = context.tokens;
+    final light = tokens.onGradient;
+    final animate = AppMotion.enabled(context);
+    final logo = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const AuthLogo(height: 104, onGradient: true),
+        const SizedBox(height: 20),
+        Text(
+          'Agendity',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            color: light,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
     return Scaffold(
-      backgroundColor: scheme.primary,
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _position,
-          builder: (context, child) {
-            final x = _position.value;
-            return ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  light.withValues(alpha: 0.1),
-                  light,
-                  light.withValues(alpha: 0.1),
-                ],
-                stops: [
-                  (x - 0.2).clamp(0.0, 1.0),
-                  x.clamp(0.0, 1.0),
-                  (x + 0.2).clamp(0.0, 1.0),
-                ],
-              ).createShader(bounds),
-              child: child,
-            );
-          },
-          child: AuthLogo(height: 100, color: light),
+      body: DecoratedBox(
+        decoration: BoxDecoration(gradient: tokens.primaryGradient),
+        child: DecoratedBox(
+          decoration: BoxDecoration(gradient: tokens.sheenGradient),
+          child: Center(
+            child: !animate
+                ? logo
+                : AnimatedBuilder(
+                    animation: _position,
+                    builder: (context, child) {
+                      final x = _position.value;
+                      return ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [
+                            light.withValues(alpha: 0.55),
+                            light,
+                            light.withValues(alpha: 0.55),
+                          ],
+                          stops: [
+                            (x - 0.2).clamp(0.0, 1.0),
+                            x.clamp(0.0, 1.0),
+                            (x + 0.2).clamp(0.0, 1.0),
+                          ],
+                        ).createShader(bounds),
+                        blendMode: BlendMode.modulate,
+                        child: child,
+                      );
+                    },
+                    child: logo,
+                  ),
+          ),
         ),
       ),
     );

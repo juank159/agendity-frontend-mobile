@@ -44,7 +44,6 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
                 labelText: 'Nombre de la categoría',
                 hintText: 'Ejemplo: Spa de uñas, Barbería…',
                 prefixIcon: Icon(Icons.folder_outlined),
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -54,7 +53,6 @@ class NewCategoryScreen extends GetView<NewCategoryController> {
               decoration: const InputDecoration(
                 labelText: 'Descripción (opcional)',
                 hintText: 'Qué servicios incluye esta categoría',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 32),

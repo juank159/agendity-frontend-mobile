@@ -26,13 +26,13 @@ class EmailVerificationNotice extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: ListTile(
             key: const Key('verify-email-notice'),
-            leading: Icon(Icons.mark_email_unread_outlined, color: colors.color),
+            leading: Icon(Icons.mark_email_unread_rounded, color: colors.color),
             title: Text('Verifica tu email',
                 style: TextStyle(
                     color: colors.onContainer, fontWeight: FontWeight.bold)),
             subtitle: Text('Te enviaremos un código a $email',
                 style: TextStyle(color: colors.onContainer)),
-            trailing: Icon(Icons.chevron_right, color: colors.onContainer),
+            trailing: Icon(Icons.chevron_right_rounded, color: colors.onContainer),
             onTap: () {
               Navigator.of(context).maybePop();
               controller.openVerification();

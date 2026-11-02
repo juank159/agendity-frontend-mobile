@@ -20,7 +20,7 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
           controller: controller.emailController,
           label: 'Correo electrónico',
           hint: 'tu@email.com',
-          icon: Icons.email_outlined,
+          icon: Icons.alternate_email_rounded,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
           textInputAction: TextInputAction.done,
@@ -30,6 +30,7 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
         const SizedBox(height: 28),
         AuthSubmitButton(
           label: 'Enviar código',
+          icon: Icons.send_rounded,
           loading: controller.isLoading,
           onPressed: controller.requestPasswordReset,
         ),

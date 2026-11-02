@@ -53,7 +53,6 @@ class _RefundDialogState extends State<RefundDialog> {
             decoration: const InputDecoration(
               labelText: 'Monto a devolver',
               prefixText: '\$ ',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -63,7 +62,6 @@ class _RefundDialogState extends State<RefundDialog> {
             maxLength: 500,
             decoration: const InputDecoration(
               labelText: 'Motivo',
-              border: OutlineInputBorder(),
             ),
           ),
         ],

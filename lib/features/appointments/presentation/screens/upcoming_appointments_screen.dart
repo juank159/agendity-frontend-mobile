@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/app_fade_in.dart';
 import 'package:login_signup/core/widgets/list_state_view.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
@@ -31,8 +32,14 @@ class UpcomingAppointmentsScreen
         appBar: AppBar(
           title: const Text('Avisos'),
           bottom: const TabBar(tabs: [
-            Tab(text: 'Avisos'),
-            Tab(text: 'Recordatorios'),
+            Tab(
+                icon: Icon(Icons.notifications_rounded, size: 20),
+                text: 'Avisos',
+                iconMargin: EdgeInsets.only(bottom: 2)),
+            Tab(
+                icon: Icon(Icons.alarm_rounded, size: 20),
+                text: 'Recordatorios',
+                iconMargin: EdgeInsets.only(bottom: 2)),
           ]),
         ),
         body: TabBarView(children: [const NotificationsList(), reminders]),
@@ -54,7 +61,7 @@ class _RemindersList extends StatelessWidget {
             items: controller.upcoming.toList(),
             onRetry: controller.fetch,
             loadingMessage: 'Cargando citas...',
-            emptyIcon: Icons.event_available,
+            emptyIcon: Icons.event_available_rounded,
             emptyMessage: 'No hay recordatorios pendientes',
             emptySubMessage:
                 'Aquí salen las citas de los próximos 7 días que aún no '
@@ -63,14 +70,19 @@ class _RemindersList extends StatelessWidget {
               onRefresh: controller.refreshFromServer,
               child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
                 itemCount: appointments.length,
                 itemBuilder: (context, index) {
                   final appointment = appointments[index];
-                  return Obx(() => AppointmentCard(
-                        appointment: appointment,
-                        isSending: controller.sendingId.value == appointment.id,
-                        onSendReminder: () => controller.send(appointment),
-                      ));
+                  return AppFadeIn(
+                    index: index,
+                    child: Obx(() => AppointmentCard(
+                          appointment: appointment,
+                          isSending:
+                              controller.sendingId.value == appointment.id,
+                          onSendReminder: () => controller.send(appointment),
+                        )),
+                  );
                 },
               ),
             ),

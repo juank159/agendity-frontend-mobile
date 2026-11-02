@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 
-/// Botón principal de las pantallas de auth: deshabilitado y con indicador
-/// mientras [loading] es `true`. [busy] (leído dentro del `Obx`) lo
-/// deshabilita también por otras operaciones de la pantalla.
+/// Botón principal de las pantallas de auth: el [AppGradientButton] de la
+/// guía a todo el ancho, con la carga dentro del botón mientras [loading] es
+/// `true`. [busy] (leído dentro del `Obx`) lo deshabilita también por otras
+/// operaciones de la pantalla.
 class AuthSubmitButton extends StatelessWidget {
   final String label;
   final RxBool loading;
   final bool Function()? busy;
   final VoidCallback onPressed;
+  final IconData? icon;
 
   const AuthSubmitButton({
     super.key,
@@ -16,28 +19,21 @@ class AuthSubmitButton extends StatelessWidget {
     required this.loading,
     required this.onPressed,
     this.busy,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: Obx(() => FilledButton(
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              textStyle:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            onPressed:
-                loading.value || (busy?.call() ?? false) ? null : onPressed,
-            child: loading.value
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(label),
-          )),
-    );
+    return Obx(() {
+      final isLoading = loading.value;
+      final blocked = busy?.call() ?? false;
+      return AppGradientButton(
+        label: label,
+        icon: icon,
+        expand: true,
+        loading: isLoading,
+        onPressed: isLoading || blocked ? null : onPressed,
+      );
+    });
   }
 }

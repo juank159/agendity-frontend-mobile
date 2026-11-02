@@ -59,7 +59,6 @@ class EmployeesListScreen extends GetView<EmployeesController> {
                         tooltip: 'Limpiar búsqueda',
                         onPressed: controller.clearSearch,
                       )),
-                border: const OutlineInputBorder(),
               ),
             ),
           ),

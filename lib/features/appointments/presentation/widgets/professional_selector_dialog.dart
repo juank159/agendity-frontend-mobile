@@ -65,7 +65,6 @@ class _ProfessionalSelectorDialogState
                 decoration: const InputDecoration(
                   labelText: 'Buscar profesional',
                   prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
                 ),
                 onChanged: (value) => setState(() => _query = value),
               ),

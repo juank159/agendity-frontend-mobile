@@ -171,7 +171,6 @@ class _AppointmentFormDialogState extends State<AppointmentFormDialog> {
                             maxLines: 3,
                             decoration: const InputDecoration(
                               labelText: 'Notas (opcional)',
-                              border: OutlineInputBorder(),
                             ),
                           ),
                         ],

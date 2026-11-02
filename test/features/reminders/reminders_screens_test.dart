@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -221,6 +222,26 @@ void main() {
       expect(repo.deleted, ['r1']);
       expect(find.text('1 día antes'), findsNothing);
       await expireSnackbar(tester);
+    });
+
+    testWidgets('12.05: hora de envío en 12 h y regla como tarjeta con estado',
+        (tester) async {
+      repo.rules = [
+        ...repo.rules,
+        const ReminderRule(
+            id: 'b1',
+            kind: ReminderKind.birthday,
+            sendTime: '15:30',
+            isActive: false),
+      ];
+      putController();
+      await pump(tester, const RemindersScreen());
+      // D-23: "A las 3:30 p. m.", nunca "15:30".
+      expect(find.text('A las ${formatHhmm('15:30')}'), findsOneWidget);
+      expect(find.textContaining('15:30'), findsNothing);
+      expect(find.byKey(const Key('reminder-rule-b1')), findsOneWidget);
+      expect(find.text('Desactivado'), findsOneWidget);
+      expect(find.byIcon(Icons.alarm_off_rounded), findsOneWidget);
     });
 
     testWidgets('sin permiso (Employee): sin reintento', (tester) async {

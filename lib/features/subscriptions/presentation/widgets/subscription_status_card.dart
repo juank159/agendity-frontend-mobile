@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/config/color_contrast.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_entity.dart';
+import 'package:login_signup/shared/widgets/app_card.dart';
 
 /// Estado de la suscripción del negocio: trial (citas usadas), plan activo,
 /// cancelación al fin del periodo, vencida y pago en verificación.
@@ -25,16 +27,27 @@ class SubscriptionStatusCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
+        AppCard(
+          margin: EdgeInsets.zero,
           color: summary.tone.container,
+          tint: summary.tone.color,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(summary.icon, color: summary.tone.color),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: tokens.gradientOf(summary.tone.color),
+                        border: Border.all(color: tokens.innerBorder),
+                      ),
+                      child: Icon(summary.icon,
+                          color: readableOn(summary.tone.color)),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -57,12 +70,12 @@ class SubscriptionStatusCard extends StatelessWidget {
                     subscription.trialAppointmentsLimit > 0) ...[
                   const SizedBox(height: 12),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(5),
                     child: LinearProgressIndicator(
                       value: (subscription.trialAppointmentsUsed /
                               subscription.trialAppointmentsLimit)
                           .clamp(0.0, 1.0),
-                      minHeight: 8,
+                      minHeight: 10,
                       color: summary.tone.color,
                       backgroundColor:
                           summary.tone.color.withValues(alpha: 0.2),
@@ -75,8 +88,12 @@ class SubscriptionStatusCard extends StatelessWidget {
         ),
         if (subscription.pendingPayment case final pending?) ...[
           const SizedBox(height: 8),
-          Card(
+          AppCard(
+            margin: EdgeInsets.zero,
+            depth: 1,
             color: tokens.warning.container,
+            tint: tokens.warning.color,
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -84,7 +101,7 @@ class SubscriptionStatusCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.hourglass_top, color: tokens.warning.color),
+                      Icon(Icons.hourglass_top_rounded, color: tokens.warning.color),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -110,7 +127,7 @@ class SubscriptionStatusCard extends StatelessWidget {
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed: isVerifying ? null : onVerifyPending,
-                      icon: const Icon(Icons.refresh),
+                      icon: const Icon(Icons.refresh_rounded),
                       label:
                           Text(isVerifying ? 'Verificando…' : 'Verificar pago'),
                     ),
@@ -135,7 +152,7 @@ class SubscriptionStatusCard extends StatelessWidget {
         final ended = subscription.trialAppointmentsRemaining == 0;
         return _Summary(
           tone: ended ? tokens.warning : tokens.info,
-          icon: ended ? Icons.info_outline : Icons.card_giftcard,
+          icon: ended ? Icons.info_rounded : Icons.card_giftcard_rounded,
           title: ended ? 'Tu periodo de prueba terminó' : 'Periodo de prueba',
           message: 'Usaste $used de $limit citas de prueba.'
               '${ended ? ' Elige un plan para seguir agendando.' : ''}',
@@ -144,7 +161,7 @@ class SubscriptionStatusCard extends StatelessWidget {
         if (subscription.cancelAtPeriodEnd) {
           return _Summary(
             tone: tokens.warning,
-            icon: Icons.event_busy,
+            icon: Icons.event_busy_rounded,
             title: '$planName cancelado',
             message: end == null
                 ? 'Sigue activo hasta el fin del periodo y no se renovará.'
@@ -153,7 +170,7 @@ class SubscriptionStatusCard extends StatelessWidget {
         }
         return _Summary(
           tone: tokens.success,
-          icon: Icons.verified_outlined,
+          icon: Icons.verified_rounded,
           title: '$planName activo',
           message: end == null
               ? 'Plan vigente.'
@@ -162,21 +179,21 @@ class SubscriptionStatusCard extends StatelessWidget {
       case SubscriptionStatus.expired:
         return _Summary(
           tone: tokens.error,
-          icon: Icons.event_busy,
+          icon: Icons.event_busy_rounded,
           title: 'Tu plan venció',
           message: 'Elige un plan para seguir agendando citas.',
         );
       case SubscriptionStatus.canceled:
         return _Summary(
           tone: tokens.error,
-          icon: Icons.cancel_outlined,
+          icon: Icons.cancel_rounded,
           title: 'Plan cancelado',
           message: 'Elige un plan para seguir agendando citas.',
         );
       case SubscriptionStatus.pastDue:
         return _Summary(
           tone: tokens.error,
-          icon: Icons.warning_amber,
+          icon: Icons.warning_amber_rounded,
           title: 'Pago vencido',
           message: 'Renueva tu plan para seguir agendando citas.',
         );

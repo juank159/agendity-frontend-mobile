@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/features/auth/presentation/controllers/reset_password_controller.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_code_field.dart';
+import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/shared/widgets/app_note.dart';
 import 'package:login_signup/shared/widgets/code_expiry_notice.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_layout.dart';
 import 'package:login_signup/features/auth/presentation/widgets/auth_submit_button.dart';
@@ -13,18 +15,10 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return AuthLayout(
       title: 'Nueva contraseña',
       subtitle: 'Escribe el código que enviamos a:',
-      subtitleTrailing: Text(
-        controller.email,
-        style: TextStyle(
-          color: scheme.primary,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      subtitleTrailing: AuthEmailBadge(email: controller.email),
       logoHeight: 64,
       onBack: () => Get.back(),
       children: [
@@ -35,12 +29,10 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
         Obx(() {
           final error = controller.codeError.value;
           if (error == null) return const SizedBox.shrink();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(error,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.error)),
-          );
+          return AppNote(error,
+              tone: AppTone.error,
+              icon: Icons.error_outline_rounded,
+              margin: const EdgeInsets.only(top: 4, bottom: 8));
         }),
         Obx(() => controller.countdown.isActive
             ? CodeExpiryNotice(remaining: controller.countdown.formatted)
@@ -50,7 +42,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
           controller: controller.passwordController,
           label: 'Nueva contraseña',
           hint: 'Mínimo 8 caracteres',
-          icon: Icons.lock_outline,
+          icon: Icons.lock_rounded,
           autofillHints: const [AutofillHints.newPassword],
           onChanged: controller.onPasswordChanged,
           error: controller.passwordError,
@@ -63,7 +55,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
           controller: controller.confirmPasswordController,
           label: 'Confirmar contraseña',
           hint: 'Repite la nueva contraseña',
-          icon: Icons.lock_outline,
+          icon: Icons.lock_rounded,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => controller.resetPassword(),
           error: controller.confirmPasswordError,
@@ -73,6 +65,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
         const SizedBox(height: 28),
         AuthSubmitButton(
           label: 'Cambiar contraseña',
+          icon: Icons.lock_reset_rounded,
           loading: controller.isLoading,
           onPressed: () {
             FocusScope.of(context).unfocus();
@@ -83,7 +76,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
         Obx(() => TextButton.icon(
               onPressed:
                   controller.canResendCode ? controller.requestNewCode : null,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('Reenviar código'),
             )),
       ],

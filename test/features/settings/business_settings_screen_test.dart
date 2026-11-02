@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -356,6 +357,25 @@ void main() {
       expect(find.text('Horario guardado'), findsOneWidget);
       expect(find.text('Guardar horario'), findsNothing);
       await expireSnackbar(tester);
+    });
+
+    testWidgets('12.05: franjas como tarjetas con su nombre accesible y quitar',
+        (tester) async {
+      await pumpScreen(tester);
+      await tap(tester, find.byKey(const Key('opening-hours-enabled')));
+      final open = find.byWidgetPredicate((w) =>
+          w is Semantics && w.properties.label == 'Lunes, franja 1, apertura');
+      expect(open, findsOneWidget);
+      // La hora del botón en 12 h (D-23).
+      expect(
+          find.descendant(
+              of: open,
+              matching: find.text('Abre: ${formatHhmm(nine.start)}')),
+          findsOneWidget);
+      expect(find.text('Abierto'), findsWidgets);
+      expect(find.text('Cerrado'), findsWidgets);
+      await tap(tester, find.byTooltip('Quitar franja del Lunes'));
+      expect(open, findsNothing);
     });
 
     testWidgets('horario: quitarlo envía null', (tester) async {

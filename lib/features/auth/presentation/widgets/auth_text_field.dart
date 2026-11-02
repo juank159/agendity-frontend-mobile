@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 /// Campo de texto de las pantallas de auth. El error viene del controller
-/// ([error] vacío = sin error) y se pinta con los colores del tema.
+/// ([error] vacío = sin error) y se pinta con los colores del tema. El
+/// estilo (relleno, radio 14, brillo al enfocar) es el del
+/// `InputDecorationTheme`.
 class AuthTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -63,14 +65,13 @@ class AuthTextField extends StatelessWidget {
               : IconButton(
                   tooltip: hidden ? 'Mostrar contraseña' : 'Ocultar contraseña',
                   icon: Icon(hidden
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_off_rounded),
                   onPressed: onToggleObscure,
                 ),
           errorText: message.isEmpty ? null : message,
           errorMaxLines: 3,
-          filled: true,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          // Relleno, radio 14 y bordes: los del tema (12.03).
         ),
       );
     });

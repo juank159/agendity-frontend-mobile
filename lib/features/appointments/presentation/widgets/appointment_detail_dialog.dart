@@ -14,6 +14,7 @@ import 'package:login_signup/features/appointments/presentation/widgets/appointm
 import 'package:login_signup/features/appointments/presentation/widgets/cancel_appointment_dialog.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
 import 'package:login_signup/features/payments/presentation/widgets/payment_dialog.dart';
+import 'package:login_signup/shared/widgets/app_note.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
@@ -193,11 +194,13 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                       },
                     ),
                     if (a.needsReschedule)
-                      _Note(
+                      AppNote(
                         '${a.rescheduleReason} Mientras tanto no ocupa la '
                         'hora.${AppointmentAccess.canEdit() ? '' : ' Solo el '
                             'propietario puede moverla.'}',
                         tone: AppTone.warning,
+                        icon: Icons.report_problem_rounded,
+                        margin: const EdgeInsets.only(top: 12),
                       ),
                     if (a.isWebBooking)
                       const _InfoRow(
@@ -230,10 +233,12 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                       ),
                     ),
                     if (a.paymentStatus == AppointmentPaymentStatus.PARTIAL)
-                      const _Note(
+                      const AppNote(
                         'Tiene un anticipo registrado; al cobrar se propone '
                         'el saldo pendiente.',
                         tone: AppTone.info,
+                        icon: Icons.info_outline_rounded,
+                        margin: EdgeInsets.only(top: 12),
                       ),
                     if (a.notes?.trim().isNotEmpty ?? false) ...[
                       const Divider(height: 24),
@@ -248,10 +253,12 @@ class AppointmentDetailsDialog extends GetView<AppointmentActionsController> {
                         subtitle: a.cancellationReason!,
                       ),
                     if (!a.isFinal && !a.canCancel)
-                      const _Note(
+                      const AppNote(
                         'Tiene pagos registrados: reembólsalos antes de '
                         'cancelar la cita.',
                         tone: AppTone.warning,
+                        icon: Icons.warning_amber_rounded,
+                        margin: EdgeInsets.only(top: 12),
                       ),
                     const SizedBox(height: 16),
                     Obx(() {
@@ -372,27 +379,6 @@ class _ServiceLine extends StatelessWidget {
           Text(formatCop(line.price)),
         ],
       ),
-    );
-  }
-}
-
-class _Note extends StatelessWidget {
-  final String text;
-  final AppTone tone;
-
-  const _Note(this.text, {required this.tone});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.tokens.tone(tone);
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.container,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(text, style: TextStyle(color: colors.onContainer)),
     );
   }
 }

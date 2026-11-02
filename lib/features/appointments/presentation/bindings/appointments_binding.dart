@@ -6,6 +6,7 @@ import 'package:login_signup/features/appointments/presentation/controllers/sync
 import 'package:login_signup/features/auth/presentation/controllers/email_verification_notice_controller.dart';
 import 'package:login_signup/features/payments/domain/usecases/get_payments_in_review_usecase.dart';
 import 'package:login_signup/features/payments/presentation/controllers/payment_controller.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_usecase.dart';
 
 /// Agenda (home). Los use cases los registran los `<feature>_dependencies`;
 /// aquí solo los controllers de la ruta. El formulario de la cita y el
@@ -21,11 +22,15 @@ class AppointmentsBinding implements Bindings {
       fenix: true,
     );
     // Cabecera "Hola…" con los números de hoy (12.04): se recalcula cuando
-    // cambia la lista de la agenda.
+    // cambia la lista de la agenda. "Ingresos hoy" = pagos de hoy (12.05),
+    // con el mismo use case que Informes.
     Get.lazyPut<AgendaSummaryController>(
       () => AgendaSummaryController(
         getAppointmentsUseCase: Get.find(),
         getAppointmentBalanceUseCase: Get.find(),
+        getPaymentStatsUseCase: Get.isRegistered<GetPaymentStatsUseCase>()
+            ? Get.find<GetPaymentStatsUseCase>()
+            : null,
         agendaChanges: Get.find<AppointmentsController>().appointments,
       ),
       fenix: true,

@@ -73,7 +73,6 @@ class PaymentDialog extends GetView<PaymentController> {
                     prefixText: '\$ ',
                     helperText: 'Puede ser un anticipo; no más del saldo.',
                     errorText: controller.amountError.value,
-                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -103,7 +102,6 @@ class PaymentDialog extends GetView<PaymentController> {
                     decoration: InputDecoration(
                       labelText: 'Método propio',
                       errorText: controller.methodError.value,
-                      border: const OutlineInputBorder(),
                     ),
                     items: [
                       for (final option in customMethods)
@@ -119,7 +117,6 @@ class PaymentDialog extends GetView<PaymentController> {
                     controller: controller.transactionController,
                     decoration: const InputDecoration(
                       labelText: 'ID de transacción (opcional)',
-                      border: OutlineInputBorder(),
                     ),
                   ),
                 ],

@@ -957,11 +957,13 @@ void main() {
       expect(agenda.appointments.map((a) => a.id), ['a2']);
     });
 
-    test('bloques del calendario: id de la cita y servicio', () {
-      expect(AppointmentCalendarDataSource.blockOf('abc-1_2'),
-          (appointmentId: 'abc-1', serviceIndex: 2));
-      expect(AppointmentCalendarDataSource.blockOf('abc-1'),
-          (appointmentId: 'abc-1', serviceIndex: 0));
+    test('calendario: un bloque por cita, con el id de la cita (12.04)', () {
+      final source = AppointmentCalendarDataSource(
+          [appointment(), appointment(id: 'a2')]);
+      expect(source.appointments, hasLength(2));
+      expect(source.getId(0), 'a1');
+      expect(source.getStartTime(0), tenAm);
+      expect(source.getEndTime(0), tenAm.add(const Duration(hours: 1)));
     });
   });
 

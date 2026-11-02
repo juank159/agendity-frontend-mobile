@@ -13,8 +13,7 @@ class BusinessTimeZoneNotice extends StatelessWidget {
   const BusinessTimeZoneNotice({super.key});
 
   /// Texto del aviso para la zona [zone].
-  static String describe(String zone) =>
-      'Horas en la zona del negocio: $zone '
+  static String describe(String zone) => 'Horas en la zona del negocio: $zone '
       '(${formatUtcOffset(BusinessTimeZone.utcOffset(zone))})';
 
   @override
@@ -32,24 +31,29 @@ class BusinessTimeZoneNotice extends StatelessWidget {
     final tone = context.tokens.tone(AppTone.info);
     return Semantics(
       liveRegion: true,
-      child: Container(
-        width: double.infinity,
-        color: tone.container,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Row(
-          children: [
-            Icon(Icons.public, size: 16, color: tone.onContainer),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                describe(BusinessTimeZone.current),
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: tone.onContainer),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: tone.container,
+            borderRadius: AppRadii.fieldRadius,
+            border: Border.all(color: tone.color.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.public, size: 16, color: tone.onContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  describe(BusinessTimeZone.current),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: tone.onContainer, fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

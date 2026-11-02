@@ -3,60 +3,23 @@ import 'package:login_signup/features/appointments/domain/entities/appointment_e
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_status_ui.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-/// Citas para el calendario de Syncfusion. Una cita con varios servicios se
-/// pinta como bloques seguidos, uno por servicio, con su duración y su color;
-/// el id de cada bloque es `<idCita>_<índice>`.
+/// Citas para el calendario de Syncfusion: **un bloque por cita** (12.04),
+/// de su inicio a su fin, aunque tenga varios servicios (la tarjeta
+/// `AppointmentTile` pinta una píldora por servicio). El id del bloque es el
+/// id de la cita.
 class AppointmentCalendarDataSource extends CalendarDataSource {
   AppointmentCalendarDataSource(List<AppointmentEntity> appointments) {
-    this.appointments = [
-      for (final entity in appointments) ..._blocksOf(entity),
-    ];
+    this.appointments = [for (final entity in appointments) _blockOf(entity)];
   }
 
-  /// Id de la cita y servicio de un bloque (`<idCita>_<índice>`); un bloque
-  /// de una cita de un solo servicio es el servicio 0.
-  static ({String appointmentId, int serviceIndex}) blockOf(Object? blockId) {
-    final id = blockId?.toString() ?? '';
-    final separator = id.lastIndexOf('_');
-    final index =
-        separator < 0 ? null : int.tryParse(id.substring(separator + 1));
-    return index == null
-        ? (appointmentId: id, serviceIndex: 0)
-        : (appointmentId: id.substring(0, separator), serviceIndex: index);
-  }
-
-  static List<Appointment> _blocksOf(AppointmentEntity entity) {
-    if (entity.services.length <= 1) {
-      return [
-        Appointment(
-          startTime: entity.startTime,
-          endTime: entity.endTime,
-          subject: entity.services.isEmpty
-              ? entity.clientName
-              : '${entity.clientName}\n${entity.services.first.name}',
-          color: entity.primaryColor,
-          notes: entity.notes,
-          id: entity.id,
-        ),
-      ];
-    }
-    final blocks = <Appointment>[];
-    var start = entity.startTime;
-    for (var i = 0; i < entity.services.length; i++) {
-      final service = entity.services[i];
-      final end = start.add(Duration(minutes: service.durationMinutes));
-      blocks.add(Appointment(
-        startTime: start,
-        endTime: end,
-        subject: '${entity.clientName}\n${service.name}',
-        color: entity.serviceColor(i),
+  static Appointment _blockOf(AppointmentEntity entity) => Appointment(
+        startTime: entity.startTime,
+        endTime: entity.endTime,
+        subject: [entity.clientName, ...entity.serviceNames].join('\n'),
+        color: entity.primaryColor,
         notes: entity.notes,
-        id: '${entity.id}_$i',
-      ));
-      start = end;
-    }
-    return blocks;
-  }
+        id: entity.id,
+      );
 
   @override
   DateTime getStartTime(int index) => appointments![index].startTime;

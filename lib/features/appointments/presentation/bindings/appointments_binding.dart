@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/agenda_summary_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/sync_attention_controller.dart';
@@ -16,6 +17,16 @@ class AppointmentsBinding implements Bindings {
       () => AppointmentsController(
         getAppointmentsUseCase: Get.find(),
         checkSubscriptionLimitsUseCase: Get.find(),
+      ),
+      fenix: true,
+    );
+    // Cabecera "Hola…" con los números de hoy (12.04): se recalcula cuando
+    // cambia la lista de la agenda.
+    Get.lazyPut<AgendaSummaryController>(
+      () => AgendaSummaryController(
+        getAppointmentsUseCase: Get.find(),
+        getAppointmentBalanceUseCase: Get.find(),
+        agendaChanges: Get.find<AppointmentsController>().appointments,
       ),
       fenix: true,
     );

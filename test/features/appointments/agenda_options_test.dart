@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
+import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
@@ -124,7 +125,10 @@ void main() {
       // 15 min = 35 px en la agenda (70 px por media hora) menos 2 de margen.
       await pumpTile(tester, appointment('a', minutes: 15));
       expect(tester.takeException(), isNull);
-      expect(find.text('Carla Díaz · Diseño de cejas'), findsOneWidget);
+      // Una línea (12.04): hora · cliente · primer servicio.
+      expect(find.text(formatTime(DateTime(2030, 1, 7, 10))), findsOneWidget);
+      expect(find.text('Carla Díaz'), findsOneWidget);
+      expect(find.text('Diseño de cejas'), findsOneWidget);
     });
 
     testWidgets('bloque alto: cliente y servicio en dos líneas',

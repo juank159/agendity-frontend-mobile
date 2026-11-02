@@ -37,14 +37,17 @@ Color ensureContrast(Color color, Color against, {double ratio = contrastAA}) {
   return darken ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
 }
 
+/// Texto blanco sobre un color (de datos o de la paleta).
+const Color textWhite = Color(0xFFFFFFFF);
+
+/// Texto casi negro sobre un color claro.
+const Color textInk = Color(0xFF111111);
+
 /// Blanco o casi negro, el que más contraste dé sobre [background].
-Color readableOn(Color background) {
-  const white = Color(0xFFFFFFFF);
-  const ink = Color(0xFF111111);
-  return contrastRatio(white, background) >= contrastRatio(ink, background)
-      ? white
-      : ink;
-}
+Color readableOn(Color background) =>
+    contrastRatio(textWhite, background) >= contrastRatio(textInk, background)
+        ? textWhite
+        : textInk;
 
 /// [color] con el tono girado [degrees] grados (para el degradado).
 Color shiftHue(Color color, double degrees) {

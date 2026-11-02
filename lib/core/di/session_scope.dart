@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/agenda_summary_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
@@ -45,6 +46,7 @@ abstract final class SessionScope {
   /// datos de la sesión, se añade aquí.
   static final List<void Function()> featureControllers = [
     deleteSessionController<AppointmentsController>,
+    deleteSessionController<AgendaSummaryController>,
     deleteSessionController<AppointmentActionsController>,
     deleteSessionController<AppointmentReminderController>,
     deleteSessionController<PaymentController>,

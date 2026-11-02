@@ -55,7 +55,8 @@ void main() {
     // CommissionsController (8.03: liquidación de comisiones), más
     // SyncAttention, RescheduleList, PaymentsReview y Notifications (10.03),
     // menos WhatsappController (CallMeBot retirado, 11.04 FD), más
-    // RemindersController y ReminderHistoryController (11.04 FP).
-    expect(SessionScope.featureControllers, hasLength(29));
+    // RemindersController y ReminderHistoryController (11.04 FP), más
+    // AgendaSummaryController (12.04: cabecera de la agenda).
+    expect(SessionScope.featureControllers, hasLength(30));
   });
 }

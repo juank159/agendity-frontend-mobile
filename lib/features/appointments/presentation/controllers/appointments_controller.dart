@@ -140,6 +140,35 @@ class AppointmentsController extends GetxController {
   Future<void> showDay(DateTime date) =>
       changeView(CalendarView.day, targetDate: date);
 
+  /// Flechas de la barra de la agenda: un día, una semana o un mes hacia
+  /// delante ([direction] = 1) o hacia atrás (-1).
+  Future<void> step(int direction) {
+    final d = selectedDate.value;
+    final target = switch (currentView.value) {
+      CalendarView.month => DateTime(d.year, d.month + direction, 1),
+      CalendarView.week ||
+      CalendarView.workWeek =>
+        DateTime(d.year, d.month, d.day + 7 * direction),
+      _ => DateTime(d.year, d.month, d.day + direction),
+    };
+    return changeView(currentView.value, targetDate: target);
+  }
+
+  /// "Hoy": la vista actual en el día de hoy del negocio.
+  Future<void> goToToday() =>
+      changeView(currentView.value, targetDate: _now());
+
+  /// ¿El rango visible incluye hoy? (si no, la barra ofrece "Hoy").
+  bool get showsToday {
+    final today = _now();
+    final visible = selectedDate.value;
+    if (currentView.value == CalendarView.month) {
+      return visible.year == today.year && visible.month == today.month;
+    }
+    return rangeFor(currentView.value, visible)
+        .contains(DateTime(today.year, today.month, today.day, 12));
+  }
+
   /// El usuario se movió en el calendario: se carga el nuevo rango visible.
   void onViewChanged(ViewChangedDetails details) {
     final dates = details.visibleDates;

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
+import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/agenda_summary_header.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_calendar.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/appointment_form_dialog.dart';
 import 'package:login_signup/features/appointments/presentation/widgets/sync_attention_banner.dart';
@@ -25,12 +27,12 @@ class AppointmentsView extends GetView<AppointmentsController> {
         actions: [
           const SyncStatusIndicator(),
           IconButton(
-            icon: const Icon(Icons.calendar_view_day),
-            tooltip: 'Cambiar vista',
-            onPressed: () => ViewSelectorBottomSheet.show(controller),
+            icon: const Icon(Icons.tune_rounded),
+            tooltip: 'Opciones de la agenda',
+            onPressed: () => ViewSelectorBottomSheet.show(context, controller),
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
+            icon: const Icon(Icons.notifications_none_rounded),
             tooltip: 'Avisos y recordatorios',
             onPressed: () => Get.toNamed(GetRoutes.notifications),
           ),
@@ -39,6 +41,8 @@ class AppointmentsView extends GetView<AppointmentsController> {
       drawer: const CustomDrawer(),
       body: Column(
         children: [
+          // "Hola, {nombre}", la fecha y los números de hoy (12.04).
+          const AgendaSummaryHeader(),
           // Solo si el dispositivo está en otra zona que el negocio (D-15).
           const BusinessTimeZoneNotice(),
           // Citas por mover y pagos por revisar (10.03).
@@ -57,10 +61,11 @@ class AppointmentsView extends GetView<AppointmentsController> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      // "+ Cita" (los integration_test lo buscan por el tooltip).
+      floatingActionButton: AppGradientButton.fab(
+        label: 'Cita',
         tooltip: 'Nueva cita',
         onPressed: () => startNewAppointment(controller),
-        child: const Icon(Icons.add),
       ),
     );
   }

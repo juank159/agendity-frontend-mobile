@@ -22,45 +22,71 @@ class SyncAttentionBanner extends StatelessWidget {
       final reschedule = c.toRescheduleCount.value;
       final review = c.inReviewCount.value;
       if (reschedule == 0 && review == 0) return const SizedBox.shrink();
-      Widget item(String text, IconData icon, String route, Key key) =>
-          InkWell(
+      Widget item(String text, IconData icon, String route, Key key) => InkWell(
             key: key,
+            borderRadius: AppRadii.fieldRadius,
             onTap: () async {
               await Get.toNamed(route);
               await c.load();
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Row(
                 children: [
-                  Icon(icon, size: 18, color: tone.onContainer),
-                  const SizedBox(width: 8),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: tone.color.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 16, color: tone.onContainer),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(text,
                         style: TextStyle(
                             color: tone.onContainer,
-                            fontWeight: FontWeight.w600)),
+                            fontWeight: FontWeight.w700)),
                   ),
-                  Icon(Icons.chevron_right, color: tone.onContainer),
+                  Icon(Icons.chevron_right_rounded, color: tone.onContainer),
                 ],
               ),
             ),
           );
-      return Material(
-        color: tone.container,
-        child: Column(
-          children: [
-            if (reschedule > 0)
-              item(formatCount(reschedule, 'cita por mover', 'citas por mover'),
-                  Icons.event_repeat, GetRoutes.appointmentsToReschedule,
-                  const Key('banner-reschedule')),
-            if (review > 0)
-              item(
-                  formatCount(review, 'pago por revisar', 'pagos por revisar'),
-                  Icons.flag_outlined,
-                  GetRoutes.paymentsReview,
-                  const Key('banner-review')),
-          ],
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: AppRadii.fieldRadius,
+            boxShadow: context.tokens.elevation1(tint: tone.color),
+          ),
+          child: Material(
+            color: tone.container,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadii.fieldRadius,
+              side: BorderSide(color: tone.color.withValues(alpha: 0.35)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                if (reschedule > 0)
+                  item(
+                      formatCount(
+                          reschedule, 'cita por mover', 'citas por mover'),
+                      Icons.event_repeat_rounded,
+                      GetRoutes.appointmentsToReschedule,
+                      const Key('banner-reschedule')),
+                if (review > 0)
+                  item(
+                      formatCount(
+                          review, 'pago por revisar', 'pagos por revisar'),
+                      Icons.flag_rounded,
+                      GetRoutes.paymentsReview,
+                      const Key('banner-review')),
+              ],
+            ),
+          ),
         ),
       );
     });

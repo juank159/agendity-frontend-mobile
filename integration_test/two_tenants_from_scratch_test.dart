@@ -19,7 +19,8 @@
 // Para repetir solo algunas fases sobre los datos de una corrida anterior:
 //   --dart-define=RUN=<sufijo> --dart-define=PHASES=a_future,a_complete
 // Fases: a_setup, a_today, b_setup, b_today, a_future, b_future,
-// a_complete, a_employee, b_complete, b_employee.
+// a_complete, a_employee, b_complete, b_employee. Sueltas (no van en "all",
+// ya las hace a_future): a_calendar, a_hours.
 //
 // "Hoy" en cada negocio: para poder COMPLETAR citas (solo se completa una cita
 // que ya empezó y solo se agenda a futuro) la prueba abre una jornada
@@ -37,7 +38,11 @@ import 'package:login_signup/core/config/env_config.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/core/utils/formatters.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/appointment_feedback.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/agenda_day_notice.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/agenda_slot_sheet.dart';
+import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import 'support/app_driver.dart';
 
@@ -99,8 +104,8 @@ class Biz {
   final List<Emp> employees;
   final List<Cli> clients;
 
-  /// Día (1 = lunes) → franja de apertura; sin entrada = cerrado.
-  final Map<int, (String, String)> hours;
+  /// Día (1 = lunes) → franjas de apertura; sin entrada = cerrado.
+  final Map<int, List<(String, String)>> hours;
   const Biz({
     required this.code,
     required this.name,
@@ -163,15 +168,25 @@ final bizA = Biz(
     Cli('Camila', 'Torres', phone('310', '02')),
     Cli('Isabella', 'Rincón', phone('310', '03')),
   ],
-  hours: const {
-    1: ('08:00', '19:00'),
-    2: ('08:00', '19:00'),
-    3: ('08:00', '19:00'),
-    4: ('08:00', '19:00'),
-    5: ('08:00', '19:00'),
-    6: ('08:00', '19:00'),
+  // De lunes a sábado de 8 a 19, salvo el día partido (13.03): abre a las
+  // 8:30, cierra a mediodía y vuelve a las 14:00 (D-26: el almuerzo solo
+  // cierra el link público; en la app se agenda de corrido).
+  hours: {
+    for (var day = DateTime.monday; day <= DateTime.saturday; day++)
+      day: day == splitWeekday ? splitHours : const [('08:00', '19:00')],
   },
 );
+
+/// Día de la semana con horario partido en A: el sábado o, si hoy es sábado
+/// (la fase de hoy abre ese día entero), el viernes. Nunca es el día X ni el
+/// Y (son los siguientes días hábiles a hoy y no pasan del lunes y martes
+/// cuando hoy es viernes o sábado).
+int get splitWeekday =>
+    BusinessTimeZone.now('America/Bogota').weekday == DateTime.saturday
+        ? DateTime.friday
+        : DateTime.saturday;
+
+const splitHours = [('08:30', '12:00'), ('14:00', '19:00')];
 
 final bizB = Biz(
   code: 'B',
@@ -203,11 +218,11 @@ final bizB = Biz(
     Cli('Gabriela', 'Suárez', phone('310', '04')),
   ],
   hours: const {
-    1: ('09:00', '18:00'),
-    2: ('09:00', '18:00'),
-    3: ('09:00', '18:00'),
-    4: ('09:00', '18:00'),
-    5: ('09:00', '18:00'),
+    1: [('09:00', '18:00')],
+    2: [('09:00', '18:00')],
+    3: [('09:00', '18:00')],
+    4: [('09:00', '18:00')],
+    5: [('09:00', '18:00')],
   },
 );
 
@@ -425,8 +440,8 @@ Future<void> configureBusiness(WidgetTester tester, Biz biz) async {
     // El aviso va arriba de la lista (perezosa): subir antes de leerlo.
     await tester.drag(
         find
-            .byWidgetPredicate((w) =>
-                w is Scrollable && w.axisDirection == AxisDirection.down)
+            .byWidgetPredicate(
+                (w) => w is Scrollable && w.axisDirection == AxisDirection.down)
             .first,
         const Offset(0, 5000),
         warnIfMissed: false);
@@ -442,9 +457,12 @@ Future<void> configureBusiness(WidgetTester tester, Biz biz) async {
   await back(tester);
 }
 
-/// Deja el horario de apertura del negocio como [hours] (ya en Mi negocio).
-Future<void> setOpeningHours(
-    WidgetTester tester, Biz biz, Map<int, (String, String)> hours) async {
+/// Deja el horario de apertura del negocio como [hours] (ya en Mi negocio):
+/// por día, las franjas en orden; quita las que sobran ("Quitar franja del
+/// Lunes", con el nombre del día tal cual) y añade las que faltan ("Añadir
+/// franja", `opening-add-<día>`).
+Future<void> setOpeningHours(WidgetTester tester, Biz biz,
+    Map<int, List<(String, String)>> hours) async {
   final limit = find.byKey(const Key('opening-hours-enabled'));
   await waitFor(tester, limit);
   if (!tester.widget<SwitchListTile>(limit).value) await tap(tester, limit);
@@ -452,29 +470,35 @@ Future<void> setOpeningHours(
     final dayName = _dayNames[day - 1];
     final toggle = find.byKey(Key('opening-day-$day'));
     final open = tester.widget<Switch>(toggle).value;
-    final wanted = hours[day];
-    if (wanted == null) {
+    final wanted = hours[day] ?? const <(String, String)>[];
+    if (wanted.isEmpty) {
       if (open) await tap(tester, toggle, wait: 400);
       continue;
     }
     if (!open) await tap(tester, toggle, wait: 400);
-    // Una sola franja por día.
-    while (find
-            .byTooltip('Quitar franja del ${dayName.toLowerCase()}')
-            .evaluate()
-            .length >
-        1) {
-      await tap(tester,
-          find.byTooltip('Quitar franja del ${dayName.toLowerCase()}').last,
-          wait: 300);
+    final remove = find.byTooltip('Quitar franja del $dayName');
+    while (remove.evaluate().length > wanted.length) {
+      await tap(tester, remove.last, wait: 300);
     }
-    final openBtn = semanticsButton('$dayName, franja 1, apertura');
-    final closeBtn = semanticsButton('$dayName, franja 1, cierre');
-    if (!_buttonShows(tester, openBtn, wanted.$1)) {
-      await pickTime(tester, openBtn, wanted.$1);
+    for (var i = 0; i < wanted.length; i++) {
+      final openBtn = semanticsButton('$dayName, franja ${i + 1}, apertura');
+      final closeBtn = semanticsButton('$dayName, franja ${i + 1}, cierre');
+      if (openBtn.evaluate().isEmpty) {
+        await tap(tester, find.byKey(Key('opening-add-$day')), wait: 400);
+      }
+      if (!_buttonShows(tester, openBtn, wanted[i].$1)) {
+        await pickTime(tester, openBtn, wanted[i].$1);
+      }
+      if (!_buttonShows(tester, closeBtn, wanted[i].$2)) {
+        await pickTime(tester, closeBtn, wanted[i].$2);
+      }
     }
-    if (!_buttonShows(tester, closeBtn, wanted.$2)) {
-      await pickTime(tester, closeBtn, wanted.$2);
+    if (wanted.length > 1) {
+      check(
+          remove.evaluate().length == wanted.length,
+          '${biz.code}: el ${dayName.toLowerCase()} queda con '
+          '${wanted.length} franjas',
+          allText());
     }
   }
   await shot(tester, '${biz.code}_horario_editado');
@@ -857,13 +881,22 @@ Future<void> setEmployeeDay(WidgetTester tester, Biz biz, Emp e, int weekday,
   // El formulario es una lista perezosa: el horario no existe hasta bajar.
   await tester.scrollUntilVisible(toggle, 300,
       scrollable: find
-          .byWidgetPredicate((w) =>
-              w is Scrollable && w.axisDirection == AxisDirection.down)
+          .byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.down)
           .first);
   await tester.ensureVisible(toggle);
   final on = tester.widget<SwitchListTile>(toggle).value;
   if ((hours != null) != on) await tap(tester, toggle, wait: 400);
   if (hours != null) {
+    // Una sola franja (13.06: el día puede tener varias).
+    final extra = find.byWidgetPredicate((w) =>
+        w is Tooltip &&
+        (w.message ?? '').startsWith('Quitar franja ') &&
+        (w.message ?? '').endsWith(' del ${dayLabel.toLowerCase()}') &&
+        !(w.message ?? '').startsWith('Quitar franja 1 '));
+    while (extra.evaluate().isNotEmpty) {
+      await tap(tester, extra.last, wait: 300);
+    }
     final start = semanticsButton('$dayLabel, hora de inicio');
     final end = semanticsButton('$dayLabel, hora de fin');
     if (!_buttonShows(tester, start, hours.$1)) {
@@ -890,8 +923,10 @@ Future<void> openTodayFully(WidgetTester tester, Biz biz) async {
   final weekday = biz.today().weekday;
   await openDrawerItem(tester, 'Mi negocio');
   await idle(tester, 2000);
-  await setOpeningHours(
-      tester, biz, {...biz.hours, weekday: ('00:00', '23:55')});
+  await setOpeningHours(tester, biz, {
+    ...biz.hours,
+    weekday: const [('00:00', '23:55')]
+  });
   await back(tester);
   for (final e in biz.employees) {
     await setEmployeeDay(tester, biz, e, weekday, ('00:00', '23:55'));
@@ -1186,7 +1221,9 @@ Future<void> phaseFutureA(WidgetTester tester) async {
       slotsText(slots));
 
   // Choque entre dispositivos: la app tiene elegidas las 14:00 y, antes de
-  // agendar, Laura reserva esa hora desde su teléfono.
+  // agendar, Laura reserva esa hora desde su teléfono. Con conexión la app
+  // crea la cita directo en el servidor (13.05): el 409 vuelve al formulario
+  // con su motivo, no se guarda nada y no queda ninguna cita "por mover".
   final hasTwo = slots.any((s) => hm(s) == '14:00');
   final other = OtherDevice();
   var otherBooked = false;
@@ -1205,52 +1242,38 @@ Future<void> phaseFutureA(WidgetTester tester) async {
         otherBooked,
         'A: (otro dispositivo) Laura reserva las 14:00 para Valentina',
         '${r.statusCode} ${r.data}');
-    await tap(tester, find.widgetWithText(FilledButton, 'Agendar'), wait: 3000);
-    await waitGone(tester, find.text('Nueva cita'));
-    await shot(tester, 'A_choque_agendada_en_local');
-    // La sincronización la sube; el servidor dice que la hora está ocupada.
-    final banner = await waitFor(
-        tester, find.byKey(const Key('banner-reschedule')),
-        timeout: const Duration(seconds: 40));
+    await tap(tester, find.widgetWithText(FilledButton, 'Agendar'), wait: 1500);
+    final warned = await waitFor(
+        tester, find.text('Ya hay una cita a esa hora'),
+        timeout: const Duration(seconds: 15));
     await shot(tester, 'A_choque_aviso');
+    t = allText();
     check(
-        banner,
-        'A: choque: la cita de la app queda "por mover" (el servidor dijo '
-        'Horario no disponible)',
-        allText());
-    if (await openDetail(tester, camila.fullName)) {
-      t = allText();
-      await shot(tester, 'A_choque_detalle');
-      check(t.contains('ya estaba ocupada'),
-          'A: el detalle explica que la hora ya estaba ocupada', t);
-      if (find.text('Mover a otra hora').evaluate().isNotEmpty) {
-        await tapText(tester, 'Mover a otra hora', wait: 3000);
-        await waitFor(tester, find.byType(ChoiceChip));
-        final moved = slotTimes();
-        check(!moved.any((s) => hm(s) == '14:00'),
-            'A: al mover ya no se ofrece las 14:00', slotsText(moved));
-        final target = at(dayX, 15);
-        final chip = find.byKey(ValueKey('slot-${target.toIso8601String()}'));
-        if (chip.evaluate().isNotEmpty) {
-          await tap(tester, chip, wait: 300);
-          await tap(
-              tester, find.widgetWithText(FilledButton, 'Guardar cambios'),
-              wait: 3000);
-          await waitGone(tester, find.text('Editar cita'));
-          final cleared = await waitGone(
-              tester, find.byKey(const Key('banner-reschedule')),
-              timeout: const Duration(seconds: 40));
-          await shot(tester, 'A_choque_movida');
-          check(
-              cleared, 'A: movida a las 15:00 se resuelve el aviso', allText());
-        } else {
-          check(false, 'A: las 15:00 libres para mover', slotsText(moved));
-          await tapText(tester, 'Cancelar', wait: 800);
-        }
-      } else {
-        await closeDialog(tester);
-      }
+        warned && t.contains(AppointmentFeedback.slotUnavailableTitle),
+        'A: choque: al guardar las 14:00 sale "Horario no disponible · Ya hay '
+        'una cita a esa hora"',
+        t);
+    if (find.text('Entendido').evaluate().isNotEmpty) {
+      await tap(tester, find.text('Entendido').last, wait: 1500);
     }
+    check(find.text('Nueva cita').evaluate().isNotEmpty,
+        'A: choque: el formulario sigue abierto (no se guardó)', allText());
+    check(find.byKey(const Key('banner-reschedule')).evaluate().isEmpty,
+        'A: choque: ninguna cita queda "por mover"', allText());
+    // El formulario vuelve a pedir las horas libres: las 14:00 ya no salen.
+    await waitFor(tester, find.byType(ChoiceChip));
+    await idle(tester, 1000);
+    final again = slotTimes();
+    check(
+        again.isNotEmpty && !again.any((s) => hm(s) == '14:00'),
+        'A: choque: las horas libres ya no ofrecen las 14:00',
+        slotsText(again));
+    final moved = await chooseSlotAndSave(tester,
+        slot: at(dayX, 15), label: 'A_choque_otra_hora');
+    check(moved != null, 'A: choque: Camila queda agendada a las 15:00');
+    await settle(tester);
+    check(find.byKey(const Key('banner-reschedule')).evaluate().isEmpty,
+        'A: choque: tras sincronizar sigue sin citas "por mover"', allText());
     await showDay(tester, dayX);
     await settle(tester, 4000);
     await shot(tester, 'A_diaX_agenda');
@@ -1301,6 +1324,7 @@ Future<void> phaseFutureA(WidgetTester tester) async {
         '${r.statusCode} ${r.data}');
   }
   await bookFromCalendarCell(tester, biz, dayX, ana, isabella, valentina);
+  await phaseHoursA(tester);
   await logout(tester);
 }
 
@@ -1312,8 +1336,8 @@ Future<void> bookFromCalendarCell(WidgetTester tester, Biz biz, DateTime day,
   await showDay(tester, day);
   await idle(tester, 2000);
   final anchorText = find.text(anchor.fullName);
-  final block = find.ancestor(
-      of: anchorText, matching: find.byType(AppointmentTile));
+  final block =
+      find.ancestor(of: anchorText, matching: find.byType(AppointmentTile));
   if (block.evaluate().isEmpty) {
     check(false, '${biz.code}: la agenda muestra el bloque de ${anchor.first}',
         allText());
@@ -1321,16 +1345,14 @@ Future<void> bookFromCalendarCell(WidgetTester tester, Biz biz, DateTime day,
   }
   // Que el final de la cita quede a media pantalla.
   var rect = tester.getRect(block.first);
-  final middle = tester.view.physicalSize.height /
-      tester.view.devicePixelRatio /
-      2;
+  final middle =
+      tester.view.physicalSize.height / tester.view.devicePixelRatio / 2;
   // Arrastre lento con el dedo sobre la agenda (sin impulso), en tramos.
   final calendar = tester.getRect(find.byType(AppointmentCalendar));
   for (var i = 0; i < 6 && (rect.bottom - middle).abs() > 40; i++) {
     final dy = (middle - rect.bottom).clamp(-300.0, 300.0);
-    await tester.timedDragFrom(
-        Offset(calendar.center.dx, calendar.center.dy), Offset(0, dy),
-        const Duration(milliseconds: 700));
+    await tester.timedDragFrom(Offset(calendar.center.dx, calendar.center.dy),
+        Offset(0, dy), const Duration(milliseconds: 700));
     await idle(tester, 800);
     rect = tester.getRect(block.first);
   }
@@ -1341,7 +1363,9 @@ Future<void> bookFromCalendarCell(WidgetTester tester, Biz biz, DateTime day,
   await tester.tapAt(target);
   final opened = await waitFor(tester, find.text('Nueva cita'),
       timeout: const Duration(seconds: 10));
-  check(opened, '${biz.code}: tocar la hora 12:00 de la agenda abre "Nueva cita"',
+  check(
+      opened,
+      '${biz.code}: tocar la hora 12:00 de la agenda abre "Nueva cita"',
       allText());
   if (!opened) return;
   await idle(tester, 1500);
@@ -1351,10 +1375,11 @@ Future<void> bookFromCalendarCell(WidgetTester tester, Biz biz, DateTime day,
       client: client);
   final noon = at(day, 12);
   final chip = find.byKey(ValueKey('slot-${noon.toIso8601String()}'));
-  final preselected = chip.evaluate().isNotEmpty &&
-      tester.widget<ChoiceChip>(chip).selected;
+  final preselected =
+      chip.evaluate().isNotEmpty && tester.widget<ChoiceChip>(chip).selected;
   await shot(tester, '${biz.code}_cita_desde_bloque_12');
-  check(preselected,
+  check(
+      preselected,
       '${biz.code}: la hora tocada (12:00) queda elegida en el formulario',
       slotsText(slots));
   final saved = await tap(tester, find.widgetWithText(FilledButton, 'Agendar'),
@@ -1372,7 +1397,8 @@ Future<void> bookFromCalendarCell(WidgetTester tester, Biz biz, DateTime day,
     if ((r.top - rect.bottom).abs() < 6) under = r;
   }
   await shot(tester, '${biz.code}_agenda_cita_desde_bloque');
-  check(under != null,
+  check(
+      under != null,
       '${biz.code}: la agenda pinta la cita de ${client.first} justo debajo '
       'de la de ${anchor.first} (12:00)',
       allText());
@@ -1383,10 +1409,354 @@ Future<void> bookFromCalendarCell(WidgetTester tester, Biz biz, DateTime day,
   final t = allText();
   await shot(tester, '${biz.code}_detalle_cita_desde_bloque');
   await closeDialog(tester);
-  check(t.contains('12:00') && t.contains('2:00') && t.contains(cop(150000)),
+  check(
+      t.contains('12:00') && t.contains('2:00') && t.contains(cop(150000)),
       '${biz.code}: detalle: ${client.first} con ${pro.first} 12:00-2:00 p. m., '
       '${cop(150000)}',
       t);
+}
+
+// ───────────────── Horario partido y días cerrados (13.03) ─────────────────
+
+const _weekdayKeys = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+];
+
+/// Próximo día con [weekday] estrictamente después de [from].
+DateTime nextWeekdayOf(DateTime from, int weekday) {
+  var d = DateTime(from.year, from.month, from.day + 1);
+  while (d.weekday != weekday) {
+    d = DateTime(d.year, d.month, d.day + 1);
+  }
+  return d;
+}
+
+/// [e] con dos franjas el día [weekday] (9-12 y 14-18), la segunda con
+/// "Añadir franja" (13.06). Al volver a abrir su ficha conserva las dos.
+Future<void> splitEmployeeDay(
+    WidgetTester tester, Biz biz, Emp e, int weekday) async {
+  final label = _dayNames[weekday - 1];
+  final dayKey = _weekdayKeys[weekday - 1];
+  final start1 = semanticsButton('$label, hora de inicio');
+  final end1 = semanticsButton('$label, hora de fin');
+  final start2 = semanticsButton('$label, franja 2, inicio');
+  final end2 = semanticsButton('$label, franja 2, fin');
+  final toggle = find.widgetWithText(SwitchListTile, label);
+  final list = find
+      .byWidgetPredicate(
+          (w) => w is Scrollable && w.axisDirection == AxisDirection.down)
+      .first;
+
+  await openDrawerItem(tester, 'Personal');
+  await idle(tester, 1500);
+  await openEditEmployee(tester, e);
+  await tester.scrollUntilVisible(toggle, 300, scrollable: list);
+  await tester.ensureVisible(toggle);
+  if (!tester.widget<SwitchListTile>(toggle).value) {
+    await tap(tester, toggle, wait: 400);
+  }
+  if (!_buttonShows(tester, start1, '09:00')) {
+    await pickTime(tester, start1, '09:00');
+  }
+  if (!_buttonShows(tester, end1, '12:00')) {
+    await pickTime(tester, end1, '12:00');
+  }
+  if (start2.evaluate().isEmpty) {
+    final add = find.byKey(Key('employee-add-range-$dayKey'));
+    check(
+        add.evaluate().isNotEmpty,
+        '${biz.code}: ${e.first}: botón "Añadir franja" del ${label.toLowerCase()}',
+        allText());
+    if (add.evaluate().isEmpty) return;
+    await tap(tester, add, wait: 600);
+  }
+  // La franja nueva sale una hora después de la primera (13:00-14:00):
+  // primero el fin, para no dejarla al revés por un momento.
+  if (!_buttonShows(tester, end2, '18:00')) {
+    await pickTime(tester, end2, '18:00');
+  }
+  if (!_buttonShows(tester, start2, '14:00')) {
+    await pickTime(tester, start2, '14:00');
+  }
+  await shot(tester, '${biz.code}_${e.key}_dos_franjas');
+  await tap(tester, find.text('Guardar cambios'), wait: 3000);
+  final saved = await waitFor(tester, find.text('Profesionales'),
+      timeout: const Duration(seconds: 10));
+  check(
+      saved,
+      '${biz.code}: ${e.first} guarda dos franjas el ${label.toLowerCase()} '
+      '(9-12 y 14-18)',
+      allText());
+  if (!saved) return;
+  await idle(tester, 1500);
+
+  // Volver a abrir: siguen las dos (el servidor devuelve `schedule_slots`).
+  await openEditEmployee(tester, e);
+  await tester.scrollUntilVisible(toggle, 300, scrollable: list);
+  await tester.ensureVisible(toggle);
+  await idle(tester, 600);
+  final kept = _buttonShows(tester, start1, '09:00') &&
+      _buttonShows(tester, end1, '12:00') &&
+      _buttonShows(tester, start2, '14:00') &&
+      _buttonShows(tester, end2, '18:00');
+  await shot(tester, '${biz.code}_${e.key}_dos_franjas_reabierta');
+  check(
+      kept,
+      '${biz.code}: al volver a abrir a ${e.first}, el ${label.toLowerCase()} '
+      'conserva 9-12 y 14-18',
+      allText());
+  await back(tester);
+  await back(tester);
+}
+
+/// Toca en la vista de día la celda de media hora de [hour]:[minute]: lleva
+/// esa hora al centro de la columna (el calendario mide 70 px por cada 30
+/// min desde su primera hora) y toca a la derecha de la regla de horas.
+Future<void> tapAgendaAt(WidgetTester tester, int hour, int minute) async {
+  final calendar = find.byType(SfCalendar);
+  final settings = tester.widget<SfCalendar>(calendar).timeSlotViewSettings;
+  final cell = settings.timeIntervalHeight;
+  final perCell = settings.timeInterval.inMinutes;
+  final screen =
+      Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+  final lists = find.descendant(
+      of: calendar,
+      matching: find.byWidgetPredicate(
+          (w) => w is Scrollable && w.axisDirection == AxisDirection.down));
+  Finder? list;
+  for (var i = 0; i < lists.evaluate().length; i++) {
+    final rect = tester.getRect(lists.at(i));
+    if (rect.height > 100 && screen.contains(rect.center)) {
+      list = lists.at(i);
+      break;
+    }
+  }
+  if (list == null) {
+    throw StateError('La vista de día no tiene columna de horas en pantalla');
+  }
+  final position = tester.state<ScrollableState>(list).position;
+  final rect = tester.getRect(list);
+  final fromStart =
+      (hour * 60 + minute - settings.startHour * 60) / perCell * cell;
+  position.jumpTo((fromStart + cell / 2 - rect.height / 2)
+      .clamp(position.minScrollExtent, position.maxScrollExtent));
+  await idle(tester, 800);
+  final y = rect.top + fromStart + cell / 2 - position.pixels;
+  final x = rect.left +
+      AppointmentCalendar.timeRulerSize +
+      (rect.width - AppointmentCalendar.timeRulerSize) / 2;
+  if (watchMode) await idle(tester, 1200);
+  await tester.tapAt(Offset(x, y));
+  await idle(tester, 1500);
+}
+
+/// Hora de pared (`12:30`) de una hora libre del servidor: viene con el
+/// offset del negocio (`…T12:30:00.000-05:00`).
+String wallOf(dynamic iso) => '$iso'.substring(11, 16);
+
+/// D-25 y D-26 en A: la agenda del día partido va de corrido (sin "Cerrado"
+/// al mediodía) y en la app se agenda el almuerzo; antes de abrir y un día
+/// cerrado no abren el formulario; el link público no ofrece ni acepta el
+/// almuerzo. Laura tiene dos franjas ese día (no está libre a mediodía).
+Future<void> phaseHoursA(WidgetTester tester) async {
+  final biz = bizA;
+  log('== A: horario partido, fuera de horario y día cerrado ==');
+  final split = nextWeekdayOf(biz.today(), splitWeekday);
+  final ana = biz.employees[0];
+  final laura = biz.employees[1];
+  final isabella = biz.clients[2];
+  await splitEmployeeDay(tester, biz, laura, splitWeekday);
+
+  // Lo que dice el servidor: horas libres de la app y del link público.
+  final owner = OtherDevice();
+  if (await owner.login(tester, biz.ownerEmail)) {
+    final settings = await owner.dio.get<dynamic>('/settings');
+    final slug = settings.data is Map ? '${settings.data['slug']}' : '';
+    final anaId =
+        await owner.idOf('/auth/employees', (e) => e['email'] == ana.email) ??
+            '';
+    final serviceId = await owner.idOf(
+            '/services', (s) => s['name'] == 'Pestañas punto a punto') ??
+        '';
+    // El servicio se creó sin "Se puede reservar en línea": el Owner lo
+    // publica desde su otro dispositivo para poder preguntarle al link.
+    final published = await owner.dio
+        .patch<dynamic>('/services/$serviceId', data: {'onlineBooking': true});
+    check(
+        published.statusCode == 200,
+        'A: (otro dispositivo) "Pestañas punto a punto" se reserva en línea',
+        '${published.statusCode} ${published.data}');
+    final day = '${split.year}-${split.month.toString().padLeft(2, '0')}-'
+        '${split.day.toString().padLeft(2, '0')}';
+    final query = {
+      'professional_id': anaId,
+      'date': day,
+      'service_ids': serviceId,
+      'step': 15,
+    };
+    final app = await owner.dio
+        .get<dynamic>('/appointments/available-slots', queryParameters: query);
+    final public = Dio(
+        BaseOptions(baseUrl: EnvConfig.apiUrl, validateStatus: (_) => true));
+    final web = await public.get<dynamic>(
+        '/public/businesses/$slug/available-slots',
+        queryParameters: query);
+    final appHours = [if (app.data is List) ...(app.data as List).map(wallOf)];
+    final webHours = [
+      if (web.data is Map && web.data['slots'] is List)
+        ...(web.data['slots'] as List).map(wallOf)
+    ];
+    check(
+        appHours.contains('12:30') && appHours.contains('13:00'),
+        'A: (API de la app) Ana, 2 h, día partido: ofrece 12:30 y 13:00 '
+        '(D-26: el almuerzo no cierra la app)',
+        appHours.join(' '));
+    check(
+        webHours.isNotEmpty &&
+            !webHours.any(
+                (h) => h.compareTo('10:00') > 0 && h.compareTo('14:00') < 0),
+        'A: (link público) Ana, 2 h, día partido: nada entre 10:15 y 13:45 '
+        '(el almuerzo está cerrado)',
+        webHours.join(' '));
+    // El link público limita las reservas por IP (5 por minuto).
+    late Response<dynamic> booking;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      booking = await public
+          .post<dynamic>('/public/businesses/$slug/bookings', data: {
+        'service_ids': [serviceId],
+        'professional_id': anaId,
+        'start':
+            instantIn(biz.zone, at(split, 12, 30)).toUtc().toIso8601String(),
+        'client': {
+          'name': 'Web',
+          'lastname': 'Almuerzo',
+          'phone': phone('320', '01')
+        },
+      });
+      if (booking.statusCode != 429) break;
+      await waitThrottle(tester, 'reserva pública');
+    }
+    check(
+        booking.statusCode == 409 &&
+            '${booking.data}'.contains('OUTSIDE_BUSINESS_HOURS') &&
+            '${booking.data}'.contains('OUTSIDE_OPENING_HOURS'),
+        'A: (link público) reservar a las 12:30 del día partido: rechazado '
+            '(fuera del horario)',
+        '${booking.statusCode} ${booking.data}');
+  }
+
+  // La agenda del día partido: de 8 a 19, solo 8:00-8:30 sombreado.
+  await showDay(tester, split);
+  final calendar = tester.widget<SfCalendar>(find.byType(SfCalendar));
+  final range = calendar.timeSlotViewSettings;
+  check(
+      range.startHour == 8 && range.endHour == 19,
+      'A: día partido: la agenda va de 8:00 a 19:00',
+      '${range.startHour}-${range.endHour}');
+  int minuteOf(DateTime t) => t.hour * 60 + t.minute;
+  final shaded = [
+    for (final r in calendar.specialRegions ?? const <TimeRegion>[])
+      '${hm(r.startTime)}-${hm(r.endTime)}'
+  ];
+  check(
+      !(calendar.specialRegions ?? const <TimeRegion>[]).any((r) =>
+          minuteOf(r.startTime) < 14 * 60 && minuteOf(r.endTime) > 12 * 60),
+      'A: día partido: el almuerzo no sale "Cerrado" (D-26)',
+      shaded);
+  check(shaded.length == 1 && shaded.first == '08:00-08:30',
+      'A: día partido: solo 8:00-8:30 sombreado (abre a las 8:30)', shaded);
+  await shot(tester, 'A_dia_partido_agenda');
+
+  // Antes de abrir: explica y no abre el formulario.
+  await tapAgendaAt(tester, 8, 0);
+  var t = allText();
+  await shot(tester, 'A_dia_partido_antes_de_abrir');
+  check(
+      t.contains('Fuera del horario') &&
+          t.contains('el negocio está cerrado') &&
+          t.contains('de ${formatHhmm('08:30')} a ${formatHhmm('19:00')}') &&
+          find.text('Nueva cita').evaluate().isEmpty,
+      'A: tocar las 8:00 del día partido: "Fuera del horario" con el tramo '
+      '8:30 a. m.-7:00 p. m. y sin formulario',
+      t);
+  if (find.byKey(AgendaSlotSheet.dismissKey).evaluate().isNotEmpty) {
+    await tap(tester, find.byKey(AgendaSlotSheet.dismissKey), wait: 800);
+  }
+
+  // 12:30 (almuerzo del negocio): abre "Nueva cita" con la hora y una
+  // profesional libre (Ana; Laura está en su descanso).
+  await tapAgendaAt(tester, 12, 30);
+  final opened = await waitFor(tester, find.text('Nueva cita'),
+      timeout: const Duration(seconds: 10));
+  check(opened, 'A: tocar las 12:30 del día partido abre "Nueva cita"',
+      allText());
+  if (opened) {
+    await idle(tester, 1500);
+    final proTile = find.byKey(const Key('appointment-professional'));
+    final pro = find
+        .descendant(of: proTile, matching: find.byType(Text))
+        .evaluate()
+        .map((e) => (e.widget as Text).data ?? '')
+        .join(' ');
+    check(
+        pro.contains(ana.fullName),
+        'A: a las 12:30 propone a ${ana.first} (libre; ${laura.first} descansa)',
+        pro);
+    await fillAppointmentForm(tester,
+        services: ['Pestañas punto a punto'], client: isabella);
+    final chip =
+        find.byKey(ValueKey('slot-${at(split, 12, 30).toIso8601String()}'));
+    final preselected =
+        chip.evaluate().isNotEmpty && tester.widget<ChoiceChip>(chip).selected;
+    await shot(tester, 'A_dia_partido_1230');
+    check(preselected, 'A: la hora tocada (12:30) queda elegida',
+        slotsText(slotTimes()));
+    if (preselected) {
+      await tap(tester, find.widgetWithText(FilledButton, 'Agendar'),
+          wait: 3000);
+    }
+    final saved = preselected &&
+        await waitGone(tester, find.text('Nueva cita'),
+            timeout: const Duration(seconds: 10));
+    check(
+        saved,
+        'A: cita en el almuerzo del negocio (12:30-14:30 con Ana) guardada',
+        allText());
+    if (!saved && find.text('Nueva cita').evaluate().isNotEmpty) {
+      await dismissDialogs(tester);
+      await tapText(tester, 'Cancelar', wait: 1000);
+    }
+    await settle(tester);
+    await showDay(tester, split);
+    check(
+        allText().contains(isabella.fullName),
+        'A: la agenda del día partido muestra la cita de ${isabella.first}',
+        allText());
+    await shot(tester, 'A_dia_partido_con_cita');
+  }
+
+  // Día cerrado: aviso arriba y tocar no abre el formulario.
+  final sunday = nextWeekdayOf(biz.today(), DateTime.sunday);
+  await showDay(tester, sunday);
+  final notice = find.byKey(AgendaDayNotice.closedKey);
+  t = allText();
+  await shot(tester, 'A_domingo_cerrado');
+  check(notice.evaluate().isNotEmpty && t.contains('el negocio está cerrado'),
+      'A: domingo: aviso "…el negocio está cerrado"', t);
+  await tapAgendaAt(tester, 10, 0);
+  t = allText();
+  await shot(tester, 'A_domingo_toque');
+  check(t.contains('Día cerrado') && find.text('Nueva cita').evaluate().isEmpty,
+      'A: tocar el domingo explica "Día cerrado" y no abre el formulario', t);
+  if (find.byKey(AgendaSlotSheet.dismissKey).evaluate().isNotEmpty) {
+    await tap(tester, find.byKey(AgendaSlotSheet.dismissKey), wait: 800);
+  }
 }
 
 Future<void> phaseFutureB(WidgetTester tester) async {
@@ -1761,6 +2131,13 @@ void main() {
       await login(tester, bizA.ownerEmail);
       await bookFromCalendarCell(tester, bizA, nextWeekday(bizA.today()),
           bizA.employees[0], bizA.clients[2], bizA.clients[0]);
+      await logout(tester);
+    }
+    // Solo el horario partido y los días cerrados (13.03), para repetirlo
+    // sobre una corrida hecha; en la corrida completa lo hace `a_future`.
+    if (_phases != 'all' && want('a_hours')) {
+      await login(tester, bizA.ownerEmail);
+      await phaseHoursA(tester);
       await logout(tester);
     }
     if (want('b_future')) await phaseFutureB(tester);

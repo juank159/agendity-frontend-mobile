@@ -110,6 +110,11 @@ class SyncController extends GetxController with WidgetsBindingObserver {
   Worker onDataChanged(void Function() onChanged) =>
       ever<int>(dataVersion, (_) => onChanged());
 
+  /// Una pantalla guardó algo en local fuera de la bandeja (p. ej. el
+  /// horario de apertura en "Mi negocio", D-25): las demás se recargan como
+  /// tras una sincronización.
+  void notifyLocalChange() => dataVersion.value++;
+
   /// "Deslizar para refrescar": sincroniza ya y espera a que termine.
   Future<void> syncNow() async {
     await _engine.syncNow();

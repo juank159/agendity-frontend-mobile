@@ -64,10 +64,23 @@ class SlotPicker extends StatelessWidget {
         case SlotsStatus.ready:
           final slots = controller.slots;
           if (slots.isEmpty) {
-            return const AppNote(
-              'No hay horas libres este día. Prueba con otro.',
+            // Qué pasa y qué hacer (D-25).
+            final name = controller.professional.value?.name;
+            return AppNote(
+              'No hay horas libres este día'
+              '${name == null || controller.professionalIsFixed ? '' : ' para $name'}'
+              '. Puede que el negocio esté cerrado, que no se trabaje ese día '
+              'o que ya esté todo ocupado. Prueba con otro día'
+              '${controller.professionalIsFixed ? '' : ' o con otro profesional'}.',
+              key: const Key('slots-empty'),
               tone: AppTone.warning,
               icon: Icons.event_busy_rounded,
+              trailing: TextButton.icon(
+                key: const Key('slots-next-day'),
+                onPressed: controller.nextDay,
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: const Text('Ver el día siguiente'),
+              ),
             );
           }
           final selected = controller.slot.value;

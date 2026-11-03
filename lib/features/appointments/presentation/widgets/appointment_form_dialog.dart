@@ -25,12 +25,19 @@ class AppointmentFormDialog extends StatefulWidget {
   const AppointmentFormDialog({super.key, required this.createController});
 
   /// Cita nueva; [initialStart] = hora tocada en el calendario (se elige si
-  /// está libre).
-  static Future<AppointmentEntity?> create({DateTime? initialStart}) =>
+  /// está libre); [initialDay] = abre ese día sin hora elegida;
+  /// [professional] = el profesional libre a esa hora (D-25).
+  static Future<AppointmentEntity?> create({
+    DateTime? initialStart,
+    DateTime? initialDay,
+    SelectedProfessional? professional,
+  }) =>
       Get.dialog<AppointmentEntity>(
         AppointmentFormDialog(
           createController: () => AppointmentFormController.fromDependencies(
-              initialStart: initialStart),
+              initialStart: initialStart,
+              initialDay: initialDay,
+              initialProfessional: professional),
         ),
         barrierDismissible: false,
       );
@@ -381,10 +388,22 @@ class _TotalSummary extends StatelessWidget {
 /// Abre el formulario de una cita nueva desde la agenda (botón "+" o una
 /// hora tocada en el calendario) y muestra la cita creada. Antes comprueba
 /// el plan: si ya no admite citas, sale el diálogo de suscripción.
-Future<void> startNewAppointment(AppointmentsController agenda,
-    {DateTime? at}) async {
-  if (!await agenda.canStartAppointment()) return;
+///
+/// [day] abre ese día sin hora elegida ("Ver horas libres") y
+/// [professional], con ese profesional ya elegido (el libre a esa hora).
+/// [checked] = el plan ya se comprobó antes (al tocar una hora).
+Future<void> startNewAppointment(
+  AppointmentsController agenda, {
+  DateTime? at,
+  DateTime? day,
+  SelectedProfessional? professional,
+  bool checked = false,
+}) async {
+  if (!checked && !await agenda.canStartAppointment()) return;
   final created = await AppointmentFormDialog.create(
-      initialStart: at ?? agenda.newAppointmentStart);
+    initialStart: day != null ? null : at ?? agenda.newAppointmentStart,
+    initialDay: day,
+    professional: professional,
+  );
   if (created != null) agenda.focusOn(created);
 }

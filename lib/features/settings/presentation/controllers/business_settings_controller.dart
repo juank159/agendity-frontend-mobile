@@ -15,6 +15,7 @@ import 'package:login_signup/features/settings/domain/usecases/update_business_p
 import 'package:login_signup/features/settings/domain/usecases/update_business_time_zone_usecase.dart';
 import 'package:login_signup/features/settings/domain/usecases/update_opening_hours_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/shared/utils/external_link.dart';
 import 'package:login_signup/shared/utils/share_text.dart';
@@ -338,6 +339,10 @@ class BusinessSettingsController extends GetxController {
       (settings) {
         _apply(settings);
         _resetHours(settings);
+        // La agenda se ajusta al horario nuevo (D-25).
+        if (Get.isRegistered<SyncController>()) {
+          Get.find<SyncController>().notifyLocalChange();
+        }
         AppSnackbar.success(
             settings.hasOpeningHours
                 ? 'Las citas solo se agendan dentro de este horario'

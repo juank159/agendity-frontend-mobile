@@ -1,4 +1,9 @@
 import 'package:get/get.dart';
+import 'package:login_signup/features/appointments/domain/usecases/get_available_slots_usecase.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/agenda_slot_finder.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/get_services_offered_by_usecase.dart';
+import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/mark_reminder_sent_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/prepare_reminder_usecase.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/agenda_summary_controller.dart';
@@ -16,10 +21,28 @@ import 'package:login_signup/features/statistics/domain/usecases/get_payment_sta
 class AppointmentsBinding implements Bindings {
   @override
   void dependencies() {
+    // Horario de la agenda (D-25): apertura (settings) y horarios del
+    // equipo (employees) por sus use cases; quién está libre al tocar una
+    // hora, con las horas libres de cada profesional.
     Get.lazyPut<AppointmentsController>(
       () => AppointmentsController(
         getAppointmentsUseCase: Get.find(),
         checkSubscriptionLimitsUseCase: Get.find(),
+        getBusinessSettingsUseCase:
+            Get.isRegistered<GetBusinessSettingsUseCase>()
+                ? Get.find<GetBusinessSettingsUseCase>()
+                : null,
+        getEmployeesUseCase: Get.isRegistered<GetEmployeesUseCase>()
+            ? Get.find<GetEmployeesUseCase>()
+            : null,
+        slotFinder: Get.isRegistered<GetAvailableSlotsUseCase>() &&
+                Get.isRegistered<GetServicesOfferedByUseCase>()
+            ? AgendaSlotFinder(
+                getAvailableSlotsUseCase: Get.find<GetAvailableSlotsUseCase>(),
+                getServicesOfferedByUseCase:
+                    Get.find<GetServicesOfferedByUseCase>(),
+              )
+            : null,
       ),
       fenix: true,
     );

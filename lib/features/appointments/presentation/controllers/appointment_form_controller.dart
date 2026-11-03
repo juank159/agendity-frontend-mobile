@@ -61,6 +61,12 @@ class AppointmentFormController extends GetxController {
   /// Hora sugerida al abrir (celda tocada en el calendario).
   final DateTime? _preferredStart;
 
+  /// Día con el que abre sin hora elegida ("Ver horas libres").
+  final DateTime? _initialDay;
+
+  /// Profesional libre a la hora tocada (D-25); el usuario puede cambiarlo.
+  final SelectedProfessional? _initialProfessional;
+
   AppointmentFormController({
     required CreateAppointmentUseCase createAppointmentUseCase,
     required UpdateAppointmentUseCase updateAppointmentUseCase,
@@ -71,8 +77,12 @@ class AppointmentFormController extends GetxController {
     GetServicesOfferedByUseCase? getServicesOfferedByUseCase,
     this.original,
     DateTime? initialStart,
+    DateTime? initialDay,
+    SelectedProfessional? initialProfessional,
     DateTime Function()? now,
-  })  : _create = createAppointmentUseCase,
+  })  : _initialDay = initialDay,
+        _initialProfessional = initialProfessional,
+        _create = createAppointmentUseCase,
         _update = updateAppointmentUseCase,
         _getSlots = getAvailableSlotsUseCase,
         _getServices = getServicesUseCase,
@@ -86,6 +96,8 @@ class AppointmentFormController extends GetxController {
   factory AppointmentFormController.fromDependencies({
     AppointmentEntity? original,
     DateTime? initialStart,
+    DateTime? initialDay,
+    SelectedProfessional? initialProfessional,
   }) =>
       AppointmentFormController(
         createAppointmentUseCase: Get.find(),
@@ -100,6 +112,8 @@ class AppointmentFormController extends GetxController {
                 : null,
         original: original,
         initialStart: initialStart,
+        initialDay: initialDay,
+        initialProfessional: initialProfessional,
       );
 
   bool get isEditing => original != null;
@@ -132,7 +146,7 @@ class AppointmentFormController extends GetxController {
   void onInit() {
     super.onInit();
     final current = original;
-    final start = _preferredStart ?? _now();
+    final start = _initialDay ?? _preferredStart ?? _now();
     day = DateTime(start.year, start.month, start.day).obs;
     if (current != null) {
       client.value = current.client;
@@ -144,6 +158,8 @@ class AppointmentFormController extends GetxController {
     } else if (professionalIsFixed) {
       professional.value = SelectedProfessional(
           id: _session.userId, name: _session.name ?? 'Yo');
+    } else if (_initialProfessional != null) {
+      professional.value = _initialProfessional;
     }
     _loadCatalog();
   }
@@ -244,6 +260,12 @@ class AppointmentFormController extends GetxController {
   void selectDay(DateTime value) {
     day.value = DateTime(value.year, value.month, value.day);
     loadSlots();
+  }
+
+  /// "Probar el día siguiente" cuando un día no tiene horas libres.
+  void nextDay() {
+    final d = day.value;
+    selectDay(DateTime(d.year, d.month, d.day + 1));
   }
 
   void selectSlot(DateTime value) => slot.value = value;

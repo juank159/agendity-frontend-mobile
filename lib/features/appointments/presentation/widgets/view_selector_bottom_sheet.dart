@@ -5,7 +5,9 @@ import 'package:login_signup/shared/widgets/app_sheet.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 /// Opciones de la agenda en una hoja (`AppSheet`): la vista (día, semana o
-/// mes; también en la barra del calendario) y "Mostrar canceladas".
+/// mes; también en la barra del calendario), "Mostrar canceladas" y, para
+/// el Owner con equipo, ver un solo profesional (sus citas y su horario
+/// sombreado, D-25).
 class ViewSelectorBottomSheet extends StatelessWidget {
   final AppointmentsController controller;
 
@@ -66,6 +68,40 @@ class ViewSelectorBottomSheet extends StatelessWidget {
                 value: controller.showCancelled.value,
                 onChanged: (_) => controller.toggleShowCancelled(),
               )),
+          if (!controller.isEmployeeView && controller.team.length > 1) ...[
+            const Divider(indent: 16, endIndent: 16),
+            const ListTile(
+              leading: Icon(Icons.person_search_rounded),
+              title: Text('Profesional'),
+              subtitle: Text('Sus citas y, sombreadas, las horas en que no '
+                  'trabaja'),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Obx(() {
+                final selected = controller.professionalFilter.value;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      key: const Key('agenda-filter-all'),
+                      label: const Text('Todo el equipo'),
+                      selected: selected == null,
+                      onSelected: (_) => controller.filterByProfessional(null),
+                    ),
+                    for (final e in controller.team)
+                      ChoiceChip(
+                        key: ValueKey('agenda-filter-${e.id}'),
+                        label: Text(e.fullName),
+                        selected: selected == e.id,
+                        onSelected: (_) => controller.filterByProfessional(e.id),
+                      ),
+                  ],
+                );
+              }),
+            ),
+          ],
           const SizedBox(height: 8),
         ],
       ),

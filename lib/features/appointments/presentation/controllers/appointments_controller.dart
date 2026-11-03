@@ -4,7 +4,14 @@ import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_queries.dart';
+import 'package:login_signup/features/appointments/domain/usecases/agenda_hours.dart';
+import 'package:login_signup/features/appointments/domain/usecases/free_slots.dart';
 import 'package:login_signup/features/appointments/domain/usecases/get_appointments_usecase.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/agenda_slot_finder.dart';
+import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
+import 'package:login_signup/features/employees/domain/usecases/get_employees_usecase.dart';
+import 'package:login_signup/features/settings/domain/entities/business_settings.dart';
+import 'package:login_signup/features/settings/domain/usecases/get_business_settings_usecase.dart';
 import 'package:login_signup/features/subscriptions/domain/entities/subscription_limits.dart';
 import 'package:login_signup/features/subscriptions/domain/usecases/check_subscription_limits_usecase.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
@@ -18,33 +25,61 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 /// Employee solo las suyas: lo filtra el backend. Crear y editar es de
 /// `AppointmentFormController`; cancelar, completar y pagar, de
 /// `AppointmentActionsController`.
+///
+/// Horario (D-25): con el horario de apertura del negocio (feature
+/// `settings`) y los horarios del equipo (feature `employees`), ambos por
+/// sus use cases, decide el rango de horas de cada día y lo que no se puede
+/// reservar (`AgendaHours`). Sin esos use cases, la agenda no limita nada.
 class AppointmentsController extends GetxController {
   final GetAppointmentsUseCase _getAppointments;
   final CheckSubscriptionLimitsUseCase _checkLimits;
+  final GetBusinessSettingsUseCase? _getSettings;
+  final GetEmployeesUseCase? _getTeam;
+
+  /// Quién está libre a una hora tocada; `null` = el formulario decide.
+  final AgendaSlotFinder? slotFinder;
   final DateTime Function() _now;
 
   AppointmentsController({
     required GetAppointmentsUseCase getAppointmentsUseCase,
     required CheckSubscriptionLimitsUseCase checkSubscriptionLimitsUseCase,
+    GetBusinessSettingsUseCase? getBusinessSettingsUseCase,
+    GetEmployeesUseCase? getEmployeesUseCase,
+    this.slotFinder,
     DateTime Function()? now,
   })  : _getAppointments = getAppointmentsUseCase,
         _checkLimits = checkSubscriptionLimitsUseCase,
+        _getSettings = getBusinessSettingsUseCase,
+        _getTeam = getEmployeesUseCase,
         _now = now ?? BusinessTimeZone.now;
+
+  /// "Ahora" del negocio (el reloj inyectable).
+  DateTime now() => _now();
 
   final appointments = <AppointmentEntity>[].obs;
   final currentView = CalendarView.day.obs;
   late final Rx<DateTime> selectedDate = _now().obs;
   final isLoading = false.obs;
+
+  /// Buscando quién está libre a la hora tocada (barra de carga).
+  final isFinding = false.obs;
   final error = Rxn<Failure>();
 
   /// Las canceladas no ocupan columnas en el calendario (7.04-7): se ocultan
   /// salvo que el usuario pida verlas.
   final showCancelled = false.obs;
 
-  /// Citas que pinta el calendario: sin las canceladas, salvo [showCancelled].
-  List<AppointmentEntity> get visibleAppointments => showCancelled.value
-      ? appointments.toList()
-      : appointments.where((a) => !a.isCancelled).toList();
+  /// Citas que pinta el calendario: sin las canceladas, salvo
+  /// [showCancelled], y solo las del profesional del filtro, si hay uno.
+  List<AppointmentEntity> get visibleAppointments {
+    final only = professionalFilter.value;
+    return [
+      for (final a in appointments)
+        if ((showCancelled.value || !a.isCancelled) &&
+            (only == null || a.professionalId == only))
+          a,
+    ];
+  }
 
   void toggleShowCancelled() => showCancelled.toggle();
 
@@ -92,12 +127,140 @@ class AppointmentsController extends GetxController {
       _timeZoneWorker =
           Get.find<SessionController>().onTimeZoneChanged((_) => reload());
     }
-    // Lo que baja de la sincronización (10.03) se ve sin salir de la agenda.
+    // Lo que baja de la sincronización (10.03) se ve sin salir de la agenda;
+    // también un horario editado en "Mi negocio" o en el personal.
     if (Get.isRegistered<SyncController>()) {
-      _syncWorker = Get.find<SyncController>()
-          .onDataChanged(() => _load(_range, force: true, silent: true));
+      _syncWorker = Get.find<SyncController>().onDataChanged(() {
+        _load(_range, force: true, silent: true);
+        loadHours();
+      });
     }
     _load(rangeFor(currentView.value, selectedDate.value));
+    loadHours();
+  }
+
+  // --- Horario de la agenda (D-25) ------------------------------------------
+
+  /// Horario que limita la agenda (apertura, equipo y filtro).
+  final hours = AgendaHours.unlimited.obs;
+
+  /// Profesionales a los que se puede agendar (activos), con su horario.
+  final team = <EmployeeEntity>[].obs;
+
+  /// Profesional elegido en las opciones de la agenda (solo el Owner);
+  /// `null` = todo el equipo.
+  final professionalFilter = RxnString();
+
+  AgendaHours _base = AgendaHours.unlimited;
+  int _hoursRequest = 0;
+
+  String? get _sessionUserId => Get.isRegistered<SessionController>()
+      ? Get.find<SessionController>().userId
+      : null;
+
+  /// Lee el horario de apertura y el del equipo (local, también sin
+  /// conexión). Sin use cases o si fallan, la agenda no limita nada.
+  Future<void> loadHours() async {
+    final getSettings = _getSettings;
+    final getTeam = _getTeam;
+    if (getSettings == null && getTeam == null) return;
+    final request = ++_hoursRequest;
+    final settingsCall = getSettings?.call(NoParams());
+    final teamCall = getTeam?.call(NoParams());
+    final settings = (await settingsCall)?.fold((_) => null, (s) => s);
+    final loaded = (await teamCall)?.fold((_) => null, (list) => list);
+    if (request != _hoursRequest) return;
+    final active = [
+      for (final e in loaded ?? const <EmployeeEntity>[])
+        if (e.canBeScheduled) e,
+    ];
+    team.assignAll(active);
+    if (professionalFilter.value != null &&
+        !active.any((e) => e.id == professionalFilter.value)) {
+      professionalFilter.value = null;
+    }
+    _base = AgendaHours(
+      business: _openingWindows(settings?.openingHours),
+      team: [for (final e in active) AgendaHours.weekly(e.schedule)],
+    );
+    _applyFilter();
+  }
+
+  static List<ScheduleWindow>? _openingWindows(OpeningHours? opening) =>
+      opening == null
+          ? null
+          : [
+              for (final r in opening.ranges)
+                if (AgendaHours.window(r.dayOfWeek, r.hours) case final w?) w,
+            ];
+
+  /// Profesional cuyo horario se sombrea: la empleada (su agenda) o el del
+  /// filtro.
+  String? get shadedProfessionalId =>
+      isEmployeeView ? _sessionUserId : professionalFilter.value;
+
+  /// Nombre del profesional del filtro (`null` para la empleada: "tú").
+  String? get filteredProfessionalName {
+    final id = professionalFilter.value;
+    if (id == null || isEmployeeView) return null;
+    return team.firstWhereOrNull((e) => e.id == id)?.fullName;
+  }
+
+  void _applyFilter() {
+    final id = shadedProfessionalId;
+    final member = id == null ? null : team.firstWhereOrNull((e) => e.id == id);
+    hours.value = _base.withProfessional(
+        member == null ? null : AgendaHours.weekly(member.schedule));
+  }
+
+  /// Ver solo las citas (y el horario) de un profesional; `null` = todos.
+  void filterByProfessional(String? professionalId) {
+    if (isEmployeeView) return;
+    professionalFilter.value = professionalId;
+    _applyFilter();
+  }
+
+  /// Inicio y fin de las citas visibles (para no esconder ninguna).
+  Iterable<(DateTime, DateTime)> get _visibleSpans =>
+      visibleAppointments.map((a) => (a.startTime, a.endTime));
+
+  /// El día [date]: rango de horas y lo que no se puede reservar.
+  AgendaDay dayHours(DateTime date) =>
+      hours.value.day(date, appointments: _visibleSpans);
+
+  /// La semana que se ve (lunes a domingo de [selectedDate]).
+  AgendaWeek weekHours() {
+    final range = rangeFor(CalendarView.week, selectedDate.value);
+    return hours.value.week(
+      [
+        for (var i = 0; i < 7; i++)
+          DateTime(range.start.year, range.start.month, range.start.day + i),
+      ],
+      appointments: _visibleSpans,
+    );
+  }
+
+  /// A quién se le puede agendar desde la agenda: la empleada, solo a sí
+  /// misma; con filtro, a ese profesional; si no, al equipo activo (el
+  /// Owner, el último).
+  List<AgendaCandidate> get bookingCandidates {
+    if (isEmployeeView) {
+      final session = Get.find<SessionController>();
+      return [
+        AgendaCandidate(id: session.userId, name: session.name ?? 'Yo'),
+      ];
+    }
+    final only = professionalFilter.value;
+    // Primero las empleadas; el Owner, al final (si también atiende).
+    final ordered = [
+      ...team.where((e) => !e.isOwner),
+      ...team.where((e) => e.isOwner),
+    ];
+    return [
+      for (final e in ordered)
+        if (only == null || e.id == only)
+          AgendaCandidate(id: e.id, name: e.fullName),
+    ];
   }
 
   @override
@@ -183,7 +346,10 @@ class AppointmentsController extends GetxController {
   }
 
   /// Vuelve a pedir el rango actual (reintento o tras un cambio externo).
-  Future<void> reload() => _load(_range, force: true);
+  Future<void> reload() {
+    loadHours();
+    return _load(_range, force: true);
+  }
 
   /// [silent] (recarga tras una sincronización, 7.05d): sin la barra de
   /// carga y, si falla con citas ya pintadas, se conservan sin error.

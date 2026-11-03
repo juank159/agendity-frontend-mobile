@@ -1,4 +1,5 @@
 import 'package:login_signup/core/utils/date_codec.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_changes.dart';
 import 'package:login_signup/features/appointments/domain/entities/appointment_entity.dart';
@@ -178,6 +179,21 @@ abstract final class AppointmentChangesModel {
         if (changes.start != null) 'date': DateCodec.encode(changes.start!),
         if (changes.notes != null) 'notes': changes.notes,
       };
+}
+
+/// `details.hours` de `SLOT_UNAVAILABLE`/`OUTSIDE_BUSINESS_HOURS` (13.04):
+/// `[{start, end}]` en `HH:mm` (hora del negocio). Lo que no se entienda se
+/// descarta.
+abstract final class ScheduleProblemModel {
+  static List<WorkHours> hours(Object? raw) => [
+        for (final slot in JsonRead.asMapList(raw))
+          if (WorkHours(
+                start: WorkHours.normalize(JsonRead.asString(slot['start'])),
+                end: WorkHours.normalize(JsonRead.asString(slot['end'])),
+              )
+              case final hours when hours.isValid)
+            hours,
+      ];
 }
 
 /// Respuesta de `POST /appointments/:id/send-reminder`.

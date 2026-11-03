@@ -1,17 +1,71 @@
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/core/errors/failures.dart';
 
 export 'package:login_signup/features/subscriptions/domain/failures/subscription_failures.dart'
     show TrialLimitReachedFailure, SubscriptionInactiveFailure;
 
+/// Por qué el hueco no está libre (`details.reason` de `SLOT_UNAVAILABLE`,
+/// 13.04). Mismos valores que el backend (`SlotUnavailableReason`).
+enum SlotUnavailableReason {
+  /// Fuera del horario del profesional; `hours` = sus franjas de ese día.
+  professionalOffSchedule('PROFESSIONAL_OFF_SCHEDULE'),
+
+  /// Dentro de un bloqueo de tiempo del profesional.
+  timeBlock('TIME_BLOCK'),
+
+  /// Se cruza con otra cita no cancelada.
+  appointmentOverlap('APPOINTMENT_OVERLAP');
+
+  final String apiValue;
+  const SlotUnavailableReason(this.apiValue);
+
+  /// `null` si no viene o no se conoce (un backend más nuevo).
+  static SlotUnavailableReason? fromApi(Object? value) {
+    for (final reason in values) {
+      if (reason.apiValue == value) return reason;
+    }
+    return null;
+  }
+}
+
+/// Por qué la hora está fuera del horario del negocio (`details.reason` de
+/// `OUTSIDE_BUSINESS_HOURS`, 13.04).
+enum OutsideBusinessHoursReason {
+  /// Ese día el negocio no abre.
+  businessClosedDay('BUSINESS_CLOSED_DAY'),
+
+  /// Abre, pero la cita no cabe; `hours` = las franjas de apertura del día.
+  outsideOpeningHours('OUTSIDE_OPENING_HOURS');
+
+  final String apiValue;
+  const OutsideBusinessHoursReason(this.apiValue);
+
+  static OutsideBusinessHoursReason? fromApi(Object? value) {
+    for (final reason in values) {
+      if (reason.apiValue == value) return reason;
+    }
+    return null;
+  }
+}
+
 /// `SLOT_UNAVAILABLE` (409; 400 legado, D-11): el hueco no está libre (otra
-/// cita, fuera del horario del profesional o un bloqueo).
+/// cita, fuera del horario del profesional o un bloqueo). Desde 13.04 trae el
+/// motivo ([reason]) y, si es el horario del profesional, sus franjas de ese
+/// día ([hours], `HH:mm` en hora del negocio; vacía si ese día no trabaja).
+/// El texto para el usuario lo arma presentation (`SlotProblemText`).
 class SlotUnavailableFailure extends ConflictFailure {
   static const defaultMessage = 'Horario no disponible';
+
+  final SlotUnavailableReason? reason;
+  final List<WorkHours> hours;
 
   const SlotUnavailableFailure({
     String? message,
     super.statusCode,
     super.details,
+    super.info,
+    this.reason,
+    this.hours = const [],
   }) : super(
             message: message ?? defaultMessage,
             code: ApiErrorCode.slotUnavailable);
@@ -129,14 +183,21 @@ class AppointmentNotStartedFailure extends ConflictFailure {
 }
 
 /// `OUTSIDE_BUSINESS_HOURS` (409, 8.01): agendar o mover fuera del horario
-/// de apertura del negocio (si lo tiene configurado).
+/// de apertura del negocio (si lo tiene configurado). Desde 13.04 trae el
+/// motivo ([reason]) y las franjas de apertura de ese día ([hours]).
 class OutsideBusinessHoursFailure extends ConflictFailure {
   static const defaultMessage = 'El negocio está cerrado a esa hora';
+
+  final OutsideBusinessHoursReason? reason;
+  final List<WorkHours> hours;
 
   const OutsideBusinessHoursFailure({
     String? message,
     super.statusCode,
     super.details,
+    super.info,
+    this.reason,
+    this.hours = const [],
   }) : super(
             message: message ?? defaultMessage,
             code: ApiErrorCode.outsideBusinessHours);

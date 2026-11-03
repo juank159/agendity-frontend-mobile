@@ -16,11 +16,18 @@ abstract class Failure {
   final int? statusCode;
   final List<String> details;
 
+  /// `details` del contrato cuando llega como **objeto** (13.04): datos de un
+  /// error de negocio con claves en snake_case, p. ej. `{reason: 'TIME_BLOCK'}`
+  /// en `SLOT_UNAVAILABLE`. Vacío si no vino o si `details` era una lista
+  /// (esa va en [details]). Los failures de feature lo leen al refinar.
+  final Map<String, Object?> info;
+
   const Failure({
     required this.message,
     this.code,
     this.statusCode,
     this.details = const [],
+    this.info = const {},
   });
 
   @override
@@ -148,6 +155,7 @@ class ConflictFailure extends Failure {
     super.code,
     super.statusCode,
     super.details,
+    super.info,
   }) : super(message: message ?? defaultMessage);
 }
 

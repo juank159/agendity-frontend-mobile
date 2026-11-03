@@ -1,9 +1,11 @@
-/// Horario de un día de trabajo, en hora del negocio con formato `HH:mm`.
+/// Una franja de trabajo o de apertura, en hora del negocio con formato
+/// `HH:mm`.
 ///
-/// El horario semanal de un profesional es un `Map<String, WorkHours>` cuyas
-/// claves son los días de [weekdays] (los que usa el backend). Un día sin
-/// entrada es un día libre; un profesional sin ningún día no tiene
-/// restricción de horario al agendar (regla del backend, 2.04).
+/// El horario semanal de un profesional es un `Map<String, List<WorkHours>>`
+/// (13.05: varias franjas por día, p. ej. 10–12 y 16–18) cuyas claves son los
+/// días de [weekdays] (los que usa el backend). Un día sin franjas es un día
+/// libre; un profesional sin ningún día no tiene restricción de horario al
+/// agendar (regla del backend, 2.04).
 class WorkHours {
   /// Días de la semana en el orden del backend (`day_of_week` 1 = lunes).
   static const weekdays = [
@@ -40,6 +42,11 @@ class WorkHours {
   /// Ambas horas válidas y el fin después del inicio.
   bool get isValid =>
       isValidTime(start) && isValidTime(end) && start.compareTo(end) < 0;
+
+  /// Se pisa con [other] ([inicio, fin) cruzados). Una franja que empieza
+  /// justo cuando la otra termina no se pisa (misma regla que el backend).
+  bool overlaps(WorkHours other) =>
+      start.compareTo(other.end) < 0 && other.start.compareTo(end) < 0;
 
   @override
   bool operator ==(Object other) =>

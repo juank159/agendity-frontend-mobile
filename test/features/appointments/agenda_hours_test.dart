@@ -241,12 +241,24 @@ void main() {
     });
   });
 
+  test('horario partido (13.05): todas las franjas del día', () {
+    final windows = AgendaHours.weekly(const {
+      'monday': [
+        WorkHours(start: '10:00', end: '12:00'),
+        WorkHours(start: '16:00', end: '18:00'),
+      ],
+      'tuesday': [],
+    });
+    expect(windows.map((x) => (x.dayOfWeek, x.startMinute, x.endMinute)),
+        [(1, 600, 720), (1, 960, 1080)]);
+  });
+
   test('horario semanal de un profesional desde sus WorkHours', () {
     final windows = AgendaHours.weekly(const {
-      'monday': WorkHours(start: '09:00', end: '13:00'),
-      'sunday': WorkHours(start: '10:00', end: '12:00'),
-      'otro': WorkHours(start: '10:00', end: '12:00'),
-      'tuesday': WorkHours(start: '14:00', end: '10:00'),
+      'monday': [WorkHours(start: '09:00', end: '13:00')],
+      'sunday': [WorkHours(start: '10:00', end: '12:00')],
+      'otro': [WorkHours(start: '10:00', end: '12:00')],
+      'tuesday': [WorkHours(start: '14:00', end: '10:00')],
     });
     expect(windows.map((x) => (x.dayOfWeek, x.startMinute, x.endMinute)),
         [(1, 540, 780), (7, 600, 720)]);

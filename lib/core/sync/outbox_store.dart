@@ -139,6 +139,29 @@ abstract final class OutboxStore {
     return rows.map(OutboxEntry.fromRow).toList();
   }
 
+  /// ¿Hay algo en la bandeja (pendiente, rechazado o en conflicto) para ese
+  /// registro? Mientras lo haya, sus cambios siguen por la bandeja para no
+  /// cambiar el orden (13.05: una escritura con conexión solo va directo al
+  /// servidor si el registro y lo que nombra ya no tienen nada aquí).
+  static Future<bool> hasEntriesFor(
+      AppDatabase db, String entity, String id) async {
+    final row = await (db.select(db.outbox)
+          ..where((o) => o.entity.equals(entity) & o.entityId.equals(id))
+          ..limit(1))
+        .getSingleOrNull();
+    return row != null;
+  }
+
+  /// Id con el que el servidor fusionó [id] (`merged`, `IdRemaps`), o [id]
+  /// si no se fusionó.
+  static Future<String> resolveId(
+      AppDatabase db, String entity, String id) async {
+    final remap = await (db.select(db.idRemaps)
+          ..where((r) => r.entity.equals(entity) & r.fromId.equals(id)))
+        .getSingleOrNull();
+    return remap?.toId ?? id;
+  }
+
   static Future<int> remove(AppDatabase db, String mutationId) =>
       (db.delete(db.outbox)..where((o) => o.mutationId.equals(mutationId)))
           .go();

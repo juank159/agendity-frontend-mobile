@@ -122,8 +122,8 @@ void main() {
       expect(employee.serviceAssignments['svc-2']!.customPrice, isNull);
       // `schedule` (transformado) gana a `schedules` (crudo).
       expect(employee.schedule, {
-        'monday': const WorkHours(start: '09:00', end: '18:00'),
-        'saturday': const WorkHours(start: '08:00', end: '12:30'),
+        'monday': [const WorkHours(start: '09:00', end: '18:00')],
+        'saturday': [const WorkHours(start: '08:00', end: '12:30')],
       });
       expect(employee.isDeleted, false);
       expect(employee.status, EmployeeStatus.active);
@@ -151,7 +151,7 @@ void main() {
       expect(employee.serviceAssignments['svc-1']!.commissionPercentage, 25.5);
       // day_of_week fuera de 1..7 se ignora.
       expect(employee.schedule,
-          {'tuesday': const WorkHours(start: '10:00', end: '19:00')});
+          {'tuesday': [const WorkHours(start: '10:00', end: '19:00')]});
     });
 
     test('respuesta mínima (alta, cambio de estado): sin servicios ni nulls',
@@ -233,7 +233,7 @@ void main() {
             serviceId: 'svc-1', commissionPercentage: 40, customPrice: 35000),
         'svc-2': ServiceAssignment(serviceId: 'svc-2'),
       },
-      schedule: {'monday': WorkHours(start: '09:00', end: '18:00')},
+      schedule: {'monday': [WorkHours(start: '09:00', end: '18:00')]},
     );
 
     test('alta: solo campos del DTO, con contraseña', () {
@@ -252,8 +252,17 @@ void main() {
         // 8.02: sin excepción no se envía (un 0 % taparía la general).
         {'serviceId': 'svc-2'},
       ]);
+      // 13.05: los siete días con su lista exacta de franjas (`[]` = libre).
       expect(json['schedule'], {
-        'monday': {'start': '09:00', 'end': '18:00'}
+        'monday': [
+          {'start': '09:00', 'end': '18:00'}
+        ],
+        'tuesday': [],
+        'wednesday': [],
+        'thursday': [],
+        'friday': [],
+        'saturday': [],
+        'sunday': [],
       });
     });
 

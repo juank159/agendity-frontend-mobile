@@ -14,6 +14,33 @@ import 'fake_sync_api.dart';
 
 /// Motor de sincronización con red simulada (10.02, D-18).
 void main() {
+  group('MutationResult (13.04: details del conflicto)', () {
+    test('conflict con details objeto → details y reason', () {
+      final result = MutationResult.fromJson({
+        'mutation_id': 'm1',
+        'status': 'conflict',
+        'code': 'SLOT_UNAVAILABLE',
+        'saved': true,
+        'details': {'reason': 'TIME_BLOCK'},
+      });
+      expect(result.status, MutationStatus.conflict);
+      expect(result.details, {'reason': 'TIME_BLOCK'});
+      expect(result.reason, 'TIME_BLOCK');
+    });
+
+    test('sin details, o como lista → vacío', () {
+      for (final details in [null, ['a']]) {
+        final result = MutationResult.fromJson({
+          'mutation_id': 'm1',
+          'status': 'rejected',
+          'details': details,
+        });
+        expect(result.details, isEmpty);
+        expect(result.reason, isNull);
+      }
+    });
+  });
+
   late LocalDatabaseHolder databases;
   late FakeSyncServer server;
   late SyncEngine engine;

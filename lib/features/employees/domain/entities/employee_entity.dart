@@ -41,8 +41,11 @@ class EmployeeEntity {
   /// trae (alta y cambio de estado).
   final Map<String, ServiceAssignment> serviceAssignments;
 
-  /// Horario semanal por día (`WorkHours.weekdays`). Vacío = sin horario.
-  final Map<String, WorkHours> schedule;
+  /// Horario semanal: por día (`WorkHours.weekdays`), sus franjas ordenadas
+  /// por inicio (13.05: puede haber varias, p. ej. 10–12 y 16–18). Un día que
+  /// no está (o con lista vacía) es libre. Vacío = sin horario (se le puede
+  /// agendar a cualquier hora).
+  final Map<String, List<WorkHours>> schedule;
 
   /// Comisión general (0–100 %, D-16): la de cada servicio que atiende salvo
   /// excepción en [serviceAssignments]. El Owner no la usa (todo es del
@@ -72,6 +75,9 @@ class EmployeeEntity {
   });
 
   String get fullName => '$name $lastname'.trim();
+
+  /// Franjas de [day] (`WorkHours.weekdays`); vacía si ese día no trabaja.
+  List<WorkHours> hoursOn(String day) => schedule[day] ?? const [];
 
   List<String> get serviceIds => serviceAssignments.keys.toList();
 
@@ -160,7 +166,7 @@ class EmployeeEntity {
     bool? isOwner,
     List<RoleEntity>? roles,
     Map<String, ServiceAssignment>? serviceAssignments,
-    Map<String, WorkHours>? schedule,
+    Map<String, List<WorkHours>>? schedule,
     double? commissionPercentage,
     DateTime? deletedAt,
     String? deletionReason,

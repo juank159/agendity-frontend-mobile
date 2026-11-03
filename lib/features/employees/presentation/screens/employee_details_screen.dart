@@ -82,12 +82,16 @@ class EmployeeDetailsScreen extends StatelessWidget {
               : Column(
                   children: [
                     for (final day in WorkHours.weekdays)
-                      if (employee.schedule[day] case final hours?)
+                      if (employee.hoursOn(day) case final ranges
+                          when ranges.isNotEmpty)
                         _InfoRow(
                             Icons.calendar_today_rounded,
                             employeeDayLabels[day] ?? day,
-                            '${formatHhmm(hours.start)} – '
-                                '${formatHhmm(hours.end)}'),
+                            [
+                              for (final hours in ranges)
+                                '${formatHhmm(hours.start)} – '
+                                    '${formatHhmm(hours.end)}',
+                            ].join(' y ')),
                   ],
                 ),
         ),

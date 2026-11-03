@@ -11,12 +11,14 @@ abstract final class DeepEquality {
     return true;
   }
 
-  /// Mismas claves con los mismos valores (sin importar el orden).
+  /// Mismas claves con los mismos valores (sin importar el orden). Un valor
+  /// lista se compara por contenido (p. ej. las franjas de cada día del
+  /// horario, 13.05).
   static bool maps<K, V>(Map<K, V> a, Map<K, V> b) {
     if (identical(a, b)) return true;
     if (a.length != b.length) return false;
     for (final entry in a.entries) {
-      if (!b.containsKey(entry.key) || b[entry.key] != entry.value) {
+      if (!b.containsKey(entry.key) || !_same(b[entry.key], entry.value)) {
         return false;
       }
     }
@@ -24,6 +26,13 @@ abstract final class DeepEquality {
   }
 
   /// `hashCode` coherente con [maps] (no depende del orden).
-  static int mapHash<K, V>(Map<K, V> map) => Object.hashAllUnordered(
-      map.entries.map((entry) => Object.hash(entry.key, entry.value)));
+  static int mapHash<K, V>(Map<K, V> map) => Object.hashAllUnordered(map
+      .entries
+      .map((entry) => Object.hash(entry.key, _hash(entry.value))));
+
+  static bool _same(Object? a, Object? b) =>
+      a is List && b is List ? lists(a, b) : a == b;
+
+  static int _hash(Object? value) =>
+      value is List ? Object.hashAll(value) : value.hashCode;
 }

@@ -30,6 +30,12 @@ class MutationResult {
   /// `merged`: id del registro con el que se fusionó.
   final String? mergedInto;
 
+  /// `details` de un `conflict`/`rejected` cuando es un objeto (13.04), p. ej.
+  /// `{reason: 'PROFESSIONAL_OFF_SCHEDULE', hours: [...]}`: el mismo que el
+  /// error HTTP (`Failure.info`). Hoy no se guarda en la bandeja (haría falta
+  /// una columna); la cita "Por mover" muestra el motivo por `code`.
+  final Map<String, Object?> details;
+
   const MutationResult({
     required this.mutationId,
     required this.status,
@@ -37,7 +43,11 @@ class MutationResult {
     this.message,
     this.saved = false,
     this.mergedInto,
+    this.details = const {},
   });
+
+  /// `details.reason` (13.04), si vino.
+  String? get reason => details['reason']?.toString();
 
   factory MutationResult.fromJson(Map<String, dynamic> json) => MutationResult(
         mutationId: json['mutation_id']?.toString() ?? '',
@@ -46,6 +56,10 @@ class MutationResult {
         message: json['message']?.toString(),
         saved: json['saved'] == true,
         mergedInto: json['merged_into']?.toString(),
+        details: json['details'] is Map
+            ? Map<String, Object?>.unmodifiable((json['details'] as Map)
+                .map((key, value) => MapEntry(key.toString(), value)))
+            : const {},
       );
 }
 

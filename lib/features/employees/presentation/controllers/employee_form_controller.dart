@@ -66,9 +66,12 @@ abstract class EmployeeFormController extends GetxController {
   /// se conserva al guardar).
   final Map<String, double> _customPrices = {};
 
-  /// Días de trabajo → horario. Un día sin entrada es libre; sin ningún día,
-  /// el profesional no tiene restricción de horario al agendar.
-  final schedule = <String, WorkHours>{}.obs;
+  /// Días de trabajo → sus franjas (13.05: varias por día, p. ej. 10–12 y
+  /// 16–18). Un día sin entrada es libre; sin ningún día, el profesional no
+  /// tiene restricción de horario al agendar. Al editar se conservan todas
+  /// las franjas aunque la pantalla muestre solo la primera (13.06 pinta el
+  /// resto con [addRange]/[removeRange]).
+  final schedule = <String, List<WorkHours>>{}.obs;
 
   final isSaving = false.obs;
 
@@ -167,30 +170,72 @@ abstract class EmployeeFormController extends GetxController {
 
   // ------------------------------------------------------------- Horario
 
-  bool isWorkDay(String day) => schedule.containsKey(day);
+  bool isWorkDay(String day) => schedule[day]?.isNotEmpty ?? false;
+
+  /// Franjas de [day] (vacía si es libre).
+  List<WorkHours> rangesOf(String day) => schedule[day] ?? const [];
 
   void setWorkDay(String day, bool enabled) {
     if (enabled) {
-      schedule.putIfAbsent(
-          day, () => const WorkHours(start: defaultStart, end: defaultEnd));
+      if (!isWorkDay(day)) {
+        schedule[day] = const [WorkHours(start: defaultStart, end: defaultEnd)];
+      }
     } else {
       schedule.remove(day);
     }
   }
 
-  void setStart(String day, String value) {
-    final current = schedule[day];
-    if (current != null) {
-      schedule[day] = WorkHours(start: value, end: current.end);
+  /// Inicio de la franja [index] de [day] (por defecto, la primera).
+  void setStart(String day, String value, {int index = 0}) =>
+      _updateRange(day, index, (h) => WorkHours(start: value, end: h.end));
+
+  /// Fin de la franja [index] de [day] (por defecto, la primera).
+  void setEnd(String day, String value, {int index = 0}) =>
+      _updateRange(day, index, (h) => WorkHours(start: h.start, end: value));
+
+  /// Otra franja en [day] después de la última (una hora más tarde, de una
+  /// hora; si el día no trabajaba, la de por defecto). El use case revisa
+  /// que no se pisen.
+  void addRange(String day) {
+    final ranges = rangesOf(day);
+    if (ranges.isEmpty) return setWorkDay(day, true);
+    final startMinute = _minutes(ranges.last.end) + 60;
+    if (startMinute + 60 >= 24 * 60) return; // no cabe otra hoy
+    schedule[day] = [
+      ...ranges,
+      WorkHours(start: _hhmm(startMinute), end: _hhmm(startMinute + 60)),
+    ];
+  }
+
+  /// Quita la franja [index] de [day]; sin franjas, el día queda libre.
+  void removeRange(String day, int index) {
+    final ranges = [...rangesOf(day)];
+    if (index < 0 || index >= ranges.length) return;
+    ranges.removeAt(index);
+    if (ranges.isEmpty) {
+      schedule.remove(day);
+    } else {
+      schedule[day] = ranges;
     }
   }
 
-  void setEnd(String day, String value) {
-    final current = schedule[day];
-    if (current != null) {
-      schedule[day] = WorkHours(start: current.start, end: value);
-    }
+  void _updateRange(
+      String day, int index, WorkHours Function(WorkHours current) change) {
+    final ranges = [...rangesOf(day)];
+    if (index < 0 || index >= ranges.length) return;
+    ranges[index] = change(ranges[index]);
+    schedule[day] = ranges;
   }
+
+  static int _minutes(String hhmm) {
+    final parts = hhmm.split(':');
+    return (int.tryParse(parts.first) ?? 0) * 60 +
+        (parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0);
+  }
+
+  static String _hhmm(int minutes) =>
+      '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
+      '${(minutes % 60).toString().padLeft(2, '0')}';
 
   // ----------------------------------------------------------- Formulario
 
@@ -199,7 +244,7 @@ abstract class EmployeeFormController extends GetxController {
   void useDefaultSchedule() {
     schedule.assignAll({
       for (final day in workWeek)
-        day: const WorkHours(start: defaultStart, end: defaultEnd),
+        day: const [WorkHours(start: defaultStart, end: defaultEnd)],
     });
   }
 
@@ -244,7 +289,10 @@ abstract class EmployeeFormController extends GetxController {
               customPrice: _customPrices[entry.key],
             ),
         },
-        schedule: Map.of(schedule),
+        schedule: {
+          for (final entry in schedule.entries)
+            entry.key: List.unmodifiable(entry.value),
+        },
         commissionPercentage:
             parsePercentage(generalCommissionController.text),
       );

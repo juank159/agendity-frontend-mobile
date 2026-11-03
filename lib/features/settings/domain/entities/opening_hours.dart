@@ -19,9 +19,7 @@ class OpeningHoursRange {
   /// Se pisa con [other] (mismo día y [inicio, fin) cruzados). Una franja que
   /// empieza justo cuando la otra cierra no se pisa.
   bool overlaps(OpeningHoursRange other) =>
-      dayOfWeek == other.dayOfWeek &&
-      start.compareTo(other.end) < 0 &&
-      other.start.compareTo(end) < 0;
+      dayOfWeek == other.dayOfWeek && hours.overlaps(other.hours);
 
   @override
   bool operator ==(Object other) =>

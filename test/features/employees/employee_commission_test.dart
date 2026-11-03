@@ -56,7 +56,7 @@ void main() {
                 'svc-2': ServiceAssignment(
                     serviceId: 'svc-2', commissionPercentage: 0),
               },
-          schedule: const {'monday': WorkHours(start: '09:00', end: '18:00')},
+          schedule: const {'monday': [WorkHours(start: '09:00', end: '18:00')]},
         );
 
     test('general si se indica; excepción solo si la hay (0 incluido)', () {

@@ -44,7 +44,9 @@ class EmployeeScheduleSection extends StatelessWidget {
           for (final day in WorkHours.weekdays)
             _DayRow(
               day: day,
-              hours: schedule[day],
+              // La primera franja; las demás se conservan en el controller
+              // (13.06 las muestra todas).
+              hours: controller.rangesOf(day).firstOrNull,
               controller: controller,
             ),
         ],

@@ -3,8 +3,10 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/core/database/document_store.dart';
 import 'package:login_signup/core/sync/offline_store.dart';
+import 'package:login_signup/core/sync/outbox_store.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
+import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/appointments/data/datasources/appointments_local_datasource.dart';
 import 'package:login_signup/features/appointments/data/models/appointment_model.dart';
 import 'package:login_signup/features/appointments/data/sync/appointments_sync.dart';
@@ -19,25 +21,51 @@ import 'package:login_signup/features/appointments/domain/repositories/appointme
 import 'package:login_signup/features/subscriptions/domain/failures/subscription_failures.dart'
     show refineSubscriptionFailure;
 
-/// Citas sin conexión (10.02b, D-18): se leen de la base local y agendar,
-/// editar, mover, cancelar y completar se guardan en local + bandeja
-/// (`appointment.*`). Las reglas que se pueden ver en local (estado, pagos,
-/// ya empezó) se avisan al momento; agenda, cupo y horario los decide el
-/// servidor al sincronizar (una cita sin hueco vuelve guardada y marcada
-/// para mover, `needsReschedule`). Las horas libres se piden al servidor y,
-/// sin conexión, se calculan en local con las mismas reglas. Los
-/// recordatorios manuales necesitan conexión.
+/// Citas (10.02b y 13.05, D-18): se leen de la base local.
+///
+/// - **Agendar y mover con conexión** (13.05, D-25) va directo al servidor
+///   (`POST /appointments`, `PATCH /appointments/:id` si cambian fecha,
+///   profesional o servicios): es estricto, así que un choque
+///   (`SLOT_UNAVAILABLE`, `OUTSIDE_BUSINESS_HOURS`…) vuelve como failure al
+///   formulario y no se guarda nada; si sale bien, la cita queda en local con
+///   la forma de la API, como si viniera de la bajada.
+/// - **Sin conexión** (la última sincronización falló por red, o la llamada
+///   da un error de red/timeout o 502–504), y para cancelar, completar o
+///   cambiar solo notas o cliente: local + bandeja (`appointment.*`). Las
+///   reglas que se pueden ver en local (estado, pagos, ya empezó) se avisan
+///   al momento; agenda, cupo y horario los decide el servidor al
+///   sincronizar (una cita sin hueco vuelve guardada y marcada para mover,
+///   `needsReschedule`).
+/// - Mientras la cita (o su cliente o servicios) tenga algo en la bandeja,
+///   sus cambios siguen por la bandeja para no alterar el orden.
+///
+/// Las horas libres se piden al servidor y, sin conexión, se calculan en
+/// local con las mismas reglas. Los recordatorios manuales necesitan
+/// conexión.
 class AppointmentsRepositoryImpl implements AppointmentsRepository {
   final AppointmentsRemoteDataSource _remote;
   final OfflineStore _store;
   final AppointmentsLocalDataSource _local;
 
+  /// ¿Hay conexión según la última sincronización (`SyncEngine.current
+  /// .online`)? `null` = sin camino directo: todo por la bandeja.
+  final bool Function()? _isOnline;
+
+  /// Sube lo pendiente de la bandeja antes de ir directo
+  /// (`SyncEngine.syncNow`), para que el servidor vea los cambios en orden
+  /// (p. ej. el cliente recién creado desde el formulario de la cita).
+  final Future<void> Function()? _flush;
+
   AppointmentsRepositoryImpl(
     this._remote, {
     required OfflineStore store,
     AppointmentsLocalDataSource local = const AppointmentsLocalDataSource(),
+    bool Function()? isOnline,
+    Future<void> Function()? flush,
   })  : _store = store,
-        _local = local;
+        _local = local,
+        _isOnline = isOnline,
+        _flush = flush;
 
   static const _entity = 'appointments';
 
@@ -63,8 +91,25 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
           NewAppointment appointment) =>
       OfflineStore.guard(() async {
         final id = _store.newId();
-        await _write(AppointmentsSync.create, id,
-            NewAppointmentModel.toJson(appointment));
+        final db = await _store.database();
+        // Un cliente creado sin conexión que el servidor fusionó con otro.
+        final clientId =
+            await OutboxStore.resolveId(db, 'clients', appointment.clientId);
+        final payload = {
+          ...NewAppointmentModel.toJson(appointment),
+          'client_id': clientId,
+        };
+        final direct = await _tryDirect(
+          id,
+          dependsOn: [
+            ('clients', clientId),
+            for (final serviceId in appointment.serviceIds)
+              ('services', serviceId),
+          ],
+          send: () => _remote.createAppointment(id, payload),
+        );
+        if (direct != null) return direct;
+        await _write(AppointmentsSync.create, id, payload);
         return getAppointment(id);
       });
 
@@ -73,10 +118,63 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
           String id, AppointmentChanges changes) =>
       _withCurrent(id, (current) async {
         if (changes.isEmpty) return Right(current);
-        await _write(
-            AppointmentsSync.update, id, AppointmentChangesModel.toJson(changes));
+        final payload = AppointmentChangesModel.toJson(changes);
+        if (changes.touchesSlot) {
+          final direct = await _tryDirect(
+            id,
+            dependsOn: [
+              if (changes.clientId case final clientId?) ('clients', clientId),
+              for (final serviceId in changes.serviceIds ?? const <String>[])
+                ('services', serviceId),
+            ],
+            send: () => _remote.updateAppointment(id, payload),
+          );
+          if (direct != null) return direct;
+        }
+        await _write(AppointmentsSync.update, id, payload);
         return getAppointment(id);
       });
+
+  /// Camino directo (13.05). `null` = va por la bandeja: sin conexión
+  /// conocida, con algo de esta cita (o de lo que nombra) aún en la bandeja,
+  /// o la llamada no llegó (error de red, timeout, 502–504). Si el servidor
+  /// respondió, su resultado manda: un error vuelve tal cual (nada en local)
+  /// y un éxito se guarda como la versión del servidor.
+  Future<Either<Failure, AppointmentEntity>?> _tryDirect(
+    String id, {
+    required List<(String, String)> dependsOn,
+    required Future<Map<String, dynamic>> Function() send,
+  }) async {
+    final isOnline = _isOnline;
+    if (isOnline == null || !isOnline()) return null;
+    final db = await _store.database();
+    if ((await OutboxStore.counts(db)).pending > 0) {
+      try {
+        await _flush?.call();
+      } catch (_) {
+        // Sin subir: lo de abajo decide (seguirá por la bandeja).
+      }
+      if (!isOnline()) return null;
+    }
+    for (final (entity, entityId) in [(_entity, id), ...dependsOn]) {
+      if (await OutboxStore.hasEntriesFor(db, entity, entityId)) return null;
+    }
+
+    final result = await safeCall(send, refine: _refine);
+    final failure = result.fold<Failure?>((f) => f, (_) => null);
+    if (failure != null) return _didNotReach(failure) ? null : Left(failure);
+
+    final saved = result.getOrElse(() => const {});
+    await _store.write((db, _) => AppointmentsSync.saveServerVersion(
+        db, JsonRead.asOptionalString(saved['id']) ?? id, saved));
+    return getAppointment(id);
+  }
+
+  /// La petición no llegó o no se sabe si llegó: no se pierde (bandeja, D-18).
+  static bool _didNotReach(Failure failure) =>
+      failure is NetworkFailure ||
+      (failure is ServerFailure &&
+          const {502, 503, 504}.contains(failure.statusCode));
 
   @override
   Future<Either<Failure, AppointmentEntity>> cancelAppointment(String id,
@@ -174,7 +272,10 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
         ApiErrorCode.slotUnavailable => SlotUnavailableFailure(
             message: failure.message,
             statusCode: failure.statusCode,
-            details: failure.details),
+            details: failure.details,
+            info: failure.info,
+            reason: SlotUnavailableReason.fromApi(failure.info['reason']),
+            hours: ScheduleProblemModel.hours(failure.info['hours'])),
         ApiErrorCode.professionalInactive => ProfessionalInactiveFailure(
             message: failure.message,
             statusCode: failure.statusCode,
@@ -207,7 +308,11 @@ class AppointmentsRepositoryImpl implements AppointmentsRepository {
         ApiErrorCode.outsideBusinessHours => OutsideBusinessHoursFailure(
             message: failure.message,
             statusCode: failure.statusCode,
-            details: failure.details),
+            details: failure.details,
+            info: failure.info,
+            reason:
+                OutsideBusinessHoursReason.fromApi(failure.info['reason']),
+            hours: ScheduleProblemModel.hours(failure.info['hours'])),
         _ => refineSubscriptionFailure(failure),
       };
 }

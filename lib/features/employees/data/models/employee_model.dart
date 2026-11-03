@@ -10,11 +10,14 @@ import 'package:login_signup/common/entities/work_hours.dart';
 ///
 /// Las rutas no traen todas lo mismo:
 /// - `GET /auth/employees`: `isOwner`, `services` (`{id, name,
-///   commissionPercentage, customPrice}`) y `schedule` (`{monday: {start,
-///   end}}`); `GET /auth/employee/:id` y `PATCH`, igual sin `isOwner`.
-/// - `GET /auth/employees/deleted`: las relaciones crudas `userServices`
-///   (`{serviceId, commissionPercentage, customPrice, service: {name}}`) y
-///   `schedules` (`{day_of_week, start_time, end_time}`).
+///   commissionPercentage, customPrice}`), `schedule_slots` (13.04: `{monday:
+///   [{start, end}, …]}`, todas las franjas) y `schedule` (formato anterior,
+///   solo la primera franja: `{monday: {start, end}}`); `GET
+///   /auth/employee/:id` y `PATCH`, igual sin `isOwner`.
+/// - `GET /auth/employees/deleted` y la base local: las relaciones crudas
+///   `userServices` (`{serviceId, commissionPercentage, customPrice, service:
+///   {name}}`) y `schedules` (`{day_of_week, start_time, end_time,
+///   is_available}`, una fila por franja).
 /// - alta y cambio de estado: sin servicios.
 ///
 /// Los `decimal` de Postgres llegan como texto y las horas como `"09:00:00"`.
@@ -30,7 +33,7 @@ class EmployeeModel {
   final bool isOwner;
   final List<String> roles;
   final Map<String, ServiceAssignment> services;
-  final Map<String, WorkHours> schedule;
+  final Map<String, List<WorkHours>> schedule;
 
   /// `commission_percentage` (decimal como texto; 8.02). Sin él, 0.
   final double commissionPercentage;
@@ -116,23 +119,57 @@ class EmployeeModel {
     return services;
   }
 
-  static Map<String, WorkHours> _readSchedule(Map<String, dynamic> json) {
+  /// Horario por día, con todas sus franjas ordenadas por inicio (13.05).
+  /// Prioridad: `schedule_slots` → `schedule` (formato anterior, una franja
+  /// por día) → filas crudas `schedules` (todas las del día con
+  /// `is_available`; las de no disponibilidad no son horario de trabajo).
+  static Map<String, List<WorkHours>> _readSchedule(
+      Map<String, dynamic> json) {
+    final slots = JsonRead.asMap(json['schedule_slots']);
+    if (slots != null) {
+      return _sorted({
+        for (final entry in slots.entries)
+          if (WorkHours.weekdays.contains(entry.key))
+            entry.key: [
+              for (final slot in JsonRead.asMapList(entry.value))
+                _hours(slot['start'], slot['end']),
+            ],
+      });
+    }
     final byDay = JsonRead.asMap(json['schedule']);
     if (byDay != null && byDay.isNotEmpty) {
-      return {
+      return _sorted({
         for (final entry in byDay.entries)
-          if (WorkHours.weekdays.contains(entry.key) &&
-              JsonRead.asMap(entry.value) != null)
-            entry.key: _hours(JsonRead.asMap(entry.value)!['start'],
-                JsonRead.asMap(entry.value)!['end']),
-      };
+          if (WorkHours.weekdays.contains(entry.key))
+            entry.key: [
+              // Formato anterior `{start, end}`; una lista, por si acaso.
+              if (JsonRead.asMap(entry.value) case final slot?)
+                _hours(slot['start'], slot['end'])
+              else
+                for (final slot in JsonRead.asMapList(entry.value))
+                  _hours(slot['start'], slot['end']),
+            ],
+      });
     }
-    return {
-      for (final row in JsonRead.asMapList(json['schedules']))
-        if (_dayOfWeek[JsonRead.asInt(row['day_of_week'])] case final day?)
-          day: _hours(row['start_time'], row['end_time']),
-    };
+    final grouped = <String, List<WorkHours>>{};
+    for (final row in JsonRead.asMapList(json['schedules'])) {
+      if (!JsonRead.asBool(row['is_available'], fallback: true)) continue;
+      final day = _dayOfWeek[JsonRead.asInt(row['day_of_week'])];
+      if (day == null) continue;
+      (grouped[day] ??= []).add(_hours(row['start_time'], row['end_time']));
+    }
+    return _sorted(grouped);
   }
+
+  /// Sin días vacíos y con las franjas por hora de inicio.
+  static Map<String, List<WorkHours>> _sorted(
+          Map<String, List<WorkHours>> byDay) =>
+      {
+        for (final entry in byDay.entries)
+          if (entry.value.isNotEmpty)
+            entry.key: List.unmodifiable(
+                [...entry.value]..sort((a, b) => a.start.compareTo(b.start))),
+      };
 
   static WorkHours _hours(Object? start, Object? end) => WorkHours(
         start: WorkHours.normalize(JsonRead.asString(start)),

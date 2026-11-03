@@ -50,7 +50,7 @@ const form = EmployeeInput(
   services: {
     'svc-1': ServiceAssignment(serviceId: 'svc-1', commissionPercentage: 40),
   },
-  schedule: {'monday': WorkHours(start: '09:00:00', end: '18:00')},
+  schedule: {'monday': [WorkHours(start: '09:00:00', end: '18:00')]},
 );
 
 void main() {
@@ -150,7 +150,7 @@ void main() {
       expect(laura.serviceAssignments['svc-1']!.serviceName, 'Cejas');
       expect(laura.commissionFor('svc-1'), 30);
       expect(laura.schedule['monday'],
-          const WorkHours(start: '09:00', end: '18:00'));
+          [const WorkHours(start: '09:00', end: '18:00')]);
       expect(employees.last.isOwner, true);
       expect(adapter.requests, isEmpty);
     });
@@ -207,7 +207,12 @@ void main() {
           {'serviceId': 'svc-1', 'commissionPercentage': 40.0}
         ],
         'schedule': {
-          'monday': {'start': '09:00', 'end': '18:00'}
+          'monday': [
+            {'start': '09:00', 'end': '18:00'}
+          ],
+          for (final day in ['tuesday', 'wednesday', 'thursday', 'friday',
+              'saturday', 'sunday'])
+            day: [],
         },
       });
     });
@@ -223,7 +228,7 @@ void main() {
           'svc-1':
               ServiceAssignment(serviceId: 'svc-1', commissionPercentage: 120)
         },
-        schedule: {'monday': WorkHours(start: '18:00', end: '09:00')},
+        schedule: {'monday': [WorkHours(start: '18:00', end: '09:00')]},
       );
       final failure = leftOf(await CreateEmployeeUseCase(repository)(bad));
       expect(failure, isA<InvalidEmployeeDataFailure>());

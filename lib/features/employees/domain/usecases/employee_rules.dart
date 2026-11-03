@@ -28,8 +28,10 @@ abstract final class EmployeeRules {
   static const commissionInvalid = 'La comisión debe estar entre 0 y 100 %';
   static const customPriceInvalid = 'El precio propio no puede ser negativo';
   static const scheduleInvalid =
-      'Cada día del horario necesita una hora de inicio anterior a la de fin '
-      '(formato HH:mm)';
+      'Cada franja del horario necesita una hora de inicio anterior a la de '
+      'fin (formato HH:mm)';
+  static const scheduleOverlap =
+      'Las franjas de un mismo día no pueden pisarse';
   static const codeInvalid = 'El código debe tener 6 dígitos';
 
   /// Recorta textos y deja el teléfono solo con dígitos (`+57 300-123 4567`
@@ -42,14 +44,24 @@ abstract final class EmployeeRules {
         password: input.password,
         services: input.services,
         commissionPercentage: input.commissionPercentage,
-        schedule: {
-          for (final entry in input.schedule.entries)
-            entry.key: WorkHours(
-              start: WorkHours.normalize(entry.value.start),
-              end: WorkHours.normalize(entry.value.end),
-            ),
-        },
+        schedule: normalizeSchedule(input.schedule),
       );
+
+  /// Horas `"09:00:00"` → `"09:00"`, franjas de cada día ordenadas por
+  /// inicio y sin los días vacíos (un día sin franjas es libre).
+  static Map<String, List<WorkHours>> normalizeSchedule(
+          Map<String, List<WorkHours>> schedule) =>
+      {
+        for (final entry in schedule.entries)
+          if (entry.value.isNotEmpty)
+            entry.key: List.unmodifiable([
+              for (final hours in entry.value)
+                WorkHours(
+                  start: WorkHours.normalize(hours.start),
+                  end: WorkHours.normalize(hours.end),
+                ),
+            ]..sort((a, b) => a.start.compareTo(b.start))),
+      };
 
   static String normalizePhone(String phone) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');
@@ -82,6 +94,7 @@ abstract final class EmployeeRules {
         commissionInvalid,
       if (input.services.values.any(_badCustomPrice)) customPriceInvalid,
       if (!_isValidSchedule(input.schedule)) scheduleInvalid,
+      if (_hasOverlap(input.schedule)) scheduleOverlap,
     ];
   }
 
@@ -101,9 +114,23 @@ abstract final class EmployeeRules {
   static bool _badCustomPrice(ServiceAssignment service) =>
       service.customPrice != null && service.customPrice! < 0;
 
-  static bool _isValidSchedule(Map<String, WorkHours> schedule) =>
+  /// Días conocidos y cada franja `HH:mm` con inicio antes del fin (regla
+  /// del backend, `weekScheduleError`).
+  static bool _isValidSchedule(Map<String, List<WorkHours>> schedule) =>
       schedule.entries.every((entry) =>
-          WorkHours.weekdays.contains(entry.key) && entry.value.isValid);
+          WorkHours.weekdays.contains(entry.key) &&
+          entry.value.every((hours) => hours.isValid));
+
+  /// Dos franjas del mismo día que se pisan (tocarse sí vale: 9–13 y 13–18).
+  static bool _hasOverlap(Map<String, List<WorkHours>> schedule) {
+    for (final day in schedule.values) {
+      final sorted = [...day]..sort((a, b) => a.start.compareTo(b.start));
+      for (var i = 1; i < sorted.length; i++) {
+        if (sorted[i].overlaps(sorted[i - 1])) return true;
+      }
+    }
+    return false;
+  }
 
   static String _collapseSpaces(String value) =>
       value.trim().replaceAll(RegExp(r'\s+'), ' ');

@@ -5,7 +5,9 @@ import 'package:login_signup/common/entities/work_hours.dart';
 /// Datos del formulario para crear o editar un profesional.
 ///
 /// Se envía completo: [services] y [schedule] sustituyen a los que tenga el
-/// profesional (un horario vacío lo deja sin restricción de horario).
+/// profesional (un horario vacío lo deja sin restricción de horario). El
+/// horario lleva **todas** las franjas de cada día (13.05): editar solo el
+/// nombre reenvía las mismas y no se pierde la de la tarde.
 class EmployeeInput {
   final String name;
   final String lastname;
@@ -16,7 +18,7 @@ class EmployeeInput {
   final String? password;
 
   final Map<String, ServiceAssignment> services;
-  final Map<String, WorkHours> schedule;
+  final Map<String, List<WorkHours>> schedule;
 
   /// Comisión general (0–100 %, D-16). `null` = no se envía (al crear, el
   /// backend pone 0; al editar, no cambia).
@@ -42,7 +44,7 @@ class EmployeeInput {
     String? phone,
     String? password,
     Map<String, ServiceAssignment>? services,
-    Map<String, WorkHours>? schedule,
+    Map<String, List<WorkHours>>? schedule,
     double? commissionPercentage,
   }) =>
       EmployeeInput(

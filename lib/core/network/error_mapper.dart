@@ -7,8 +7,17 @@ import 'package:login_signup/core/errors/failures.dart';
 ///
 /// Decide por `code`. Si la respuesta no trae `code` (formato antiguo o cuerpo
 /// que no es JSON) recurre al HTTP. Nunca compara el texto de `message`.
-typedef _Build = Failure Function(
-    String? message, String? code, int? statusCode, List<String> details);
+typedef _Build = Failure Function(_Parts parts);
+
+/// Lo que se lee de una respuesta de error. `info` = `details` cuando llega
+/// como objeto (13.04).
+typedef _Parts = ({
+  String? message,
+  String? code,
+  int? statusCode,
+  List<String> details,
+  Map<String, Object?> info,
+});
 
 abstract final class ErrorMapper {
   /// Cualquier error capturado por `safeCall`.
@@ -54,21 +63,32 @@ abstract final class ErrorMapper {
   static Failure fromResponse(int? statusCode, Object? data) {
     final body = _asMap(data);
     final code = _code(body?['code']);
-    final (message, details) = _messageAndDetails(body);
+    final (message, details, info) = _messageAndDetails(body);
+    final parts = (
+      message: message,
+      code: code,
+      statusCode: statusCode,
+      details: details,
+      info: info,
+    );
 
     final byCode = code == null ? null : _byCode[code];
-    if (byCode != null) return byCode(message, code, statusCode, details);
+    if (byCode != null) return byCode(parts);
 
     // Sin `code` reconocido: decide por HTTP. Conserva un `code` desconocido
     // para que la feature pueda mirarlo.
     final byStatus = _byStatus[statusCode];
-    if (byStatus != null) return byStatus(message, code, statusCode, details);
+    if (byStatus != null) return byStatus(parts);
 
     // 5xx y cualquier otro. Sin `code`, el texto de un 5xx no se muestra
     // (puede ser HTML de un proxy o un mensaje interno).
     final hideMessage =
         code == null && (statusCode == null || statusCode >= 500);
-    return _server(hideMessage ? null : message, code, statusCode, details);
+    return ServerFailure(
+        message: hideMessage ? null : message,
+        code: code,
+        statusCode: statusCode,
+        details: details);
   }
 
   static const Map<String, _Build> _byCode = {
@@ -115,35 +135,58 @@ abstract final class ErrorMapper {
     429: _tooManyRequests,
   };
 
-  static Failure _validation(String? m, String? c, int? s, List<String> d) =>
-      ValidationFailure(message: m, code: c, statusCode: s, details: d);
-  static Failure _invalidVerificationCode(
-          String? m, String? c, int? s, List<String> d) =>
-      InvalidVerificationCodeFailure(message: m, statusCode: s, details: d);
-  static Failure _unauthorized(String? m, String? c, int? s, List<String> d) =>
-      UnauthorizedFailure(message: m, code: c, statusCode: s, details: d);
-  static Failure _forbidden(String? m, String? c, int? s, List<String> d) =>
-      ForbiddenFailure(message: m, code: c, statusCode: s, details: d);
-  static Failure _notFound(String? m, String? c, int? s, List<String> d) =>
-      NotFoundFailure(message: m, code: c, statusCode: s, details: d);
-  static Failure _conflict(String? m, String? c, int? s, List<String> d) =>
-      ConflictFailure(message: m, code: c, statusCode: s, details: d);
-  static Failure _duplicateEmail(
-          String? m, String? c, int? s, List<String> d) =>
-      DuplicateEmailFailure(message: m, statusCode: s, details: d);
-  static Failure _duplicatePhone(
-          String? m, String? c, int? s, List<String> d) =>
-      DuplicatePhoneFailure(message: m, statusCode: s, details: d);
-  static Failure _paymentRequired(
-          String? m, String? c, int? s, List<String> d) =>
-      PaymentRequiredFailure(message: m, code: c, statusCode: s, details: d);
-  static Failure _tooManyRequests(
-          String? m, String? c, int? s, List<String> d) =>
-      TooManyRequestsFailure(message: m, code: c, statusCode: s, details: d);
-  static Failure _emailDelivery(String? m, String? c, int? s, List<String> d) =>
-      EmailDeliveryFailure(message: m, statusCode: s, details: d);
-  static Failure _server(String? m, String? c, int? s, List<String> d) =>
-      ServerFailure(message: m, code: c, statusCode: s, details: d);
+  static Failure _validation(_Parts p) => ValidationFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details);
+  static Failure _invalidVerificationCode(_Parts p) =>
+      InvalidVerificationCodeFailure(
+          message: p.message, statusCode: p.statusCode, details: p.details);
+  static Failure _unauthorized(_Parts p) => UnauthorizedFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details);
+  static Failure _forbidden(_Parts p) => ForbiddenFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details);
+  static Failure _notFound(_Parts p) => NotFoundFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details);
+
+  /// Con `info`: los conflictos de negocio traen su motivo (13.04).
+  static Failure _conflict(_Parts p) => ConflictFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details,
+      info: p.info);
+  static Failure _duplicateEmail(_Parts p) => DuplicateEmailFailure(
+      message: p.message, statusCode: p.statusCode, details: p.details);
+  static Failure _duplicatePhone(_Parts p) => DuplicatePhoneFailure(
+      message: p.message, statusCode: p.statusCode, details: p.details);
+  static Failure _paymentRequired(_Parts p) => PaymentRequiredFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details);
+  static Failure _tooManyRequests(_Parts p) => TooManyRequestsFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details);
+  static Failure _emailDelivery(_Parts p) => EmailDeliveryFailure(
+      message: p.message, statusCode: p.statusCode, details: p.details);
+  static Failure _server(_Parts p) => ServerFailure(
+      message: p.message,
+      code: p.code,
+      statusCode: p.statusCode,
+      details: p.details);
 
   static Map<String, dynamic>? _asMap(Object? data) {
     if (data is Map) return Map<String, dynamic>.from(data);
@@ -167,11 +210,17 @@ abstract final class ErrorMapper {
   /// `message` siempre como texto; `details` siempre como lista.
   /// Formato antiguo de Nest: `message` es una lista → se une con saltos de
   /// línea y la lista pasa a `details` si no venía ninguna.
-  static (String?, List<String>) _messageAndDetails(
+  /// `details` como objeto (13.04, `{reason, hours…}`) → tercer valor
+  /// (`Failure.info`), con la lista vacía.
+  static (String?, List<String>, Map<String, Object?>) _messageAndDetails(
       Map<String, dynamic>? body) {
-    if (body == null) return (null, const []);
+    if (body == null) return (null, const [], const {});
     final rawMessage = body['message'];
     final rawDetails = body['details'];
+    final info = rawDetails is Map
+        ? Map<String, Object?>.unmodifiable(
+            rawDetails.map((key, value) => MapEntry(key.toString(), value)))
+        : const <String, Object?>{};
 
     final details = rawDetails is List
         ? rawDetails.map((e) => e.toString()).toList(growable: false)
@@ -187,11 +236,12 @@ abstract final class ErrorMapper {
       return (
         items.isEmpty ? null : items.join('\n'),
         details.isEmpty ? items : details,
+        info,
       );
     }
     if (rawMessage is String && rawMessage.trim().isNotEmpty) {
-      return (rawMessage.trim(), details);
+      return (rawMessage.trim(), details, info);
     }
-    return (null, details);
+    return (null, details, info);
   }
 }

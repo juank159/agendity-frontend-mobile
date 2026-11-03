@@ -205,7 +205,26 @@ const ana = EmployeeEntity(
     's1': ServiceAssignment(
         serviceId: 's1', serviceName: 'Corte', commissionPercentage: 10),
   },
-  schedule: {'monday': WorkHours(start: '09:00', end: '13:30')},
+  schedule: {'monday': [WorkHours(start: '09:00', end: '13:30')]},
+);
+/// Horario partido (13.05): mañana y tarde el lunes.
+const sofia = EmployeeEntity(
+  id: 'e4',
+  name: 'Sofía',
+  lastname: 'Mora',
+  email: 'sofia@mail.com',
+  phone: '3001112233',
+  isActive: true,
+  isEmailVerified: true,
+  serviceAssignments: {
+    's1': ServiceAssignment(serviceId: 's1', serviceName: 'Corte'),
+  },
+  schedule: {
+    'monday': [
+      WorkHours(start: '10:00', end: '12:00'),
+      WorkHours(start: '16:00', end: '18:00'),
+    ],
+  },
 );
 const luis = EmployeeEntity(
   id: 'e2',
@@ -717,6 +736,49 @@ void main() {
     });
   });
 
+  group('Franjas del formulario (13.05, para 13.06)', () {
+    NewEmployeeController controller() => NewEmployeeController(
+          createEmployeeUseCase: CreateEmployeeUseCase(repo),
+          getServicesUseCase: GetServicesUseCase(services),
+        );
+
+    test('agregar, editar y quitar franjas de un día', () {
+      final c = controller();
+      c.setWorkDay('monday', true);
+      expect(c.rangesOf('monday'), [
+        const WorkHours(
+            start: EmployeeFormController.defaultStart,
+            end: EmployeeFormController.defaultEnd),
+      ]);
+
+      c.setEnd('monday', '12:00');
+      c.addRange('monday'); // una hora después de la última, de una hora
+      expect(c.rangesOf('monday'), const [
+        WorkHours(start: '09:00', end: '12:00'),
+        WorkHours(start: '13:00', end: '14:00'),
+      ]);
+
+      c.setStart('monday', '16:00', index: 1);
+      c.setEnd('monday', '18:00', index: 1);
+      expect(c.rangesOf('monday').last,
+          const WorkHours(start: '16:00', end: '18:00'));
+
+      c.removeRange('monday', 0);
+      expect(c.rangesOf('monday'),
+          const [WorkHours(start: '16:00', end: '18:00')]);
+      c.removeRange('monday', 0);
+      expect(c.isWorkDay('monday'), isFalse);
+      expect(c.schedule.containsKey('monday'), isFalse);
+    });
+
+    test('agregar en un día libre lo marca con la franja por defecto', () {
+      final c = controller();
+      c.addRange('sunday');
+      expect(c.isWorkDay('sunday'), isTrue);
+      expect(c.rangesOf('sunday'), hasLength(1));
+    });
+  });
+
   group('Edición y detalle', () {
     testWidgets('edita por la ruta con nombre y el email es de solo lectura',
         (tester) async {
@@ -737,6 +799,41 @@ void main() {
       expect(find.text('Anita Pérez'), findsOneWidget);
       expect(Get.isRegistered<EditEmployeeController>(), isFalse);
       await expireSnackbar(tester);
+    });
+
+    testWidgets(
+        'horario partido (13.05): editar solo el nombre conserva las dos '
+        'franjas', (tester) async {
+      repo.team = [owner, sofia];
+      await pumpList(tester);
+      await openOptions(tester, sofia);
+      await tapText(tester, 'Editar');
+
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Nombre *'), 'Sofi');
+      await tapText(tester, 'Guardar cambios');
+
+      expect(repo.updated.single.name, 'Sofi');
+      expect(repo.updated.single.schedule, {
+        'monday': const [
+          WorkHours(start: '10:00', end: '12:00'),
+          WorkHours(start: '16:00', end: '18:00'),
+        ],
+      });
+      await expireSnackbar(tester);
+    });
+
+    testWidgets('el detalle muestra todas las franjas del día',
+        (tester) async {
+      repo.team = [owner, sofia];
+      await pumpList(tester);
+      await tester.tap(find.text('Sofía Mora'));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('${formatHhmm('10:00')} – ${formatHhmm('12:00')} y '
+              '${formatHhmm('16:00')} – ${formatHhmm('18:00')}'),
+          findsOneWidget);
     });
 
     testWidgets('el detalle muestra estado y motivo del pendiente',

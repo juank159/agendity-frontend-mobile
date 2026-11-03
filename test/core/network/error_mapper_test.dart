@@ -160,6 +160,42 @@ void main() {
       expect(failure.details, ['x']);
     });
 
+    test('details como objeto (13.04) → info; la lista de details queda vacía',
+        () {
+      final failure = ErrorMapper.fromResponse(
+          409,
+          body(409, 'SLOT_UNAVAILABLE', 'Horario no disponible', {
+            'reason': 'PROFESSIONAL_OFF_SCHEDULE',
+            'hours': [
+              {'start': '09:00', 'end': '13:00'}
+            ],
+          }));
+      expect(failure, isA<ConflictFailure>());
+      expect(failure.code, ApiErrorCode.slotUnavailable);
+      expect(failure.message, 'Horario no disponible');
+      expect(failure.details, isEmpty);
+      expect(failure.info, {
+        'reason': 'PROFESSIONAL_OFF_SCHEDULE',
+        'hours': [
+          {'start': '09:00', 'end': '13:00'}
+        ],
+      });
+    });
+
+    test('details objeto en un 409 sin code reconocido también llega', () {
+      final failure = ErrorMapper.fromResponse(
+          409, body(409, 'ALGO_NUEVO', 'x', {'reason': 'Y'}));
+      expect(failure, isA<ConflictFailure>());
+      expect(failure.info['reason'], 'Y');
+    });
+
+    test('details en lista no cambia (VALIDATION_ERROR) y no llena info', () {
+      final failure = ErrorMapper.fromResponse(
+          400, body(400, 'VALIDATION_ERROR', 'Datos', ['a', 'b']));
+      expect(failure.details, ['a', 'b']);
+      expect(failure.info, isEmpty);
+    });
+
     test('cuerpo HTML de un 502 → ServerFailure sin mostrar el HTML', () {
       final failure = ErrorMapper.fromResponse(
           502, '<html><body>Bad gateway</body></html>');

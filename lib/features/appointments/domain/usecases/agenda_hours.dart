@@ -273,11 +273,14 @@ class AgendaHours {
     return ScheduleWindow(dayOfWeek, start, end);
   }
 
-  /// Horario semanal de un profesional (claves `WorkHours.weekdays`).
-  static List<ScheduleWindow> weekly(Map<String, WorkHours> schedule) => [
+  /// Horario semanal de un profesional (claves `WorkHours.weekdays`), con
+  /// todas las franjas de cada día (13.05).
+  static List<ScheduleWindow> weekly(Map<String, List<WorkHours>> schedule) =>
+      [
         for (final entry in schedule.entries)
           if (WorkHours.weekdays.indexOf(entry.key) case final i when i >= 0)
-            if (window(i + 1, entry.value) case final w?) w,
+            for (final hours in entry.value)
+              if (window(i + 1, hours) case final w?) w,
       ];
 
   // --- Cuentas -----------------------------------------------------------

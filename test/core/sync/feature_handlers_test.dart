@@ -171,7 +171,7 @@ void main() {
     final laura = employees.single;
     expect(laura.offersService('svc-1'), true);
     expect(laura.commissionFor('svc-1'), 30);
-    expect(laura.schedule['tuesday']!.start, '09:00');
+    expect(laura.schedule['tuesday']!.single.start, '09:00');
   });
 
   test('citas, bloqueos, pagos y métodos de pago', () async {

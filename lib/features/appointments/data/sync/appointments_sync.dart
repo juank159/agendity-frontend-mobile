@@ -24,6 +24,14 @@ abstract final class AppointmentsSync {
           d['user'] is Map ? (d['user'] as Map)['id'] : d['user']),
       at: (d) => d['start_datetime']);
 
+  /// La cita tal como la devolvió el servidor al agendarla o moverla con
+  /// conexión (13.05): se guarda igual que si viniera de la bajada (mismo
+  /// `upsert` del handler), así la agenda la pinta ya y la bajada posterior
+  /// la sustituye sin duplicarla (mismo id).
+  static Future<void> saveServerVersion(
+          AppDatabase db, String id, Map<String, dynamic> data) =>
+      DocumentSyncHandler(kind).upsert(db, id, data);
+
   static Future<void> apply(AppDatabase db, OutboxEntry entry) async {
     final id = entry.entityId;
     if (id == null) return;

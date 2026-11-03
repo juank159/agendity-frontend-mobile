@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:login_signup/core/database/app_database.dart';
+import 'package:login_signup/core/sync/outbox_store.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/clients/domain/entities/client_entity.dart';
@@ -98,7 +99,8 @@ class ClientsLocalDataSource {
       .replaceAll('_', r'\_');
 
   Future<ClientEntity?> byId(AppDatabase db, String id) async {
-    final row = await _row(db, id) ?? await _row(db, await _remapped(db, id));
+    final row = await _row(db, id) ??
+        await _row(db, await OutboxStore.resolveId(db, 'clients', id));
     return row == null ? null : toEntity(row);
   }
 
@@ -106,13 +108,6 @@ class ClientsLocalDataSource {
       ? null
       : (db.select(db.localClients)..where((c) => c.id.equals(id)))
           .getSingleOrNull();
-
-  /// Id con el que el servidor fusionó [id] (`merged`), si lo hubo.
-  Future<String?> _remapped(AppDatabase db, String id) async =>
-      (await (db.select(db.idRemaps)
-                ..where((r) => r.entity.equals('clients') & r.fromId.equals(id)))
-              .getSingleOrNull())
-          ?.toId;
 
   /// Otro cliente (no [exceptId]) con ese teléfono.
   Future<bool> phoneTaken(AppDatabase db, String phone, {String? exceptId}) =>

@@ -27,13 +27,16 @@ abstract final class AppointmentsDependencies {
       () => AppointmentsRemoteDataSourceImpl(Get.find<Dio>(tag: apiClientTag)),
       fenix: true,
     );
-    Get.lazyPut<AppointmentsRepository>(
-      () => AppointmentsRepositoryImpl(
+    Get.lazyPut<AppointmentsRepository>(() {
+      final engine = Get.find<SyncEngine>();
+      return AppointmentsRepositoryImpl(
         Get.find<AppointmentsRemoteDataSource>(),
         store: Get.find<OfflineStore>(),
-      ),
-      fenix: true,
-    );
+        // 13.05: con conexión, agendar y mover van directo (estricto).
+        isOnline: () => engine.current.online,
+        flush: engine.syncNow,
+      );
+    }, fenix: true);
     // 10.02b: citas (`appointment.*`) y bloqueos (solo bajada).
     AppointmentsSync.handlers().forEach(Get.find<SyncEngine>().register);
 

@@ -1,3 +1,4 @@
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_input.dart';
 
 /// Cuerpo de `POST /auth/register/employee` (`CreateEmployeeWithDetailsDto`) y
@@ -43,9 +44,14 @@ class EmployeeInputModel {
               if (!service.isActive) 'isActive': false,
             },
         ],
+        // 13.04/13.05: por día, la lista exacta de franjas (`[]` = libre). Se
+        // mandan los siete días: el backend deja cada uno tal como llega.
         'schedule': {
-          for (final entry in input.schedule.entries)
-            entry.key: {'start': entry.value.start, 'end': entry.value.end},
+          for (final day in WorkHours.weekdays)
+            day: [
+              for (final hours in input.schedule[day] ?? const <WorkHours>[])
+                {'start': hours.start, 'end': hours.end},
+            ],
         },
       };
 }

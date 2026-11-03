@@ -128,8 +128,8 @@ const ana = EmployeeEntity(
   isActive: true,
   isEmailVerified: true,
   schedule: {
-    'monday': WorkHours(start: '09:00', end: '20:00'),
-    'tuesday': WorkHours(start: '09:00', end: '20:00'),
+    'monday': [WorkHours(start: '09:00', end: '20:00')],
+    'tuesday': [WorkHours(start: '09:00', end: '20:00')],
   },
 );
 const bea = EmployeeEntity(
@@ -139,7 +139,7 @@ const bea = EmployeeEntity(
   email: 'bea@mail.com',
   isActive: true,
   isEmailVerified: true,
-  schedule: {'monday': WorkHours(start: '12:00', end: '16:00')},
+  schedule: {'monday': [WorkHours(start: '12:00', end: '16:00')]},
 );
 
 /// Lunes a sábado de 9:00 a. m. a 8:00 p. m.; domingo cerrado.

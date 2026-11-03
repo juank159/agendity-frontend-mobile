@@ -26,6 +26,23 @@ class AppointmentCalendar extends GetView<AppointmentsController> {
   /// con él).
   static const double timeRulerSize = 70;
 
+  /// Primera hora visible del día [selected]: si es hoy (en la zona del
+  /// negocio, D-15), una hora antes de "ahora", para que la tarde no quede
+  /// fuera de la vista al abrir la agenda; si no, el inicio de la vista.
+  @visibleForTesting
+  static DateTime initialDisplayDateFor(DateTime selected) {
+    final now = BusinessTimeZone.now();
+    final isToday = selected.year == now.year &&
+        selected.month == now.month &&
+        selected.day == now.day;
+    if (!isToday) return selected;
+    final hour = (now.hour - 1).clamp(startHour, 23);
+    return DateTime(selected.year, selected.month, selected.day, hour);
+  }
+
+  /// Primera hora de la vista de día y de semana.
+  static const int startHour = 6;
+
   void _onTap(CalendarTapDetails details) {
     final date = details.date;
     switch (details.targetElement) {
@@ -75,7 +92,8 @@ class AppointmentCalendar extends GetView<AppointmentsController> {
                 SfCalendar(
                   key: ValueKey('calendar-${controller.navigation.value}'),
                   view: view,
-                  initialDisplayDate: controller.selectedDate.value,
+                  initialDisplayDate:
+                      initialDisplayDateFor(controller.selectedDate.value),
                   dataSource: AppointmentCalendarDataSource(
                       controller.visibleAppointments),
                   onViewChanged: (details) =>
@@ -105,7 +123,7 @@ class AppointmentCalendar extends GetView<AppointmentsController> {
                     borderRadius: AppRadii.chipRadius,
                   ),
                   timeSlotViewSettings: TimeSlotViewSettings(
-                    startHour: 6,
+                    startHour: startHour.toDouble(),
                     endHour: 24,
                     timeFormat: 'h:mm a',
                     timeInterval: const Duration(minutes: 30),

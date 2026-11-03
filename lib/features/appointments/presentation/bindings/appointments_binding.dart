@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import 'package:login_signup/features/appointments/domain/usecases/mark_reminder_sent_usecase.dart';
+import 'package:login_signup/features/appointments/domain/usecases/prepare_reminder_usecase.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/agenda_summary_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
@@ -43,8 +45,14 @@ class AppointmentsBinding implements Bindings {
         getAppointmentBalanceUseCase: Get.find(),
         getPaymentsInReviewUseCase: Get.find<GetPaymentsInReviewUseCase>(),
         // Recordatorio por WhatsApp desde el detalle (12.07).
-        prepareReminderUseCase: Get.find(),
-        markReminderSentUseCase: Get.find(),
+        // Parámetros opcionales: con `Get.find()` a secas GetX buscaría el
+        // tipo anulable ("PrepareReminderUseCase?"), que nadie registra.
+        prepareReminderUseCase: Get.isRegistered<PrepareReminderUseCase>()
+            ? Get.find<PrepareReminderUseCase>()
+            : null,
+        markReminderSentUseCase: Get.isRegistered<MarkReminderSentUseCase>()
+            ? Get.find<MarkReminderSentUseCase>()
+            : null,
       ),
       fenix: true,
     );

@@ -187,13 +187,31 @@ Future<void> idle(WidgetTester tester, [int ms = 1500]) async {
   }
 }
 
+/// La lista vertical en pantalla más al frente (la de un diálogo abierto
+/// antes que la de la página de abajo); `null` si no hay ninguna. Las páginas
+/// del calendario que quedan fuera de la pantalla no cuentan.
+Finder? visibleVerticalList(WidgetTester tester) {
+  final screen =
+      Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+  final lists = find.byWidgetPredicate(
+      (w) => w is Scrollable && w.axisDirection == AxisDirection.down);
+  final count = lists.evaluate().length;
+  for (var i = count - 1; i >= 0; i--) {
+    final candidate = lists.at(i);
+    final rect = tester.getRect(candidate);
+    if (rect.width > 0 && rect.height > 0 && screen.contains(rect.center)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 Future<void> tap(WidgetTester tester, Finder finder, {int wait = 800}) async {
   if (finder.evaluate().isEmpty) {
     // Listas perezosas: lo que está más abajo no existe hasta bajar.
-    final lists = find.byWidgetPredicate(
-        (w) => w is Scrollable && w.axisDirection == AxisDirection.down);
-    if (lists.evaluate().isNotEmpty) {
-      await tester.scrollUntilVisible(finder, 300, scrollable: lists.first);
+    final list = visibleVerticalList(tester);
+    if (list != null) {
+      await tester.scrollUntilVisible(finder, 300, scrollable: list);
     }
   }
   await centerOn(tester, finder.first);
@@ -323,7 +341,20 @@ Finder tileOf(String client) => find.text(client);
 Future<bool> openDetail(WidgetTester tester, String client) async {
   final f = tileOf(client);
   if (!await waitFor(tester, f, timeout: const Duration(seconds: 8))) {
-    return false;
+    // La cita puede estar más abajo o más arriba en el día: se recorre la
+    // columna de horas del calendario visible.
+    final list = visibleVerticalList(tester);
+    if (list == null) return false;
+    for (final delta in [300.0, -300.0]) {
+      try {
+        await tester.scrollUntilVisible(f, delta,
+            scrollable: list, maxScrolls: 15);
+        break;
+      } catch (_) {
+        continue;
+      }
+    }
+    if (f.evaluate().isEmpty) return false;
   }
   await tap(tester, f, wait: 1500);
   return waitFor(tester, find.byTooltip('Cerrar'));
@@ -451,6 +482,9 @@ Future<void Function()> startApp(WidgetTester tester) async {
       return;
     }
     if (text.contains('deactivated widget')) return; // eco del overflow
+    // El manejador de la app lo registra en silencio: aquí se ve.
+    // ignore: avoid_print
+    print('ERROR EN PANTALLA: ${details.toString(minLevel: DiagnosticLevel.info).split('\n').take(40).join('\n')}');
     originalOnError?.call(details);
   };
   await idle(tester, 4000);

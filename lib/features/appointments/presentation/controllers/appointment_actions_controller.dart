@@ -150,7 +150,10 @@ class AppointmentActionsController extends GetxController {
   /// Se ofrece el recordatorio manual de [appointment] en [now] (hora del
   /// negocio): hay con qué enviarlo y a la cita le falta.
   bool canSendReminder(AppointmentEntity appointment, DateTime now) =>
-      _reminders != null && appointment.needsReminderAt(now);
+      hasReminderActions && appointment.needsReminderAt(now);
+
+  /// Hay con qué enviar el recordatorio manual (sus use cases están).
+  bool get hasReminderActions => _reminders != null;
 
   /// Abre WhatsApp con el recordatorio. `true` si se abrió (el detalle
   /// vuelve a leer la cita para reflejar el envío).

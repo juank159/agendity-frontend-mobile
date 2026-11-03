@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:login_signup/core/database/app_database.dart';
@@ -31,14 +33,34 @@ class LocalDatabaseHolder {
   Future<String?> currentUserId() => _currentUserId();
 
   /// Base del usuario de la sesión, o `null` sin sesión.
+  ///
+  /// Al cambiar de usuario varios repositorios piden la base a la vez (sync,
+  /// tema del negocio…): solo uno la cambia y los demás esperan ese cambio.
+  /// Sin eso, cada uno abría su propia `AppDatabase` sobre el mismo archivo
+  /// ("database is locked").
   Future<AppDatabase?> current() async {
     final userId = await _currentUserId();
     if (userId == null) return null;
-    if (_database != null && _userId == userId) return _database;
-    await close();
-    _userId = userId;
-    return _database = AppDatabase(_open(userId));
+    while (true) {
+      final database = _database;
+      if (database != null && _userId == userId) return database;
+      final switching = _switching;
+      if (switching == null) break;
+      await switching;
+    }
+    final done = Completer<void>();
+    _switching = done.future;
+    try {
+      await _close();
+      _userId = userId;
+      return _database = AppDatabase(_open(userId));
+    } finally {
+      _switching = null;
+      done.complete();
+    }
   }
+
+  Future<void>? _switching;
 
   /// Como [current], pero sin sesión lanza `StateError` (los repositorios
   /// solo se usan con sesión; `safeCall` lo convierte en failure).
@@ -51,6 +73,12 @@ class LocalDatabaseHolder {
   }
 
   Future<void> close() async {
+    final switching = _switching;
+    if (switching != null) await switching;
+    await _close();
+  }
+
+  Future<void> _close() async {
     final database = _database;
     _database = null;
     _userId = null;

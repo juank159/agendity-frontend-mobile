@@ -23,8 +23,7 @@ class EmployeeServicesSection extends StatelessWidget {
       switch (controller.catalogStatus.value) {
         case EmployeeLoadStatus.loading:
           return const SizedBox(
-              height: 160,
-              child: LoadingState(message: 'Cargando servicios…'));
+              height: 160, child: LoadingState(message: 'Cargando servicios…'));
         case EmployeeLoadStatus.error:
           return SizedBox(
             height: 260,
@@ -195,26 +194,26 @@ class _CommissionEditor extends StatelessWidget {
                   controller.useGeneralCommission(serviceId, value),
             );
           }),
-          if (own != null)
+          if (own != null) ...[
+            // Fila propia para el ajuste fino (±1 %) y el deslizador a todo
+            // el ancho: en un móvil angosto 0–100 cabía en ~90 px.
             Row(
               children: [
                 Text('Propia', style: theme.textTheme.bodyMedium),
-                Expanded(
-                  child: Slider(
-                    key: Key('commission-own-$serviceId'),
-                    value: own,
-                    max: 100,
-                    divisions: 100,
-                    label: formatPercent(own),
-                    semanticFormatterCallback: (v) =>
-                        'Comisión ${formatPercent(v)}',
-                    onChanged: (v) => controller.setCommission(serviceId, v),
-                  ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Bajar comisión',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.remove_circle_outline_rounded),
+                  onPressed: own <= 0
+                      ? null
+                      : () => controller.setCommission(
+                          serviceId, (own - 1).clamp(0, 100).roundToDouble()),
                 ),
                 SizedBox(
                   width: 56,
                   child: Text(formatPercent(own),
-                      textAlign: TextAlign.end,
+                      textAlign: TextAlign.center,
                       style: theme.textTheme.titleSmall
                           ?.copyWith(
                             color: scheme.primary,
@@ -222,8 +221,27 @@ class _CommissionEditor extends StatelessWidget {
                           )
                           .tabular),
                 ),
+                IconButton(
+                  tooltip: 'Subir comisión',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.add_circle_outline_rounded),
+                  onPressed: own >= 100
+                      ? null
+                      : () => controller.setCommission(
+                          serviceId, (own + 1).clamp(0, 100).roundToDouble()),
+                ),
               ],
             ),
+            Slider(
+              key: Key('commission-own-$serviceId'),
+              value: own,
+              max: 100,
+              divisions: 100,
+              label: formatPercent(own),
+              semanticFormatterCallback: (v) => 'Comisión ${formatPercent(v)}',
+              onChanged: (v) => controller.setCommission(serviceId, v),
+            ),
+          ],
         ],
       ),
     );

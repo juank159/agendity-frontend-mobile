@@ -606,6 +606,32 @@ void main() {
       expect(repo.updated.single.services['s1']!.commissionPercentage, isNull);
       await expireSnackbar(tester);
     });
+
+    testWidgets('la excepción propia se ajusta de a 1 % con − y +',
+        (tester) async {
+      await pumpList(tester);
+      await openOptions(tester, ana);
+      await tapText(tester, 'Editar');
+
+      Future<void> press(String tooltip) async {
+        await tester.ensureVisible(find.byTooltip(tooltip));
+        await tester.tap(find.byTooltip(tooltip));
+        await tester.pumpAndSettle();
+      }
+
+      await press('Subir comisión');
+      await press('Subir comisión');
+      await press('Bajar comisión');
+      expect(
+          tester
+              .widget<Slider>(find.byKey(const Key('commission-own-s1')))
+              .value,
+          11);
+
+      await tapText(tester, 'Guardar cambios');
+      expect(repo.updated.single.services['s1']!.commissionPercentage, 11);
+      await expireSnackbar(tester);
+    });
   });
 
   group('Rediseño (12.06)', () {

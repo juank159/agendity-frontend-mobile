@@ -23,7 +23,7 @@
 //
 // "Hoy" en cada negocio: para poder COMPLETAR citas (solo se completa una cita
 // que ya empezó y solo se agenda a futuro) la prueba abre una jornada
-// extendida HOY (00:00-23:59) en el negocio y en sus empleadas, agenda en la
+// extendida HOY (00:00-23:55) en el negocio y en sus empleadas, agenda en la
 // primera hora libre, espera a que empiece, la completa y después deja el
 // horario como estaba.
 import 'package:dio/dio.dart';
@@ -885,16 +885,16 @@ Future<void> setEmployeeDay(WidgetTester tester, Biz biz, Emp e, int weekday,
   await back(tester);
 }
 
-/// Jornada extendida HOY (00:00-23:59) en el negocio y sus empleadas.
+/// Jornada extendida HOY (00:00-23:55) en el negocio y sus empleadas.
 Future<void> openTodayFully(WidgetTester tester, Biz biz) async {
   final weekday = biz.today().weekday;
   await openDrawerItem(tester, 'Mi negocio');
   await idle(tester, 2000);
   await setOpeningHours(
-      tester, biz, {...biz.hours, weekday: ('00:00', '23:59')});
+      tester, biz, {...biz.hours, weekday: ('00:00', '23:55')});
   await back(tester);
   for (final e in biz.employees) {
-    await setEmployeeDay(tester, biz, e, weekday, ('00:00', '23:59'));
+    await setEmployeeDay(tester, biz, e, weekday, ('00:00', '23:55'));
   }
 }
 
@@ -1012,7 +1012,7 @@ Future<void> phaseToday(WidgetTester tester, Biz biz) async {
         '${biz.code}: hoy solo ofrece horas futuras (ahora ${hm(now)}; '
         'primera ${slots.isEmpty ? '-' : hm(slots.first)})',
         slotsText(slots));
-    final lastEnd = at(today, 23, 59);
+    final lastEnd = at(today, 23, 55);
     check(
         slots.every((s) => !s.add(Duration(minutes: minutes)).isAfter(lastEnd)),
         '${biz.code}: ninguna hora de hoy termina después del cierre',
@@ -1754,8 +1754,10 @@ void main() {
     if (want('b_setup')) await phaseSetup(tester, bizB);
     if (want('b_today')) await phaseToday(tester, bizB);
     if (want('a_future')) await phaseFutureA(tester);
-    if (want('a_calendar')) {
-      // Solo el paso de la agenda (para repetirlo sobre una corrida hecha).
+    // Solo el paso de la agenda, para repetirlo sobre una corrida hecha; en
+    // la corrida completa ya lo hace `a_future` (si no, pediría las 12:00
+    // otra vez, ya ocupadas).
+    if (_phases != 'all' && want('a_calendar')) {
       await login(tester, bizA.ownerEmail);
       await bookFromCalendarCell(tester, bizA, nextWeekday(bizA.today()),
           bizA.employees[0], bizA.clients[2], bizA.clients[0]);

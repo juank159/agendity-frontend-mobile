@@ -30,6 +30,7 @@ import 'package:login_signup/features/appointments/domain/usecases/get_upcoming_
 import 'package:login_signup/features/appointments/domain/usecases/mark_reminder_sent_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/prepare_reminder_usecase.dart';
 import 'package:login_signup/features/appointments/domain/usecases/update_appointment_usecase.dart';
+import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
@@ -1039,6 +1040,39 @@ void main() {
       addTearDown(() => BusinessTimeZone.clock = DateTime.now);
       await openDetail(tester, appointment());
       expect(find.text('Recordatorio por WhatsApp'), findsNothing);
+    });
+  });
+
+  group('AppointmentsBinding (12.08)', () {
+    // Regresión: los use cases opcionales del recordatorio se pedían con
+    // `Get.find()` a secas, que busca el tipo anulable y nunca lo encuentra;
+    // el detalle de la cita salía en rojo en la app real.
+    test('crea el controller del detalle con los use cases registrados', () {
+      Get.delete<AppointmentActionsController>(force: true);
+      Get.put(CancelAppointmentUseCase(appts));
+      Get.put(CompleteAppointmentUseCase(appts));
+      Get.put(GetAppointmentUseCase(appts));
+      Get.put(GetAppointmentBalanceUseCase(payments));
+      Get.put(GetPaymentsInReviewUseCase(payments));
+      Get.put(PrepareReminderUseCase(appts));
+      Get.put(MarkReminderSentUseCase(appts));
+      AppointmentsBinding().dependencies();
+
+      final c = Get.find<AppointmentActionsController>();
+      expect(c.hasReminderActions, isTrue);
+    });
+
+    test('sin los use cases del recordatorio también se crea', () {
+      Get.delete<AppointmentActionsController>(force: true);
+      Get.put(CancelAppointmentUseCase(appts));
+      Get.put(CompleteAppointmentUseCase(appts));
+      Get.put(GetAppointmentUseCase(appts));
+      Get.put(GetAppointmentBalanceUseCase(payments));
+      Get.put(GetPaymentsInReviewUseCase(payments));
+      AppointmentsBinding().dependencies();
+
+      expect(Get.find<AppointmentActionsController>().hasReminderActions,
+          isFalse);
     });
   });
 

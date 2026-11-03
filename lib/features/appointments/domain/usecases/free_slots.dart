@@ -16,6 +16,31 @@ class ScheduleWindow {
     if (hours == null || minutes == null) return null;
     return hours * 60 + minutes;
   }
+
+  /// El horario de apertura **en la app** (D-26): cada día cuenta como un
+  /// solo tramo, de la primera apertura al último cierre (el almuerzo del
+  /// negocio no cierra la agenda de la app; solo el link público). Los días
+  /// sin franjas siguen cerrados. Una franja por día, ordenadas por día.
+  static List<ScheduleWindow> daySpans(List<ScheduleWindow> windows) {
+    final spans = <int, ScheduleWindow>{};
+    for (final w in windows) {
+      if (w.endMinute <= w.startMinute) continue;
+      final current = spans[w.dayOfWeek];
+      spans[w.dayOfWeek] = current == null
+          ? w
+          : ScheduleWindow(
+              w.dayOfWeek,
+              w.startMinute < current.startMinute
+                  ? w.startMinute
+                  : current.startMinute,
+              w.endMinute > current.endMinute
+                  ? w.endMinute
+                  : current.endMinute);
+    }
+    return [
+      for (final day in spans.keys.toList()..sort()) spans[day]!,
+    ];
+  }
 }
 
 /// Un intervalo ocupado [start, end) en hora de pared del negocio.
@@ -34,8 +59,12 @@ class BusyInterval {
 /// - Candidatos cada [stepMinutes] desde las 00:00 del día.
 /// - El hueco [inicio, inicio + duración) debe caber entero en una franja
 ///   del día (las franjas que se tocan se unen) del horario del
-///   **profesional** (sin franjas = sin restricción) y del **negocio**
-///   (`null` = sin horario; lista vacía = cerrado).
+///   **profesional** (sin franjas = sin restricción, todas sus franjas
+///   valen, incluido su almuerzo) y en la apertura del **negocio** (`null` =
+///   sin horario; lista vacía = cerrado). En la app la apertura de cada día
+///   es un solo tramo, de la primera apertura al último cierre
+///   ([ScheduleWindow.daySpans], D-26): el almuerzo del negocio solo cierra
+///   el link público.
 /// - No se cruza con nada ocupado (citas que no están canceladas ni para
 ///   mover, y bloqueos), intervalos semiabiertos.
 /// - No se ofrecen horas ya pasadas ([now]).
@@ -53,6 +82,9 @@ abstract final class FreeSlots {
   }) {
     if (stepMinutes <= 0 || durationMinutes <= 0) return const [];
     final weekday = DateTime(day.year, day.month, day.day).weekday;
+    final opening = businessWindows == null
+        ? null
+        : ScheduleWindow.daySpans(businessWindows);
     final starts = <DateTime>[];
     for (var minute = 0; minute < 24 * 60; minute += stepMinutes) {
       final start = DateTime(day.year, day.month, day.day, 0, minute);
@@ -64,8 +96,7 @@ abstract final class FreeSlots {
           !_fits(minute, to, weekday, professionalWindows)) {
         continue;
       }
-      if (businessWindows != null &&
-          !_fits(minute, to, weekday, businessWindows)) {
+      if (opening != null && !_fits(minute, to, weekday, opening)) {
         continue;
       }
       if (busy.any((b) => start.isBefore(b.end) && end.isAfter(b.start))) {

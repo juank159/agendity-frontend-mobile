@@ -59,6 +59,26 @@ void main() {
           'El negocio atiende de ${clock(8, 30)} a ${clock(12)}');
     });
 
+    test(
+        'OUTSIDE_OPENING_HOURS (D-26): dice las horas que manda el servidor; '
+        'en la app, un solo tramo', () {
+      expect(
+          SlotProblemText.of(const OutsideBusinessHoursFailure(
+              reason: OutsideBusinessHoursReason.outsideOpeningHours,
+              hours: [WorkHours(start: '08:00', end: '19:00')])),
+          'El negocio atiende de ${clock(8)} a ${clock(19)}');
+      // No recorta ni junta lo que llega: si vinieran franjas, las lista.
+      expect(
+          SlotProblemText.of(const OutsideBusinessHoursFailure(
+              reason: OutsideBusinessHoursReason.outsideOpeningHours,
+              hours: [
+                WorkHours(start: '08:00', end: '12:00'),
+                WorkHours(start: '14:00', end: '19:00'),
+              ])),
+          'El negocio atiende de ${clock(8)} a ${clock(12)} y de '
+          '${clock(14)} a ${clock(19)}');
+    });
+
     test('sin motivo (backend anterior a 13.04) u otro failure → null', () {
       expect(SlotProblemText.of(const SlotUnavailableFailure()), isNull);
       expect(SlotProblemText.of(const OutsideBusinessHoursFailure()), isNull);

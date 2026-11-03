@@ -9,6 +9,7 @@ import 'package:login_signup/features/settings/presentation/controllers/business
 import 'package:login_signup/features/settings/presentation/widgets/opening_hours_editor.dart';
 import 'package:login_signup/features/settings/presentation/widgets/time_zone_picker.dart';
 import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/app_note.dart';
 import 'package:login_signup/shared/widgets/app_section_card.dart';
 import 'package:login_signup/shared/widgets/business_time_zone_notice.dart';
 import 'package:login_signup/shared/widgets/palette_swatch.dart';
@@ -280,13 +281,20 @@ class _RemindersLinkCard extends StatelessWidget {
 class _OpeningHoursCard extends GetView<BusinessSettingsController> {
   const _OpeningHoursCard();
 
+  static const spanNoteKey = Key('opening-hours-span-note');
+
+  /// D-26: las franjas partidas solo cierran el link público.
+  static const spanNote = 'Las franjas (como el almuerzo) solo cierran tu '
+      'link de reservas. En la agenda de la app puedes agendar de la primera '
+      'apertura al último cierre.';
+
   @override
   Widget build(BuildContext context) {
     return AppSectionCard(
       icon: Icons.schedule_rounded,
       title: 'Horario de apertura',
-      subtitle: 'Fuera de este horario no se agendan citas (ni en la app ni '
-          'por el link). Un día sin franjas está cerrado.',
+      subtitle: 'Antes de abrir y después de cerrar no se agendan citas (ni '
+          'en la app ni por el link). Un día sin franjas está cerrado.',
       child: Obx(() {
         final limited = controller.limitsHours.value;
         final saving = controller.isSavingHours.value;
@@ -308,7 +316,19 @@ class _OpeningHoursCard extends GetView<BusinessSettingsController> {
               curve: AppMotion.curve,
               alignment: Alignment.topCenter,
               child: limited
-                  ? OpeningHoursEditor(controller: controller)
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const AppNote(
+                          spanNote,
+                          key: spanNoteKey,
+                          tone: AppTone.info,
+                          icon: Icons.info_outline_rounded,
+                          margin: EdgeInsets.only(bottom: 12),
+                        ),
+                        OpeningHoursEditor(controller: controller),
+                      ],
+                    )
                   : const SizedBox(width: double.infinity),
             ),
             if (controller.hoursChanged) ...[

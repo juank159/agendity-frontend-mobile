@@ -423,6 +423,26 @@ void main() {
       ]);
     });
 
+    test(
+        'sin conexión (D-26): el almuerzo del negocio no cierra la agenda de '
+        'la app; antes de abrir, sí', () async {
+      adapter.handler = connectionError;
+      await DocumentStore.put(db, SharedDocs.businessSettings, 'owner-1', {
+        'tenant_id': 'owner-1',
+        'timezone': 'America/Bogota',
+        'opening_hours': [
+          {'day_of_week': 2, 'start_time': '08:00', 'end_time': '12:00'},
+          {'day_of_week': 2, 'start_time': '14:00', 'end_time': '19:00'},
+        ],
+      });
+      final slots = rightOf(await GetAvailableSlotsUseCase(repository)(query));
+      // 45 min cada 30, de 8:00 a 19:00 de corrido.
+      expect(slots.first, DateTime(2026, 11, 3, 8));
+      expect(slots, contains(DateTime(2026, 11, 3, 12)));
+      expect(slots, contains(DateTime(2026, 11, 3, 13)));
+      expect(slots.last, DateTime(2026, 11, 3, 18));
+    });
+
     test('sin conexión: servicio que no hace o desactivado', () async {
       adapter.handler = connectionError;
       await DocumentStore.put(db, SharedDocs.userServices, 'us-svc-2', {

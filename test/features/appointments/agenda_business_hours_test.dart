@@ -142,11 +142,35 @@ const bea = EmployeeEntity(
   schedule: {'monday': [WorkHours(start: '12:00', end: '16:00')]},
 );
 
+/// Almuerza de 12 a 1 (su horario propio).
+const cami = EmployeeEntity(
+  id: 'e4',
+  name: 'Cami',
+  lastname: 'Ruiz',
+  email: 'cami@mail.com',
+  isActive: true,
+  isEmailVerified: true,
+  schedule: {
+    'monday': [
+      WorkHours(start: '08:00', end: '12:00'),
+      WorkHours(start: '13:00', end: '19:00'),
+    ],
+  },
+);
+
 /// Lunes a sábado de 9:00 a. m. a 8:00 p. m.; domingo cerrado.
 OpeningHours nineToEight() => OpeningHours([
       for (var d = 1; d <= 6; d++)
         OpeningHoursRange(
             dayOfWeek: d, hours: const WorkHours(start: '09:00', end: '20:00')),
+    ]);
+
+/// Lunes de 8:30 a 12 y de 14 a 19 (almuerzo de 12 a 2).
+OpeningHours lunchMonday() => OpeningHours(const [
+      OpeningHoursRange(
+          dayOfWeek: 1, hours: WorkHours(start: '08:30', end: '12:00')),
+      OpeningHoursRange(
+          dayOfWeek: 1, hours: WorkHours(start: '14:00', end: '19:00')),
     ]);
 
 /// Lunes de 9 a 13 y de 15 a 19.
@@ -256,19 +280,30 @@ void main() {
       expect(find.byKey(AgendaDayNotice.closedKey), findsNothing);
     });
 
-    testWidgets('franja partida: el mediodía sombreado con "Cerrado"',
-        (tester) async {
+    testWidgets(
+        'franja partida (D-26): el día va de corrido, sin sombra al '
+        'mediodía', (tester) async {
       settings.opening = splitMonday();
       await pumpAgenda(tester);
       final c = calendar(tester);
       expect((c.timeSlotViewSettings.startHour, c.timeSlotViewSettings.endHour),
           (9.0, 19.0));
-      final regions = c.specialRegions!;
-      expect(regions, hasLength(1));
-      expect(regions.single.startTime, DateTime(2030, 1, 7, 13));
-      expect(regions.single.endTime, DateTime(2030, 1, 7, 15));
-      expect(find.text(AppointmentCalendar.closedRegionText), findsOneWidget);
+      expect(c.specialRegions, isEmpty);
+      expect(find.text(AppointmentCalendar.closedRegionText), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        'almuerzo y apertura a las 8:30 (D-26): solo se sombrea de 8:00 a '
+        '8:30', (tester) async {
+      settings.opening = lunchMonday();
+      await pumpAgenda(tester);
+      final c = calendar(tester);
+      expect((c.timeSlotViewSettings.startHour, c.timeSlotViewSettings.endHour),
+          (8.0, 19.0));
+      final regions = c.specialRegions!;
+      expect(regions.map((r) => (r.startTime, r.endTime)),
+          [(DateTime(2030, 1, 7, 8), DateTime(2030, 1, 7, 8, 30))]);
     });
 
     testWidgets('sin horario de apertura: el del equipo', (tester) async {
@@ -312,9 +347,10 @@ void main() {
     testWidgets('el horario cambia en "Mi negocio": la agenda se ajusta',
         (tester) async {
       final c = await pumpAgenda(tester);
-      settings.opening = splitMonday();
+      settings.opening = lunchMonday();
       await c.loadHours();
       await tester.pumpAndSettle();
+      expect(calendar(tester).timeSlotViewSettings.startHour, 8.0);
       expect(calendar(tester).timeSlotViewSettings.endHour, 19.0);
       expect(calendar(tester).specialRegions, hasLength(1));
     });
@@ -364,27 +400,42 @@ void main() {
   group('tocar una hora', () {
     testWidgets('fuera de horario: explica y no abre el formulario',
         (tester) async {
-      settings.opening = splitMonday();
+      settings.opening = lunchMonday();
       await pumpAgenda(tester);
-      await tapCell(tester, 14, 0);
+      await tapCell(tester, 8, 0);
       expect(find.text('Nueva cita'), findsNothing);
       expect(find.text('Fuera del horario'), findsOneWidget);
       final message =
           tester.widget<Text>(find.byKey(AgendaSlotSheet.messageKey)).data!;
+      // D-26: el texto dice el tramo del día, sin el almuerzo.
       expect(
           message,
-          startsWith('A las ${formatClock(14, 0)} el negocio '
-              'está cerrado.'));
-      expect(
-          message,
-          contains('de ${formatClock(15, 0)} a '
-              '${formatClock(19, 0)}'));
+          'A las ${formatClock(8, 0)} el negocio está cerrado. Hoy atiende '
+          'de ${formatClock(8, 30)} a ${formatClock(19, 0)}');
       expect(appts.slotQueries, isEmpty);
 
       // "Ver horas libres" abre "Nueva cita" sin hora elegida.
       await tester.tap(find.byKey(AgendaSlotSheet.freeHoursKey));
       await tester.pumpAndSettle();
       expect(find.text('Nueva cita'), findsOneWidget);
+    });
+
+    testWidgets(
+        'en el almuerzo del negocio (D-26): tocar las 12:30 abre el '
+        'formulario', (tester) async {
+      settings.opening = lunchMonday();
+      appts.free = {
+        'e1': [DateTime(2030, 1, 7, 12, 30)],
+      };
+      await pumpAgenda(tester);
+      await tapCell(tester, 12, 30);
+      expect(find.text('Fuera del horario'), findsNothing);
+      expect(find.text('Nueva cita'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('appointment-professional')),
+              matching: find.text('Ana Pérez')),
+          findsOneWidget);
     });
 
     testWidgets('dentro: abre el formulario con una profesional libre',
@@ -494,6 +545,29 @@ void main() {
       await tester.tap(find.byTooltip('Ver todo el equipo'));
       await tester.pumpAndSettle();
       expect(calendar(tester).specialRegions, isEmpty);
+    });
+
+    testWidgets(
+        'D-26: con el almuerzo del negocio, se sombrea solo su almuerzo '
+        'propio y tocarlo lo explica', (tester) async {
+      settings.opening = lunchMonday();
+      team.team = const [ana, bea, cami];
+      final c = await pumpAgenda(tester);
+      expect(calendar(tester).specialRegions, hasLength(1)); // 8:00–8:30
+      c.filterByProfessional('e4');
+      await tester.pumpAndSettle();
+      final regions = calendar(tester).specialRegions!;
+      expect(regions.map((r) => (r.startTime, r.endTime)), [
+        (DateTime(2030, 1, 7, 8), DateTime(2030, 1, 7, 8, 30)),
+        (DateTime(2030, 1, 7, 12), DateTime(2030, 1, 7, 13)),
+      ]);
+      await tapCell(tester, 12, 30);
+      expect(find.text('Nueva cita'), findsNothing);
+      expect(
+          tester.widget<Text>(find.byKey(AgendaSlotSheet.messageKey)).data,
+          'A las ${formatClock(12, 30)} Cami Ruiz no trabaja. Hoy trabaja '
+          'de ${formatClock(8, 30)} a ${formatClock(12, 0)} y de '
+          '${formatClock(13, 0)} a ${formatClock(19, 0)}');
     });
   });
 }

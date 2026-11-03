@@ -359,6 +359,21 @@ void main() {
       await expireSnackbar(tester);
     });
 
+    testWidgets(
+        'D-26: con horario, una nota explica que las franjas solo cierran el '
+        'link', (tester) async {
+      await pumpScreen(tester);
+      const note = Key('opening-hours-span-note');
+      expect(find.byKey(note), findsNothing);
+      await tap(tester, find.byKey(const Key('opening-hours-enabled')));
+      expect(find.byKey(note), findsOneWidget);
+      expect(
+          find.text('Las franjas (como el almuerzo) solo cierran tu link de '
+              'reservas. En la agenda de la app puedes agendar de la primera '
+              'apertura al último cierre.'),
+          findsOneWidget);
+    });
+
     testWidgets('12.05: franjas como tarjetas con su nombre accesible y quitar',
         (tester) async {
       await pumpScreen(tester);

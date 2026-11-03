@@ -46,16 +46,33 @@ void main() {
       expect(day.isOpenAt(8 * 60 + 30), isTrue);
     });
 
-    test('franja partida (9–13 y 15–19): el mediodía va sombreado', () {
+    test(
+        'franja partida (9–13 y 15–19), D-26: el día va de corrido, sin '
+        'sombra al mediodía', () {
       final day = AgendaHours(business: [
         w(1, '09:00', '13:00'),
         w(1, '15:00', '19:00'),
       ]).day(monday);
       expect((day.startHour, day.endHour), (9, 19));
-      expect(day.closed, const [MinuteSpan(780, 900)]);
-      expect(day.isOpenAt(13 * 60), isFalse);
-      expect(day.isOpenAt(14 * 60 + 30), isFalse);
+      expect(day.referenceOpen, const [MinuteSpan(540, 1140)]);
+      expect(day.closed, isEmpty);
+      expect(day.isOpenAt(13 * 60), isTrue);
+      expect(day.isOpenAt(14 * 60 + 30), isTrue);
       expect(day.isOpenAt(15 * 60), isTrue);
+      expect(day.isOpenAt(19 * 60), isFalse);
+    });
+
+    test(
+        'almuerzo y apertura a las 8:30 (D-26): se sombrea solo antes de '
+        'abrir', () {
+      final day = AgendaHours(business: [
+        w(1, '14:00', '19:00'),
+        w(1, '08:30', '12:00'),
+      ]).day(monday);
+      expect((day.startHour, day.endHour), (8, 19));
+      expect(day.closed, const [MinuteSpan(480, 510)]);
+      expect(day.isOpenAt(8 * 60), isFalse);
+      expect(day.isOpenAt(12 * 60 + 30), isTrue);
     });
 
     test('franjas que se tocan se unen', () {
@@ -137,6 +154,18 @@ void main() {
       expect(hours.day(saturday).isClosed, isTrue);
     });
 
+    test(
+        'el hueco en que no trabaja nadie del equipo sí se sombrea (D-26 '
+        'solo junta la apertura del negocio)', () {
+      final hours = AgendaHours(team: [
+        [w(1, '09:00', '13:00')],
+        [w(1, '15:00', '19:00')],
+      ]);
+      final day = hours.day(monday);
+      expect(day.closed, const [MinuteSpan(780, 900)]);
+      expect(day.isOpenAt(14 * 60), isFalse);
+    });
+
     test('alguien sin horario atiende a cualquier hora: sin límites', () {
       final hours = AgendaHours(team: [
         [w(1, '09:00', '13:00')],
@@ -186,6 +215,24 @@ void main() {
           .withProfessional(const []).day(monday);
       expect(day.limitedByProfessional, isFalse);
       expect(day.closed, isEmpty);
+    });
+
+    test(
+        'D-26: con el almuerzo del negocio, se sombrea solo el almuerzo '
+        'propio de ella', () {
+      final day = AgendaHours(business: [
+        w(1, '08:00', '12:00'),
+        w(1, '14:00', '19:00'),
+      ]).withProfessional([
+        w(1, '08:00', '12:00'),
+        w(1, '13:00', '19:00'),
+      ]).day(monday);
+      expect((day.startHour, day.endHour), (8, 19));
+      expect(day.open, const [MinuteSpan(480, 720), MinuteSpan(780, 1140)]);
+      expect(day.closed, const [MinuteSpan(720, 780)]);
+      // En el almuerzo del negocio (13:30) ella sí atiende.
+      expect(day.isOpenAt(13 * 60 + 30), isTrue);
+      expect(day.isOpenAt(12 * 60 + 30), isFalse);
     });
 
     test('sin horario del negocio, manda el de ella', () {
@@ -276,14 +323,20 @@ void main() {
           'de ${formatClock(9, 0)} a ${formatClock(20, 0)}');
     });
 
-    test('franja partida', () {
+    test('franja partida (D-26): el texto dice el tramo del día', () {
       final split = AgendaHours(
-          business: [w(1, '09:00', '13:00'), w(1, '15:00', '19:00')]);
+          business: [w(1, '08:00', '12:00'), w(1, '14:00', '19:00')]);
+      final day = split.day(monday);
       expect(
-          AgendaHoursText.closedAt(split, split.day(monday), 14 * 60, today),
-          'A las ${formatClock(14, 0)} el negocio está cerrado. Hoy atiende '
-          'de ${formatClock(9, 0)} a ${formatClock(13, 0)} y de '
-          '${formatClock(15, 0)} a ${formatClock(19, 0)}');
+          AgendaHoursText.openToday(day, today),
+          'Hoy atiende de ${formatClock(8, 0)} a ${formatClock(19, 0)}');
+      expect(
+          AgendaHoursText.closedAt(split, day, 7 * 60 + 30, today),
+          'A las ${formatClock(7, 30)} el negocio está cerrado. Hoy atiende '
+          'de ${formatClock(8, 0)} a ${formatClock(19, 0)}');
+      final sundayNow = DateTime(2030, 1, 13, 10);
+      expect(AgendaHoursText.nextOpening(split, split.day(sunday), sundayNow),
+          'Abre mañana a las ${formatClock(8, 0)}');
     });
 
     test('domingo cerrado: abre el lunes', () {

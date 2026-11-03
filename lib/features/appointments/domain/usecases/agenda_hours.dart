@@ -44,7 +44,9 @@ class AgendaDay {
   final AgendaHoursSource source;
 
   /// Franjas en que el negocio (o el equipo) atiende ese día, unidas y
-  /// ordenadas. Vacía = cerrado. Sin límites, todo el día.
+  /// ordenadas. Vacía = cerrado. Sin límites, todo el día. Con la apertura
+  /// del negocio es un solo tramo, de la primera apertura al último cierre
+  /// (D-26).
   final List<MinuteSpan> referenceOpen;
 
   /// Lo que se puede reservar: [referenceOpen] y, con un profesional
@@ -136,7 +138,13 @@ class AgendaWeek {
 ///   - Si ese día hay citas fuera del rango, el rango se amplía: nunca se
 ///     esconde una cita.
 /// - **Lo reservable:** lo que atiende el negocio y, con un profesional
-///   elegido ([professional], filtro o la empleada), solo cuando trabaja.
+///   elegido ([professional], filtro o la empleada), solo cuando trabaja
+///   (con todas sus franjas: su almuerzo se sombrea).
+/// - **D-26:** la apertura del negocio cuenta en la app como un solo tramo
+///   por día, de la primera apertura al último cierre: el almuerzo del
+///   negocio no se sombrea ni bloquea el toque (solo cierra el link
+///   público). Sin apertura, el horario del equipo sí conserva sus huecos
+///   (en ellos no trabaja nadie).
 /// - **Semana:** el rango es la unión de los rangos de sus días.
 class AgendaHours {
   static const minutesPerDay = 24 * 60;
@@ -172,7 +180,9 @@ class AgendaHours {
 
   /// Horario semanal que manda, o `null` sin límites.
   List<ScheduleWindow>? get _reference => switch (source) {
-        AgendaHoursSource.business => business,
+        // D-26: en la app el día del negocio va de corrido (el almuerzo
+        // solo cierra el link público).
+        AgendaHoursSource.business => ScheduleWindow.daySpans(business!),
         AgendaHoursSource.team => [for (final s in team) ...s],
         AgendaHoursSource.none => null,
       };

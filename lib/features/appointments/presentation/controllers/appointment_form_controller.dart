@@ -415,8 +415,10 @@ class AppointmentFormController extends GetxController {
     isSaving.value = false;
     return result.fold(
       (failure) {
-        AppointmentFeedback.showSaveFailure(failure);
+        AppointmentFeedback.showSaveFailure(failure,
+            professionalName: professional.value?.name);
         if (failure is SlotUnavailableFailure ||
+            failure is OutsideBusinessHoursFailure ||
             failure is AppointmentInPastFailure) {
           loadSlots();
         }

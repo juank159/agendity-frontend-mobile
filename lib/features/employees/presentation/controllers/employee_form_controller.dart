@@ -12,6 +12,17 @@ import 'package:login_signup/features/services/domain/usecases/get_services_usec
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import 'employee_feedback.dart';
 
+/// Nombre en español de los días del horario (`WorkHours.weekdays`).
+const employeeDayLabels = {
+  'monday': 'Lunes',
+  'tuesday': 'Martes',
+  'wednesday': 'Miércoles',
+  'thursday': 'Jueves',
+  'friday': 'Viernes',
+  'saturday': 'Sábado',
+  'sunday': 'Domingo',
+};
+
 /// Estado de una carga (catálogo de servicios o profesional a editar).
 enum EmployeeLoadStatus { loading, ready, error }
 
@@ -34,6 +45,18 @@ abstract class EmployeeFormController extends GetxController {
 
   static const servicesRequired =
       'Selecciona al menos un servicio para el profesional';
+
+  /// Por qué no se guarda un horario con franjas cruzadas ([days] en
+  /// `WorkHours.weekdays`).
+  static String scheduleOverlapMessage(List<String> days) {
+    final names = [
+      for (final day in days) (employeeDayLabels[day] ?? day).toLowerCase(),
+    ];
+    final list = names.length == 1
+        ? names.single
+        : '${names.sublist(0, names.length - 1).join(', ')} y ${names.last}';
+    return 'Hay franjas que se cruzan el $list. Corrígelas para guardar.';
+  }
 
   final GetServicesUseCase _getServices;
 
@@ -67,10 +90,9 @@ abstract class EmployeeFormController extends GetxController {
   final Map<String, double> _customPrices = {};
 
   /// Días de trabajo → sus franjas (13.05: varias por día, p. ej. 10–12 y
-  /// 16–18). Un día sin entrada es libre; sin ningún día, el profesional no
-  /// tiene restricción de horario al agendar. Al editar se conservan todas
-  /// las franjas aunque la pantalla muestre solo la primera (13.06 pinta el
-  /// resto con [addRange]/[removeRange]).
+  /// 16–18; la pantalla las pinta todas desde 13.06). Un día sin entrada es
+  /// libre; sin ningún día, el profesional no tiene restricción de horario
+  /// al agendar.
   final schedule = <String, List<WorkHours>>{}.obs;
 
   final isSaving = false.obs;
@@ -193,6 +215,36 @@ abstract class EmployeeFormController extends GetxController {
   void setEnd(String day, String value, {int index = 0}) =>
       _updateRange(day, index, (h) => WorkHours(start: h.start, end: value));
 
+  /// Índices de las franjas de [day] que se cruzan con otra del mismo día
+  /// (`WorkHours.overlaps`: tocarse, 9–13 y 13–18, sí vale). Solo cuenta las
+  /// franjas bien formadas: una con el fin antes del inicio ya tiene su
+  /// propio aviso.
+  Set<int> overlappingOn(String day) {
+    final ranges = rangesOf(day);
+    final crossed = <int>{};
+    for (var i = 0; i < ranges.length; i++) {
+      if (!ranges[i].isValid) continue;
+      for (var j = i + 1; j < ranges.length; j++) {
+        if (ranges[j].isValid && ranges[i].overlaps(ranges[j])) {
+          crossed.addAll([i, j]);
+        }
+      }
+    }
+    return crossed;
+  }
+
+  /// Días con franjas que se cruzan, en el orden de la semana.
+  List<String> get overlappingDays => [
+        for (final day in WorkHours.weekdays)
+          if (overlappingOn(day).isNotEmpty) day,
+      ];
+
+  /// Cabe otra franja en [day] con [addRange] (o el día es libre).
+  bool canAddRange(String day) {
+    final ranges = rangesOf(day);
+    return ranges.isEmpty || _minutes(ranges.last.end) + 120 < 24 * 60;
+  }
+
   /// Otra franja en [day] después de la última (una hora más tarde, de una
   /// hora; si el día no trabajaba, la de por defecto). El use case revisa
   /// que no se pisen.
@@ -269,7 +321,12 @@ abstract class EmployeeFormController extends GetxController {
           if (entry.value.customPrice != null)
             entry.key: entry.value.customPrice!,
       });
-    schedule.assignAll(employee.schedule);
+    // Copia: `RxMap.assignAll` adopta el mapa que recibe, y el de la
+    // entidad puede ser inmodificable (añadir o quitar franjas fallaría).
+    schedule.assignAll({
+      for (final entry in employee.schedule.entries)
+        entry.key: List.of(entry.value),
+    });
   }
 
   /// Lo que escribió el usuario (el use case lo normaliza y valida).
@@ -304,6 +361,12 @@ abstract class EmployeeFormController extends GetxController {
     if (isSaving.value) return false;
     if (commissions.isEmpty) {
       AppSnackbar.warning(servicesRequired, title: 'Revisa los datos');
+      return false;
+    }
+    // Se avisa en vivo junto al día; aquí solo se impide guardar.
+    if (overlappingDays.isNotEmpty) {
+      AppSnackbar.warning(scheduleOverlapMessage(overlappingDays),
+          title: 'Revisa el horario');
       return false;
     }
     isSaving.value = true;

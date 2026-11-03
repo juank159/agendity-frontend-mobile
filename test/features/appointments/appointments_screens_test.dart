@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:login_signup/common/entities/work_hours.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
 import 'package:login_signup/common/enums/payment_status_enum.dart';
 import 'package:login_signup/core/config/theme_config.dart';
@@ -32,6 +33,7 @@ import 'package:login_signup/features/appointments/domain/usecases/prepare_remin
 import 'package:login_signup/features/appointments/domain/usecases/update_appointment_usecase.dart';
 import 'package:login_signup/features/appointments/presentation/bindings/appointments_binding.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_actions_controller.dart';
+import 'package:login_signup/features/appointments/presentation/controllers/appointment_feedback.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointment_reminder_controller.dart';
 import 'package:login_signup/features/appointments/presentation/controllers/appointments_controller.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
@@ -592,6 +594,99 @@ void main() {
       await tapText(tester, 'Entendido');
       expect(find.text('Nueva cita'), findsOneWidget);
       expect(dialogResult, isNull);
+    });
+
+    testWidgets(
+        '409 con motivo (13.06): dice por qué con el nombre del profesional '
+        'y sus franjas en 12 h', (tester) async {
+      signInAs('Owner');
+      appts.saveFailure = const SlotUnavailableFailure(
+        reason: SlotUnavailableReason.professionalOffSchedule,
+        hours: [
+          WorkHours(start: '09:00', end: '13:00'),
+          WorkHours(start: '15:00', end: '19:00'),
+        ],
+      );
+      await pumpLauncher(
+          tester, () => AppointmentFormDialog.create(initialStart: nineAm));
+      await fillNewAppointment(tester);
+      final queriesBefore = appts.slotQueries.length;
+
+      await tapText(tester, 'Agendar');
+
+      expect(find.text(AppointmentFeedback.slotUnavailableTitle),
+          findsOneWidget);
+      expect(
+          find.text('Ana Pérez no trabaja a esa hora (atiende de '
+              '${formatClock(9, 0)} a ${formatClock(13, 0)} y de '
+              '${formatClock(15, 0)} a ${formatClock(19, 0)})'),
+          findsOneWidget);
+      expect(find.text(AppointmentFeedback.slotUnavailableMessage),
+          findsNothing);
+      expect(appts.slotQueries.length, queriesBefore + 1);
+      await tapText(tester, 'Entendido');
+      expect(find.text('Nueva cita'), findsOneWidget);
+      expect(dialogResult, isNull);
+    });
+
+    testWidgets('409 con motivo: bloqueo y cita encima', (tester) async {
+      signInAs('Owner');
+      appts.saveFailure = const SlotUnavailableFailure(
+          reason: SlotUnavailableReason.timeBlock);
+      await pumpLauncher(
+          tester, () => AppointmentFormDialog.create(initialStart: nineAm));
+      await fillNewAppointment(tester);
+      await tapText(tester, 'Agendar');
+      expect(find.text('Ese horario está bloqueado'), findsOneWidget);
+      await tapText(tester, 'Entendido');
+
+      appts.saveFailure = const SlotUnavailableFailure(
+          reason: SlotUnavailableReason.appointmentOverlap);
+      await tapText(tester, 'Agendar');
+      expect(find.text('Ya hay una cita a esa hora'), findsOneWidget);
+      await tapText(tester, 'Entendido');
+      expect(find.text('Nueva cita'), findsOneWidget);
+    });
+
+    testWidgets(
+        'fuera del horario del negocio con motivo: texto simple y horas '
+        'recargadas', (tester) async {
+      signInAs('Owner');
+      appts.saveFailure = const OutsideBusinessHoursFailure(
+          reason: OutsideBusinessHoursReason.businessClosedDay);
+      await pumpLauncher(
+          tester, () => AppointmentFormDialog.create(initialStart: nineAm));
+      await fillNewAppointment(tester);
+      final queriesBefore = appts.slotQueries.length;
+
+      await tapText(tester, 'Agendar');
+
+      expect(find.text('Fuera del horario del negocio'), findsOneWidget);
+      expect(find.text('El negocio está cerrado ese día'), findsOneWidget);
+      expect(appts.slotQueries.length, queriesBefore + 1);
+      await tapText(tester, 'Entendido');
+      expect(find.text('Nueva cita'), findsOneWidget);
+    });
+
+    testWidgets('mover una cita: el 409 con motivo sale en el formulario',
+        (tester) async {
+      signInAs('Owner');
+      final original = appointment();
+      appts.agenda = [original];
+      appts.freeSlots = [nineAm];
+      appts.saveFailure = const SlotUnavailableFailure(
+        reason: SlotUnavailableReason.professionalOffSchedule,
+      );
+      await pumpLauncher(tester, () => AppointmentFormDialog.edit(original));
+
+      await tester.tap(
+          find.byKey(ValueKey('slot-${nineAm.toIso8601String()}')));
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Guardar cambios');
+
+      expect(find.textContaining('no trabaja ese día'), findsOneWidget);
+      await tapText(tester, 'Entendido');
+      expect(find.text('Editar cita'), findsOneWidget);
     });
 
     testWidgets('hora pasada: aviso y horas recargadas', (tester) async {

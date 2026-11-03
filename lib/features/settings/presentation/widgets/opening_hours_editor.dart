@@ -4,12 +4,12 @@ import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/features/settings/domain/entities/opening_hours.dart';
 import 'package:login_signup/features/settings/domain/usecases/business_settings_rules.dart';
 import 'package:login_signup/features/settings/presentation/controllers/business_settings_controller.dart';
-import 'package:login_signup/shared/widgets/time_of_day_button.dart';
+import 'package:login_signup/shared/widgets/time_range_card.dart';
 
 /// Horario de apertura por día: abierto/cerrado y una o varias franjas
 /// (p. ej. 9:00 a. m.–1:00 p. m. y 3:00–7:00 p. m.). Cada día es un bloque
-/// tonal y cada franja una tarjeta con "Abre" y "Cierra" (el selector de hora
-/// de 12 h, `AppTimePicker`). Las reglas (cierre después de la apertura,
+/// tonal y cada franja una [TimeRangeCard] con "Abre" y "Cierra" (el
+/// selector de hora de 12 h, `AppTimePicker`). Las reglas (cierre después de la apertura,
 /// franjas que no se pisen) las comprueba el use case al guardar.
 class OpeningHoursEditor extends StatelessWidget {
   final BusinessSettingsController controller;
@@ -96,14 +96,17 @@ class _DayBlock extends StatelessWidget {
             ],
           ),
           for (var i = 0; i < ranges.length; i++)
-            _RangeCard(
-              name: name,
-              index: i,
+            TimeRangeCard(
+              startLabel: 'Abre',
+              endLabel: 'Cierra',
               start: ranges[i].start,
               end: ranges[i].end,
+              startSemantics: '$name, franja ${i + 1}, apertura',
+              endSemantics: '$name, franja ${i + 1}, cierre',
               onStart: (value) => controller.updateRange(day, i, start: value),
               onEnd: (value) => controller.updateRange(day, i, end: value),
               onRemove: () => controller.removeRange(day, i),
+              removeTooltip: 'Quitar franja del $name',
             ),
           if (!closed)
             Align(
@@ -115,83 +118,6 @@ class _DayBlock extends StatelessWidget {
                 label: const Text('Añadir franja'),
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Una franja del día: tarjeta con "Abre" y "Cierra" y el botón de quitarla.
-class _RangeCard extends StatelessWidget {
-  final String name;
-  final int index;
-  final String start;
-  final String end;
-  final ValueChanged<String> onStart;
-  final ValueChanged<String> onEnd;
-  final VoidCallback onRemove;
-
-  const _RangeCard({
-    required this.name,
-    required this.index,
-    required this.start,
-    required this.end,
-    required this.onStart,
-    required this.onEnd,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final tokens = context.tokens;
-    return Container(
-      margin: const EdgeInsets.only(top: 6, right: 6),
-      padding: const EdgeInsets.fromLTRB(8, 8, 2, 8),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: AppRadii.fieldRadius,
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-        boxShadow: tokens.elevation1(),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 36,
-            decoration: BoxDecoration(
-              gradient: tokens.primaryGradient,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                TimeOfDayButton(
-                  label: 'Abre',
-                  value: start,
-                  semantics: '$name, franja ${index + 1}, apertura',
-                  onPicked: onStart,
-                ),
-                TimeOfDayButton(
-                  label: 'Cierra',
-                  value: end,
-                  semantics: '$name, franja ${index + 1}, cierre',
-                  onPicked: onEnd,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.remove_circle_outline_rounded),
-            color: scheme.error,
-            tooltip: 'Quitar franja del $name',
-            onPressed: onRemove,
-          ),
         ],
       ),
     );

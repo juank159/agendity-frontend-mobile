@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/features/appointments/domain/failures/appointment_failures.dart';
+import 'package:login_signup/features/appointments/presentation/widgets/appointment_conflict_ui.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
@@ -31,8 +32,16 @@ abstract final class AppointmentFeedback {
   static const paidMessage =
       'Reembolsa los pagos antes de cancelar la cita.';
 
-  /// Crear o editar una cita.
-  static void showSaveFailure(Failure failure) {
+  /// Sin motivo conocido (backend anterior a 13.04 o sin `details`).
+  static const slotUnavailableMessage =
+      'El profesional ya no está libre a esa hora.';
+
+  /// Crear o editar una cita (también mover: "Por mover" y el detalle usan
+  /// el mismo formulario). [professionalName] = el profesional elegido, para
+  /// el motivo de `SlotProblemText` ("Ana no trabaja a esa hora…", 13.06).
+  static void showSaveFailure(Failure failure, {String? professionalName}) {
+    final reason =
+        SlotProblemText.of(failure, professionalName: professionalName);
     switch (failure) {
       case TrialLimitReachedFailure():
         AppDialogs.subscriptionRequired(
@@ -43,7 +52,11 @@ abstract final class AppointmentFeedback {
       case SlotUnavailableFailure():
         AppDialogs.info(
           title: slotUnavailableTitle,
-          message: 'El profesional ya no está libre a esa hora.',
+          // Sin motivo, el texto del servidor repite el título.
+          message: reason ??
+              (failure.message == slotUnavailableTitle
+                  ? slotUnavailableMessage
+                  : failure.message),
           detail: 'Elige otra de las horas libres.',
           tone: AppTone.warning,
           icon: Icons.schedule_rounded,
@@ -56,7 +69,7 @@ abstract final class AppointmentFeedback {
       case OutsideBusinessHoursFailure():
         AppDialogs.info(
           title: 'Fuera del horario del negocio',
-          message: failure.message,
+          message: reason ?? failure.message,
           detail: 'Elige una hora dentro del horario de apertura o cámbialo '
               'en "Mi negocio".',
           tone: AppTone.warning,

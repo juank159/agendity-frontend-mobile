@@ -39,6 +39,7 @@ import 'package:login_signup/features/services/domain/entities/service_entity.da
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/shared/widgets/app_avatar.dart';
+import 'package:login_signup/shared/widgets/app_time_picker.dart';
 
 /// Repositorio falso con estado: pantallas, controllers y use cases son los
 /// reales.
@@ -736,7 +737,7 @@ void main() {
     });
   });
 
-  group('Franjas del formulario (13.05, para 13.06)', () {
+  group('Franjas del formulario (13.05)', () {
     NewEmployeeController controller() => NewEmployeeController(
           createEmployeeUseCase: CreateEmployeeUseCase(repo),
           getServicesUseCase: GetServicesUseCase(services),
@@ -776,6 +777,179 @@ void main() {
       c.addRange('sunday');
       expect(c.isWorkDay('sunday'), isTrue);
       expect(c.rangesOf('sunday'), hasLength(1));
+    });
+  });
+
+  group('Varias franjas por día en el formulario (13.06)', () {
+    Future<void> openEditSofia(WidgetTester tester) async {
+      repo.team = [owner, sofia];
+      await pumpList(tester);
+      await openOptions(tester, sofia);
+      await tapText(tester, 'Editar');
+    }
+
+    FixedExtentScrollController wheel(WidgetTester tester, Key key) => tester
+        .widget<ListWheelScrollView>(find.descendant(
+            of: find.byKey(key), matching: find.byType(ListWheelScrollView)))
+        .controller! as FixedExtentScrollController;
+
+    /// El botón de hora con la etiqueta accesible [label].
+    Finder timeButton(String label) => find.descendant(
+        of: find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label == label),
+        matching: find.byType(OutlinedButton));
+
+    /// Abre el selector del botón con [semantics] y elige la hora.
+    Future<void> pickAt(WidgetTester tester, String semantics,
+        {required int hour12, required bool pm}) async {
+      final button = timeButton(semantics);
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      wheel(tester, AppTimePicker.hourWheelKey).jumpToItem(hour12 - 1);
+      wheel(tester, AppTimePicker.minuteWheelKey).jumpToItem(0);
+      wheel(tester, AppTimePicker.periodWheelKey).jumpToItem(pm ? 1 : 0);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(AppTimePicker.doneKey));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('pinta todas las franjas; la primera conserva sus etiquetas',
+        (tester) async {
+      await openEditSofia(tester);
+
+      expect(find.byKey(const Key('employee-range-monday-0')), findsOneWidget);
+      expect(find.byKey(const Key('employee-range-monday-1')), findsOneWidget);
+      expect(find.text('Inicio: ${formatHhmm('10:00')}'), findsOneWidget);
+      expect(find.text('Inicio: ${formatHhmm('16:00')}'), findsOneWidget);
+      expect(find.text('Fin: ${formatHhmm('18:00')}'), findsOneWidget);
+      // Las del integration_test (primera) y las de Mi negocio (siguientes).
+      expect(timeButton('Lunes, hora de inicio'), findsOneWidget);
+      expect(timeButton('Lunes, hora de fin'), findsOneWidget);
+      expect(timeButton('Lunes, franja 2, inicio'), findsOneWidget);
+      expect(timeButton('Lunes, franja 2, fin'), findsOneWidget);
+      expect(find.widgetWithText(SwitchListTile, 'Lunes'), findsOneWidget);
+      expect(find.byKey(const Key('employee-range-overlap-monday')),
+          findsNothing);
+    });
+
+    testWidgets('añadir y quitar franjas se conserva al guardar',
+        (tester) async {
+      await openEditSofia(tester);
+
+      final add = find.byKey(const Key('employee-add-range-monday'));
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      // Una hora después de la última, de una hora: 7:00–8:00 p. m.
+      expect(find.byKey(const Key('employee-range-monday-2')), findsOneWidget);
+      expect(find.text('Inicio: ${formatHhmm('19:00')}'), findsOneWidget);
+      await pickAt(tester, 'Lunes, franja 3, fin', hour12: 9, pm: true);
+      expect(find.text('Fin: ${formatHhmm('21:00')}'), findsOneWidget);
+
+      // Quitar la de la mañana: la de la tarde pasa a ser la primera.
+      await tester.tap(find.byTooltip('Quitar franja 1 del lunes'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('employee-range-monday-2')), findsNothing);
+      expect(find.text('Inicio: ${formatHhmm('10:00')}'), findsNothing);
+
+      // Un día libre también admite dos franjas.
+      final saturday = find.widgetWithText(SwitchListTile, 'Sábado');
+      await tester.ensureVisible(saturday);
+      await tester.tap(saturday);
+      await tester.pumpAndSettle();
+      await pickAt(tester, 'Sábado, hora de fin', hour12: 12, pm: true);
+      final addSaturday = find.byKey(const Key('employee-add-range-saturday'));
+      await tester.ensureVisible(addSaturday);
+      await tester.tap(addSaturday);
+      await tester.pumpAndSettle();
+
+      await tapText(tester, 'Guardar cambios');
+
+      expect(repo.updated.single.schedule, {
+        'monday': const [
+          WorkHours(start: '16:00', end: '18:00'),
+          WorkHours(start: '19:00', end: '21:00'),
+        ],
+        'saturday': const [
+          WorkHours(start: '09:00', end: '12:00'),
+          WorkHours(start: '13:00', end: '14:00'),
+        ],
+      });
+      await expireSnackbar(tester);
+    });
+
+    testWidgets('quitar la única franja deja el día libre', (tester) async {
+      await pumpList(tester);
+      await tester.tap(find.byTooltip('Agregar profesional'));
+      await tester.pumpAndSettle();
+
+      final remove = find.byKey(const Key('employee-range-remove-monday-0'));
+      await tester.ensureVisible(remove);
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      final monday = find.widgetWithText(SwitchListTile, 'Lunes');
+      expect(tester.widget<SwitchListTile>(monday).value, isFalse);
+      expect(find.descendant(of: monday, matching: find.text('Libre')),
+          findsOneWidget);
+    });
+
+    testWidgets('el solape se avisa en vivo y no deja guardar',
+        (tester) async {
+      await openEditSofia(tester);
+
+      // La de la tarde empieza a las 11:00 a. m.: se cruza con 10–12.
+      await pickAt(tester, 'Lunes, franja 2, inicio', hour12: 11, pm: false);
+
+      final warning = find.byKey(const Key('employee-range-overlap-monday'));
+      expect(warning, findsOneWidget);
+      expect(
+          find.descendant(
+              of: warning,
+              matching: find.text('Las franjas 1 y 2 se cruzan: una tiene '
+                  'que terminar antes de que empiece la otra.')),
+          findsOneWidget);
+
+      await tapText(tester, 'Guardar cambios');
+      expect(repo.updated, isEmpty);
+      expect(
+          find.text('Hay franjas que se cruzan el lunes. Corrígelas para '
+              'guardar.'),
+          findsOneWidget);
+      await expireSnackbar(tester);
+
+      // Tocarse sí vale (12:00 justo al cerrar la primera).
+      await pickAt(tester, 'Lunes, franja 2, inicio', hour12: 12, pm: true);
+      expect(warning, findsNothing);
+      await tapText(tester, 'Guardar cambios');
+      expect(repo.updated.single.schedule['monday'], const [
+        WorkHours(start: '10:00', end: '12:00'),
+        WorkHours(start: '12:00', end: '18:00'),
+      ]);
+      await expireSnackbar(tester);
+    });
+
+    test('overlappingOn: solo las que se cruzan y bien formadas', () {
+      final c = NewEmployeeController(
+        createEmployeeUseCase: CreateEmployeeUseCase(repo),
+        getServicesUseCase: GetServicesUseCase(services),
+      );
+      c.schedule['monday'] = const [
+        WorkHours(start: '09:00', end: '13:00'),
+        WorkHours(start: '13:00', end: '15:00'), // se toca: vale
+        WorkHours(start: '14:00', end: '16:00'), // pisa a la anterior
+        WorkHours(start: '18:00', end: '17:00'), // mal formada: aparte
+      ];
+      expect(c.overlappingOn('monday'), {1, 2});
+      expect(c.overlappingDays, ['monday']);
+      expect(EmployeeFormController.scheduleOverlapMessage(
+              ['monday', 'tuesday', 'friday']),
+          'Hay franjas que se cruzan el lunes, martes y viernes. '
+          'Corrígelas para guardar.');
+
+      c.schedule['sunday'] = const [WorkHours(start: '21:00', end: '22:00')];
+      expect(c.canAddRange('sunday'), isFalse); // 23:00–24:00 no cabe
+      expect(c.canAddRange('saturday'), isTrue);
     });
   });
 

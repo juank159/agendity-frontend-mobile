@@ -6,7 +6,7 @@ import 'package:login_signup/core/widgets/app_fade_in.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/employees/domain/entities/employee_entity.dart';
 import 'package:login_signup/common/entities/work_hours.dart';
-import 'package:login_signup/features/employees/presentation/widgets/employee_schedule_section.dart';
+import 'package:login_signup/features/employees/presentation/controllers/employee_form_controller.dart' show employeeDayLabels;
 import 'package:login_signup/features/employees/presentation/widgets/employee_status_ui.dart';
 import 'package:login_signup/shared/widgets/app_avatar.dart';
 import 'package:login_signup/shared/widgets/app_card.dart';

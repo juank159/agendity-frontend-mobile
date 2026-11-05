@@ -1860,6 +1860,15 @@ Future<void> phaseLunchA(WidgetTester tester) async {
   final note = find.byKey(const Key('palette-own-device-note'));
   await waitFor(tester, find.byKey(const Key('business-name')));
   await idle(tester, 1200);
+  // La lista es perezosa: bajar hasta la tarjeta del color.
+  for (var i = 0;
+      i < 40 && find.text('Color del negocio').evaluate().isEmpty;
+      i++) {
+    final list = visibleVerticalList(tester);
+    if (list == null) break;
+    await tester.drag(list, const Offset(0, -300), warnIfMissed: false);
+    await idle(tester, 150);
+  }
   await centerOn(tester, find.text('Color del negocio'));
   await idle(tester, 800);
   check(note.evaluate().isNotEmpty,

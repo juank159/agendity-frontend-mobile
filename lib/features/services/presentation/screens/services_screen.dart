@@ -8,8 +8,9 @@ import '../../domain/entities/service_entity.dart';
 import '../controllers/services_controller.dart';
 import '../widgets/service_card.dart';
 
-/// Catálogo de servicios agrupado por categoría. El Employee lo ve en solo
-/// lectura (sin crear ni editar).
+/// Catálogo de servicios agrupado por categoría. El Employee ve "Mis
+/// servicios" (D-27): solo los suyos, con lo que gana en cada uno, en solo
+/// lectura.
 class ServicesScreen extends GetView<ServicesController> {
   const ServicesScreen({super.key});
 
@@ -17,17 +18,21 @@ class ServicesScreen extends GetView<ServicesController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Servicios'),
+        title: Obx(() => Text(controller.title)),
         actions: [
-          IconButton(
-            tooltip: 'Categorías',
-            icon: const Icon(Icons.folder_copy_rounded),
-            onPressed: controller.openCategories,
-          ),
+          Obx(() => controller.showsMine
+              ? const SizedBox.shrink()
+              : IconButton(
+                  tooltip: 'Categorías',
+                  icon: const Icon(Icons.folder_copy_rounded),
+                  onPressed: controller.openCategories,
+                )),
         ],
       ),
       body: Obx(() {
         final canManage = controller.canManage;
+        final mine = controller.showsMine;
+        final commissions = mine ? Map<String, double?>.of(controller.commissions) : null;
         return ListStateView<ServiceEntity>(
           isLoading: controller.isLoading.value,
           error: controller.loadError.value,
@@ -35,9 +40,13 @@ class ServicesScreen extends GetView<ServicesController> {
           onRetry: controller.loadServices,
           loadingMessage: 'Cargando servicios…',
           emptyIcon: Icons.spa_rounded,
-          emptyMessage: 'Aún no hay servicios',
-          emptySubMessage:
-              canManage ? 'Crea el primero para poder agendar citas.' : null,
+          emptyMessage:
+              mine ? 'Aún no tienes servicios asignados' : 'Aún no hay servicios',
+          emptySubMessage: canManage
+              ? 'Crea el primero para poder agendar citas.'
+              : mine
+                  ? 'Pídele al negocio que te asigne los servicios que haces.'
+                  : null,
           emptyActionLabel: canManage ? 'Crear servicio' : null,
           emptyActionIcon: Icons.add_rounded,
           onEmptyAction: canManage ? controller.openNewService : null,
@@ -45,6 +54,7 @@ class ServicesScreen extends GetView<ServicesController> {
             onRefresh: controller.refreshFromServer,
             child: _GroupedServices(
               groups: controller.getServicesGroupedByCategory(),
+              commissions: commissions,
               onTap: canManage ? controller.openEditService : null,
               onActiveChanged:
                   controller.canToggleActive ? controller.setActive : null,
@@ -70,8 +80,14 @@ class _GroupedServices extends StatelessWidget {
   final ValueChanged<ServiceEntity>? onTap;
   final void Function(ServiceEntity service, bool active)? onActiveChanged;
 
+  /// "Mis servicios": % de la empleada por id; `null` = no se muestra.
+  final Map<String, double?>? commissions;
+
   const _GroupedServices(
-      {required this.groups, required this.onTap, this.onActiveChanged});
+      {required this.groups,
+      required this.onTap,
+      this.onActiveChanged,
+      this.commissions});
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +113,8 @@ class _GroupedServices extends StatelessWidget {
               for (final service in entry.value)
                 ServiceCard(
                   service: service,
+                  showCommission: commissions != null,
+                  commissionPercentage: commissions?[service.id],
                   onTap: onTap == null ? null : () => onTap!(service),
                   onActiveChanged: onActiveChanged == null
                       ? null

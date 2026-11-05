@@ -5,8 +5,10 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/safe_call.dart';
 import 'package:login_signup/core/sync/offline_store.dart';
 import 'package:login_signup/features/services/data/datasources/catalog_local_datasource.dart';
+import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
 import 'package:login_signup/features/services/data/models/service_model.dart';
 import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
+import 'package:login_signup/features/services/domain/entities/my_service.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/failures/services_failures.dart';
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
@@ -18,9 +20,15 @@ class ServicesRepositoryImpl implements ServicesRepository {
   final OfflineStore _store;
   final CatalogLocalDataSource _local;
 
+  /// "Mis servicios" con conexión (la comisión general de la empleada solo
+  /// la tiene el servidor). `null` = solo lo local.
+  final ServicesRemoteDataSource? _remote;
+
   ServicesRepositoryImpl(this._store,
-      {CatalogLocalDataSource local = const CatalogLocalDataSource()})
-      : _local = local;
+      {CatalogLocalDataSource local = const CatalogLocalDataSource(),
+      ServicesRemoteDataSource? remote})
+      : _local = local,
+        _remote = remote;
 
   static const _entity = 'services';
 
@@ -38,6 +46,24 @@ class ServicesRepositoryImpl implements ServicesRepository {
           String professionalId) =>
       safeCall(() async =>
           _local.offeredBy(await _store.database(), professionalId));
+
+  /// Con conexión manda el servidor (D-27); sin ella (`NetworkFailure`), lo
+  /// que haya en el teléfono.
+  @override
+  Future<Either<Failure, List<MyService>>> getMyServices() async {
+    final remote = _remote;
+    if (remote != null) {
+      final online = await safeCall(remote.getMyServices);
+      if (online.fold((failure) => failure is! NetworkFailure, (_) => true)) {
+        return online;
+      }
+    }
+    return safeCall(() async {
+      final userId = await _store.databases.currentUserId();
+      if (userId == null) return const <MyService>[];
+      return _local.mine(await _store.database(), userId);
+    });
+  }
 
   @override
   Future<Either<Failure, ServiceEntity>> createService(ServiceEntity service) =>

@@ -218,25 +218,53 @@ void main() {
     ]);
   });
 
-  test('un profesional: resumen, por servicio y evolución diaria', () {
-    final e = local.employeeStats(from, to, 'pro-1');
-    expect(e['summary'], {
-      'total_amount': 50000.0,
-      'payment_count': 1,
-      'appointment_count': 1,
-      'average_per_payment': 50000.0,
-    });
-    expect((e['by_service'] as List).map((r) => (r['service_name'], r['total'])),
-        [('Corte', 30000.0), ('Barba', 20000.0)]);
-    expect(e['daily_evolution'], [
-      {
-        'date': '2026-10-20',
-        'total': 50000.0,
-        'count': 1,
-        'payment_count': 1,
-        'appointment_count': 1,
+  test('comisiones por ganar (D-27): PENDING y CONFIRMED con su estado; la '
+      'empleada sin lo del negocio', () {
+    final withPending = LocalStats(LocalStatsData(
+      appointments: {
+        ...data.appointments,
+        'a4': {
+          ...appointment('a4', 'pro-1', 'cli-1', 'CONFIRMED',
+              '2026-10-21T11:00:00.000-05:00',
+              [line('s1', 'Corte', '40000.00', '40.00')]),
+          'payment_status': 'PARTIAL',
+        },
+        'a5': appointment('a5', 'pro-1', 'cli-2', 'PENDING',
+            '2026-10-21T16:00:00.000-05:00',
+            [line('s3', 'Tinte', '10000.00', '40.00')]),
       },
-    ]);
+      payments: [
+        ...data.payments,
+        payment('p6', 'a4', '15000.00', '2026-10-21T10:00:00.000-05:00'),
+      ],
+      clients: data.clients,
+      users: data.users,
+    ));
+    final owner = withPending.commissions(from, to, professionalId: 'pro-1');
+    expect(owner['totals']['appointment_count'], 1,
+        reason: 'lo ganado sigue siendo solo lo COMPLETED');
+    final pending = owner['pending'] as Map<String, dynamic>;
+    expect(pending['totals'], {
+      'services_total': 50000.0,
+      'professional_total': 20000.0,
+      'business_total': 30000.0,
+      'appointment_count': 2,
+    });
+    final rows = (pending['professionals'] as List).single['appointments'];
+    expect([for (final r in rows) (r['status'], r['payment_status'])],
+        [('CONFIRMED', 'PARTIAL'), ('PENDING', null)]);
+    expect(rows.first['paid_amount'], 15000.0);
+
+    final employee = withPending.commissions(from, to,
+        professionalId: 'pro-1', includeBusiness: false);
+    bool hasBusiness(Object? node) => switch (node) {
+          Map() => node.containsKey('business_total') ||
+              node.values.any(hasBusiness),
+          List() => node.any(hasBusiness),
+          _ => false,
+        };
+    expect(hasBusiness(employee), isFalse);
+    expect(employee['pending']['totals']['professional_total'], 20000.0);
   });
 
   test('comisiones: citas COMPLETED por fecha, % congelado (o el de hoy), '

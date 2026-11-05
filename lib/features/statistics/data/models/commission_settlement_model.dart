@@ -1,3 +1,5 @@
+import 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
+import 'package:login_signup/common/enums/appointment_status_enum.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
@@ -9,9 +11,15 @@ import 'package:login_signup/features/statistics/domain/entities/commission_sett
 /// appointment_id, date, timezone, client_name, …totales, lines: [{
 /// service_id, service_name, price, commission_percentage, commission}]}]}]}`.
 /// Importes en número (ya sumados en centavos por el backend).
+///
+/// D-27 (13.10): `pending` = la misma forma para las citas PENDING/CONFIRMED
+/// del periodo; cada cita trae además `status`, `payment_status` y quizá
+/// `paid_amount`. A la empleada no le llega `business_total` en ningún nivel
+/// (ausente o `null` → `businessTotal` null).
 abstract final class CommissionSettlementModel {
   static CommissionSettlement fromJson(Map<String, dynamic> json) {
     final totals = JsonRead.asMap(json['totals']) ?? const {};
+    final pending = JsonRead.asMap(json['pending']);
     return CommissionSettlement(
       startDay: DateCodec.tryDecodeDay(json['start']),
       endDay: DateCodec.tryDecodeDay(json['end']),
@@ -21,14 +29,27 @@ abstract final class CommissionSettlementModel {
       professionals: JsonRead.asMapList(json['professionals'])
           .map(_professional)
           .toList(growable: false),
+      pending: pending == null ? null : _pending(json, pending),
     );
   }
+
+  /// `pending` no repite el periodo: se toma el de la liquidación.
+  static CommissionSettlement _pending(
+          Map<String, dynamic> parent, Map<String, dynamic> pending) =>
+      fromJson({
+        'start': parent['start'],
+        'end': parent['end'],
+        'timezone': parent['timezone'],
+        ...pending,
+      }..remove('pending'));
 
   static CommissionAmounts _amounts(Map<String, dynamic> json) =>
       CommissionAmounts(
         servicesTotal: JsonRead.asDouble(json['services_total']),
         professionalTotal: JsonRead.asDouble(json['professional_total']),
-        businessTotal: JsonRead.asDouble(json['business_total']),
+        businessTotal: json['business_total'] == null
+            ? null
+            : JsonRead.asDouble(json['business_total']),
       );
 
   static ProfessionalCommission _professional(Map<String, dynamic> json) =>
@@ -54,6 +75,11 @@ abstract final class CommissionSettlementModel {
       timeZone: timeZone,
       clientName: JsonRead.asString(json['client_name']),
       amounts: _amounts(json),
+      status: AppointmentStatus.fromApi(json['status']),
+      paymentStatus: AppointmentPaymentStatus.fromApi(json['payment_status']),
+      paidAmount: json['paid_amount'] == null
+          ? null
+          : JsonRead.asDouble(json['paid_amount']),
       lines: [
         for (final line in JsonRead.asMapList(json['lines']))
           CommissionLine(

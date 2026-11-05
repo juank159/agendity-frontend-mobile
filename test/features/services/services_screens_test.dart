@@ -10,6 +10,7 @@ import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/core/widgets/app_gradient_button.dart';
 import 'package:login_signup/core/widgets/error_state.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
+import 'package:login_signup/features/services/domain/entities/my_service.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/entities/service_price_type.dart';
 import 'package:login_signup/features/services/domain/failures/services_failures.dart';
@@ -21,6 +22,7 @@ import 'package:login_signup/features/services/domain/usecases/delete_category_u
 import 'package:login_signup/features/services/domain/usecases/delete_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_all_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/get_my_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_status_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_usecase.dart';
@@ -72,6 +74,16 @@ class FakeServicesRepository implements ServicesRepository {
   Future<Either<Failure, List<ServiceEntity>>> getServicesOfferedBy(
           String professionalId) =>
       getServices();
+
+  /// "Mis servicios" (D-27).
+  Either<Failure, List<MyService>> mineResult = const Right([]);
+  int mineCalls = 0;
+
+  @override
+  Future<Either<Failure, List<MyService>>> getMyServices() async {
+    mineCalls++;
+    return mineResult;
+  }
 
   @override
   Future<Either<Failure, ServiceEntity>> createService(
@@ -233,6 +245,74 @@ void main() {
       expect(tile.onTap, isNull);
       // Las categorías siguen accesibles (en solo lectura).
       expect(find.byTooltip('Categorías'), findsOneWidget);
+    });
+
+    group('Mis servicios (D-27)', () {
+      ServicesController putWithMine() => Get.put(ServicesController(
+            getServicesUseCase: GetServicesUseCase(services),
+            getCategoriesUseCase: GetCategoriesUseCase(categories),
+            getAllServicesUseCase: GetAllServicesUseCase(services),
+            getMyServicesUseCase: GetMyServicesUseCase(services),
+          ));
+      const pedicure = ServiceEntity(
+          id: 'srv-2',
+          name: 'Pedicure',
+          price: 30000,
+          duration: 60,
+          categoryId: 'cat-1',
+          category: nails);
+
+      testWidgets(
+          'la empleada ve solo los suyos con lo que gana en cada uno, sin '
+          'categorías', (tester) async {
+        signInAs('Employee');
+        // El catálogo completo tiene más servicios que los de ella.
+        services.listResult = const Right([manicure, pedicure]);
+        services.mineResult = const Right([
+          MyService(service: manicure, commissionPercentage: 40),
+        ]);
+        putWithMine();
+        await pump(tester, const ServicesScreen());
+
+        expect(find.text('Mis servicios'), findsOneWidget);
+        expect(services.mineCalls, 1);
+        expect(services.listCalls + services.allCalls, 0);
+        expect(find.text('Manicure'), findsOneWidget);
+        expect(find.text('Pedicure'), findsNothing);
+        expect(find.text('Ganas \$ 10.000 (40 %)'), findsOneWidget);
+        expect(find.byTooltip('Categorías'), findsNothing);
+        expect(find.byType(AppGradientButton), findsNothing);
+      });
+
+      testWidgets('sin el % (sin conexión) lo dice; sin servicios, qué hacer',
+          (tester) async {
+        signInAs('Employee');
+        services.mineResult = const Right([MyService(service: manicure)]);
+        final controller = putWithMine();
+        await pump(tester, const ServicesScreen());
+        expect(find.text('Tu comisión se ve con conexión'), findsOneWidget);
+
+        services.mineResult = const Right([]);
+        await controller.loadServices();
+        await tester.pumpAndSettle();
+        expect(find.text('Aún no tienes servicios asignados'), findsOneWidget);
+        expect(
+            find.text(
+                'Pídele al negocio que te asigne los servicios que haces.'),
+            findsOneWidget);
+      });
+
+      testWidgets('el Owner sigue viendo el catálogo completo', (tester) async {
+        signInAs('Owner');
+        services.listResult = const Right([manicure, pedicure]);
+        putWithMine();
+        await pump(tester, const ServicesScreen());
+
+        expect(find.text('Servicios'), findsOneWidget);
+        expect(services.mineCalls, 0);
+        expect(find.text('Pedicure'), findsOneWidget);
+        expect(find.textContaining('Ganas'), findsNothing);
+      });
     });
 
     testWidgets('Owner: ve los inactivos atenuados y los activa o desactiva',

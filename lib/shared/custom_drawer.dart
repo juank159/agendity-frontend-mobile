@@ -14,9 +14,11 @@ import 'package:login_signup/shared/widgets/app_dialogs.dart';
 /// Menú lateral de la home (12.03): cabecera con el negocio, el usuario y su
 /// rol sobre el degradado de la paleta; ítems agrupados con íconos
 /// `_rounded` y el activo resaltado con una píldora. Solo entradas con
-/// pantalla real; las de Owner (Personal, Mi negocio, Recordatorios y Planes)
-/// se ocultan al Employee, igual que `RoleMiddleware.ownerOnly()` en sus
-/// rutas. Los textos de los ítems los usan los integration_test.
+/// pantalla real; las de Owner (Personal, Informes, Comisiones, Mi negocio,
+/// Recordatorios y Planes) se ocultan al Employee, igual que
+/// `RoleMiddleware.ownerOnly()` en sus rutas; ella ve "Mis servicios" y
+/// "Mis ganancias" (D-27). Los textos de los ítems los usan los
+/// integration_test.
 class CustomDrawer extends GetView<UserInfoController> {
   const CustomDrawer({super.key});
 
@@ -73,17 +75,23 @@ class CustomDrawer extends GetView<UserInfoController> {
             item(Icons.calendar_month_rounded, 'Agenda', GetRoutes.home,
                 key: const Key('drawer-home')),
             const _SectionTitle('Tu negocio'),
-            // Owner y Employee (el Employee, en solo lectura).
-            item(Icons.spa_rounded, 'Servicios', GetRoutes.services),
+            // Owner: el catálogo. Employee: solo los suyos, con su comisión
+            // (D-27), en solo lectura.
+            item(Icons.spa_rounded, isOwner ? 'Servicios' : 'Mis servicios',
+                GetRoutes.services),
             // Owner y Employee crean y editan clientes; borrar, solo el Owner.
             item(Icons.people_alt_rounded, 'Clientela', GetRoutes.clients),
             if (isOwner)
               item(Icons.badge_rounded, 'Personal', GetRoutes.employees),
             const _SectionTitle('Números'),
-            item(Icons.insights_rounded, 'Informes',
-                controller.getStatisticsRoute()),
-            // Owner: el equipo; Employee: sus comisiones.
-            item(Icons.percent_rounded, 'Comisiones', GetRoutes.commissions),
+            if (isOwner) ...[
+              item(Icons.insights_rounded, 'Informes', GetRoutes.statistics),
+              item(Icons.percent_rounded, 'Comisiones', GetRoutes.commissions),
+            ] else
+              // D-27: Informes y Comisiones de la empleada en una sola
+              // entrada (ganado, por ganar y el detalle por cita).
+              item(Icons.savings_rounded, 'Mis ganancias',
+                  GetRoutes.myEarnings),
             const _SectionTitle('Configuración'),
             // Solo Owner: el backend responde 403 al Employee en la
             // configuración del negocio y al suscribirse.

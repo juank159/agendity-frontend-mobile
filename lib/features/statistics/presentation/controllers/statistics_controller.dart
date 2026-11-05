@@ -28,8 +28,8 @@ enum StatsDashboardSection {
 /// Panel de estadísticas del negocio (ruta `/statistics`, solo Owner).
 ///
 /// Todo lo que pide es solo Owner en el backend: si la sesión no es de un
-/// Owner no hace ninguna petición y muestra el aviso. El Employee ve las
-/// suyas en `EmployeeStatsController`.
+/// Owner no hace ninguna petición y muestra el aviso. El Employee ve lo
+/// suyo en "Mis ganancias" (`/my-earnings`, D-27).
 class StatisticsController extends StatsPeriodController {
   static const topClientsLimit = 5;
   static const moreTopClientsLimit = 20;

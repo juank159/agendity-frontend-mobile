@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
+import 'package:login_signup/common/enums/appointment_status_enum.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
@@ -107,6 +109,74 @@ void main() {
     });
     expect(s.isEmpty, true);
     expect(s.totals, const CommissionAmounts());
+  });
+
+  test('D-27: la empleada sin business_total y con pending (estado y pago)',
+      () {
+    BusinessTimeZone.use('America/Bogota');
+    Map<String, dynamic> strip(Object? node) => switch (node) {
+          Map() => {
+              for (final e in node.entries)
+                if (e.key != 'business_total')
+                  e.key as String: e.value is Map || e.value is List
+                      ? (e.value is List
+                          ? [for (final v in e.value as List) strip(v)]
+                          : strip(e.value))
+                      : e.value,
+            },
+          _ => throw ArgumentError(node),
+        };
+    final employee = strip(backendSettlement());
+    final pendingAppointment = {
+      'appointment_id': 'apt-9',
+      'date': '2026-10-22T15:00:00.000-05:00',
+      'timezone': 'America/Bogota',
+      'client_name': 'Rosa Gil',
+      'status': 'CONFIRMED',
+      'payment_status': 'PARTIAL',
+      'paid_amount': 20000,
+      'services_total': 80000,
+      'professional_total': 32000,
+      'lines': [],
+    };
+    final s = CommissionSettlementModel.fromJson({
+      ...employee,
+      'pending': {
+        'totals': {
+          'services_total': 80000,
+          'professional_total': 32000,
+          'appointment_count': 1,
+        },
+        'professionals': [
+          {
+            'professional_id': 'pro-1',
+            'professional_name': 'Laura Gómez',
+            'appointment_count': 1,
+            'services_total': 80000,
+            'professional_total': 32000,
+            'appointments': [pendingAppointment],
+          },
+        ],
+      },
+    });
+    expect(s.totals.businessTotal, isNull);
+    expect(s.professionals.single.appointments.single.amounts.businessTotal,
+        isNull);
+    final pending = s.pending!;
+    expect(pending.timeZone, 'America/Bogota');
+    expect(pending.totals.professionalTotal, 32000);
+    expect(pending.totals.businessTotal, isNull);
+    expect(pending.appointmentCount, 1);
+    final a = pending.appointments.single;
+    expect(a.status, AppointmentStatus.CONFIRMED);
+    expect(a.paymentStatus, AppointmentPaymentStatus.PARTIAL);
+    expect(a.paidAmount, 20000);
+    expect(s.isEmptyWithPending, isFalse);
+    // Sin `pending` (backend anterior): null; la completada, sin estado.
+    final old = CommissionSettlementModel.fromJson(backendSettlement());
+    expect(old.pending, isNull);
+    expect(old.appointments.single.status, isNull);
+    expect(old.totals.businessTotal, 81000);
   });
 
   group('use case', () {

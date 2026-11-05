@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:login_signup/core/errors/failures.dart';
+import 'package:login_signup/features/services/domain/entities/my_service.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 
 /// Servicios del negocio. Leer: Owner y Employee. Escribir: solo Owner (el
@@ -16,6 +17,11 @@ abstract class ServicesRepository {
   /// activos. Para el catálogo del formulario de cita.
   Future<Either<Failure, List<ServiceEntity>>> getServicesOfferedBy(
       String professionalId);
+
+  /// "Mis servicios" de la sesión (D-27, como `GET /auth/me/services`): la
+  /// empleada, los asignados y activos con su % efectivo; el Owner, todos
+  /// (sin %). Sin conexión, lo que haya en el teléfono.
+  Future<Either<Failure, List<MyService>>> getMyServices();
 
   /// Nombre repetido en el negocio → `DuplicateServiceNameFailure`.
   Future<Either<Failure, ServiceEntity>> createService(ServiceEntity service);

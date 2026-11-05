@@ -20,6 +20,10 @@ abstract final class AppointmentAccess {
   /// Owner: registrar pagos (`POST /payments`).
   static bool canPay() => _session?.isOwner ?? false;
 
+  /// Owner: completar una cita (D-27, `PATCH /appointments/:id/complete`;
+  /// la empleada recibe 403). Al completarla, su comisión pasa a "Ganado".
+  static bool canComplete() => _session?.isOwner ?? false;
+
   /// El Employee solo agenda para sí: el profesional viene fijado.
   static bool professionalIsFixed() => _session?.isOnlyEmployee ?? false;
 }

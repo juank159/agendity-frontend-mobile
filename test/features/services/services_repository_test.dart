@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/core/database/app_database.dart';
 import 'package:login_signup/core/database/document_store.dart';
@@ -11,6 +12,10 @@ import 'package:login_signup/core/sync/sync_engine.dart';
 import 'package:login_signup/core/sync/sync_models.dart';
 import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/data/datasources/catalog_local_datasource.dart';
+import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
+import 'package:login_signup/features/services/data/models/my_service_model.dart';
+import 'package:login_signup/features/services/domain/entities/my_service.dart';
+import 'package:login_signup/features/services/domain/usecases/get_my_services_usecase.dart';
 import 'package:login_signup/features/services/data/repositories/categories_repository_impl.dart';
 import 'package:login_signup/features/services/data/repositories/services_repository_impl.dart';
 import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
@@ -172,6 +177,82 @@ void main() {
       expect(rightOf(await useCase('owner-1')).map((s) => s.id),
           ['srv-1', 'srv-3']);
       expect(rightOf(await useCase('emp-1')).map((s) => s.id), ['srv-1']);
+    });
+  });
+
+  group('Mis servicios (D-27)', () {
+    Future<void> seedEmployee() async {
+      await DocumentStore.put(db, SharedDocs.users, 'user-1', {
+        'id': 'user-1',
+        'roles': [
+          {'name': 'Employee'}
+        ],
+      });
+      await DocumentStore.put(db, SharedDocs.userServices, 'us-1', {
+        'id': 'us-1',
+        'userId': 'user-1',
+        'serviceId': 'srv-1',
+        'isActive': true,
+        'commissionPercentage': '45.00',
+      });
+    }
+
+    test('con conexión manda el servidor (% efectivo de /auth/me/services)',
+        () async {
+      final remote = _FakeServicesRemote(() async => [
+            MyServiceModel.fromJson({
+              'id': 'srv-1',
+              'name': 'Cejas en hilo',
+              'duration': 30,
+              'price': 20000,
+              'color': '#ff0000',
+              'category': {'id': 'cat-1', 'name': 'Cejas'},
+              'commission_percentage': 40,
+            }),
+          ]);
+      final repo = ServicesRepositoryImpl(
+          OfflineStore(databases: databases), remote: remote);
+      final mine = rightOf(await GetMyServicesUseCase(repo)(NoParams()));
+      expect(mine.single.service.name, 'Cejas en hilo');
+      expect(mine.single.service.category?.name, 'Cejas');
+      expect(mine.single.commissionPercentage, 40);
+      expect(mine.single.commission, 8000);
+    });
+
+    test('sin conexión: lo asignado en el teléfono con su excepción', () async {
+      await seedEmployee();
+      final repo = ServicesRepositoryImpl(OfflineStore(databases: databases),
+          remote: _FakeServicesRemote(() async => throw offlineError()));
+      final mine = rightOf(await repo.getMyServices());
+      expect(mine.map((m) => (m.service.id, m.commissionPercentage)),
+          [('srv-1', 45.0)]);
+    });
+
+    test('sin conexión y sin excepción: el % queda sin saber (null)',
+        () async {
+      await seedEmployee();
+      await DocumentStore.put(db, SharedDocs.userServices, 'us-1', {
+        'id': 'us-1',
+        'userId': 'user-1',
+        'serviceId': 'srv-1',
+        'isActive': true,
+        'commissionPercentage': null,
+      });
+      final mine = rightOf(await services.getMyServices());
+      expect(mine.single.commissionPercentage, isNull);
+      expect(mine.single.commission, isNull);
+    });
+
+    test('otro error del servidor no se tapa con lo local', () async {
+      final repo = ServicesRepositoryImpl(OfflineStore(databases: databases),
+          remote: _FakeServicesRemote(() async => throw DioException(
+              requestOptions: RequestOptions(path: '/auth/me/services'),
+              response: Response(
+                  requestOptions: RequestOptions(path: '/auth/me/services'),
+                  statusCode: 403,
+                  data: {'statusCode': 403, 'code': 'FORBIDDEN'}),
+              type: DioExceptionType.badResponse)));
+      expect(leftOf(await repo.getMyServices()), isA<ForbiddenFailure>());
     });
   });
 
@@ -351,4 +432,13 @@ void main() {
       expect((await outbox()).single.payload, {'price': 1.0});
     });
   });
+}
+
+class _FakeServicesRemote implements ServicesRemoteDataSource {
+  final Future<List<MyService>> Function() _mine;
+
+  _FakeServicesRemote(this._mine);
+
+  @override
+  Future<List<MyService>> getMyServices() => _mine();
 }

@@ -26,7 +26,6 @@ import 'package:login_signup/features/services/presentation/controllers/new_serv
 import 'package:login_signup/features/services/presentation/controllers/services_controller.dart';
 import 'package:login_signup/features/settings/presentation/controllers/business_settings_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/commissions_controller.dart';
-import 'package:login_signup/features/statistics/presentation/controllers/employee_stats_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/statistics_controller.dart';
 import 'package:login_signup/features/subscriptions/presentation/controllers/subscription_controller.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
@@ -65,7 +64,6 @@ abstract final class SessionScope {
     deleteSessionController<CategoriesController>,
     deleteSessionController<NewCategoryController>,
     deleteSessionController<StatisticsController>,
-    deleteSessionController<EmployeeStatsController>,
     deleteSessionController<CommissionsController>,
     deleteSessionController<SubscriptionController>,
     deleteSessionController<SyncAttentionController>,

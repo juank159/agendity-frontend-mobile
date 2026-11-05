@@ -25,16 +25,18 @@ void main() {
     'Enviar opiniones',
   ];
   const ownerOnly = [
+    'Servicios',
     'Personal',
+    'Informes',
+    'Comisiones',
     'Mi negocio',
     'Recordatorios',
     'Planes y suscripción',
   ];
+  // D-27: la empleada ve solo lo suyo.
+  const employeeOnly = ['Mis servicios', 'Mis ganancias'];
   const forEveryone = [
-    'Servicios',
     'Clientela',
-    'Informes',
-    'Comisiones',
     'Apariencia',
     'Cerrar sesión',
   ];
@@ -93,16 +95,18 @@ void main() {
     for (final title in [...forEveryone, ...ownerOnly]) {
       expect(find.text(title), findsOneWidget, reason: title);
     }
-    for (final title in notImplemented) {
+    for (final title in [...employeeOnly, ...notImplemented]) {
       expect(find.text(title), findsNothing, reason: title);
     }
   });
 
-  testWidgets('Employee: sin las entradas del Owner', (tester) async {
+  testWidgets(
+      'Employee: Mis servicios y Mis ganancias, sin Informes ni Comisiones '
+      'ni las entradas del Owner', (tester) async {
     await openDrawer(tester, SessionRole.employee);
 
     expect(find.text('EMPLEADO'), findsOneWidget);
-    for (final title in forEveryone) {
+    for (final title in [...forEveryone, ...employeeOnly]) {
       expect(find.text(title), findsOneWidget, reason: title);
     }
     for (final title in [...ownerOnly, ...notImplemented]) {

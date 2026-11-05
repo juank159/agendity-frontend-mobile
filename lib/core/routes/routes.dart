@@ -55,7 +55,7 @@ import 'package:login_signup/features/settings/presentation/bindings/business_se
 import 'package:login_signup/features/settings/presentation/screens/business_settings_screen.dart';
 import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
 import 'package:login_signup/features/statistics/presentation/screens/commissions_screen.dart';
-import 'package:login_signup/features/statistics/presentation/screens/employee_stats_screen.dart';
+import 'package:login_signup/features/statistics/presentation/screens/my_earnings_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
 import 'package:login_signup/features/subscriptions/presentation/bindings/subscription_binding.dart';
 import 'package:login_signup/features/subscriptions/presentation/screens/payment_success_screen.dart';
@@ -101,10 +101,12 @@ class GetRoutes {
 
   // statistics Routes
   static const String statistics = '/statistics';
-  static const String employeeStats = '/employee-statistics';
 
-  /// Liquidación de comisiones (Owner: el equipo; Employee: lo suyo).
+  /// Liquidación de comisiones del equipo (solo Owner).
   static const String commissions = '/commissions';
+
+  /// "Mis ganancias" de la empleada (D-27): ganado, por ganar y el detalle.
+  static const String myEarnings = '/my-earnings';
 
   // config whatsapp Routes
 
@@ -334,7 +336,8 @@ class GetRoutes {
     ),
     GetPage(
       name: commissions,
-      middlewares: [AuthMiddleware()],
+      // D-27: la empleada ve lo suyo en "Mis ganancias".
+      middlewares: RoleMiddleware.ownerOnly(),
       page: () => const CommissionsScreen(),
       binding: CommissionsBinding(),
       transition: Transition.rightToLeft,
@@ -342,10 +345,10 @@ class GetRoutes {
       preventDuplicates: true,
     ),
     GetPage(
-      name: employeeStats,
+      name: myEarnings,
       middlewares: [AuthMiddleware()],
-      page: () => const EmployeeStatsScreen(),
-      binding: EmployeeStatsBinding(),
+      page: () => const MyEarningsScreen(),
+      binding: CommissionsBinding(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 250),
       preventDuplicates: true,

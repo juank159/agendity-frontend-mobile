@@ -1,13 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
-import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/professional_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/service_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/top_client_model.dart';
-import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_stats_entity.dart';
 
@@ -88,52 +86,6 @@ Map<String, dynamic> backendTopClient() => {
       'client_name': 'Ana Pérez',
       'visit_count': 3,
       'total_spent': 105000,
-    };
-
-/// `GET /payments/employee-stats`.
-Map<String, dynamic> backendEmployeeStats() => {
-      'summary': {
-        'total_amount': 80000,
-        'payment_count': 2,
-        'appointment_count': 2,
-        'average_per_payment': 40000,
-      },
-      'by_service': [
-        {
-          'service_id': 'srv-1',
-          'service_name': 'Cejas en hilo',
-          'count': 2,
-          'total': 90000,
-        },
-      ],
-      'daily_evolution': [
-        {
-          'date': '2026-10-20',
-          'total': 30000,
-          'count': 2,
-          'payment_count': 2,
-          'appointment_count': 1,
-        },
-        {
-          'date': '2026-10-21',
-          'total': 50000,
-          'count': 1,
-          'payment_count': 1,
-          'appointment_count': 1,
-        },
-      ],
-    };
-
-/// `GET /payments/employee-stats` sin pagos en el rango.
-Map<String, dynamic> backendEmptyEmployeeStats() => {
-      'summary': {
-        'total_amount': 0,
-        'payment_count': 0,
-        'appointment_count': 0,
-        'average_per_payment': 0,
-      },
-      'by_service': [],
-      'daily_evolution': [],
     };
 
 void main() {
@@ -257,55 +209,5 @@ void main() {
     expect(entity.clientId, 'cli-1');
     expect(entity.visitCount, 3);
     expect(entity.totalSpent, 105000);
-  });
-
-  group('EmployeeStatsModel', () {
-    test('resumen, servicios y días del negocio tipados', () {
-      final entity =
-          EmployeeStatsModel.fromJson(backendEmployeeStats()).toEntity();
-      expect(
-          entity.summary,
-          const EmployeeStatsSummary(
-              totalAmount: 80000,
-              paymentCount: 2,
-              appointmentCount: 2,
-              averagePerPayment: 40000));
-      expect(
-          entity.byService.single,
-          const EmployeeServiceStats(
-              serviceId: 'srv-1',
-              serviceName: 'Cejas en hilo',
-              appointmentCount: 2,
-              total: 90000));
-      expect(entity.dailyEvolution.map((d) => d.day),
-          [DateTime(2026, 10, 20), DateTime(2026, 10, 21)]);
-      expect(entity.dailyEvolution.first.paymentCount, 2);
-      expect(entity.dailyEvolution.first.appointmentCount, 1);
-      expect(entity.dailyEvolution.last.total, 50000);
-    });
-
-    test('rango vacío → resumen en 0 y listas vacías', () {
-      final entity =
-          EmployeeStatsModel.fromJson(backendEmptyEmployeeStats()).toEntity();
-      expect(entity, const EmployeeStatsEntity());
-      expect(entity.isEmpty, true);
-    });
-
-    test('sin claves o con un día ilegible: no rompe', () {
-      expect(EmployeeStatsModel.fromJson(const {}).toEntity(),
-          const EmployeeStatsEntity());
-      final entity = EmployeeStatsModel.fromJson({
-        ...backendEmployeeStats(),
-        'daily_evolution': [
-          {'date': null, 'total': 1, 'count': 1},
-          {'date': '2026-10-21', 'total': '50000.00', 'count': '1'},
-        ],
-      }).toEntity();
-      expect(entity.dailyEvolution.single.day, DateTime(2026, 10, 21));
-      expect(entity.dailyEvolution.single.total, 50000);
-      // Sin `payment_count` (respuesta anterior a 2.28): `count` son pagos.
-      expect(entity.dailyEvolution.single.paymentCount, 1);
-      expect(entity.dailyEvolution.single.appointmentCount, 0);
-    });
   });
 }

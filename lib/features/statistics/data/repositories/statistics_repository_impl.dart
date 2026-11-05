@@ -5,7 +5,6 @@ import 'package:login_signup/core/sync/offline_store.dart';
 import 'package:login_signup/features/statistics/data/local/local_stats.dart';
 import 'package:login_signup/features/statistics/data/local/statistics_local_datasource.dart';
 import 'package:login_signup/features/statistics/data/models/commission_settlement_model.dart';
-import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_stats_model.dart';
@@ -14,7 +13,6 @@ import 'package:login_signup/features/statistics/data/models/service_stats_model
 import 'package:login_signup/features/statistics/data/models/top_client_model.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
 import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
-import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_stats_entity.dart';
@@ -147,20 +145,6 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
               : null);
 
   @override
-  Future<Either<Failure, EmployeeStatsEntity>> getEmployeeStats(
-          StatsRange range,
-          {String? professionalId}) =>
-      _serverOr(
-          safeCall(() async => (await _remote.getEmployeeStats(range,
-                  professionalId: professionalId))
-              .toEntity()),
-          (stats, owner, _) async => owner && professionalId != null
-              ? EmployeeStatsModel.fromJson(stats.employeeStats(
-                      range.start, range.end, professionalId))
-                  .toEntity()
-              : null);
-
-  @override
   Future<Either<Failure, CommissionSettlement>> getCommissionSettlement(
           StatsRange range,
           {String? professionalId}) =>
@@ -172,8 +156,10 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
         if (!owner && professionalId != null && professionalId != userId) {
           return null;
         }
+        // D-27: a la empleada no se le calcula lo del negocio.
         return CommissionSettlementModel.fromJson(stats.commissions(
             range.start, range.end,
-            professionalId: owner ? professionalId : userId));
+            professionalId: owner ? professionalId : userId,
+            includeBusiness: owner));
       });
 }

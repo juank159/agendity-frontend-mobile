@@ -28,7 +28,6 @@ import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
 import 'package:login_signup/features/statistics/data/local/statistics_local_datasource.dart';
 import 'package:login_signup/features/statistics/data/models/commission_settlement_model.dart';
-import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_stats_model.dart';
@@ -322,15 +321,6 @@ void main() {
       for (final m in await remote.getTopClients(range, limit: 1000))
         m.toEntity()
     ]..sort(byTotalThenId));
-    final pro = (await remote.getPaymentStatsByProfessional(range))
-        .first
-        .toEntity()
-        .professionalId;
-    expect(
-        EmployeeStatsModel.fromJson(local.employeeStats(from, to, pro))
-            .toEntity(),
-        (await remote.getEmployeeStats(range, professionalId: pro))
-            .toEntity());
     expect(CommissionSettlementModel.fromJson(local.commissions(from, to)),
         await remote.getCommissionSettlement(range));
     await engine.dispose();

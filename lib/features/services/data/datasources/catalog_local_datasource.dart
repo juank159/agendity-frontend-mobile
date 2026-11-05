@@ -5,6 +5,7 @@ import 'package:login_signup/core/utils/json_read.dart';
 import 'package:login_signup/features/services/data/models/category_model.dart';
 import 'package:login_signup/features/services/data/models/service_model.dart';
 import 'package:login_signup/features/services/domain/entities/category.dart';
+import 'package:login_signup/features/services/domain/entities/my_service.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 
 /// Catálogo en la base local (10.02b): servicios y categorías con la forma de
@@ -83,6 +84,33 @@ class CatalogLocalDataSource {
         if (JsonRead.asBool(row['isActive'], fallback: true)) row['serviceId'],
     };
     return [for (final s in active) if (assigned.contains(s.id)) s];
+  }
+
+  /// "Mis servicios" sin conexión: [offeredBy] con el % de cada uno (la
+  /// excepción de `user_services` o la general del usuario). A la empleada
+  /// no le baja su comisión general: sin excepción queda `null`.
+  Future<List<MyService>> mine(AppDatabase db, String userId) async {
+    final user = await DocumentStore.get(db, SharedDocs.users.entity, userId);
+    final owner = user != null && SharedDocs.isOwner(user);
+    final exceptions = {
+      for (final row in await DocumentStore.list(
+          db, SharedDocs.userServices.entity,
+          ref1: userId))
+        row['serviceId']: row['commissionPercentage'],
+    };
+    final general = user?['commission_percentage'];
+    return [
+      for (final service in await offeredBy(db, userId))
+        MyService(
+          service: service,
+          commissionPercentage: owner
+              ? null
+              : switch (exceptions[service.id] ?? general) {
+                  null => null,
+                  final value => JsonRead.asDouble(value),
+                },
+        ),
+    ];
   }
 
   /// Nombre ya usado por otro registro de [entity] (sin mayúsculas).

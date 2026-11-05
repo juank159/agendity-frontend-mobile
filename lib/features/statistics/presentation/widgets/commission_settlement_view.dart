@@ -1,26 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/utils/business_time_zone.dart';
 import 'package:login_signup/core/utils/formatters.dart';
 import 'package:login_signup/core/widgets/app_fade_in.dart';
 import 'package:login_signup/shared/widgets/app_avatar.dart';
 import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/app_pill.dart';
 import 'package:login_signup/shared/widgets/app_section_header.dart';
+import 'package:login_signup/shared/widgets/status_chip.dart';
 import '../../domain/entities/commission_settlement.dart';
 
 /// Totales del período y una fila por profesional (servicios, profesional y
-/// negocio), con el detalle por cita al desplegarla.
+/// negocio), con el detalle por cita al desplegarla. Es la vista del Owner;
+/// la empleada ve "Mis ganancias" (`MyEarningsView`, D-27).
 class CommissionSettlementView extends StatelessWidget {
   final CommissionSettlement settlement;
 
-  /// El Employee ve solo lo suyo: la fila se abre desplegada.
-  final bool ownOnly;
-
-  const CommissionSettlementView({
-    super.key,
-    required this.settlement,
-    this.ownOnly = false,
-  });
+  const CommissionSettlementView({super.key, required this.settlement});
 
   @override
   Widget build(BuildContext context) {
@@ -47,35 +44,47 @@ class CommissionSettlementView extends StatelessWidget {
         for (final (index, professional) in settlement.professionals.indexed)
           AppFadeIn(
             index: index,
-            child: _ProfessionalCard(
-                professional: professional, expanded: ownOnly),
+            child: _ProfessionalCard(professional: professional),
           ),
       ],
     );
   }
 }
 
-/// Servicios · Profesional · Negocio, en tres columnas con números
-/// tabulares; lo de la profesional resaltado con la paleta.
+/// Servicios · Profesional · Negocio, en columnas con números tabulares; lo
+/// de la profesional resaltado con la paleta. "Negocio" solo sale si
+/// [showBusiness] y el servidor lo envió (a la empleada nunca, D-27).
 class CommissionAmountsRow extends StatelessWidget {
   final CommissionAmounts amounts;
   final bool dense;
 
-  const CommissionAmountsRow(
-      {super.key, required this.amounts, this.dense = false});
+  /// Título de la columna de la profesional ("Tu comisión" para ella).
+  final String professionalLabel;
+  final bool showBusiness;
+
+  const CommissionAmountsRow({
+    super.key,
+    required this.amounts,
+    this.dense = false,
+    this.professionalLabel = 'Profesional',
+    this.showBusiness = true,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final business = showBusiness ? amounts.businessTotal : null;
     return Row(
       children: [
         _Amount('Servicios', amounts.servicesTotal,
             icon: Icons.spa_rounded, dense: dense),
         SizedBox(width: dense ? 6 : 8),
-        _Amount('Profesional', amounts.professionalTotal,
+        _Amount(professionalLabel, amounts.professionalTotal,
             icon: Icons.person_rounded, dense: dense, highlight: true),
-        SizedBox(width: dense ? 6 : 8),
-        _Amount('Negocio', amounts.businessTotal,
-            icon: Icons.storefront_rounded, dense: dense),
+        if (business != null) ...[
+          SizedBox(width: dense ? 6 : 8),
+          _Amount('Negocio', business,
+              icon: Icons.storefront_rounded, dense: dense),
+        ],
       ],
     );
   }
@@ -144,9 +153,8 @@ class _Amount extends StatelessWidget {
 
 class _ProfessionalCard extends StatelessWidget {
   final ProfessionalCommission professional;
-  final bool expanded;
 
-  const _ProfessionalCard({required this.professional, required this.expanded});
+  const _ProfessionalCard({required this.professional});
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +165,6 @@ class _ProfessionalCard extends StatelessWidget {
       depth: 1,
       child: ExpansionTile(
         key: PageStorageKey('commission-${professional.professionalId}'),
-        initiallyExpanded: expanded,
         shape: const Border(),
         collapsedShape: const Border(),
         leading: AppAvatar(name: professional.professionalName, radius: 20),
@@ -171,17 +178,23 @@ class _ProfessionalCard extends StatelessWidget {
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         children: [
           for (final appointment in professional.appointments)
-            _AppointmentRow(appointment: appointment),
+            CommissionAppointmentRow(appointment: appointment),
         ],
       ),
     );
   }
 }
 
-class _AppointmentRow extends StatelessWidget {
+/// Una cita de la liquidación: fecha y hora (zona actual del negocio),
+/// cliente, cada servicio con su precio × % = comisión y los importes. Con
+/// [ownOnly] (la empleada, D-27) la columna es "Tu comisión", nunca sale lo
+/// del negocio y, si la cita está por ganar, se ven su estado y el de pago.
+class CommissionAppointmentRow extends StatelessWidget {
   final CommissionAppointment appointment;
+  final bool ownOnly;
 
-  const _AppointmentRow({required this.appointment});
+  const CommissionAppointmentRow(
+      {super.key, required this.appointment, this.ownOnly = false});
 
   /// En la zona actual del negocio (como la agenda, 6.05).
   DateTime get _date => BusinessTimeZone.toWallClock(
@@ -218,6 +231,10 @@ class _AppointmentRow extends StatelessWidget {
               ),
             ],
           ),
+          if (_statusChips() case final chips?) ...[
+            const SizedBox(height: 6),
+            chips,
+          ],
           const SizedBox(height: 4),
           for (final line in appointment.lines)
             Text(
@@ -227,9 +244,39 @@ class _AppointmentRow extends StatelessWidget {
               style: muted?.tabular,
             ),
           const SizedBox(height: 6),
-          CommissionAmountsRow(amounts: appointment.amounts, dense: true),
+          CommissionAmountsRow(
+            amounts: appointment.amounts,
+            dense: true,
+            professionalLabel: ownOnly ? 'Tu comisión' : 'Profesional',
+            showBusiness: !ownOnly,
+          ),
         ],
       ),
+    );
+  }
+
+  /// Estado de la cita por ganar y si ya está pagada ("Pagada", "Anticipo",
+  /// "Sin pagar"). `null` en las completadas.
+  Widget? _statusChips() {
+    final status = appointment.status;
+    final payment = appointment.paymentStatus;
+    if (status == null && payment == null) return null;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: [
+        if (status != null) StatusChip.appointment(status, dense: true),
+        if (payment != null)
+          StatusChip.payment(payment, dense: true),
+        if (payment == AppointmentPaymentStatus.PARTIAL &&
+            appointment.paidAmount != null)
+          AppPill(
+            dense: true,
+            tabular: true,
+            icon: Icons.payments_rounded,
+            label: 'Abonado ${formatCop(appointment.paidAmount)}',
+          ),
+      ],
     );
   }
 }

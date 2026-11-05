@@ -935,8 +935,9 @@ void main() {
           isFalse);
     });
 
-    testWidgets('completar sin pagar: confirma y deja el pago pendiente',
-        (tester) async {
+    testWidgets(
+        'D-27: el Employee no ve Completar; se le explica que lo completa el '
+        'negocio', (tester) async {
       signInAs('Employee', userId: 'e1');
       // 10:30 del negocio: la cita de las 10:00 ya empezó (7.03).
       BusinessTimeZone.clock =
@@ -944,10 +945,28 @@ void main() {
       addTearDown(() => BusinessTimeZone.clock = DateTime.now);
       await openDetail(tester, appointment());
 
-      // El Employee no paga ni edita, pero sí completa y cancela.
+      // El Employee no paga, no edita ni completa (sí cancela).
       expect(find.text('Registrar pago'), findsNothing);
       expect(find.text('Editar'), findsNothing);
+      expect(find.textContaining('Completar'), findsNothing);
+      expect(find.byKey(const Key('detail-owner-completes')), findsOneWidget);
+      expect(find.text('Cancelar cita'), findsOneWidget);
+      // Ni siquiera llamando al controller.
+      expect(
+          await Get.find<AppointmentActionsController>().complete(appointment()),
+          isNull);
+      expect(appts.completes, isEmpty);
+    });
 
+    testWidgets('completar sin pagar (Owner): confirma y deja el pago pendiente',
+        (tester) async {
+      signInAs('Owner');
+      BusinessTimeZone.clock =
+          () => BusinessTimeZone.toInstant(DateTime(2030, 1, 7, 10, 30));
+      addTearDown(() => BusinessTimeZone.clock = DateTime.now);
+      await openDetail(tester, appointment());
+
+      expect(find.byKey(const Key('detail-owner-completes')), findsNothing);
       await tapText(tester, 'Completar');
       expect(find.textContaining('aún no está pagada'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, 'Completar'));

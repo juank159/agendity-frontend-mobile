@@ -4,12 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:login_signup/common/enums/payment_method_enum.dart';
+import 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
+import 'package:login_signup/common/enums/appointment_status_enum.dart';
 import 'package:login_signup/core/config/theme_config.dart';
 import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/session/session_service.dart';
 import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
-import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_comparison_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_method_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_stats_entity.dart';
@@ -19,20 +20,19 @@ import 'package:login_signup/features/statistics/domain/entities/stats_range.dar
 import 'package:login_signup/features/statistics/domain/entities/top_client_entity.dart';
 import 'package:login_signup/features/statistics/domain/repositories/statistics_repository.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_commission_settlement_usecase.dart';
-import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_comparison_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_method_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_professional_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_service_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_top_clients_usecase.dart';
-import 'package:login_signup/features/statistics/presentation/bindings/statistics_binding.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/commissions_controller.dart';
 import 'package:login_signup/features/statistics/presentation/controllers/statistics_controller.dart';
 import 'package:login_signup/features/statistics/presentation/screens/commissions_screen.dart';
-import 'package:login_signup/features/statistics/presentation/screens/employee_stats_screen.dart';
+import 'package:login_signup/features/statistics/presentation/screens/my_earnings_screen.dart';
 import 'package:login_signup/features/statistics/presentation/screens/statistics_dashboard_screen.dart';
 import 'package:login_signup/features/statistics/presentation/widgets/date_range_selector.dart';
+import 'package:login_signup/features/statistics/presentation/widgets/my_earnings_view.dart';
 import 'package:login_signup/features/statistics/presentation/widgets/payment_comparison_card.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 
@@ -83,16 +83,14 @@ class FakeStatisticsRepository implements StatisticsRepository {
         visitCount: 2,
         totalSpent: 90000),
   ]);
-  Either<Failure, EmployeeStatsEntity> employeeResult = Right(employeeStats);
 
   final calls = <String, int>{};
   final ranges = <StatsRange>[];
-  final employeeProfessionalIds = <String?>[];
   final topClientLimits = <int>[];
 
   int callsTo(String name) => calls[name] ?? 0;
   int get businessCalls => calls.entries
-      .where((e) => e.key != 'employee')
+      .where((e) => e.key != 'commissions')
       .fold(0, (sum, e) => sum + e.value);
 
   void _count(String name, StatsRange range) {
@@ -143,16 +141,7 @@ class FakeStatisticsRepository implements StatisticsRepository {
     return topClientsResult;
   }
 
-  @override
-  Future<Either<Failure, EmployeeStatsEntity>> getEmployeeStats(
-      StatsRange range,
-      {String? professionalId}) async {
-    _count('employee', range);
-    employeeProfessionalIds.add(professionalId);
-    return employeeResult;
-  }
-
-  // 8.03 (FD): liquidación de comisiones; estas pantallas aún no la usan.
+  // Liquidación de comisiones (8.03) y "Mis ganancias" (D-27).
   @override
   Future<Either<Failure, CommissionSettlement>> getCommissionSettlement(
       StatsRange range,
@@ -185,28 +174,6 @@ final comparison = PaymentComparisonEntity(
       averagePercentage: 0),
 );
 
-final employeeStats = EmployeeStatsEntity(
-  summary: const EmployeeStatsSummary(
-      totalAmount: 80000,
-      paymentCount: 2,
-      appointmentCount: 2,
-      averagePerPayment: 40000),
-  byService: const [
-    EmployeeServiceStats(
-        serviceId: 's1',
-        serviceName: 'Manicure',
-        appointmentCount: 2,
-        total: 50000),
-  ],
-  dailyEvolution: [
-    EmployeeDailyStats(
-        day: DateTime(2026, 10, 27),
-        total: 80000,
-        paymentCount: 3,
-        appointmentCount: 2),
-  ],
-);
-
 void main() {
   late FakeStatisticsRepository repo;
   final today = DateTime(2026, 10, 27);
@@ -229,16 +196,6 @@ void main() {
     session.session.value =
         Session(token: 't-$role', userId: userId, roles: [role]);
     Get.put<SessionController>(session, permanent: true);
-  }
-
-  void registerUseCases() {
-    Get.put(GetPaymentStatsUseCase(repo));
-    Get.put(GetPaymentComparisonUseCase(repo));
-    Get.put(GetPaymentStatsByMethodUseCase(repo));
-    Get.put(GetPaymentStatsByProfessionalUseCase(repo));
-    Get.put(GetPaymentStatsByServiceUseCase(repo));
-    Get.put(GetTopClientsUseCase(repo));
-    Get.put(GetEmployeeStatsUseCase(repo));
   }
 
   StatisticsController putDashboardController() => Get.put(StatisticsController(
@@ -309,8 +266,8 @@ void main() {
       expect(find.text('2 citas pagadas'), findsOneWidget);
       expect(repo.topClientLimits, [StatisticsController.topClientsLimit]);
 
-      // El panel del Owner nunca pide employee-stats (sin professionalId da 400).
-      expect(repo.callsTo('employee'), 0);
+      // El panel del Owner no pide la liquidación (es otra pantalla).
+      expect(repo.callsTo('commissions'), 0);
     });
 
     testWidgets('cambiar de período recarga lo visible con el nuevo rango',
@@ -373,67 +330,7 @@ void main() {
 
       expect(find.text('Sin acceso'), findsOneWidget);
       expect(repo.businessCalls, 0);
-      expect(repo.callsTo('employee'), 0);
-    });
-  });
-
-  group('Mis estadísticas', () {
-    testWidgets(
-        'el Employee solo pide las suyas: sin resumen del negocio ni 403',
-        (tester) async {
-      signInAs('Employee');
-      registerUseCases();
-      EmployeeStatsBinding().dependencies();
-      await pump(tester, const EmployeeStatsScreen());
-
-      expect(repo.callsTo('employee'), 1);
-      expect(repo.employeeProfessionalIds, [null]);
-      expect(repo.businessCalls, 0);
-      expect(find.text('Sin acceso'), findsNothing);
-
-      expect(find.text('\$ 80.000'), findsWidgets);
-      expect(find.text('Manicure'), findsOneWidget);
-      // Servicio: citas (2.28); día: citas y pagos por separado.
-      expect(find.text('2 citas'), findsOneWidget);
-      expect(find.text('2 citas · 3 pagos'), findsOneWidget);
-    });
-
-    testWidgets('el Owner ve las de su propio usuario (con professionalId)',
-        (tester) async {
-      signInAs('Owner', userId: 'owner-1');
-      registerUseCases();
-      EmployeeStatsBinding().dependencies();
-      await pump(tester, const EmployeeStatsScreen());
-
-      expect(repo.employeeProfessionalIds, ['owner-1']);
-      expect(repo.businessCalls, 0);
-    });
-
-    testWidgets('sin pagos en el período muestra el estado vacío',
-        (tester) async {
-      signInAs('Employee');
-      repo.employeeResult = const Right(EmployeeStatsEntity());
-      registerUseCases();
-      EmployeeStatsBinding().dependencies();
-      await pump(tester, const EmployeeStatsScreen());
-
-      expect(find.text('Sin pagos en este período'), findsOneWidget);
-    });
-
-    testWidgets('un error se muestra con reintento', (tester) async {
-      signInAs('Employee');
-      repo.employeeResult = const Left(ServerFailure());
-      registerUseCases();
-      EmployeeStatsBinding().dependencies();
-      await pump(tester, const EmployeeStatsScreen());
-
-      expect(find.text(ServerFailure.defaultMessage), findsOneWidget);
-
-      repo.employeeResult = Right(employeeStats);
-      await tapText(tester, 'Reintentar');
-
-      expect(repo.callsTo('employee'), 2);
-      expect(find.text('Manicure'), findsOneWidget);
+      expect(repo.callsTo('commissions'), 0);
     });
   });
 
@@ -498,7 +395,6 @@ void main() {
       addTearDown(tester.view.reset);
       final controller = Get.put(CommissionsController(
         getCommissionSettlementUseCase: GetCommissionSettlementUseCase(repo),
-        session: Get.find<SessionController>(),
         clock: clock,
       ));
       await pump(tester, const CommissionsScreen());
@@ -525,13 +421,160 @@ void main() {
           findsOneWidget);
     });
 
-    testWidgets('Employee: "Mis comisiones" con su detalle abierto',
-        (tester) async {
-      signInAs('Employee', userId: 'e1');
-      repo.commissionResult = Right(settlement);
-      await pumpCommissions(tester);
-      expect(find.text('Mis comisiones'), findsOneWidget);
-      expect(find.textContaining('Carla Díaz'), findsOneWidget);
+
+    group('Mis ganancias (D-27)', () {
+      // Lo que manda el servidor a la empleada: sin `business_total`.
+      CommissionAppointment visit(String id, DateTime date, String client,
+              double price, double cut,
+              {AppointmentStatus? status,
+              AppointmentPaymentStatus? payment,
+              double? paid}) =>
+          CommissionAppointment(
+            appointmentId: id,
+            date: date,
+            clientName: client,
+            amounts: CommissionAmounts(
+                servicesTotal: price,
+                professionalTotal: cut,
+                businessTotal: null),
+            lines: [
+              CommissionLine(
+                  serviceId: 's1',
+                  serviceName: 'Laminado de cejas',
+                  price: price,
+                  commissionPercentage: 40,
+                  commission: cut),
+            ],
+            status: status,
+            paymentStatus: payment,
+            paidAmount: paid,
+          );
+      CommissionSettlement own(List<CommissionAppointment> list) =>
+          CommissionSettlement(
+            totals: CommissionAmounts(
+                servicesTotal: list.fold(0, (s, a) => s + a.amounts.servicesTotal),
+                professionalTotal:
+                    list.fold(0, (s, a) => s + a.amounts.professionalTotal),
+                businessTotal: null),
+            appointmentCount: list.length,
+            professionals: [
+              if (list.isNotEmpty)
+                ProfessionalCommission(
+                  professionalId: 'e1',
+                  professionalName: 'Ana Pérez',
+                  appointmentCount: list.length,
+                  amounts: const CommissionAmounts(businessTotal: null),
+                  appointments: list,
+                ),
+            ],
+          );
+      final earnings = CommissionSettlement(
+        totals: own([
+          visit('a1', DateTime(2026, 10, 27, 9), 'Carla Díaz', 100000, 40000),
+        ]).totals,
+        appointmentCount: 1,
+        professionals: own([
+          visit('a1', DateTime(2026, 10, 27, 9), 'Carla Díaz', 100000, 40000),
+        ]).professionals,
+        pending: own([
+          visit('a2', DateTime(2026, 10, 27, 15), 'Rosa Gil', 50000, 20000,
+              status: AppointmentStatus.CONFIRMED,
+              payment: AppointmentPaymentStatus.COMPLETED,
+              paid: 50000),
+          visit('a3', DateTime(2026, 10, 27, 17), 'Lina Mora', 25000, 10000,
+              status: AppointmentStatus.PENDING,
+              payment: AppointmentPaymentStatus.PENDING,
+              paid: 0),
+        ]),
+      );
+
+      Future<void> pumpEarnings(WidgetTester tester,
+          {ThemeData? theme, double width = 390}) async {
+        tester.view.physicalSize = Size(width, 2400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        Get.put(CommissionsController(
+          getCommissionSettlementUseCase: GetCommissionSettlementUseCase(repo),
+          clock: clock,
+        ));
+        await tester.pumpWidget(GetMaterialApp(
+          theme: theme ?? ThemeConfig.lightTheme,
+          home: const MyEarningsScreen(),
+        ));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets(
+          'Ganado, Por ganar con su nota y el detalle por cita, sin "Negocio" '
+          '(390 px)', (tester) async {
+        signInAs('Employee', userId: 'e1');
+        repo.commissionResult = Right(earnings);
+        await pumpEarnings(tester);
+
+        expect(find.text('Mis ganancias'), findsOneWidget);
+        expect(repo.commissionRequests, [null]);
+        expect(
+            find.descendant(
+                of: find.byKey(const Key('earnings-earned')),
+                matching: find.text('\$ 40.000')),
+            findsOneWidget);
+        expect(find.text('1 cita completada'), findsOneWidget);
+        expect(
+            find.descendant(
+                of: find.byKey(const Key('earnings-pending')),
+                matching: find.text('\$ 30.000')),
+            findsOneWidget);
+        expect(find.text('2 citas sin completar'), findsOneWidget);
+        expect(find.text(MyEarningsView.pendingNote), findsOneWidget);
+        // Detalle: cliente, servicio con precio × % = comisión.
+        expect(find.textContaining('Carla Díaz'), findsOneWidget);
+        expect(
+            find.text('Laminado de cejas: \$ 100.000 × 40 % = \$ 40.000'),
+            findsOneWidget);
+        // Por ganar: estado de la cita y si está pagada.
+        expect(find.textContaining('Rosa Gil'), findsOneWidget);
+        expect(find.text('Confirmada'), findsOneWidget);
+        expect(find.text('Pagada'), findsOneWidget);
+        expect(find.text('Pendiente'), findsOneWidget);
+        expect(find.text('Sin pagar'), findsOneWidget);
+        expect(find.text('Tu comisión'), findsNWidgets(3));
+        // Nunca lo del negocio.
+        expect(find.text('Negocio'), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('aunque el servidor enviara lo del negocio, no se muestra',
+          (tester) async {
+        signInAs('Employee', userId: 'e1');
+        repo.commissionResult = Right(settlement);
+        await pumpEarnings(tester);
+        expect(find.textContaining('Carla Díaz'), findsOneWidget);
+        expect(find.text('Negocio'), findsNothing);
+        expect(find.text('\$ 60.000'), findsNothing);
+        expect(find.text('\$ 97.500'), findsNothing);
+      });
+
+      testWidgets('en oscuro y sin citas: estado vacío', (tester) async {
+        signInAs('Employee', userId: 'e1');
+        repo.commissionResult =
+            Right(CommissionSettlement(
+                totals: const CommissionAmounts(),
+                pending: own(const [])));
+        await pumpEarnings(tester, theme: ThemeConfig.darkTheme);
+        expect(find.text('Sin citas en este período'), findsOneWidget);
+      });
+
+      testWidgets('un error se muestra con reintento', (tester) async {
+        signInAs('Employee', userId: 'e1');
+        repo.commissionResult = const Left(ServerFailure());
+        await pumpEarnings(tester);
+        expect(find.text(ServerFailure.defaultMessage), findsOneWidget);
+
+        repo.commissionResult = Right(earnings);
+        await tester.tap(find.text('Reintentar'));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('earnings-earned')), findsOneWidget);
+      });
     });
 
     testWidgets('sin citas completadas: estado vacío', (tester) async {

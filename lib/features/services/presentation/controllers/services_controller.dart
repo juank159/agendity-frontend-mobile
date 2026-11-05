@@ -5,6 +5,7 @@ import 'package:login_signup/core/usecases/usecase.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/usecases/get_all_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/get_my_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_service_usecase.dart';
 import 'package:login_signup/features/services/presentation/controllers/catalog_access.dart';
@@ -12,8 +13,9 @@ import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 
-/// Lista de servicios del negocio. El Owner la gestiona; el Employee la ve en
-/// solo lectura ([canManage]).
+/// Lista de servicios del negocio. El Owner la gestiona; el Employee ve
+/// "Mis servicios" (D-27): solo los que tiene asignados, con su comisión, en
+/// solo lectura ([canManage], [showsMine]).
 ///
 /// Registro único: `ServicesBinding.registerController()` (lo llaman la ruta
 /// de servicios y las de empleados, que también listan servicios). Lo borra
@@ -23,22 +25,29 @@ class ServicesController extends GetxController {
   final GetCategoriesUseCase _getCategories;
   final GetAllServicesUseCase? _getAllServices;
   final UpdateServiceUseCase? _updateService;
+  final GetMyServicesUseCase? _getMyServices;
 
   ServicesController({
     required GetServicesUseCase getServicesUseCase,
     required GetCategoriesUseCase getCategoriesUseCase,
     GetAllServicesUseCase? getAllServicesUseCase,
     UpdateServiceUseCase? updateServiceUseCase,
+    GetMyServicesUseCase? getMyServicesUseCase,
   })  : _getServices = getServicesUseCase,
         _getCategories = getCategoriesUseCase,
         _getAllServices = getAllServicesUseCase,
-        _updateService = updateServiceUseCase;
+        _updateService = updateServiceUseCase,
+        _getMyServices = getMyServicesUseCase;
 
   /// Servicio cuyo interruptor de activo se está guardando.
   final togglingId = RxnString();
   Worker? _syncWorker;
 
   final services = <ServiceEntity>[].obs;
+
+  /// "Mis servicios": % de comisión de la empleada por id de servicio
+  /// (`null` = no se sabe sin conexión).
+  final commissions = <String, double?>{}.obs;
   final isLoading = false.obs;
 
   /// Error de la última carga (`null` si fue bien).
@@ -47,6 +56,11 @@ class ServicesController extends GetxController {
   Future<void>? _inFlight;
 
   bool get canManage => CatalogAccess.canManage();
+
+  /// La empleada ve solo los suyos con su comisión (D-27).
+  bool get showsMine => !canManage && _getMyServices != null;
+
+  String get title => showsMine ? 'Mis servicios' : 'Servicios';
 
   /// El Owner ve también los inactivos y los activa o desactiva (10.03).
   bool get canToggleActive => canManage && _updateService != null;
@@ -118,9 +132,19 @@ class ServicesController extends GetxController {
       loadError.value = null;
     }
     final all = _getAllServices;
-    final result = all != null && canManage
-        ? await all(NoParams())
-        : await _getServices(NoParams());
+    final mine = _getMyServices;
+    final result = showsMine && mine != null
+        ? (await mine(NoParams())).map((list) {
+            commissions.assignAll({
+              for (final item in list)
+                if (item.service.id case final id?)
+                  id: item.commissionPercentage,
+            });
+            return [for (final item in list) item.service];
+          })
+        : all != null && canManage
+            ? await all(NoParams())
+            : await _getServices(NoParams());
     if (!silent) isLoading.value = false;
     result.fold(
       (failure) {

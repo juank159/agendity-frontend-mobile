@@ -2173,6 +2173,10 @@ Future<void> phaseEmployee(WidgetTester tester, Biz biz, Emp e,
             !t.contains('Cobrar saldo'),
         '${biz.code}: ${e.first} no edita ni cobra',
         t);
+    // D-27: completar es solo del dueño.
+    check(!t.contains('Completar'),
+        '${biz.code}: ${e.first} no ve "Completar" (lo completa el negocio)',
+        t);
     await closeDialog(tester);
   }
   await tap(tester, find.byType(DrawerButton));
@@ -2180,19 +2184,52 @@ Future<void> phaseEmployee(WidgetTester tester, Biz biz, Emp e,
   await shot(tester, '${biz.code}_${e.key}_menu');
   check(!t.contains('Personal') && !t.contains('Mi negocio'),
       '${biz.code}: menú de ${e.first} sin opciones de Owner', t);
+  check(
+      t.contains('Mis servicios') &&
+          t.contains('Mis ganancias') &&
+          !t.contains('Informes') &&
+          !t.contains('Comisiones'),
+      '${biz.code}: menú de ${e.first} con Mis servicios y Mis ganancias '
+      '(sin Informes ni Comisiones)',
+      t);
   Navigator.of(tester.element(find.byType(Drawer))).pop();
   await idle(tester, 800);
 
-  await openDrawerItem(tester, 'Comisiones');
+  // Mis servicios: solo los suyos, con lo que gana en cada uno.
+  await openDrawerItem(tester, 'Mis servicios');
+  await idle(tester, 3000);
+  await shot(tester, '${biz.code}_${e.key}_mis_servicios');
+  t = allText();
+  final catalog = [...bizA.employees, ...bizB.employees]
+      .where((o) => o != e)
+      .expand((o) => o.services)
+      .where((name) => !e.services.contains(name))
+      .toSet();
+  check(
+      e.services.every(t.contains) &&
+          !catalog.any(t.contains) &&
+          t.contains('Ganas'),
+      '${biz.code}: ${e.first} ve solo sus servicios (${e.services.join(', ')}) '
+      'con su comisión',
+      t);
+  await back(tester);
+
+  // Mis ganancias: Ganado y Por ganar, nunca lo del negocio.
+  await openDrawerItem(tester, 'Mis ganancias');
   await idle(tester, 4000);
-  await shot(tester, '${biz.code}_${e.key}_comisiones');
+  await shot(tester, '${biz.code}_${e.key}_ganancias');
   t = allText();
   final others = [...bizA.employees, ...bizB.employees].where((o) => o != e);
   check(
-      t.contains('Mis comisiones') &&
+      t.contains('Mis ganancias') &&
+          !t.contains('Negocio') &&
           !others.any((o) => t.contains(o.fullName)),
-      '${biz.code}: ${e.first} ve solo sus comisiones',
+      '${biz.code}: ${e.first} ve solo sus ganancias, sin lo del negocio',
       t);
+  if (!t.contains('Sin citas en este período')) {
+    check(t.contains('Ganado') && t.contains('Por ganar'),
+        '${biz.code}: Mis ganancias con Ganado y Por ganar', t);
+  }
   await back(tester);
 
   // Cita nueva: el profesional es ella y no se puede cambiar.

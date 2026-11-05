@@ -1,7 +1,6 @@
 import 'package:get/get.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 import '../controllers/commissions_controller.dart';
-import '../controllers/employee_stats_controller.dart';
 import '../controllers/statistics_controller.dart';
 
 /// Panel del negocio (`/statistics`, solo Owner). Solo el controller: los use
@@ -24,28 +23,14 @@ class StatisticsBinding extends Bindings {
   }
 }
 
-/// "Mis estadísticas" (`/employee-statistics`). Igual que [StatisticsBinding].
-class EmployeeStatsBinding extends Bindings {
-  @override
-  void dependencies() {
-    Get.lazyPut<EmployeeStatsController>(
-      () => EmployeeStatsController(
-        getEmployeeStatsUseCase: Get.find(),
-        session: Get.find<SessionController>(),
-      ),
-    );
-  }
-}
-
-/// Liquidación de comisiones (`/commissions`, Owner y Employee).
+/// Liquidación de comisiones: `/commissions` (Owner) y "Mis ganancias"
+/// (`/my-earnings`, Employee, D-27). Las dos pantallas usan el mismo
+/// controller.
 class CommissionsBinding extends Bindings {
   @override
   void dependencies() {
     Get.lazyPut<CommissionsController>(
-      () => CommissionsController(
-        getCommissionSettlementUseCase: Get.find(),
-        session: Get.find<SessionController>(),
-      ),
+      () => CommissionsController(getCommissionSettlementUseCase: Get.find()),
     );
   }
 }

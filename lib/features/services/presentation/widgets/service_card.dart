@@ -9,7 +9,8 @@ import 'package:login_signup/shared/widgets/app_pill.dart';
 
 /// Tarjeta de un servicio (guía §3): el chip de su color de agenda, el
 /// nombre, la duración y el precio formateado. Sin [onTap] es de solo
-/// lectura (Employee). Inactivo = atenuado (no se puede agendar).
+/// lectura (Employee). Inactivo = atenuado (no se puede agendar). En "Mis
+/// servicios" (D-27, [showCommission]) dice cuánto gana la empleada.
 class ServiceCard extends StatelessWidget {
   final ServiceEntity service;
   final VoidCallback? onTap;
@@ -17,8 +18,26 @@ class ServiceCard extends StatelessWidget {
   /// Interruptor de activo (solo Owner); `null` = sin interruptor.
   final ValueChanged<bool>? onActiveChanged;
 
-  const ServiceCard(
-      {super.key, required this.service, this.onTap, this.onActiveChanged});
+  /// Muestra la comisión de la empleada ([commissionPercentage]; `null` =
+  /// no se sabe sin conexión).
+  final bool showCommission;
+  final double? commissionPercentage;
+
+  const ServiceCard({
+    super.key,
+    required this.service,
+    this.onTap,
+    this.onActiveChanged,
+    this.showCommission = false,
+    this.commissionPercentage,
+  });
+
+  /// "Ganas $ 18.000 (40 %)" o, sin el %, que se ve con conexión.
+  static String commissionText(double price, double? percent) =>
+      percent == null
+          ? 'Tu comisión se ve con conexión'
+          : 'Ganas ${formatCop(price * percent / 100)} '
+              '(${formatPercent(percent)})';
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +92,16 @@ class ServiceCard extends StatelessWidget {
                           icon: Icons.public_rounded,
                           label: 'En línea',
                           colors: tokens.info,
+                        ),
+                      if (showCommission)
+                        AppPill(
+                          key: Key('service-commission-${service.id}'),
+                          dense: true,
+                          tabular: true,
+                          icon: Icons.savings_rounded,
+                          label: commissionText(
+                              service.price, commissionPercentage),
+                          colors: tokens.success,
                         ),
                       if (!service.isActive)
                         AppPill(

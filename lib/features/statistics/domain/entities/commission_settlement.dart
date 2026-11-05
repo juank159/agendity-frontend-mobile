@@ -1,3 +1,5 @@
+import 'package:login_signup/common/enums/appointment_payment_status_enum.dart';
+import 'package:login_signup/common/enums/appointment_status_enum.dart';
 import 'package:login_signup/core/utils/deep_equality.dart';
 
 /// Reparto de un importe (COP) entre el profesional y el negocio.
@@ -9,7 +11,8 @@ class CommissionAmounts {
   final double professionalTotal;
 
   /// Lo que queda para el negocio (`servicesTotal − professionalTotal`).
-  final double businessTotal;
+  /// `null` = el servidor no lo envía: a la empleada nunca se le dice (D-27).
+  final double? businessTotal;
 
   const CommissionAmounts({
     this.servicesTotal = 0,
@@ -61,7 +64,9 @@ class CommissionLine {
       serviceId, serviceName, price, commissionPercentage, commission);
 }
 
-/// Cita completada en la liquidación.
+/// Cita de la liquidación: completada (lo ganado) o, en
+/// [CommissionSettlement.pending], pendiente o confirmada (lo que está por
+/// ganar, D-27).
 class CommissionAppointment {
   final String appointmentId;
 
@@ -72,6 +77,17 @@ class CommissionAppointment {
   final CommissionAmounts amounts;
   final List<CommissionLine> lines;
 
+  /// Solo en las citas por ganar: `PENDING` o `CONFIRMED`. `null` en las
+  /// completadas (o si el servidor no lo envía).
+  final AppointmentStatus? status;
+
+  /// Solo en las citas por ganar: si ya se pagó (`COMPLETED`), en parte
+  /// (`PARTIAL`) o nada (`PENDING`). `null` si no se sabe.
+  final AppointmentPaymentStatus? paymentStatus;
+
+  /// Lo pagado neto de la cita, si el servidor lo envía.
+  final double? paidAmount;
+
   const CommissionAppointment({
     required this.appointmentId,
     required this.date,
@@ -79,6 +95,9 @@ class CommissionAppointment {
     required this.clientName,
     required this.amounts,
     this.lines = const [],
+    this.status,
+    this.paymentStatus,
+    this.paidAmount,
   });
 
   @override
@@ -90,11 +109,14 @@ class CommissionAppointment {
           other.timeZone == timeZone &&
           other.clientName == clientName &&
           other.amounts == amounts &&
-          DeepEquality.lists(other.lines, lines);
+          DeepEquality.lists(other.lines, lines) &&
+          other.status == status &&
+          other.paymentStatus == paymentStatus &&
+          other.paidAmount == paidAmount;
 
   @override
   int get hashCode => Object.hash(appointmentId, date, timeZone, clientName,
-      amounts, Object.hashAll(lines));
+      amounts, Object.hashAll(lines), status, paymentStatus, paidAmount);
 }
 
 /// Lo que le toca a un profesional en el periodo, con el detalle por cita.
@@ -133,7 +155,12 @@ class ProfessionalCommission {
 /// Liquidación de comisiones de un periodo (`GET /payments/stats/commissions`,
 /// 8.02): solo citas **COMPLETED** del periodo (días completos del negocio),
 /// con el precio y el % guardados en cada línea. Owner: todos (o uno);
-/// Employee: solo lo suyo. Sin citas: totales en 0 y lista vacía.
+/// Employee: solo lo suyo, sin lo del negocio (`businessTotal` null, D-27).
+/// Sin citas: totales en 0 y lista vacía.
+///
+/// [pending] (D-27): la misma liquidación para las citas `PENDING` y
+/// `CONFIRMED` del periodo, lo que está "por ganar" hasta que el negocio las
+/// complete. `null` si el servidor no lo envía.
 class CommissionSettlement {
   /// Días del negocio (sin hora).
   final DateTime? startDay;
@@ -145,6 +172,9 @@ class CommissionSettlement {
   /// Ordenados por nombre.
   final List<ProfessionalCommission> professionals;
 
+  /// Citas por ganar (pendientes y confirmadas) con la misma forma.
+  final CommissionSettlement? pending;
+
   const CommissionSettlement({
     this.startDay,
     this.endDay,
@@ -152,9 +182,19 @@ class CommissionSettlement {
     required this.totals,
     this.appointmentCount = 0,
     this.professionals = const [],
+    this.pending,
   });
 
   bool get isEmpty => professionals.isEmpty;
+
+  /// Ni completadas ni por ganar.
+  bool get isEmptyWithPending => isEmpty && (pending?.isEmpty ?? true);
+
+  /// Las citas de todos los profesionales, por fecha (la empleada solo tiene
+  /// las suyas).
+  List<CommissionAppointment> get appointments => [
+        for (final professional in professionals) ...professional.appointments,
+      ]..sort((a, b) => a.date.compareTo(b.date));
 
   @override
   bool operator ==(Object other) =>
@@ -165,9 +205,10 @@ class CommissionSettlement {
           other.timeZone == timeZone &&
           other.totals == totals &&
           other.appointmentCount == appointmentCount &&
-          DeepEquality.lists(other.professionals, professionals);
+          DeepEquality.lists(other.professionals, professionals) &&
+          other.pending == pending;
 
   @override
   int get hashCode => Object.hash(startDay, endDay, timeZone, totals,
-      appointmentCount, Object.hashAll(professionals));
+      appointmentCount, Object.hashAll(professionals), pending);
 }

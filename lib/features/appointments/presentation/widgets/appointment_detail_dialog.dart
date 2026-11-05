@@ -145,7 +145,9 @@ class _AppointmentDetailsDialogState extends State<AppointmentDetailsDialog> {
     final isOwner = AppointmentAccess.canPay();
     final canPay = isOwner && a.canBePaid;
     final canEdit = AppointmentAccess.canEdit() && !a.isFinal;
-    // Solo se completa una cita que ya empezó (7.03, APPOINTMENT_NOT_STARTED).
+    // Completa solo el Owner (D-27) y una cita que ya empezó (7.03,
+    // APPOINTMENT_NOT_STARTED).
+    final canComplete = AppointmentAccess.canComplete() && a.canComplete;
     final hasStarted = a.canCompleteAt(now);
     final showPayments = isOwner &&
         !(a.isCancelled &&
@@ -237,6 +239,15 @@ class _AppointmentDetailsDialogState extends State<AppointmentDetailsDialog> {
                         title: 'Recordatorio enviado',
                         subtitle: 'Ya se le escribió al cliente por WhatsApp.',
                       ),
+                    if (!AppointmentAccess.canComplete() && a.canComplete)
+                      const AppNote(
+                        'Cuando el negocio marque esta cita como completada, '
+                        'tu comisión pasa a Ganado en "Mis ganancias".',
+                        tone: AppTone.info,
+                        icon: Icons.savings_rounded,
+                        margin: EdgeInsets.only(top: 10),
+                        key: Key('detail-owner-completes'),
+                      ),
                     if (!a.isFinal && !a.canCancel)
                       const AppNote(
                         'Tiene pagos registrados: reembólsalos antes de '
@@ -268,7 +279,7 @@ class _AppointmentDetailsDialogState extends State<AppointmentDetailsDialog> {
                             ),
                             const SizedBox(height: 8),
                           ],
-                          if (a.canComplete) ...[
+                          if (canComplete) ...[
                             OutlinedButton.icon(
                               onPressed:
                                   busy || !hasStarted ? null : _complete,

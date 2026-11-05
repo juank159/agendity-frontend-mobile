@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../../domain/usecases/get_all_services_usecase.dart';
 import '../../domain/usecases/get_categories_usecase.dart';
+import '../../domain/usecases/get_my_services_usecase.dart';
 import '../../domain/usecases/update_service_usecase.dart';
 import '../../domain/usecases/get_services_usecase.dart';
 import '../controllers/services_controller.dart';
@@ -22,6 +23,10 @@ class ServicesBinding extends Bindings {
             : null,
         updateServiceUseCase: Get.isRegistered<UpdateServiceUseCase>()
             ? Get.find<UpdateServiceUseCase>()
+            : null,
+        // "Mis servicios" de la empleada (D-27).
+        getMyServicesUseCase: Get.isRegistered<GetMyServicesUseCase>()
+            ? Get.find<GetMyServicesUseCase>()
             : null,
       ),
       fenix: true,

@@ -1,5 +1,6 @@
+import 'package:get/get.dart';
 import 'package:login_signup/core/errors/failures.dart';
-import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/shared/controllers/sync_controller.dart';
 import 'package:login_signup/shared/widgets/app_snackbar.dart';
 import '../../domain/entities/commission_settlement.dart';
 import '../../domain/usecases/get_commission_settlement_usecase.dart';
@@ -7,33 +8,39 @@ import '../../domain/usecases/stats_use_case.dart';
 import 'stats_period_controller.dart';
 import 'stats_section.dart';
 
-/// Liquidación de comisiones (`/commissions`, D-16): citas completadas del
-/// período con lo que toca a cada profesional y al negocio. El Owner ve a
-/// todo el equipo; el Employee, solo lo suyo (lo filtra el backend).
+/// Liquidación de comisiones del período (D-16). La usan dos pantallas:
+/// "Comisiones" (`/commissions`, Owner: todo el equipo y lo del negocio) y
+/// "Mis ganancias" (`/my-earnings`, Employee: lo suyo, sin lo del negocio, y
+/// lo que está por ganar, D-27). Qué ve cada rol lo filtra el backend.
 class CommissionsController extends StatsPeriodController {
   final GetCommissionSettlementUseCase _getSettlement;
-  final SessionController _session;
 
   CommissionsController({
     required GetCommissionSettlementUseCase getCommissionSettlementUseCase,
-    required SessionController session,
     super.clock,
-  })  : _getSettlement = getCommissionSettlementUseCase,
-        _session = session;
+  }) : _getSettlement = getCommissionSettlementUseCase;
 
   final settlement = StatsSection<CommissionSettlement>();
-
-  /// El Employee solo ve su propia liquidación.
-  bool get isOwnOnly => _session.isOnlyEmployee;
-
-  String get title => isOwnOnly ? 'Mis comisiones' : 'Comisiones';
+  Worker? _syncWorker;
 
   @override
   void onInit() {
     super.onInit();
+    // Cuando el negocio completa una cita, la siguiente sincronización la
+    // trae y su comisión pasa de "Por ganar" a "Ganado" sin recargar a mano.
+    if (Get.isRegistered<SyncController>()) {
+      _syncWorker = Get.find<SyncController>().onDataChanged(load);
+    }
     load();
   }
 
+  @override
+  void onClose() {
+    _syncWorker?.dispose();
+    super.onClose();
+  }
+
+  /// Carga el período. Con datos ya cargados, un fallo no los oculta.
   Future<Failure?> load() =>
       settlement.load(() => _getSettlement(EmployeeStatsParams(range.value)));
 

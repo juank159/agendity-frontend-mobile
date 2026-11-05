@@ -1,6 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:get/get.dart';
+import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/core/sync/offline_store.dart';
 import 'package:login_signup/core/sync/sync_engine.dart';
+import 'package:login_signup/features/services/data/datasources/services_remote_datasource.dart';
 import 'package:login_signup/features/services/data/repositories/categories_repository_impl.dart';
 import 'package:login_signup/features/services/data/repositories/services_repository_impl.dart';
 import 'package:login_signup/features/services/data/sync/catalog_sync.dart';
@@ -12,6 +15,7 @@ import 'package:login_signup/features/services/domain/usecases/delete_category_u
 import 'package:login_signup/features/services/domain/usecases/delete_service_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_all_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_categories_usecase.dart';
+import 'package:login_signup/features/services/domain/usecases/get_my_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_offered_by_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
 import 'package:login_signup/features/services/domain/usecases/update_category_status_usecase.dart';
@@ -23,8 +27,13 @@ import 'package:login_signup/features/services/domain/usecases/update_service_us
 /// los registran los bindings de la feature.
 abstract final class ServicesDependencies {
   static void init() {
+    Get.lazyPut<ServicesRemoteDataSource>(
+      () => ServicesRemoteDataSourceImpl(Get.find<Dio>(tag: apiClientTag)),
+      fenix: true,
+    );
     Get.lazyPut<ServicesRepository>(
-      () => ServicesRepositoryImpl(Get.find<OfflineStore>()),
+      () => ServicesRepositoryImpl(Get.find<OfflineStore>(),
+          remote: Get.find<ServicesRemoteDataSource>()),
       fenix: true,
     );
     Get.lazyPut<CategoriesRepository>(
@@ -40,6 +49,8 @@ abstract final class ServicesDependencies {
         fenix: true);
     Get.lazyPut(
         () => GetServicesOfferedByUseCase(Get.find<ServicesRepository>()),
+        fenix: true);
+    Get.lazyPut(() => GetMyServicesUseCase(Get.find<ServicesRepository>()),
         fenix: true);
     Get.lazyPut(() => CreateServiceUseCase(Get.find<ServicesRepository>()),
         fenix: true);

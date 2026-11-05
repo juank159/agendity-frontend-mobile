@@ -46,7 +46,8 @@ void main() {
   test('la lista de SessionScope no incluye los de alcance de app', () {
     // 18 controllers de feature (inventario de la 3.05) menos
     // EditCategoryController, muerto (retirado en la 4.03), más
-    // EmployeeStatsController (4.04: "Mis estadísticas" tiene el suyo), más
+    // EmployeeStatsController (4.04, retirado en la 13.11: "Mis ganancias"
+    // usa CommissionsController), más
     // NewEmployeeController y EditEmployeeController (4.07: el formulario de
     // profesional sale del EmployeesController), más
     // AppointmentActionsController (4.09) y EmailVerificationNoticeController
@@ -57,6 +58,6 @@ void main() {
     // menos WhatsappController (CallMeBot retirado, 11.04 FD), más
     // RemindersController y ReminderHistoryController (11.04 FP), más
     // AgendaSummaryController (12.04: cabecera de la agenda).
-    expect(SessionScope.featureControllers, hasLength(30));
+    expect(SessionScope.featureControllers, hasLength(29));
   });
 }

@@ -5,11 +5,10 @@ import 'package:login_signup/core/errors/failures.dart';
 import 'package:login_signup/core/network/api_client.dart';
 import 'package:login_signup/features/statistics/data/datasources/statistics_remote_datasource.dart';
 import 'package:login_signup/features/statistics/data/repositories/statistics_repository_impl.dart';
-import 'package:login_signup/features/statistics/domain/entities/employee_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/payment_stats_entity.dart';
 import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
 import 'package:login_signup/features/statistics/domain/failures/statistics_failures.dart';
-import 'package:login_signup/features/statistics/domain/usecases/get_employee_stats_usecase.dart';
+import 'package:login_signup/features/statistics/domain/usecases/get_commission_settlement_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_comparison_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_method_usecase.dart';
 import 'package:login_signup/features/statistics/domain/usecases/get_payment_stats_by_professional_usecase.dart';
@@ -23,8 +22,6 @@ import '../../core/session/memory_token_store.dart';
 import 'statistics_models_test.dart'
     show
         backendComparison,
-        backendEmployeeStats,
-        backendEmptyEmployeeStats,
         backendMethodStats,
         backendPaymentStats,
         backendProfessionalStats,
@@ -94,8 +91,6 @@ void main() {
               jsonBody(200, [backendServiceStats()]),
             '/api/payments/stats/top-clients' =>
               jsonBody(200, [backendTopClient()]),
-            '/api/payments/employee-stats' =>
-              jsonBody(200, backendEmployeeStats()),
             _ => jsonBody(404, {'statusCode': 404, 'code': 'NOT_FOUND'}),
           };
 
@@ -115,27 +110,16 @@ void main() {
           hasLength(1));
       expect(rightOf(await repository.getTopClients(october, limit: 5)),
           hasLength(1));
-      expect(
-          rightOf(await repository.getEmployeeStats(october,
-                  professionalId: 'pro-1'))
-              .summary
-              .paymentCount,
-          2);
 
       final byPath = {
         for (final r in adapter.requests) r.uri.path: r.uri.queryParameters
       };
       expect(byPath['/api/payments/stats/top-clients']!['limit'], '5');
-      expect(byPath['/api/payments/employee-stats'], {
-        'startDate': '2026-10-01',
-        'endDate': '2026-10-21',
-        'professionalId': 'pro-1',
-      });
     });
 
-    test('employee-stats del Employee: sin professionalId', () async {
-      adapter.handler = (_) => jsonBody(200, backendEmployeeStats());
-      rightOf(await repository.getEmployeeStats(october));
+    test('comisiones del Employee: sin professionalId', () async {
+      adapter.handler = (_) => jsonBody(200, {'totals': {}});
+      rightOf(await repository.getCommissionSettlement(october));
       expect(adapter.requests.single.uri.queryParameters.keys,
           unorderedEquals(['startDate', 'endDate']));
     });
@@ -162,8 +146,6 @@ void main() {
       adapter.handler = (options) => switch (options.uri.path) {
             '/api/payments/stats' => jsonBody(
                 200, backendPaymentStats(total: 0, count: 0, average: 0)),
-            '/api/payments/employee-stats' =>
-              jsonBody(200, backendEmptyEmployeeStats()),
             _ => jsonBody(200, []),
           };
       expect(rightOf(await repository.getPaymentStats(october)),
@@ -172,18 +154,17 @@ void main() {
           isEmpty);
       expect(
           rightOf(await repository.getTopClients(october, limit: 5)), isEmpty);
-      expect(rightOf(await repository.getEmployeeStats(october)),
-          const EmployeeStatsEntity());
     });
 
-    test('400 del Owner sin professionalId → ValidationFailure', () async {
+    test('400 → ValidationFailure con el mensaje del servidor', () async {
       adapter.handler = (_) => jsonBody(400, {
             'statusCode': 400,
             'code': 'BAD_REQUEST',
             'message': 'Se requiere professionalId para consultar '
                 'estadísticas de un profesional específico',
           });
-      final failure = leftOf(await repository.getEmployeeStats(october));
+      final failure =
+          leftOf(await repository.getCommissionSettlement(october));
       expect(failure, isA<ValidationFailure>());
       expect(failure!.message, startsWith('Se requiere professionalId'));
     });
@@ -224,9 +205,9 @@ void main() {
           rightOf(await GetTopClientsUseCase(repository)(
               StatsRankingParams(october, limit: 5))),
           hasLength(1));
-      adapter.handler = (_) => jsonBody(200, backendEmployeeStats());
+      adapter.handler = (_) => jsonBody(200, {'totals': {}});
       expect(
-          (await GetEmployeeStatsUseCase(repository)(
+          (await GetCommissionSettlementUseCase(repository)(
                   EmployeeStatsParams(october)))
               .isRight(),
           true);
@@ -252,7 +233,7 @@ void main() {
         await GetPaymentStatsByServiceUseCase(repository)(inverted),
         await GetTopClientsUseCase(repository)(
             StatsRankingParams(inverted, limit: 5)),
-        await GetEmployeeStatsUseCase(repository)(
+        await GetCommissionSettlementUseCase(repository)(
             EmployeeStatsParams(inverted)),
       ];
       for (final result in results) {

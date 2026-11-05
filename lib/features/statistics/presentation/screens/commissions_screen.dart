@@ -5,9 +5,10 @@ import '../widgets/commission_settlement_view.dart';
 import '../widgets/date_range_selector.dart';
 import '../widgets/stats_section_view.dart';
 
-/// Liquidación de comisiones del período (Owner: todo el equipo; Employee:
-/// lo suyo). Solo cuentan las citas completadas, con el precio y el % que
-/// tenían al agendarse.
+/// Liquidación de comisiones del período (solo Owner: todo el equipo y lo
+/// que queda para el negocio; la empleada ve "Mis ganancias", D-27). Solo
+/// cuentan las citas completadas, con el precio y el % que tenían al
+/// agendarse.
 class CommissionsScreen extends GetView<CommissionsController> {
   const CommissionsScreen({super.key});
 
@@ -15,7 +16,7 @@ class CommissionsScreen extends GetView<CommissionsController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(controller.title),
+        title: const Text('Comisiones'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -45,10 +46,8 @@ class CommissionsScreen extends GetView<CommissionsController> {
               emptyMessage: 'Sin citas completadas en este período',
               emptySubMessage: 'Las comisiones salen de las citas '
                   'completadas. Prueba con un período más amplio.',
-              builder: (context, settlement) => CommissionSettlementView(
-                settlement: settlement,
-                ownOnly: controller.isOwnOnly,
-              ),
+              builder: (context, settlement) =>
+                  CommissionSettlementView(settlement: settlement),
             ),
           ],
         ),

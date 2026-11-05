@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:login_signup/core/utils/date_codec.dart';
 import 'package:login_signup/features/statistics/data/models/commission_settlement_model.dart';
-import 'package:login_signup/features/statistics/data/models/employee_stats_model.dart';
 import 'package:login_signup/features/statistics/domain/entities/commission_settlement.dart';
 import 'package:login_signup/features/statistics/data/models/payment_comparison_model.dart';
 import 'package:login_signup/features/statistics/data/models/payment_method_stats_model.dart';
@@ -11,8 +10,8 @@ import 'package:login_signup/features/statistics/data/models/service_stats_model
 import 'package:login_signup/features/statistics/data/models/top_client_model.dart';
 import 'package:login_signup/features/statistics/domain/entities/stats_range.dart';
 
-/// Rutas `/payments/stats*` (solo Owner) y `/payments/employee-stats` (Owner
-/// con `professionalId` o Employee). `startDate`/`endDate` = `yyyy-MM-dd`, días
+/// Rutas `/payments/stats*` (solo Owner, salvo `stats/commissions`: Owner y
+/// Employee). `startDate`/`endDate` = `yyyy-MM-dd`, días
 /// completos del negocio. Los errores (400/403, red) salen como `DioException`
 /// y los traduce `safeCall` en el repositorio.
 abstract class StatisticsRemoteDataSource {
@@ -30,9 +29,6 @@ abstract class StatisticsRemoteDataSource {
 
   Future<List<TopClientModel>> getTopClients(StatsRange range,
       {required int limit});
-
-  Future<EmployeeStatsModel> getEmployeeStats(StatsRange range,
-      {String? professionalId});
 
   Future<CommissionSettlement> getCommissionSettlement(StatsRange range,
       {String? professionalId});
@@ -80,15 +76,6 @@ class StatisticsRemoteDataSourceImpl implements StatisticsRemoteDataSource {
       (await _getList('/payments/stats/top-clients', range, {'limit': limit}))
           .map(TopClientModel.fromJson)
           .toList();
-
-  @override
-  Future<EmployeeStatsModel> getEmployeeStats(StatsRange range,
-          {String? professionalId}) async =>
-      EmployeeStatsModel.fromJson(await _getObject(
-        '/payments/employee-stats',
-        range,
-        {if (professionalId != null) 'professionalId': professionalId},
-      ));
 
   @override
   Future<CommissionSettlement> getCommissionSettlement(StatsRange range,

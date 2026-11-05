@@ -43,7 +43,8 @@ class LocalStatsData {
 /// - Ingresos: pagos `COMPLETED` netos (`amount − refund_amount`) por su
 ///   `created_at`, sin los que están en revisión (`reviewRequired`).
 /// - Comisiones: citas `COMPLETED` por su fecha, con el precio y el %
-///   guardados en cada línea, en centavos.
+///   guardados en cada línea, en centavos; `pending` con las `PENDING` y
+///   `CONFIRMED` (D-27).
 class LocalStats {
   final LocalStatsData data;
 
@@ -73,18 +74,14 @@ class LocalStats {
 
   static double _money(int cents) => cents / 100;
 
-  /// Pagos COMPLETED del periodo (opcionalmente de un profesional).
-  List<Map<String, dynamic>> _paid(({DateTime start, DateTime end}) w,
-      {String? professionalId}) {
+  /// Pagos COMPLETED del periodo.
+  List<Map<String, dynamic>> _paid(({DateTime start, DateTime end}) w) {
     return [
       for (final p in data.payments)
         if (p['status'] == 'COMPLETED' &&
             // Como el backend (80f5db5): un pago en revisión no cuenta.
             JsonRead.asOptionalString(p['reviewRequired']) == null &&
-            _within(_instant(p['created_at']), w) &&
-            (professionalId == null ||
-                data.appointments[_appointmentId(p)]?['professionalId'] ==
-                    professionalId))
+            _within(_instant(p['created_at']), w))
           p,
     ];
   }
@@ -208,10 +205,9 @@ class LocalStats {
   /// entre sus servicios por el precio guardado en la cita (a partes iguales
   /// si todos valen 0).
   List<Map<String, dynamic>> _serviceRevenue(
-      ({DateTime start, DateTime end}) w,
-      {String? professionalId}) {
+      ({DateTime start, DateTime end}) w) {
     final perAppointment = <String, ({int net, int payments})>{};
-    for (final p in _paid(w, professionalId: professionalId)) {
+    for (final p in _paid(w)) {
       final id = _appointmentId(p);
       if (id == null || !data.appointments.containsKey(id)) continue;
       final prev = perAppointment[id] ?? (net: 0, payments: 0);
@@ -364,57 +360,6 @@ class LocalStats {
     return rows.take(limit).toList();
   }
 
-  // ---------------------------------------------------- Por profesional (1)
-
-  /// `GET /payments/employee-stats`.
-  Map<String, dynamic> employeeStats(
-      DateTime from, DateTime to, String professionalId) {
-    final w = window(from, to);
-    final paid = _paid(w, professionalId: professionalId);
-    final total = paid.fold<int>(0, (s, p) => s + _net(p));
-    final days = <String, Map<String, dynamic>>{};
-    for (final p in paid) {
-      final day = _day(_instant(p['created_at'])!);
-      final d = days.putIfAbsent(day, () => {
-            'date': day,
-            'cents': 0,
-            'payments': 0,
-            'appointments': <String?>{},
-          });
-      d['cents'] = (d['cents'] as int) + _net(p);
-      d['payments'] = (d['payments'] as int) + 1;
-      (d['appointments'] as Set<String?>).add(_appointmentId(p));
-    }
-    final sortedDays = days.keys.toList()..sort();
-    return {
-      'summary': {
-        'total_amount': _money(total),
-        'payment_count': paid.length,
-        'appointment_count': {for (final p in paid) _appointmentId(p)}.length,
-        'average_per_payment': paid.isEmpty ? 0 : _money(total) / paid.length,
-      },
-      'by_service': [
-        for (final r in _serviceRevenue(w, professionalId: professionalId))
-          {
-            'service_id': r['service_id'],
-            'service_name': r['service_name'],
-            'count': r['appointment_count'],
-            'total': r['total_amount'],
-          },
-      ],
-      'daily_evolution': [
-        for (final day in sortedDays)
-          {
-            'date': day,
-            'total': _money(days[day]!['cents'] as int),
-            'count': days[day]!['payments'],
-            'payment_count': days[day]!['payments'],
-            'appointment_count': (days[day]!['appointments'] as Set).length,
-          },
-      ],
-    };
-  }
-
   // ------------------------------------------------------------ Comisiones
 
   /// % de la línea: el congelado en la cita
@@ -440,20 +385,47 @@ class LocalStats {
     return (priceCents * hundredths / 10000).round();
   }
 
-  /// `GET /payments/stats/commissions` (`settleCommissions`).
+  /// `GET /payments/stats/commissions` (`settleCommissions`): lo ganado
+  /// (citas `COMPLETED`) y, en `pending`, lo que está por ganar (`PENDING` y
+  /// `CONFIRMED`, D-27) con su estado y el de pago. Con
+  /// [includeBusiness] en `false` (la empleada) no sale `business_total`.
   Map<String, dynamic> commissions(DateTime from, DateTime to,
-      {String? professionalId}) {
+      {String? professionalId, bool includeBusiness = true}) {
     final w = window(from, to);
+    List<Map<String, dynamic>> inPeriod(Set<String> statuses) => [
+          for (final a in data.appointments.values)
+            if (statuses.contains(a['status']) &&
+                _within(_instant(a['date']), w) &&
+                (professionalId == null ||
+                    a['professionalId'] == professionalId))
+              a,
+        ]..sort(
+            (a, b) => _instant(a['date'])!.compareTo(_instant(b['date'])!));
+    return {
+      'start': _day(w.start),
+      'end': _endDay(to),
+      'timezone': BusinessTimeZone.current,
+      ..._settle(inPeriod(const {'COMPLETED'}),
+          includeBusiness: includeBusiness),
+      'pending': _settle(inPeriod(const {'PENDING', 'CONFIRMED'}),
+          includeBusiness: includeBusiness, withStatus: true),
+    };
+  }
+
+  /// Lo pagado neto de una cita (pagos `COMPLETED`, cualquier fecha).
+  int _paidFor(Object? appointmentId) => data.payments
+      .where((p) =>
+          p['status'] == 'COMPLETED' && _appointmentId(p) == appointmentId)
+      .fold(0, (sum, p) => sum + _net(p));
+
+  /// `totals` y `professionals` de [appointments] (ya ordenadas por fecha).
+  Map<String, dynamic> _settle(List<Map<String, dynamic>> appointments,
+      {required bool includeBusiness, bool withStatus = false}) {
+    Map<String, dynamic> amounts(int total, int commission) =>
+        _amounts(total, commission, includeBusiness: includeBusiness);
     final professionals = <String, Map<String, dynamic>>{};
     var grandTotal = 0;
     var grandCommission = 0;
-    final appointments = [
-      for (final a in data.appointments.values)
-        if (a['status'] == 'COMPLETED' &&
-            _within(_instant(a['date']), w) &&
-            (professionalId == null || a['professionalId'] == professionalId))
-          a,
-    ]..sort((a, b) => _instant(a['date'])!.compareTo(_instant(b['date'])!));
     for (final a in appointments) {
       final proId = JsonRead.asString(a['professionalId']);
       final user = data.users[proId] ?? JsonRead.asMap(a['professional']) ?? {};
@@ -493,7 +465,13 @@ class LocalStats {
         'client_name': local != null
             ? _trimJoin(local.name, local.lastname)
             : _trimJoin(client?['name'], client?['lastname']),
-        ..._amounts(total, commission),
+        ...amounts(total, commission),
+        if (withStatus) ...{
+          'status': a['status'],
+          'payment_status': a['payment_status'],
+          // Los pagos solo bajan al Owner: a la empleada le basta el estado.
+          if (includeBusiness) 'paid_amount': _money(_paidFor(a['id'])),
+        },
         'lines': lines,
       });
       pro['total'] = (pro['total'] as int) + total;
@@ -507,17 +485,14 @@ class LocalStats {
           'professional_id': p['professional_id'],
           'professional_name': p['professional_name'],
           'appointment_count': (p['appointments'] as List).length,
-          ..._amounts(p['total'] as int, p['commission'] as int),
+          ...amounts(p['total'] as int, p['commission'] as int),
           'appointments': p['appointments'],
         },
     ]..sort((a, b) => (a['professional_name'] as String)
         .compareTo(b['professional_name'] as String));
     return {
-      'start': _day(w.start),
-      'end': _endDay(to),
-      'timezone': BusinessTimeZone.current,
       'totals': {
-        ..._amounts(grandTotal, grandCommission),
+        ...amounts(grandTotal, grandCommission),
         'appointment_count': appointments.length,
       },
       'professionals': list,
@@ -528,10 +503,12 @@ class LocalStats {
   static String _endDay(DateTime to) =>
       DateCodec.encodeDay(DateTime(to.year, to.month, to.day));
 
-  static Map<String, dynamic> _amounts(int total, int commission) => {
+  static Map<String, dynamic> _amounts(int total, int commission,
+          {required bool includeBusiness}) =>
+      {
         'services_total': _money(total),
         'professional_total': _money(commission),
-        'business_total': _money(total - commission),
+        if (includeBusiness) 'business_total': _money(total - commission),
       };
 
   /// `TRIM(CONCAT_WS(' ', name, lastname))`.

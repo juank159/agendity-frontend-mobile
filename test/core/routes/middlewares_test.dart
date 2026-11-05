@@ -97,6 +97,7 @@ void main() {
       GetRoutes.employees,
       GetRoutes.addEmployee,
       GetRoutes.statistics,
+      GetRoutes.commissions,
       GetRoutes.subscriptionPlans,
     ];
     const public = [
@@ -121,7 +122,7 @@ void main() {
     test('la home y las de Employee exigen sesión sin exigir Owner', () {
       for (final name in [
         GetRoutes.home,
-        GetRoutes.employeeStats,
+        GetRoutes.myEarnings,
         GetRoutes.clients
       ]) {
         final middlewares = page(name).middlewares ?? const [];

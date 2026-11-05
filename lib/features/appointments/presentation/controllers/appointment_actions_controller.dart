@@ -86,7 +86,9 @@ class AppointmentActionsController extends GetxController {
     );
   }
 
+  /// Solo el Owner (D-27): para la empleada no hace nada.
   Future<AppointmentEntity?> complete(AppointmentEntity appointment) async {
+    if (!AppointmentAccess.canComplete()) return null;
     busyId.value = appointment.id;
     final result = await _complete(appointment.id);
     busyId.value = null;

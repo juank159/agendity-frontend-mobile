@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
 
@@ -51,9 +50,6 @@ class UserInfoController extends GetxController {
 
   /// Employee (incluye al Owner que también tiene ese rol).
   bool isEmployee() => hasRole(SessionRole.employee);
-
-  String getStatisticsRoute() =>
-      isOnlyEmployee() ? GetRoutes.employeeStats : GetRoutes.statistics;
 
   /// Compatibilidad: vuelve a leer la sesión vigente.
   Future<void> loadUserInfo() async => _session.reload();

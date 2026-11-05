@@ -35,6 +35,7 @@ import 'package:login_signup/features/employees/presentation/screens/edit_employ
 import 'package:login_signup/features/employees/presentation/screens/employee_details_screen.dart';
 import 'package:login_signup/features/employees/presentation/screens/employees_list_screen.dart';
 import 'package:login_signup/features/employees/presentation/screens/verify_employee_email_screen.dart';
+import 'package:login_signup/features/services/domain/entities/my_service.dart';
 import 'package:login_signup/features/services/domain/entities/service_entity.dart';
 import 'package:login_signup/features/services/domain/repositories/services_repository.dart';
 import 'package:login_signup/features/services/domain/usecases/get_services_usecase.dart';
@@ -166,6 +167,10 @@ class FakeServicesRepository implements ServicesRepository {
   Future<Either<Failure, List<ServiceEntity>>> getServicesOfferedBy(
           String professionalId) =>
       getServices();
+
+  @override
+  Future<Either<Failure, List<MyService>>> getMyServices() async =>
+      const Right([]);
 
   @override
   Future<Either<Failure, ServiceEntity>> createService(

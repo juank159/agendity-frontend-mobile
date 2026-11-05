@@ -503,23 +503,22 @@ void main() {
     check(menu.contains('EMPLEADO'), 'menú de Ana dice EMPLEADO');
     Navigator.of(tester.element(find.byType(Drawer))).pop();
     await idle(tester, 800);
-    await openDrawerItem(tester, 'Informes');
-    await idle(tester, 3000);
-    await shot(tester, 'ana_informes');
-    dump('Ana informes');
-    await back(tester);
-    await openDrawerItem(tester, 'Comisiones');
+    // D-27: Informes y Comisiones de la empleada son "Mis ganancias".
+    check(!menu.contains('Informes') && !menu.contains('Comisiones'),
+        'menú de Ana sin Informes ni Comisiones', menu);
+    await openDrawerItem(tester, 'Mis ganancias');
     await idle(tester, 3000);
     Get.find<CommissionsController>().setRange(
         StatsRange(start: DateTime(2026, 10, 1), end: DateTime(2026, 10, 31)));
     await idle(tester, 3000);
-    await shot(tester, 'ana_comisiones');
-    dump('Ana comisiones');
+    await shot(tester, 'ana_ganancias');
+    dump('Ana ganancias');
     check(
-        allText().contains('Mis comisiones') &&
+        allText().contains('Mis ganancias') &&
             allText().contains('Valentina Castro') &&
-            !allText().contains('Laura Pérez'),
-        'Ana ve solo sus comisiones',
+            !allText().contains('Laura Pérez') &&
+            !allText().contains('Negocio'),
+        'Ana ve solo sus ganancias, sin lo del negocio',
         allText());
     await back(tester);
     await logout(tester);

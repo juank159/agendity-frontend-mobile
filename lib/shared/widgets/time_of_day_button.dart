@@ -46,7 +46,7 @@ class TimeOfDayButton extends StatelessWidget {
       label: semantics,
       child: OutlinedButton.icon(
         icon: const Icon(Icons.schedule_rounded, size: 18),
-        label: Text('$label: ${formatHhmm(value)}',
+        label: Text('$label: ${formatHhmmWithMoment(value)}',
             style: const TextStyle().tabular),
         onPressed: () async {
           final picked = await AppTimePicker.show(context,

@@ -22,7 +22,14 @@ import 'package:login_signup/features/settings/domain/usecases/update_opening_ho
 import 'package:login_signup/features/settings/presentation/controllers/business_settings_controller.dart';
 import 'package:login_signup/features/settings/presentation/screens/business_settings_screen.dart';
 import 'package:login_signup/shared/controllers/session_controller.dart';
+import 'package:login_signup/features/theme/data/datasources/theme_local_datasource.dart';
+import 'package:login_signup/features/theme/data/repositories/theme_repository_impl.dart';
+import 'package:login_signup/features/theme/domain/usecases/business_palette_memory_usecases.dart';
+import 'package:login_signup/features/theme/domain/usecases/get_theme_preference_usecase.dart';
+import 'package:login_signup/features/theme/domain/usecases/save_theme_preference_usecase.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/shared/widgets/palette_swatch.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/session/jwt_helper.dart';
 import '../../core/session/memory_token_store.dart';
@@ -384,8 +391,7 @@ void main() {
       // La hora del botón en 12 h (D-23).
       expect(
           find.descendant(
-              of: open,
-              matching: find.text('Abre: ${formatHhmm(nine.start)}')),
+              of: open, matching: find.text('Abre: ${formatHhmm(nine.start)}')),
           findsOneWidget);
       expect(find.text('Abierto'), findsWidgets);
       expect(find.text('Cerrado'), findsWidgets);
@@ -410,13 +416,124 @@ void main() {
         (tester) async {
       final c = await pumpScreen(tester);
       c.setLimitsHours(true);
-      c.addRange(1); // 19:00–23:00
-      c.updateRange(1, 1, start: '17:00'); // se pisa con 09:00–18:00
+      c.addRange(1); // 09:00–12:00 y 14:00–18:00
+      c.updateRange(1, 1, start: '11:00'); // se pisa con 09:00–12:00
       await tester.pumpAndSettle();
+      // El aviso sale al momento, sin esperar a guardar, y no deja guardar.
+      expect(find.byKey(const Key('opening-crossed-1')), findsOneWidget);
+      expect(find.textContaining('se cruzan'), findsOneWidget);
+      expect(find.text('Corrige lo que está en rojo para guardar.'),
+          findsOneWidget);
       await tap(tester, find.text('Guardar horario'));
+      expect(repo.hoursUpdates, isEmpty);
+      // Aunque se llame directo, el use case lo vuelve a frenar.
+      expect(await c.saveOpeningHours(), isFalse);
+      await tester.pumpAndSettle();
       expect(repo.hoursUpdates, isEmpty);
       expect(find.textContaining('se pisan'), findsOneWidget);
       await expireSnackbar(tester);
+    });
+
+    testWidgets(
+        'lunes 8–12 y 2–7: "Añadir franja" parte el día en mañana y tarde; '
+        '"12 a. m." avisa al momento y se corrige con un toque',
+        (tester) async {
+      final c = await pumpScreen(tester);
+      await tap(tester, find.byKey(const Key('opening-hours-enabled')));
+      // Sin guardar todavía: la barra lo dice y "Guardar horario" está a mano.
+      expect(find.byKey(const Key('opening-hours-unsaved')), findsOneWidget);
+      expect(
+          find.text('El horario tiene cambios sin guardar.'), findsOneWidget);
+
+      await tap(tester, find.byKey(const Key('opening-add-1')));
+      expect(c.rangesOn(1), const [
+        WorkHours(start: '09:00', end: '12:00'),
+        WorkHours(start: '14:00', end: '18:00'),
+      ]);
+      expect(find.text('Cierra: ${formatHhmm('12:00')} (mediodía)'),
+          findsOneWidget);
+
+      c.updateRange(1, 0, start: '08:00', end: '00:00'); // "12 a. m."
+      c.updateRange(1, 1, end: '19:00');
+      await tester.pumpAndSettle();
+      final problem = find.byKey(const Key('opening-backwards-1-0'));
+      expect(problem, findsOneWidget);
+      expect(
+          find.text('La franja 1 cierra (${formatHhmm('00:00')} (medianoche)) '
+              'antes de abrir (${formatHhmm('08:00')}). ¿Querías decir '
+              '${formatHhmm('12:00')} (mediodía)?'),
+          findsOneWidget);
+      final save = find.widgetWithText(FilledButton, 'Guardar horario');
+      expect(tester.widget<FilledButton>(save).onPressed, isNull);
+
+      await tap(tester, find.byKey(const Key('opening-backwards-1-0-fix')));
+      expect(problem, findsNothing);
+      expect(c.rangesOn(1), const [
+        WorkHours(start: '08:00', end: '12:00'),
+        WorkHours(start: '14:00', end: '19:00'),
+      ]);
+      await tap(tester, save);
+      expect(repo.hoursUpdates.single!.rangesOn(1).map((r) => r.hours), const [
+        WorkHours(start: '08:00', end: '12:00'),
+        WorkHours(start: '14:00', end: '19:00'),
+      ]);
+      expect(find.byKey(const Key('opening-hours-unsaved')), findsNothing);
+      await expireSnackbar(tester);
+    });
+
+    test('amPmFixOf: solo propone el cambio de a. m. a p. m. si lo arregla',
+        () {
+      String? fix(String start, String end) =>
+          BusinessSettingsController.amPmFixOf(
+              WorkHours(start: start, end: end));
+      expect(fix('08:00', '00:00'), '12:00');
+      expect(fix('14:00', '07:00'), '19:00');
+      expect(fix('08:00', '12:00'), isNull); // ya está bien
+      expect(fix('20:00', '07:00'), isNull); // 7 p. m. tampoco sirve
+    });
+
+    testWidgets('"Añadir franja" sin cruzar el almuerzo añade una después',
+        (tester) async {
+      final c = await pumpScreen(tester);
+      c.setLimitsHours(true);
+      c.updateRange(1, 0, start: '13:00');
+      c.addRange(1);
+      expect(c.rangesOn(1), const [
+        WorkHours(start: '13:00', end: '18:00'),
+        WorkHours(start: '19:00', end: '23:00'),
+      ]);
+    });
+
+    testWidgets('salir con el horario sin guardar pide confirmación',
+        (tester) async {
+      tester.view.physicalSize = const Size(1000, 3200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final c = Get.put(buildController());
+      await tester.pumpWidget(GetMaterialApp(
+        theme: ThemeConfig.lightTheme,
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Get.to<void>(() => const BusinessSettingsScreen()),
+            child: const Text('abrir'),
+          ),
+        ),
+      ));
+      await tap(tester, find.text('abrir'));
+      c.setLimitsHours(true);
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('¿Salir sin guardar el horario?'), findsOneWidget);
+      await tap(tester, find.text('Seguir editando'));
+      expect(find.byType(BusinessSettingsScreen), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Salir sin guardar'));
+      expect(find.byType(BusinessSettingsScreen), findsNothing);
+      expect(c.hoursChanged, isFalse);
+      expect(repo.hoursUpdates, isEmpty);
     });
 
     testWidgets(
@@ -483,6 +600,34 @@ void main() {
       // Tocar el que ya está no envía nada.
       await tap(tester, find.byKey(const Key('palette-rosa')));
       expect(repo.paletteUpdates, [AppPalette.rosa]);
+    });
+
+    testWidgets(
+        'color propio en este teléfono (Apariencia): lo explica y deja ver '
+        'aquí el del negocio', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final themeRepo = ThemeRepositoryImpl(ThemeLocalDataSourceImpl());
+      final theme = Get.put(ThemeController(
+        getPreference: GetThemePreferenceUseCase(themeRepo),
+        savePreference: SaveThemePreferenceUseCase(themeRepo),
+        getLastBusinessPalette: GetLastBusinessPaletteUseCase(themeRepo),
+        rememberBusinessPalette: RememberBusinessPaletteUseCase(themeRepo),
+        getBusinessSettings: GetBusinessSettingsUseCase(repo),
+        session: session,
+      ));
+      await theme.load();
+      await theme.setPalette(AppPalette.azul);
+      await pumpScreen(tester);
+      final note = find.byKey(const Key('palette-own-device-note'));
+      expect(note, findsOneWidget);
+      expect(
+          find.textContaining('En este teléfono estás viendo el color '
+              '${AppPalette.azul.label}'),
+          findsOneWidget);
+
+      await tap(tester, find.byKey(const Key('palette-use-business-here')));
+      expect(theme.usesBusinessPalette, isTrue);
+      expect(note, findsNothing);
     });
 
     testWidgets('color del negocio sin conexión: error y no cambia el tema',

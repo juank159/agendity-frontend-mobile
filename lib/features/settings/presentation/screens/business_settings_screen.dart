@@ -8,7 +8,9 @@ import 'package:login_signup/core/widgets/loading_state.dart';
 import 'package:login_signup/features/settings/presentation/controllers/business_settings_controller.dart';
 import 'package:login_signup/features/settings/presentation/widgets/opening_hours_editor.dart';
 import 'package:login_signup/features/settings/presentation/widgets/time_zone_picker.dart';
+import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/shared/widgets/app_card.dart';
+import 'package:login_signup/shared/widgets/app_dialogs.dart';
 import 'package:login_signup/shared/widgets/app_note.dart';
 import 'package:login_signup/shared/widgets/app_section_card.dart';
 import 'package:login_signup/shared/widgets/business_time_zone_notice.dart';
@@ -23,8 +25,30 @@ class BusinessSettingsScreen extends GetView<BusinessSettingsController> {
 
   @override
   Widget build(BuildContext context) {
+    return Obx(() => PopScope(
+          canPop: !controller.hoursChanged,
+          onPopInvokedWithResult: (didPop, _) async {
+            if (didPop) return;
+            final leave = await AppDialogs.confirm(
+              title: '¿Salir sin guardar el horario?',
+              message: 'Los cambios del horario de apertura se perderán.',
+              confirmLabel: 'Salir sin guardar',
+              cancelLabel: 'Seguir editando',
+              destructive: true,
+              icon: Icons.schedule_rounded,
+            );
+            if (!leave) return;
+            controller.discardHours();
+            if (context.mounted) Navigator.of(context).pop();
+          },
+          child: _scaffold(),
+        ));
+  }
+
+  Widget _scaffold() {
     return Scaffold(
       appBar: AppBar(title: const Text('Mi negocio')),
+      bottomNavigationBar: const _UnsavedHoursBar(),
       body: Obx(() {
         switch (controller.status.value) {
           case BusinessSettingsStatus.loading:
@@ -33,9 +57,7 @@ class BusinessSettingsScreen extends GetView<BusinessSettingsController> {
             final isFinal = controller.loadErrorIsFinal.value;
             return ErrorState(
               title: isFinal ? 'Sin acceso' : 'No se pudo cargar',
-              icon: isFinal
-                  ? Icons.lock_rounded
-                  : Icons.cloud_off_rounded,
+              icon: isFinal ? Icons.lock_rounded : Icons.cloud_off_rounded,
               message: controller.loadError.value ?? '',
               onRetry: isFinal ? null : controller.load,
             );
@@ -118,9 +140,30 @@ class _PaletteCard extends GetView<BusinessSettingsController> {
       child: Obx(() {
         final saving = controller.isSavingPalette.value;
         final current = controller.savedPalette ?? AppPalette.fallback;
+        final theme = Get.isRegistered<ThemeController>()
+            ? Get.find<ThemeController>()
+            : null;
+        final own = theme == null || theme.usesBusinessPalette
+            ? null
+            : theme.preference.value.palette;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (own != null)
+              AppNote(
+                'En este teléfono estás viendo el color ${own.label}, que '
+                'elegiste en Apariencia. Tu equipo y tu link de reservas ven '
+                'el del negocio: ${current.label}.',
+                key: const Key('palette-own-device-note'),
+                tone: AppTone.info,
+                icon: Icons.phone_iphone_rounded,
+                margin: const EdgeInsets.only(bottom: 12),
+                trailing: TextButton(
+                  key: const Key('palette-use-business-here'),
+                  onPressed: () => theme!.setPalette(null),
+                  child: Text('Ver aquí el ${current.label}'),
+                ),
+              ),
             PaletteSwatchGrid(
               padding: EdgeInsets.zero,
               selected: current,
@@ -297,7 +340,6 @@ class _OpeningHoursCard extends GetView<BusinessSettingsController> {
           'en la app ni por el link). Un día sin franjas está cerrado.',
       child: Obx(() {
         final limited = controller.limitsHours.value;
-        final saving = controller.isSavingHours.value;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -331,28 +373,93 @@ class _OpeningHoursCard extends GetView<BusinessSettingsController> {
                     )
                   : const SizedBox(width: double.infinity),
             ),
-            if (controller.hoursChanged) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: saving ? null : controller.discardHours,
-                    child: const Text('Descartar'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: saving ? null : controller.saveOpeningHours,
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Guardar horario'),
-                  ),
-                ],
-              ),
-            ],
           ],
         );
       }),
     );
+  }
+}
+
+/// Barra fija abajo mientras el horario tiene cambios sin guardar: así se ve
+/// que "Añadir franja" o cambiar una hora todavía no está guardado, y
+/// "Guardar horario" queda a mano aunque el lunes esté arriba del todo.
+class _UnsavedHoursBar extends GetView<BusinessSettingsController> {
+  const _UnsavedHoursBar();
+
+  static const barKey = Key('opening-hours-unsaved');
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Obx(() {
+      if (controller.status.value != BusinessSettingsStatus.ready ||
+          !controller.hoursChanged) {
+        return const SizedBox.shrink();
+      }
+      final saving = controller.isSavingHours.value;
+      final problems = controller.hoursHaveProblems;
+      return Material(
+        key: barKey,
+        color: scheme.surfaceContainerHigh,
+        elevation: 8,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                        problems
+                            ? Icons.error_rounded
+                            : Icons.edit_calendar_rounded,
+                        size: 18,
+                        color: problems ? scheme.error : scheme.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        problems
+                            ? 'Corrige lo que está en rojo para guardar.'
+                            : 'El horario tiene cambios sin guardar.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                            color: problems ? scheme.error : scheme.onSurface,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: saving ? null : controller.discardHours,
+                      child: const Text('Descartar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: saving || problems
+                          ? null
+                          : controller.saveOpeningHours,
+                      icon: saving
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.check_rounded),
+                      label: const Text('Guardar horario'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
   }
 }
 

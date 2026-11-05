@@ -20,7 +20,9 @@
 //   --dart-define=RUN=<sufijo> --dart-define=PHASES=a_future,a_complete
 // Fases: a_setup, a_today, b_setup, b_today, a_future, b_future,
 // a_complete, a_employee, b_complete, b_employee. Sueltas (no van en "all",
-// ya las hace a_future): a_calendar, a_hours.
+// ya las hace a_future): a_calendar, a_hours. Suelta: a_lunch (Mi negocio:
+// lunes de 8 a 12 y de 2 a 7, el "12 a. m." por error y el color del
+// teléfono frente al del negocio).
 //
 // "Hoy" en cada negocio: para poder COMPLETAR citas (solo se completa una cita
 // que ya empezó y solo se agenda a futuro) la prueba abre una jornada
@@ -1759,6 +1761,119 @@ Future<void> phaseHoursA(WidgetTester tester) async {
   }
 }
 
+/// Mi negocio, como lo hace el dueño (pedido del 2026-11-04): el lunes de
+/// 8:00 a. m. a 12:00 p. m. y de 2:00 p. m. a 7:00 p. m. Primero se equivoca
+/// con "12 a. m." (medianoche): el aviso sale al momento con la corrección, y
+/// "Guardar horario" (en la barra de abajo) no deja guardar hasta corregir.
+/// Después, el color: con uno propio en Apariencia, Mi negocio lo explica.
+Future<void> phaseLunchA(WidgetTester tester) async {
+  final biz = bizA;
+  log('== A: lunes con almuerzo (8–12 y 2–7) y color del negocio ==');
+  await openDrawerItem(tester, 'Mi negocio');
+  final limit = find.byKey(const Key('opening-hours-enabled'));
+  await waitFor(tester, limit);
+  await idle(tester, 1200);
+  if (!tester.widget<SwitchListTile>(limit).value) await tap(tester, limit);
+  final monday = find.byKey(const Key('opening-day-1'));
+  if (!tester.widget<Switch>(monday).value) await tap(tester, monday, wait: 400);
+  final remove = find.byTooltip('Quitar franja del Lunes');
+  while (remove.evaluate().length > 1) {
+    await tap(tester, remove.last, wait: 300);
+  }
+  final open1 = semanticsButton('Lunes, franja 1, apertura');
+  final close1 = semanticsButton('Lunes, franja 1, cierre');
+  final open2 = semanticsButton('Lunes, franja 2, apertura');
+  final close2 = semanticsButton('Lunes, franja 2, cierre');
+  // De corrido de 8:00 a. m. a 7:00 p. m. y luego "Añadir franja".
+  if (!_buttonShows(tester, open1, '08:00')) {
+    await pickTime(tester, open1, '08:00');
+  }
+  if (!_buttonShows(tester, close1, '19:00')) {
+    await pickTime(tester, close1, '19:00');
+  }
+  final save = find.widgetWithText(FilledButton, 'Guardar horario');
+  if (save.evaluate().isNotEmpty) {
+    await tap(tester, save, wait: 2500);
+  }
+  await tap(tester, find.byKey(const Key('opening-add-1')), wait: 800);
+  check(
+      _buttonShows(tester, close1, '12:00') &&
+          _buttonShows(tester, open2, '14:00') &&
+          _buttonShows(tester, close2, '19:00'),
+      'A: "Añadir franja" parte el lunes en 8:00 a. m.–12:00 p. m. y '
+      '2:00 p. m.–7:00 p. m.',
+      allText());
+  check(allText().contains('12:00\u00a0p.\u00a0m. (mediodía)'),
+      'A: el cierre de la mañana dice "12:00 p. m. (mediodía)"', allText());
+  check(allText().contains('El horario tiene cambios sin guardar.'),
+      'A: la barra de abajo avisa que falta guardar', allText());
+  await shot(tester, 'A_lunes_partido_sin_guardar');
+
+  // El error del dueño: "cierra a las 12 a. m.".
+  await pickTime(tester, close1, '00:00');
+  final problem = find.byKey(const Key('opening-backwards-1-0'));
+  await waitFor(tester, problem);
+  check(
+      problem.evaluate().isNotEmpty &&
+          allText().contains('¿Querías decir 12:00\u00a0p.\u00a0m. (mediodía)?'),
+      'A: "12 a. m." avisa al momento: cierra antes de abrir, ¿querías '
+      'decir 12:00 p. m. (mediodía)?',
+      allText());
+  check(
+      tester.widget<FilledButton>(save).onPressed == null &&
+          allText().contains('Corrige lo que está en rojo para guardar.'),
+      'A: con el error no deja guardar y lo dice',
+      allText());
+  await shot(tester, 'A_lunes_12am_aviso');
+  await tap(tester, find.byKey(const Key('opening-backwards-1-0-fix')),
+      wait: 800);
+  check(problem.evaluate().isEmpty && _buttonShows(tester, close1, '12:00'),
+      'A: "Cerrar a las 12:00 p. m." lo corrige con un toque', allText());
+  await tap(tester, save, wait: 2500);
+  check(
+      find.byKey(const Key('opening-hours-unsaved')).evaluate().isEmpty,
+      'A: horario del lunes guardado (la barra se va)',
+      allText());
+  await shot(tester, 'A_lunes_guardado');
+  await back(tester);
+
+  // Al volver a entrar sigue igual: se guardó en el servidor.
+  await openDrawerItem(tester, 'Mi negocio');
+  await waitFor(tester, limit);
+  await idle(tester, 1500);
+  check(
+      _buttonShows(tester, open1, '08:00') &&
+          _buttonShows(tester, close1, '12:00') &&
+          _buttonShows(tester, open2, '14:00') &&
+          _buttonShows(tester, close2, '19:00'),
+      'A: al volver a Mi negocio el lunes sigue 8–12 y 2–7',
+      allText());
+  await back(tester);
+
+  // Color: uno propio en este teléfono (Apariencia) frente al del negocio.
+  await openDrawerItem(tester, 'Apariencia');
+  await idle(tester, 1200);
+  await tap(tester, find.byKey(const Key('palette-azul')), wait: 1200);
+  await shot(tester, 'A_apariencia_azul');
+  await back(tester);
+  await openDrawerItem(tester, 'Mi negocio');
+  final note = find.byKey(const Key('palette-own-device-note'));
+  await waitFor(tester, find.byKey(const Key('business-name')));
+  await idle(tester, 1200);
+  await centerOn(tester, find.text('Color del negocio'));
+  await idle(tester, 800);
+  check(note.evaluate().isNotEmpty,
+      'A: Mi negocio explica que este teléfono usa su propio color', allText());
+  await shot(tester, 'A_color_propio_nota');
+  await tap(tester, find.byKey(const Key('palette-use-business-here')),
+      wait: 1500);
+  check(note.evaluate().isEmpty,
+      'A: "Ver aquí el del negocio" vuelve al color del negocio', allText());
+  await shot(tester, 'A_color_del_negocio');
+  await back(tester);
+  log('${biz.code}: lunes con almuerzo y color revisados');
+}
+
 Future<void> phaseFutureB(WidgetTester tester) async {
   final biz = bizB;
   log('== B: citas a futuro y aislamiento ==');
@@ -2138,6 +2253,11 @@ void main() {
     if (_phases != 'all' && want('a_hours')) {
       await login(tester, bizA.ownerEmail);
       await phaseHoursA(tester);
+      await logout(tester);
+    }
+    if (_phases != 'all' && want('a_lunch')) {
+      await login(tester, bizA.ownerEmail);
+      await phaseLunchA(tester);
       await logout(tester);
     }
     if (want('b_future')) await phaseFutureB(tester);

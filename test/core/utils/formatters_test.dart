@@ -117,7 +117,8 @@ void main() {
         for (var m = 0; m < 60; m++) {
           final text = formatClock(h, m);
           final hour12 = h % 12 == 0 ? 12 : h % 12;
-          expect(text,
+          expect(
+              text,
               '$hour12:${m.toString().padLeft(2, '0')}\u00a0'
               '${h < 12 ? timeAmLabel : timePmLabel}');
         }
@@ -156,18 +157,17 @@ void main() {
       }
     });
 
-    test('formatTime: hora de pared tal cual; UTC en la zona del negocio',
-        () {
+    test('formatTime: hora de pared tal cual; UTC en la zona del negocio', () {
       expect(formatTime(DateTime(2026, 11, 3, 0, 5)), clock('12:05 a. m.'));
       BusinessTimeZone.use('America/Bogota');
-      expect(formatTime(DateTime.utc(2026, 11, 3, 14, 30)),
-          clock('9:30 a. m.'));
+      expect(
+          formatTime(DateTime.utc(2026, 11, 3, 14, 30)), clock('9:30 a. m.'));
       BusinessTimeZone.use('America/Caracas');
-      expect(formatTime(DateTime.utc(2026, 11, 3, 14, 30)),
-          clock('10:30 a. m.'));
+      expect(
+          formatTime(DateTime.utc(2026, 11, 3, 14, 30)), clock('10:30 a. m.'));
       BusinessTimeZone.use('Asia/Tokyo');
-      expect(formatTime(DateTime.utc(2026, 11, 3, 14, 30)),
-          clock('11:30 p. m.'));
+      expect(
+          formatTime(DateTime.utc(2026, 11, 3, 14, 30)), clock('11:30 p. m.'));
     });
 
     test('formatTimeRange: sufijo una vez si es el mismo periodo', () {
@@ -201,5 +201,21 @@ void main() {
     expect(formatPercent(12.46), '12,5 %');
     expect(formatPercent(1250), '1.250 %');
     expect(formatPercent(null), '0 %');
+  });
+
+  test(
+      'dayMomentOf y formatHhmmWithMoment: el 12 dice si es mediodía o medianoche',
+      () {
+    expect(dayMomentOf(0), 'medianoche');
+    expect(dayMomentOf(3), 'de la madrugada');
+    expect(dayMomentOf(8), 'de la mañana');
+    expect(dayMomentOf(12), 'mediodía');
+    expect(dayMomentOf(14), 'de la tarde');
+    expect(dayMomentOf(20), 'de la noche');
+    expect(formatHhmmWithMoment('12:00'), '${formatHhmm('12:00')} (mediodía)');
+    expect(
+        formatHhmmWithMoment('00:30'), '${formatHhmm('00:30')} (medianoche)');
+    expect(formatHhmmWithMoment('08:00'), formatHhmm('08:00'));
+    expect(formatHhmmWithMoment('abc'), 'abc');
   });
 }

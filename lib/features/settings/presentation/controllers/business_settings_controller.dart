@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -292,10 +294,25 @@ class BusinessSettingsController extends GetxController {
   void setDayOpen(int day, bool open) => draftHours.value =
       draftHours.value.withDay(day, open ? const [defaultRange] : const []);
 
-  /// Añade una franja después de la última del día (p. ej. la tarde tras
-  /// cerrar a mediodía).
+  /// Pausa que propone "Añadir franja" sobre un día de corrido.
+  static const lunch = WorkHours(start: '12:00', end: '14:00');
+
+  /// Añade una franja. Si el día va de corrido y cruza el almuerzo
+  /// (9:00 a. m.–6:00 p. m.), lo parte en mañana y tarde
+  /// (9:00 a. m.–12:00 p. m. y 2:00 p. m.–6:00 p. m.); si no, añade una
+  /// después de la última.
   void addRange(int day) {
     final ranges = rangesOn(day);
+    if (ranges.length == 1 &&
+        ranges.single.start.compareTo(lunch.start) < 0 &&
+        ranges.single.end.compareTo(lunch.end) > 0) {
+      final whole = ranges.single;
+      draftHours.value = draftHours.value.withDay(day, [
+        WorkHours(start: whole.start, end: lunch.start),
+        WorkHours(start: lunch.end, end: whole.end),
+      ]);
+      return;
+    }
     final last = ranges.isEmpty ? null : ranges.last;
     final start = last == null ? defaultRange.start : _plusHours(last.end, 1);
     final end = _plusHours(start, 4);
@@ -312,6 +329,55 @@ class BusinessSettingsController extends GetxController {
     ranges[index] =
         WorkHours(start: start ?? current.start, end: end ?? current.end);
     draftHours.value = draftHours.value.withDay(day, ranges);
+  }
+
+  /// Franjas de [day] que cierran antes de abrir (índices).
+  List<int> backwardsRangesOn(int day) {
+    final ranges = rangesOn(day);
+    return [
+      for (var i = 0; i < ranges.length; i++)
+        if (!ranges[i].isValid) i
+    ];
+  }
+
+  /// Franjas de [day] que se cruzan con otra (índices).
+  List<int> crossedRangesOn(int day) {
+    final ranges = rangesOn(day);
+    return [
+      for (var i = 0; i < ranges.length; i++)
+        if (ranges[i].isValid &&
+            [
+              for (var j = 0; j < ranges.length; j++)
+                if (j != i && ranges[j].isValid) ranges[j]
+            ].any(ranges[i].overlaps))
+          i
+    ];
+  }
+
+  /// Cierre corregido si [hours] cierra antes de abrir por confundir
+  /// a. m. con p. m. (abre 8:00 a. m. y "cierra 12:00 a. m." →
+  /// `12:00`, el mediodía). `null` si no hay una corrección así.
+  static String? amPmFixOf(WorkHours hours) {
+    if (hours.isValid) return null;
+    final parts = hours.end.split(':');
+    final hour = int.tryParse(parts.first);
+    if (hour == null || hour >= 12 || parts.length < 2) return null;
+    final fixed = '${(hour + 12).toString().padLeft(2, '0')}:${parts[1]}';
+    return WorkHours(start: hours.start, end: fixed).isValid ? fixed : null;
+  }
+
+  /// Hay franjas al revés o cruzadas en algún día del borrador.
+  bool get hoursHaveProblems {
+    if (!limitsHours.value) return false;
+    for (var day = OpeningHoursRange.monday;
+        day <= OpeningHoursRange.sunday;
+        day++) {
+      if (backwardsRangesOn(day).isNotEmpty ||
+          crossedRangesOn(day).isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void removeRange(int day, int index) {
@@ -362,9 +428,14 @@ class BusinessSettingsController extends GetxController {
 
   // --- Color del negocio -------------------------------------------------------
 
+  /// Pinta el color nuevo. El dueño lo acaba de elegir en este teléfono, así
+  /// que si aquí tenía otro propio (Apariencia), vuelve a usar el del negocio:
+  /// si no, elegiría un color y no vería ningún cambio.
   static void _applyToTheme(BusinessSettings settings) {
     if (Get.isRegistered<ThemeController>()) {
-      Get.find<ThemeController>().applyBusinessSettings(settings);
+      final theme = Get.find<ThemeController>()
+        ..applyBusinessSettings(settings);
+      if (!theme.usesBusinessPalette) unawaited(theme.setPalette(null));
     }
   }
 

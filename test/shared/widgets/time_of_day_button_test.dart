@@ -103,6 +103,22 @@ void main() {
     expect(picked, '12:00');
   });
 
+  testWidgets('bajo la hora dice el momento del día: mediodía, medianoche…',
+      (tester) async {
+    await pumpButton(tester, (_) {});
+    await tester.tap(find.textContaining('Abre:'));
+    await tester.pumpAndSettle();
+    String moment() =>
+        tester.widget<Text>(find.byKey(AppTimePicker.momentKey)).data!;
+    expect(moment(), 'de la mañana');
+    wheel(tester, AppTimePicker.hourWheelKey).jumpToItem(11); // 12
+    await tester.pumpAndSettle();
+    expect(moment(), 'medianoche');
+    wheel(tester, AppTimePicker.periodWheelKey).jumpToItem(1);
+    await tester.pumpAndSettle();
+    expect(moment(), 'mediodía');
+  });
+
   testWidgets('la vista previa sigue a las ruedas; Cancelar no cambia nada',
       (tester) async {
     String? picked;

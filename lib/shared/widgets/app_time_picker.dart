@@ -18,6 +18,7 @@ class AppTimePicker extends StatefulWidget {
   static const Key minuteWheelKey = Key('time-picker-minute');
   static const Key periodWheelKey = Key('time-picker-period');
   static const Key doneKey = Key('time-picker-done');
+  static const Key momentKey = Key('time-picker-moment');
 
   /// Horas de la rueda, en orden: 1…12.
   static const List<int> hours = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -143,6 +144,15 @@ class _AppTimePickerState extends State<AppTimePicker> {
                   fontWeight: FontWeight.w800,
                   color: scheme.primary,
                 ),
+              ),
+            ),
+            // "mediodía", "de la tarde"…: que 12 a. m. y 12 p. m. no confundan.
+            Text(
+              dayMomentOf(_value.hour),
+              key: AppTimePicker.momentKey,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 12),

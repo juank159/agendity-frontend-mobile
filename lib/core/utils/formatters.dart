@@ -126,6 +126,29 @@ String formatTime(DateTime time) {
 /// `TimeOfDay` (selector de hora) → `9:30 a. m.`
 String formatTimeOfDay(TimeOfDay time) => formatClock(time.hour, time.minute);
 
+/// Momento del día de una hora 0–23, para que el "12" no confunda:
+/// `0` → `medianoche`, `12` → `mediodía`, `8` → `de la mañana`.
+String dayMomentOf(int hour) {
+  RangeError.checkValueInInterval(hour, 0, 23, 'hour');
+  if (hour == 0) return 'medianoche';
+  if (hour < 6) return 'de la madrugada';
+  if (hour < 12) return 'de la mañana';
+  if (hour == 12) return 'mediodía';
+  if (hour < 19) return 'de la tarde';
+  return 'de la noche';
+}
+
+/// Como [formatHhmm], pero a las 12 dice cuál es: `12:00 p. m. (mediodía)`,
+/// `12:00 a. m. (medianoche)`. Las demás horas, igual que [formatHhmm].
+String formatHhmmWithMoment(String hhmm) {
+  final text = formatHhmm(hhmm);
+  final match = _hhmm.firstMatch(hhmm.trim());
+  if (match == null) return text;
+  final hour = int.parse(match.group(1)!);
+  if (hour != 0 && hour != 12) return text;
+  return '$text (${dayMomentOf(hour)})';
+}
+
 /// Hora `HH:mm` (o `HH:mm:ss`) del contrato y de las entidades (`WorkHours`,
 /// horario del negocio, ventana de recordatorios) → `9:00 a. m.`. Un texto
 /// que no es una hora se devuelve recortado, sin inventar nada.

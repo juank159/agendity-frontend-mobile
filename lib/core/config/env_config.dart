@@ -32,6 +32,29 @@ class EnvConfig {
     return Duration(seconds: int.parse(timeout ?? '3'));
   }
 
+  // --- Baudity Ops (reporte central de errores) ---
+  // Igual que API_URL: `--dart-define` gana sobre `.env`. Vacíos = reporter
+  // desactivado (no son obligatorios, no van en `validateEnv`).
+  static const _definedOpsUrl = String.fromEnvironment('OPS_URL');
+  static const _definedOpsKey = String.fromEnvironment('OPS_KEY');
+  static const _definedOpsRelease = String.fromEnvironment('OPS_RELEASE');
+
+  static String get opsUrl => _definedOpsUrl.isNotEmpty
+      ? _definedOpsUrl
+      : (dotenv.env['OPS_URL'] ?? '');
+
+  static String get opsKey => _definedOpsKey.isNotEmpty
+      ? _definedOpsKey
+      : (dotenv.env['OPS_KEY'] ?? '');
+
+  /// Versión desplegada (opcional); `null` si no se definió.
+  static String? get opsRelease {
+    final value = _definedOpsRelease.isNotEmpty
+        ? _definedOpsRelease
+        : (dotenv.env['OPS_RELEASE'] ?? '');
+    return value.isEmpty ? null : value;
+  }
+
   static void validateEnv() {
     final requiredVars = ['API_URL'];
     final missingVars = requiredVars

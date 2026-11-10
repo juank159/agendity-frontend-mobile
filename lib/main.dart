@@ -9,8 +9,11 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:login_signup/core/config/env_config.dart';
 
 import 'package:login_signup/core/di/init_dependencies.dart';
+import 'package:login_signup/core/ops/ops_reporter.dart';
+import 'package:login_signup/core/session/session_repository.dart';
 import 'package:login_signup/core/routes/routes.dart';
 import 'package:login_signup/firebase_options.dart';
+import 'package:login_signup/shared/controllers/session_controller.dart';
 import 'package:login_signup/shared/controllers/theme_controller.dart';
 import 'package:login_signup/core/utils/app_logger.dart';
 
@@ -28,6 +31,7 @@ Future<void> main() async {
     EnvConfig.validateEnv();
     await initializeDateFormatting('es', null);
     await DependencyInjection.init();
+    _initOpsReporter();
     _registerFontLicense();
 
     AppLogger.debug('Rutas registradas: ${GetRoutes.routes.length}');
@@ -36,6 +40,33 @@ Future<void> main() async {
   } catch (e) {
     AppLogger.error('Error inicializando la aplicación', e);
     rethrow;
+  }
+}
+
+/// Baudity Ops: reporta a la Ops API los errores no capturados (Flutter y
+/// plataforma). Sin OPS_URL/OPS_KEY queda desactivado. El tenant y el usuario
+/// salen de la sesión actual; los getters nunca lanzan (antes del login, o si
+/// `SessionController` aún no está registrado, devuelven `null`).
+void _initOpsReporter() {
+  OpsReporter.init(
+    url: EnvConfig.opsUrl,
+    key: EnvConfig.opsKey,
+    environment: kReleaseMode ? 'production' : 'development',
+    release: EnvConfig.opsRelease,
+    tenantId: () => _currentSession()?.tenantId,
+    userId: () => _currentSession()?.userId,
+    currentRoute: () => Get.currentRoute,
+  );
+  // Después de los manejadores propios de la app (hoy no hay): los encadena.
+  OpsReporter.installGlobalHandlers();
+}
+
+Session? _currentSession() {
+  try {
+    if (!Get.isRegistered<SessionController>()) return null;
+    return Get.find<SessionController>().session.value;
+  } catch (_) {
+    return null;
   }
 }
 
